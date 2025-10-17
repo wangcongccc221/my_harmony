@@ -1,0 +1,724 @@
+/**
+ * 等级页面左侧控制面板组件
+ * 
+ * 功能说明：
+ * - 显示水果选择、出口报警、分选标准、计算单位、装箱量等设置
+ * - 在Level页面中作为左侧控制区域显示
+ * - 提供用户交互界面，支持各种设置选项的配置
+ * - 实现设置项的状态管理和事件处理
+ * 
+ * 包含设置项：
+ * - 水果选择：支持苹果、香蕉、橙子、葡萄四种水果类型
+ * - 出口报警：设置出口阈值，支持数值输入
+ * - 分选标准：支持尺寸、重量、直径、面积、体积等标准选择
+ * - 计算单位：支持克（重量）和个（数量）两种单位
+ * - 装箱量设置：支持两个装箱重量的设置和自动生成
+ * 
+ * 组件特点：
+ * - 响应式设计：支持主题切换和样式更新
+ * - 事件驱动：通过回调函数处理用户交互
+ * - 状态同步：与父组件保持状态同步
+ * - 类型安全：使用TypeScript接口确保类型安全
+ * 
+ * 使用方式：
+ * ```typescript
+ * LevelControlPanel({
+ *   selectedFruit: this.selectedFruit,
+ *   outletThreshold: this.outletThreshold,
+ *   selectedStandards: this.selectedStandards,
+ *   selectedUnit: this.selectedUnit,
+ *   packingWeight1: this.packingWeight1,
+ *   packingWeight2: this.packingWeight2,
+ *   onFruitChange: (fruit: string) => { this.handleFruitChange(fruit) },
+ *   onOutletThresholdChange: (threshold: number) => { this.handleOutletThresholdChange(threshold) },
+ *   onStandardsChange: (standards: string[]) => { this.handleStandardsChange(standards) },
+ *   onUnitChange: (unit: string) => { this.handleUnitChange(unit) },
+ *   onPackingWeight1Change: (weight: number) => { this.handlePackingWeight1Change(weight) },
+ *   onPackingWeight2Change: (weight: number) => { this.handlePackingWeight2Change(weight) },
+ *   onAutoGenerate: () => { this.handleAutoGenerate() }
+ * })
+ * ```
+ * 
+ * 布局说明：
+ * - 使用Column布局垂直排列各个设置项
+ * - 每个设置项使用独立的卡片容器
+ * - 支持滚动显示，适应不同屏幕尺寸
+ * - 左侧面板宽度：20%
+ */
+
+import { BaseComponentHelper } from '../../components/common/BaseComponent'
+import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY, useOmniTheme } from '../../utils/theme/useOmniTheme'
+import { FRUIT_TYPES, SORTING_STANDARDS, UNIT_OPTIONS } from './LevelConstants'
+
+/**
+ * Select选项接口
+ * 
+ * 功能说明：
+ * - 定义Select组件的选项数据结构
+ * - 用于下拉选择框的选项配置
+ * - 确保选项数据的类型安全
+ * 
+ * 属性说明：
+ * - value: 选项的值，用于内部逻辑处理
+ */
+interface SelectOption {
+  /** 选项的值（用于内部逻辑） */
+  value: string
+}
+
+/**
+ * 等级页面左侧控制面板组件结构体
+ * 
+ * 属性说明：
+ * - selectedFruit: 选中的水果类型，默认第一个水果
+ * - outletThreshold: 出口阈值，默认0
+ * - selectedStandards: 选中的分选标准数组，默认空数组
+ * - selectedUnit: 选中的计算单位，默认第一个单位
+ * - packingWeight1: 包装重量1，默认0
+ * - packingWeight2: 包装重量2，默认0
+ * - onFruitChange: 水果类型变化回调函数
+ * - onOutletThresholdChange: 出口阈值变化回调函数
+ * - onStandardsChange: 分选标准变化回调函数
+ * - onUnitChange: 单位变化回调函数
+ * - onPackingWeight1Change: 包装重量1变化回调函数
+ * - onPackingWeight2Change: 包装重量2变化回调函数
+ * - onAutoGenerate: 自动生成回调函数
+ * - consumedTheme: 当前主题样式
+ * - consumedThemeType: 当前主题类型
+ * - themeVersion: 主题版本号
+ * - baseComponentHelper: 基础组件助手
+ * 
+ * 方法说明：
+ * - getCurrentTheme(): 获取当前主题配置
+ * - build(): 构建控制面板的UI结构
+ */
+@Component
+export struct LevelControlPanel {
+  // ==================== 设置项属性 ====================
+  /**
+   * 选中的水果类型
+   * 
+   * 功能说明：
+   * - 存储当前选中的水果类型
+   * - 默认值为第一个水果类型
+   * - 支持苹果、香蕉、橙子、葡萄四种类型
+   */
+  @Prop selectedFruit: string = FRUIT_TYPES[0].value
+  
+  /**
+   * 出口阈值
+   * 
+   * 功能说明：
+   * - 存储出口报警的阈值设置
+   * - 默认值为0
+   * - 支持数值输入和调整
+   */
+  @Prop outletThreshold: number = 0
+  
+  /**
+   * 选中的分选标准数组
+   * 
+   * 功能说明：
+   * - 存储当前选中的分选标准
+   * - 默认值为空数组
+   * - 支持多选，包括尺寸、重量、直径、面积、体积等标准
+   */
+  @Prop selectedStandards: string[] = []
+  
+  /**
+   * 选中的计算单位
+   * 
+   * 功能说明：
+   * - 存储当前选中的计算单位
+   * - 默认值为第一个单位
+   * - 支持克（重量）和个（数量）两种单位
+   */
+  @Prop selectedUnit: string = UNIT_OPTIONS[0].value
+  
+  /**
+   * 包装重量1
+   * 
+   * 功能说明：
+   * - 存储第一个包装重量的设置
+   * - 默认值为0
+   * - 支持数值输入和调整
+   */
+  @Prop packingWeight1: number = 0
+  
+  /**
+   * 包装重量2
+   * 
+   * 功能说明：
+   * - 存储第二个包装重量的设置
+   * - 默认值为0
+   * - 支持数值输入和调整
+   */
+  @Prop packingWeight2: number = 0
+
+  // ==================== 事件回调函数 ====================
+  /**
+   * 水果类型变化回调函数
+   * 
+   * 功能说明：
+   * - 当用户选择水果类型时触发
+   * - 传递选中的水果类型给父组件
+   * - 用于处理水果类型变化逻辑
+   */
+  onFruitChange?: (fruit: string) => void
+  
+  /**
+   * 出口阈值变化回调函数
+   * 
+   * 功能说明：
+   * - 当用户设置出口阈值时触发
+   * - 传递阈值数值给父组件
+   * - 用于处理出口阈值变化逻辑
+   */
+  onOutletThresholdChange?: (threshold: number) => void
+  
+  /**
+   * 分选标准变化回调函数
+   * 
+   * 功能说明：
+   * - 当用户选择分选标准时触发
+   * - 传递选中的标准数组给父组件
+   * - 用于处理分选标准变化逻辑
+   */
+  onStandardsChange?: (standards: string[]) => void
+  
+  /**
+   * 单位变化回调函数
+   * 
+   * 功能说明：
+   * - 当用户选择计算单位时触发
+   * - 传递选中的单位给父组件
+   * - 用于处理单位变化逻辑
+   */
+  onUnitChange?: (unit: string) => void
+  
+  /**
+   * 包装重量1变化回调函数
+   * 
+   * 功能说明：
+   * - 当用户设置包装重量1时触发
+   * - 传递重量数值给父组件
+   * - 用于处理包装重量1变化逻辑
+   */
+  onPackingWeight1Change?: (weight: number) => void
+  
+  /**
+   * 包装重量2变化回调函数
+   * 
+   * 功能说明：
+   * - 当用户设置包装重量2时触发
+   * - 传递重量数值给父组件
+   * - 用于处理包装重量2变化逻辑
+   */
+  onPackingWeight2Change?: (weight: number) => void
+  
+  /**
+   * 自动生成回调函数
+   * 
+   * 功能说明：
+   * - 当用户点击自动生成按钮时触发
+   * - 用于处理自动生成包装重量逻辑
+   */
+  onAutoGenerate?: () => void
+
+  // ==================== 主题相关属性 ====================
+  /**
+   * 当前主题样式
+   * 
+   * 功能说明：
+   * - 存储当前主题的样式配置
+   * - 使用@StorageLink实现主题响应式更新
+   * - 默认值为当前主题管理器的主题
+   */
+  @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
+  
+  /**
+   * 当前主题类型
+   * 
+   * 功能说明：
+   * - 存储当前主题的类型
+   * - 使用@StorageLink实现主题响应式更新
+   * - 默认值为当前主题管理器的主题类型
+   */
+  @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
+  
+  /**
+   * 主题版本号
+   * 
+   * 功能说明：
+   * - 存储主题的版本号
+   * - 用于主题更新时的版本控制
+   * - 默认值为0
+   */
+  @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
+  
+  /**
+   * 基础组件助手
+   * 
+   * 功能说明：
+   * - 提供基础组件的通用功能
+   * - 用于主题管理和样式配置
+   * - 实例化BaseComponentHelper
+   */
+  private baseComponentHelper = new BaseComponentHelper()
+
+  /**
+   * 获取当前主题配置
+   * 
+   * 功能说明：
+   * - 从基础组件助手获取当前主题样式
+   * - 用于组件样式配置
+   * - 支持主题切换时的样式更新
+   * 
+   * @returns 当前主题的扩展样式对象
+   */
+  getCurrentTheme(): ExtendedOmniThemeStyle {
+    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+  }
+
+  /**
+   * 组件构建方法
+   * 
+   * 功能：
+   * - 构建等级页面左侧控制面板的UI结构
+   * - 实现各种设置项的布局和交互
+   * - 处理用户输入和选择事件
+   * - 支持主题切换和样式更新
+   * 
+   * 布局说明：
+   * - 使用Column布局垂直排列各个设置卡片
+   * - 每个设置项使用独立的卡片容器
+   * - 支持滚动显示，适应不同屏幕尺寸
+   * 
+   * 包含设置项：
+   * - 水果选择：下拉框选择水果类型
+   * - 出口报警：数值输入框设置阈值
+   * - 分选标准：多选框选择分选标准
+   * - 计算单位：下拉框选择计算单位
+   * - 装箱量设置：两个数值输入框和自动生成按钮
+   * 
+   * 样式说明：
+   * - 卡片样式：白色背景，圆角设计，阴影效果
+   * - 输入框样式：主题背景色，边框，圆角
+   * - 按钮样式：主题背景色，圆角，悬停效果
+   * - 文字样式：主题文字颜色，不同字体大小
+   */
+  build() {
+    Column() {
+      // ==================== 水果表单卡片 ====================
+      Column() {
+        Text('水果')
+          .fontSize(24)  // 标题字体调大到24px
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCurrentTheme().textColor)
+          .margin({ top: 0, bottom: 4 })
+          .alignSelf(ItemAlign.Start)
+
+        // 种类选择行
+        Row() {
+          Text('种类:')
+            .fontSize(22)  // 标签字体调大到22px
+            .fontColor(this.getCurrentTheme().textColor)
+            .margin({ right: 2 })
+
+          // 下拉框
+          Select(FRUIT_TYPES.map(fruit => ({ value: fruit.value } as SelectOption)))
+            .selected(FRUIT_TYPES.findIndex(fruit => fruit.value === this.selectedFruit))
+            .font({ size: 16 })  // 下拉框字体调大到16px
+            .fontColor(this.getCurrentTheme().textColor)
+            .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+            .border({ width: 1, color: this.getCurrentTheme().borderColor })
+            .borderRadius(2)
+            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+            .layoutWeight(1)
+            .constraintSize({ minWidth: 60, maxWidth: 140 })
+            .height(28)
+            .onSelect((index: number, value: string) => {
+              if (this.onFruitChange) {
+                this.onFruitChange(value)
+              }
+            })
+        }
+        .width('100%')
+        .alignItems(VerticalAlign.Center)
+        .margin({ bottom: 4 })
+      }
+      .width('100%')
+      .padding(10)
+      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
+      .border({ width: 1, color: this.getCurrentTheme().borderColor })
+      .borderRadius(8)
+      .shadow({ radius: 8, color: 'rgba(0,0,0,0.08)', offsetY: 2 })
+      .alignItems(HorizontalAlign.Start)
+      .margin({ bottom: 4 })
+
+      // 出口报警卡片
+      Column() {
+        Text('出口报警')
+          .fontSize(24)  // 标题字体调大到24px
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCurrentTheme().textColor)
+          .margin({ top: 0, bottom: 4 })
+          .alignSelf(ItemAlign.Start)
+
+        // 出口阀值输入行
+        Row() {
+          Text('出口阀值:')
+            .fontSize(22)  // 标签字体调大到22px
+            .fontColor(this.getCurrentTheme().textColor)
+            .margin({ right: 2 })
+
+          // 数字输入框（0-100）
+          TextInput({ text: this.outletThreshold.toString() })
+            .type(InputType.Number)
+            .fontSize(20)  // 输入框字体调大到20px
+            .fontColor(this.getCurrentTheme().textColor)
+            .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+            .border({ width: 1, color: this.getCurrentTheme().borderColor })
+            .borderRadius(4)
+            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+            .layoutWeight(1)
+            .constraintSize({ minWidth: 60, maxWidth: 120 })
+            .height(28)
+            .onChange((val: string) => {
+              let num = Number(val)
+              if (isNaN(num)) {
+                num = 0
+              }
+              if (num < 0) num = 0
+              if (num > 100) num = 100
+              if (this.onOutletThresholdChange) {
+                this.onOutletThresholdChange(num)
+              }
+            })
+
+          // %符号
+          Text('%')
+            .fontSize(22)  // 符号字体调大到22px
+            .fontColor(this.getCurrentTheme().textColor)
+            .margin({ left: 4 })
+        }
+        .width('100%')
+        .alignItems(VerticalAlign.Center)
+        .margin({ bottom: 4 })
+      }
+      .width('100%')
+      .padding(10)
+      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
+      .border({ width: 1, color: this.getCurrentTheme().borderColor })
+      .borderRadius(8)
+      .shadow({ radius: 8, color: 'rgba(0,0,0,0.08)', offsetY: 2 })
+      .alignItems(HorizontalAlign.Start)
+      .margin({ bottom: 4 })
+
+      // 分选标准卡片
+      Column() {
+        Text('分选标准')
+          .fontSize(24)  // 标题字体调大到24px
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCurrentTheme().textColor)
+          .margin({ top: 0, bottom: 6 })
+          .alignSelf(ItemAlign.Start)
+
+        // 分选标准选项
+        Column() {
+          // 第一行：尺寸和重量
+          Row() {
+            // 尺寸复选框
+            Row() {
+              Checkbox({ name: '尺寸', group: 'standard' })
+                .select(this.selectedStandards.includes('尺寸'))
+                .width(14)
+                .height(14)
+                .margin({ right: 4 })
+                .onChange((isChecked: boolean) => {
+                  this.updateStandards('尺寸', isChecked)
+                })
+
+              Text('尺寸')
+                .fontSize(22)  // 复选框标签字体调大到22px
+                .fontColor(this.getCurrentTheme().textColor)
+            }
+            .layoutWeight(1)
+            .alignItems(VerticalAlign.Center)
+
+            // 重量复选框
+            Row() {
+              Checkbox({ name: '重量', group: 'standard' })
+                .select(this.selectedStandards.includes('重量'))
+                .width(14)
+                .height(14)
+                .margin({ right: 4 })
+                .onChange((isChecked: boolean) => {
+                  this.updateStandards('重量', isChecked)
+                })
+
+              Text('重量')
+                .fontSize(22)  // 复选框标签字体调大到22px
+                .fontColor(this.getCurrentTheme().textColor)
+            }
+            .layoutWeight(1)
+            .alignItems(VerticalAlign.Center)
+          }
+          .width('100%')
+          .margin({ bottom: 4 })
+
+          // 第二行：直径、面积、体积
+          Row() {
+            // 直径复选框
+            Row() {
+              Checkbox({ name: '直径', group: 'standard' })
+                .select(this.selectedStandards.includes('直径'))
+                .width(14)
+                .height(14)
+                .margin({ right: 4 })
+                .onChange((isChecked: boolean) => {
+                  this.updateStandards('直径', isChecked)
+                })
+
+              Text('直径')
+                .fontSize(22)  // 复选框标签字体调大到22px
+                .fontColor(this.getCurrentTheme().textColor)
+            }
+            .layoutWeight(1)
+            .alignItems(VerticalAlign.Center)
+
+            // 面积复选框
+            Row() {
+              Checkbox({ name: '面积', group: 'standard' })
+                .select(this.selectedStandards.includes('面积'))
+                .width(14)
+                .height(14)
+                .margin({ right: 4 })
+                .onChange((isChecked: boolean) => {
+                  this.updateStandards('面积', isChecked)
+                })
+
+              Text('面积')
+                .fontSize(22)  // 复选框标签字体调大到22px
+                .fontColor(this.getCurrentTheme().textColor)
+            }
+            .layoutWeight(1)
+            .alignItems(VerticalAlign.Center)
+
+            // 体积复选框
+            Row() {
+              Checkbox({ name: '体积', group: 'standard' })
+                .select(this.selectedStandards.includes('体积'))
+                .width(14)
+                .height(14)
+                .margin({ right: 4 })
+                .onChange((isChecked: boolean) => {
+                  this.updateStandards('体积', isChecked)
+                })
+
+              Text('体积')
+                .fontSize(22)  // 复选框标签字体调大到22px
+                .fontColor(this.getCurrentTheme().textColor)
+            }
+            .layoutWeight(1)
+            .alignItems(VerticalAlign.Center)
+          }
+          .width('100%')
+        }
+        .width('100%')
+        .alignItems(HorizontalAlign.Start)
+      }
+      .width('100%')
+      .padding(10)
+      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
+      .border({ width: 1, color: this.getCurrentTheme().borderColor })
+      .borderRadius(8)
+      .shadow({ radius: 8, color: 'rgba(0,0,0,0.08)', offsetY: 2 })
+      .alignItems(HorizontalAlign.Start)
+      .margin({ bottom: 4 })
+
+      // 计算每箱单位卡片
+      Column() {
+        Text('计算每箱单位')
+          .fontSize(24)  // 标题字体调大到24px
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCurrentTheme().textColor)
+          .margin({ top: 0, bottom: 4 })
+          .alignSelf(ItemAlign.Start)
+
+        // 单位选择单选按钮（横向排布）
+        Row() {
+          // 克选项
+          Row() {
+            Radio({ value: 'gram', group: 'unit' })
+              .checked(this.selectedUnit === 'gram')
+              .onChange((isChecked: boolean) => {
+                if (isChecked && this.onUnitChange) {
+                  this.onUnitChange('gram')
+                }
+              })
+            Text('克')
+              .fontSize(22)  // 单选按钮标签字体调大到22px
+              .fontColor(this.getCurrentTheme().textColor)
+              .margin({ left: 4 })
+          }
+          .alignItems(VerticalAlign.Center)
+          .margin({ right: 16 })
+
+          // 个选项
+          Row() {
+            Radio({ value: 'piece', group: 'unit' })
+              .checked(this.selectedUnit === 'piece')
+              .onChange((isChecked: boolean) => {
+                if (isChecked && this.onUnitChange) {
+                  this.onUnitChange('piece')
+                }
+              })
+            Text('个')
+              .fontSize(22)  // 单选按钮标签字体调大到22px
+              .fontColor(this.getCurrentTheme().textColor)
+              .margin({ left: 4 })
+          }
+          .alignItems(VerticalAlign.Center)
+        }
+        .width('100%')
+        .alignItems(VerticalAlign.Center)
+        .justifyContent(FlexAlign.Start)
+      }
+      .width('100%')
+      .padding(6)
+      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
+      .border({ width: 1, color: this.getCurrentTheme().borderColor })
+      .borderRadius(8)
+      .shadow({ radius: 8, color: 'rgba(0,0,0,0.08)', offsetY: 2 })
+      .alignItems(HorizontalAlign.Start)
+
+      // 装箱量卡片
+      Column() {
+        Text('装箱量')
+          .fontSize(24)  // 标题字体调大到24px
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCurrentTheme().textColor)
+          .margin({ top: 0, bottom: 4 })
+          .alignSelf(ItemAlign.Start)
+
+        // 装箱重量1
+        Row() {
+          Text('装箱重量1:')
+            .fontSize(22)  // 标签字体调大到22px
+            .fontColor(this.getCurrentTheme().textColor)
+            .margin({ right: 2 })
+
+          TextInput({ text: this.packingWeight1.toString() })
+            .type(InputType.Number)
+            .fontSize(20)  // 输入框字体调大到20px
+            .fontColor(this.getCurrentTheme().textColor)
+            .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+            .border({ width: 1, color: this.getCurrentTheme().borderColor })
+            .borderRadius(4)
+            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+            .layoutWeight(1)
+            .constraintSize({ minWidth: 60, maxWidth: 120 })
+            .height(28)
+            .onChange((val: string) => {
+              const num = Number(val)
+              if (this.onPackingWeight1Change) {
+                this.onPackingWeight1Change(isNaN(num) ? 0 : num)
+              }
+            })
+
+          Text('公斤')
+            .fontSize(22)  // 单位标签字体调大到22px
+            .fontColor(this.getCurrentTheme().textColor)
+            .margin({ left: 4 })
+        }
+        .width('100%')
+        .alignItems(VerticalAlign.Center)
+        .margin({ bottom: 6 })
+
+        // 装箱重量2
+        Row() {
+          Text('装箱重量2:')
+            .fontSize(22)  // 标签字体调大到22px
+            .fontColor(this.getCurrentTheme().textColor)
+            .margin({ right: 2 })
+
+          TextInput({ text: this.packingWeight2.toString() })
+            .type(InputType.Number)
+            .fontSize(20)  // 输入框字体调大到20px
+            .fontColor(this.getCurrentTheme().textColor)
+            .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+            .border({ width: 1, color: this.getCurrentTheme().borderColor })
+            .borderRadius(4)
+            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+            .layoutWeight(1)
+            .constraintSize({ minWidth: 60, maxWidth: 120 })
+            .height(28)
+            .onChange((val: string) => {
+              const num = Number(val)
+              if (this.onPackingWeight2Change) {
+                this.onPackingWeight2Change(isNaN(num) ? 0 : num)
+              }
+            })
+
+          Text('公斤')
+            .fontSize(22)  // 单位标签字体调大到22px
+            .fontColor(this.getCurrentTheme().textColor)
+            .margin({ left: 4 })
+        }
+        .width('100%')
+        .alignItems(VerticalAlign.Center)
+        .margin({ bottom: 6 })
+
+        // 自动生成按钮
+        Row() {
+          Blank().layoutWeight(1)
+          Button('自动生成')
+            .height(30)
+            .fontSize(20)  // 按钮字体调大到20px
+            .backgroundColor(this.getCurrentTheme().primary)
+            .fontColor('#ffffff')
+            .borderRadius(6)
+            .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+            .onClick(() => {
+              if (this.onAutoGenerate) {
+                this.onAutoGenerate()
+              }
+            })
+        }
+        .width('100%')
+      }
+      .width('100%')
+      .padding(10)
+      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
+      .border({ width: 1, color: this.getCurrentTheme().borderColor })
+      .borderRadius(8)
+      .shadow({ radius: 8, color: 'rgba(0,0,0,0.08)', offsetY: 2 })
+      .alignItems(HorizontalAlign.Start)
+    }
+    .width('100%')
+    .height('100%')
+    .padding(8)
+    .backgroundColor(this.getCurrentTheme().surfaceColor)
+    .border({ width: 1, color: this.getCurrentTheme().borderColor })
+    .borderRadius(12)
+    .shadow({ radius: 12, color: 'rgba(0,0,0,0.1)', offsetY: 4 })
+    .alignItems(HorizontalAlign.Start)
+    .justifyContent(FlexAlign.Start)
+  }
+
+  private updateStandards(standard: string, isChecked: boolean): void {
+    let newStandards = [...this.selectedStandards]
+    if (isChecked) {
+      if (!newStandards.includes(standard)) {
+        newStandards.push(standard)
+      }
+    } else {
+      newStandards = newStandards.filter(s => s !== standard)
+    }
+    if (this.onStandardsChange) {
+      this.onStandardsChange(newStandards)
+    }
+  }
+}

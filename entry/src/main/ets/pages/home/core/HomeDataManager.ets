@@ -1,0 +1,484 @@
+/**
+ * 主页数据管理器        初始化数据  后续需要实现一个add函数可以添加数据
+ * 
+ * 功能说明：
+ * - 管理主页所有表格的数据存储和操作
+ * - 提供统一的数据访问接口
+ * - 支持数据的增删改查操作
+ * - 管理多种类型表格的数据
+ * 
+ * 支持的数据类型：
+ * - 等级表：等级相关数据
+ * - 容器表：容器相关数据
+ * - 等级统计表：统计相关数据
+ * - 动态装箱：装箱相关数据
+ * - 成品：成品相关数据
+ * 
+ * 主要功能：
+ * - 数据初始化：为所有表格生成初始数据
+ * - 数据添加：向指定表格添加新数据
+ * - 数据获取：获取指定表格的数据
+ * - 数据清理：清空指定表格的数据
+ * - 数据统计：计算表格数据统计信息
+ * 
+ * 使用方式：
+ * ```typescript
+ * const dataManager = new HomeDataManager()
+ * 
+ * // 初始化所有表格数据
+ * dataManager.initializeAllTableData()
+ * 
+ * // 获取等级表数据
+ * const levelData = dataManager.getLevelTableData()
+ * 
+ * // 添加新数据
+ * dataManager.addLevelTableData(newData)
+ * ```
+ */
+
+import { TableRow } from '../../../components/layout/LevelTable'
+
+export class HomeDataManager {
+  /**
+   * 所有表格数据的存储容器
+   * 
+   * 使用Record类型存储多个表格的数据
+   * 键为表格名称，值为表格行数据数组
+   * 
+   * 示例：
+   * {
+   *   '等级表': [['A级', '1250.5', '28.5%', '156', '25.2%'], ...],
+   *   '容器表': [['容器1', '标准1', '规格1', '等级1'], ...],
+   *   ...
+   * }
+   */
+  private allTableData: Record<string, TableRow[]> = {}
+
+  /**
+   * 添加数据到指定表格
+   * 
+   * 功能说明：
+   * - 将新数据追加到指定表格的现有数据中
+   * - 如果表格不存在，会先创建空的表格数据
+   * - 使用扩展运算符确保数据的不变性
+   * 
+   * @param tableName 表格名称（如：'等级表', '容器表'等）
+   * @param data 要添加的数据（TableRow数组）
+   * 
+   * 使用示例：
+   * ```typescript
+   * const newData = [['新等级', '100', '10%', '50', '5%']]
+   * dataManager.addTableData('等级表', newData)
+   * ```
+   */
+  addTableData(tableName: string, data: TableRow[]): void {
+    // 如果表格不存在，先创建空的表格数据
+    if (!this.allTableData[tableName]) {
+      this.allTableData[tableName] = []
+    }
+    // 使用扩展运算符将新数据追加到现有数据中
+    this.allTableData[tableName] = [...this.allTableData[tableName], ...data]
+    console.log(`添加数据到${tableName}:`, data)
+  }
+
+  /**
+   * 获取指定表格的数据
+   * 
+   * 功能说明：
+   * - 根据表格名称获取对应的表格数据
+   * - 如果表格不存在，返回空数组
+   * - 返回的数据是表格行数据的数组
+   * 
+   * @param tableName 表格名称（如：'等级表', '容器表'等）
+   * @returns 表格数据（TableRow数组），如果表格不存在则返回空数组
+   * 
+   * 使用示例：
+   * ```typescript
+   * const levelData = dataManager.getTableData('等级表')
+   * console.log('等级表数据:', levelData)
+   * ```
+   */
+  getTableData(tableName: string): TableRow[] {
+    return this.allTableData[tableName] || []
+  }
+
+  /**
+   * 清空指定表格数据
+   * 
+   * 功能说明：
+   * - 清空指定表格的所有数据
+   * - 表格结构保持不变，只是数据被清空
+   * - 用于重置表格数据或重新开始数据录入
+   * 
+   * @param tableName 表格名称（如：'等级表', '容器表'等）
+   * 
+   * 使用示例：
+   * ```typescript
+   * dataManager.clearTableData('等级表')
+   * // 等级表数据被清空
+   * ```
+   */
+  clearTableData(tableName: string): void {
+    this.allTableData[tableName] = []
+    console.log(`清空${tableName}数据`)
+  }
+
+  /**
+   * 清空所有表格数据
+   * 
+   * 功能说明：
+   * - 清空所有表格的数据
+   * - 重置数据管理器到初始状态
+   * - 用于系统重置或数据清理
+   * 
+   * 使用示例：
+   * ```typescript
+   * dataManager.clearAllTableData()
+   * // 所有表格数据被清空
+   * ```
+   */
+  clearAllTableData(): void {
+    this.allTableData = {}
+    console.log('所有表格数据已清空')
+  }
+
+  /**
+   * 初始化等级表数据
+   * 
+   * 功能说明：
+   * - 为等级表生成初始的示例数据
+   * - 包含不同等级的分拣数据
+   * - 数据包含等级、重量、百分比、个数等信息
+   * 
+   * 数据说明：
+   * - A级：最高等级，重量1250.5，占比28.5%
+   * - B级：次高等级，重量980.2，占比22.3%
+   * - C级：中等等级，重量756.8，占比17.2%
+   * - D级：较低等级，重量654.3，占比14.9%
+   * 
+   * 使用示例：
+   * ```typescript
+   * dataManager.initializeLevelTableData()
+   * // 等级表数据被初始化
+   * ```
+   */
+  initializeLevelTableData(): void {
+    const levelData: TableRow[] = [
+      ['A级', '1250.5', '28.5%', '156', '25.2%'],
+      ['B级', '980.2', '22.3%', '98', '15.8%'],
+      ['C级', '756.8', '17.2%', '78', '12.6%'],
+      ['D级', '654.3', '14.9%', '65', '10.5%']
+    ]
+    this.addTableData('等级表', levelData)
+  }
+
+  /**
+   * 初始化容器表数据
+   * 
+   * 功能说明：
+   * - 为容器表生成初始的示例数据
+   * - 包含不同容器的配置信息
+   * - 数据包含容器名称、分选标准、规格、等级等信息
+   * 
+   * 数据说明：
+   * - A01：重量+尺寸分选，规格600×400×300，A级
+   * - B02：外观+颜色分选，规格500×350×280，B级
+   * - C03：尺寸分选，规格400×300×250，C级
+   * - D04：重量分选，规格550×380×290，A级
+   * 
+   * 使用示例：
+   * ```typescript
+   * dataManager.initializeContainerTableData()
+   * // 容器表数据被初始化
+   * ```
+   */
+  initializeContainerTableData(): void {
+    const containerData: TableRow[] = [
+      ['A01', '重量+尺寸', '600×400×300', 'A级'],
+      ['B02', '外观+颜色', '500×350×280', 'B级'],
+      ['C03', '尺寸', '400×300×250', 'C级'],
+      ['D04', '重量', '550×380×290', 'A级']
+    ]
+    this.addTableData('容器表', containerData)
+  }
+
+  /**
+   * 初始化等级统计表数据
+   * 
+   * 功能说明：
+   * - 为等级统计表生成初始的示例数据
+   * - 包含各等级的详细统计信息
+   * - 数据包含等级名称、重量、出口、个数、百分比等信息
+   * 
+   * 数据说明：
+   * - A级：重量1250.5，出口1，156个，占比25.2%，箱数8，箱重15.6
+   * - B级：重量980.2，出口2，98个，占比15.8%，箱数6，箱重16.3
+   * - C级：重量756.8，出口3，78个，占比12.6%，箱数5，箱重15.1
+   * - D级：重量654.3，出口4，65个，占比10.5%，箱数4，箱重16.4
+   * 
+   * 使用示例：
+   * ```typescript
+   * dataManager.initializeStatisticsTableData()
+   * // 等级统计表数据被初始化
+   * ```
+   */
+  initializeStatisticsTableData(): void {
+    const statisticsData: TableRow[] = [
+      ['A级', '1250.5', '出口1', '156', '25.2%', '1250.5', '28.5%', '8', '26.7%', '156.3', '15.6'],
+      ['B级', '980.2', '出口2', '98', '15.8%', '980.2', '22.3%', '6', '20.0%', '163.4', '16.3'],
+      ['C级', '756.8', '出口3', '78', '12.6%', '756.8', '17.2%', '5', '16.7%', '151.4', '15.1'],
+      ['D级', '654.3', '出口4', '65', '10.5%', '654.3', '14.9%', '4', '13.3%', '163.6', '16.4']
+    ]
+    this.addTableData('等级统计表', statisticsData)
+  }
+
+  /**
+   * 初始化动态装箱表数据
+   * 
+   * 功能说明：
+   * - 为动态装箱表生成初始的示例数据
+   * - 包含装箱过程的详细信息
+   * - 数据包含出口、流水码、装箱规格、等级、箱数等信息
+   * 
+   * 数据说明：
+   * - 出口1：流水码LS001，标准箱，A级，15箱，大号，净重12.5，箱数/分3.2
+   * - 出口2：流水码LS002，小箱，B级，8箱，中号，净重8.3，箱数/分2.1
+   * - 出口3：流水码LS003，标准箱，A级，12箱，大号，净重11.8，箱数/分2.8
+   * - 出口1：流水码LS004，大箱，C级，6箱，特大号，净重15.2，箱数/分1.5
+   * 
+   * 使用示例：
+   * ```typescript
+   * dataManager.initializeDynamicPackingTableData()
+   * // 动态装箱表数据被初始化
+   * ```
+   */
+  initializeDynamicPackingTableData(): void {
+    const dynamicPackingData: TableRow[] = [
+      ['出口1', 'LS001', '标准箱', 'A级', '15', '大号', '12.5', '3.2'],
+      ['出口2', 'LS002', '小箱', 'B级', '8', '中号', '8.3', '2.1'],
+      ['出口3', 'LS003', '标准箱', 'A级', '12', '大号', '11.8', '2.8'],
+      ['出口1', 'LS004', '大箱', 'C级', '6', '特大号', '15.2', '1.5']
+    ]
+    this.addTableData('动态装箱', dynamicPackingData)
+  }
+
+  /**
+   * 初始化成品表数据
+   * 
+   * 功能说明：
+   * - 为成品表生成初始的示例数据
+   * - 包含成品的详细信息
+   * - 数据包含成品码、出口、流水码、容器名称、等级、包装时间等信息
+   * 
+   * 数据说明：
+   * - CP001：出口1，流水码LS001，标准容器，A级，包装时间2025-01-15 14:30，大号，净重12.5
+   * - CP002：出口2，流水码LS002，小容器，B级，包装时间2025-01-15 15:45，中号，净重8.3
+   * - CP003：出口3，流水码LS003，标准容器，A级，包装时间2025-01-15 16:20，大号，净重11.8
+   * - CP004：出口1，流水码LS004，大容器，C级，包装时间2025-01-15 17:10，特大号，净重15.2
+   * 
+   * 使用示例：
+   * ```typescript
+   * dataManager.initializeFinishedProductsTableData()
+   * // 成品表数据被初始化
+   * ```
+   */
+  initializeFinishedProductsTableData(): void {
+    const finishedProductsData: TableRow[] = [
+      ['CP001', '出口1', 'LS001', '标准容器', 'A级', '2025-01-15 14:30', '大号', '12.5'],
+      ['CP002', '出口2', 'LS002', '小容器', 'B级', '2025-01-15 15:45', '中号', '8.3'],
+      ['CP003', '出口3', 'LS003', '标准容器', 'A级', '2025-01-15 16:20', '大号', '11.8'],
+      ['CP004', '出口1', 'LS004', '大容器', 'C级', '2025-01-15 17:10', '特大号', '15.2']
+    ]
+    this.addTableData('成品', finishedProductsData)
+  }
+
+  /**
+   * 初始化所有表格数据
+   * 
+   * 功能说明：
+   * - 一次性初始化所有表格的示例数据
+   * - 按顺序初始化：等级表、容器表、等级统计表、动态装箱表、成品表
+   * - 用于应用启动时的数据初始化
+   * 
+   * 初始化顺序：
+   * 1. 等级表：等级相关数据
+   * 2. 容器表：容器配置数据
+   * 3. 等级统计表：统计相关数据
+   * 4. 动态装箱表：装箱相关数据
+   * 5. 成品表：成品相关数据
+   * 
+   * 使用示例：
+   * ```typescript
+   * dataManager.initializeAllTableData()
+   * // 所有表格数据被初始化
+   * ```
+   */
+  initializeAllTableData(): void {
+    this.initializeLevelTableData()
+    this.initializeContainerTableData()
+    this.initializeStatisticsTableData()
+    this.initializeDynamicPackingTableData()
+    this.initializeFinishedProductsTableData()
+    console.log('所有表格数据初始化完成')
+  }
+
+  /**
+   * 添加新的等级表数据
+   * 
+   * 功能说明：
+   * - 向等级表添加新的等级数据
+   * - 用于模拟数据更新或用户添加新等级
+   * - 数据包含I级和J级的新等级信息
+   * 
+   * 新增数据说明：
+   * - I级：重量200.5，占比12.5%，25个，占比4.0%
+   * - J级：重量150.2，占比9.3%，18个，占比2.9%
+   * 
+   * 使用示例：
+   * ```typescript
+   * dataManager.addNewLevelTableData()
+   * // 等级表添加了新的I级和J级数据
+   * ```
+   */
+  addNewLevelTableData(): void {
+    const newLevelData: TableRow[] = [
+      ['I级', '200.5', '12.5%', '25', '4.0%'],
+      ['J级', '150.2', '9.3%', '18', '2.9%']
+    ]
+    this.addTableData('等级表', newLevelData)
+  }
+
+  /**
+   * 添加新的容器表数据
+   * 
+   * 功能说明：
+   * - 向容器表添加新的容器配置数据
+   * - 用于模拟数据更新或用户添加新容器
+   * - 数据包含I09和J10的新容器信息
+   * 
+   * 新增数据说明：
+   * - I09：重量+外观分选，规格300×200×180，I级
+   * - J10：尺寸+颜色分选，规格280×180×160，J级
+   * 
+   * 使用示例：
+   * ```typescript
+   * dataManager.addNewContainerTableData()
+   * // 容器表添加了新的I09和J10容器数据
+   * ```
+   */
+  addNewContainerTableData(): void {
+    const newContainerData: TableRow[] = [
+      ['I09', '重量+外观', '300×200×180', 'I级'],
+      ['J10', '尺寸+颜色', '280×180×160', 'J级']
+    ]
+    this.addTableData('容器表', newContainerData)
+  }
+
+  /**
+   * 添加新的等级统计表数据
+   * 
+   * 功能说明：
+   * - 向等级统计表添加新的统计数据
+   * - 用于模拟数据更新或用户添加新统计信息
+   * - 数据包含I级和J级的新统计信息
+   * 
+   * 新增数据说明：
+   * - I级：重量200.5，出口7，25个，占比4.0%，箱数2，箱重10.0
+   * - J级：重量150.2，出口8，18个，占比2.9%，箱数1，箱重15.0
+   * 
+   * 使用示例：
+   * ```typescript
+   * dataManager.addNewStatisticsTableData()
+   * // 等级统计表添加了新的I级和J级统计数据
+   * ```
+   */
+  addNewStatisticsTableData(): void {
+    const newStatisticsData: TableRow[] = [
+      ['I级', '200.5', '出口7', '25', '4.0%', '200.5', '4.6%', '2', '6.7%', '100.3', '10.0'],
+      ['J级', '150.2', '出口8', '18', '2.9%', '150.2', '3.4%', '1', '3.3%', '150.2', '15.0']
+    ]
+    this.addTableData('等级统计表', newStatisticsData)
+  }
+
+  /**
+   * 添加新的动态装箱表数据
+   * 
+   * 功能说明：
+   * - 向动态装箱表添加新的装箱数据
+   * - 用于模拟数据更新或用户添加新装箱信息
+   * - 数据包含出口7和出口8的新装箱信息
+   * 
+   * 新增数据说明：
+   * - 出口7：流水码LS007，标准箱，I级，5箱，中号，净重6.5，箱数/分1.0
+   * - 出口8：流水码LS008，小箱，J级，3箱，小号，净重4.2，箱数/分0.8
+   * 
+   * 使用示例：
+   * ```typescript
+   * dataManager.addNewDynamicPackingTableData()
+   * // 动态装箱表添加了新的出口7和出口8装箱数据
+   * ```
+   */
+  addNewDynamicPackingTableData(): void {
+    const newDynamicPackingData: TableRow[] = [
+      ['出口7', 'LS007', '标准箱', 'I级', '5', '中号', '6.5', '1.0'],
+      ['出口8', 'LS008', '小箱', 'J级', '3', '小号', '4.2', '0.8']
+    ]
+    this.addTableData('动态装箱', newDynamicPackingData)
+  }
+
+  /**
+   * 添加新的成品表数据
+   * 
+   * 功能说明：
+   * - 向成品表添加新的成品数据
+   * - 用于模拟数据更新或用户添加新成品信息
+   * - 数据包含CP007和CP008的新成品信息
+   * 
+   * 新增数据说明：
+   * - CP007：出口7，流水码LS007，标准容器，I级，包装时间2025-01-15 20:30，中号，净重6.5
+   * - CP008：出口8，流水码LS008，小容器，J级，包装时间2025-01-15 21:15，小号，净重4.2
+   * 
+   * 使用示例：
+   * ```typescript
+   * dataManager.addNewFinishedProductsTableData()
+   * // 成品表添加了新的CP007和CP008成品数据
+   * ```
+   */
+  addNewFinishedProductsTableData(): void {
+    const newFinishedProductsData: TableRow[] = [
+      ['CP007', '出口7', 'LS007', '标准容器', 'I级', '2025-01-15 20:30', '中号', '6.5'],
+      ['CP008', '出口8', 'LS008', '小容器', 'J级', '2025-01-15 21:15', '小号', '4.2']
+    ]
+    this.addTableData('成品', newFinishedProductsData)
+  }
+
+  /**
+   * 添加所有新数据
+   * 
+   * 功能说明：
+   * - 一次性向所有表格添加新的数据
+   * - 按顺序添加：等级表、容器表、等级统计表、动态装箱表、成品表
+   * - 用于模拟数据更新或批量添加新数据
+   * 
+   * 添加顺序：
+   * 1. 等级表：添加I级和J级数据
+   * 2. 容器表：添加I09和J10容器数据
+   * 3. 等级统计表：添加I级和J级统计数据
+   * 4. 动态装箱表：添加出口7和出口8装箱数据
+   * 5. 成品表：添加CP007和CP008成品数据
+   * 
+   * 使用示例：
+   * ```typescript
+   * dataManager.addAllNewData()
+   * // 所有表格都添加了新的数据
+   * ```
+   */
+  addAllNewData(): void {
+    this.addNewLevelTableData()
+    this.addNewContainerTableData()
+    this.addNewStatisticsTableData()
+    this.addNewDynamicPackingTableData()
+    this.addNewFinishedProductsTableData()
+    console.log('所有新数据已添加')
+  }
+}

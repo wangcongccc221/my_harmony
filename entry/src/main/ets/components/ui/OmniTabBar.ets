@@ -1,0 +1,195 @@
+/**
+ * 通用TabBar组件
+ * 
+ * 功能说明：
+ * - 支持垂直和水平布局
+ * - 统一的TabBar设计风格
+ * - 支持主题配置
+ * - 可复用的TabBar组件
+ * 
+ * 使用场景：
+ * - 左侧导航栏（垂直布局）
+ * - 顶部TabBar（水平布局）
+ * - 其他需要TabBar的地方
+ */
+
+import { BaseComponentHelper } from '../common/BaseComponent'
+import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+
+// Tab配置接口
+export interface TabConfig {
+  key: string
+  label: string
+  icon?: Resource  // 可选的图标资源
+  disabled?: boolean  // 是否禁用
+  badge?: string  // 徽章文本（如通知数量）
+}
+
+// TabBar布局方向
+export enum TabBarDirection {
+  HORIZONTAL = 'horizontal',  // 水平布局
+  VERTICAL = 'vertical'       // 垂直布局
+}
+
+@Component
+export struct OmniTabBar {
+  private baseComponentHelper = new BaseComponentHelper()
+  
+  // 主题相关
+  @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
+  @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
+  @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
+  
+  // 提供主题给子组件
+  @Provide omniTabBarTheme: ExtendedOmniThemeStyle = this.consumedTheme
+
+  // Tab配置
+  @Prop tabs: TabConfig[] = []
+  
+  // 当前选中的Tab
+  @Prop selectedTab: string = ''
+  
+  // 布局方向
+  @Prop layoutDirection: TabBarDirection = TabBarDirection.HORIZONTAL
+  
+  // 是否显示分隔线
+  @Prop showSeparator: boolean = false
+  
+  // 点击回调
+  onTabClick?: (tabKey: string) => void
+
+  // 获取当前主题配置
+  private getCurrentTheme(): ExtendedOmniThemeStyle {
+    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+  }
+
+  // 构建水平TabBar
+  @Builder
+  private buildHorizontalTabBar() {
+    Row() {
+      ForEach(this.tabs, (tab: TabConfig, index: number) => {
+        this.buildTab(tab)
+        
+        // 在按钮之间添加分隔线（如果需要）
+        if (this.showSeparator && index < this.tabs.length - 1) {
+          Column()
+            .width(1)
+            .height(30)
+            .backgroundColor(this.getCurrentTheme().borderColor)
+            .margin({ left: 8, right: 8 })
+        }
+      })
+    }
+    .width('100%')
+    .height(50)
+    .backgroundColor(this.getCurrentTheme().surfaceColor)
+    .borderRadius(12)
+    .margin({ left: 16, right: 16, top: 16, bottom: 8 })
+    .justifyContent(FlexAlign.Start)
+    .alignItems(VerticalAlign.Center)
+  }
+
+  // 构建垂直TabBar
+  @Builder
+  private buildVerticalTabBar() {
+    Column() {
+      ForEach(this.tabs, (tab: TabConfig, index: number) => {
+        this.buildTab(tab)
+        
+        // 在按钮之间添加分隔线（如果需要）
+        if (this.showSeparator && index < this.tabs.length - 1) {
+          Row()
+            .width('80%')
+            .height(1)
+            .backgroundColor(this.getCurrentTheme().borderColor)
+            .margin({ top: 8, bottom: 8 })
+        }
+      })
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor(this.getCurrentTheme().surfaceColor)
+    .borderRadius(12)
+    .margin({ left: 16, right: 16, top: 16, bottom: 16 })
+    .justifyContent(FlexAlign.Start)
+    .alignItems(HorizontalAlign.Start)
+  }
+
+  // 构建单个Tab
+  @Builder
+  private buildTab(tab: TabConfig) {
+    Button() {
+      Row() {
+        // 图标（如果有）
+        if (tab.icon) {
+          Image(tab.icon)
+            .width(this.layoutDirection === TabBarDirection.VERTICAL ? 20 : 16)
+            .height(this.layoutDirection === TabBarDirection.VERTICAL ? 20 : 16)
+            .fillColor(this.selectedTab === tab.key ? this.getCurrentTheme().primary : this.getCurrentTheme().textColor)
+            .margin({ right: 8 })
+        }
+        
+        // 文字
+        Text(tab.label)
+          .fontSize(this.layoutDirection === TabBarDirection.VERTICAL ? 16 : 14)
+          .fontWeight(this.selectedTab === tab.key ? FontWeight.Bold : FontWeight.Normal)
+          .fontColor(tab.disabled ? this.getCurrentTheme().textColor + '60' : 
+                    (this.selectedTab === tab.key ? this.getCurrentTheme().primary : this.getCurrentTheme().textColor))
+        
+        // 徽章（如果有）
+        if (tab.badge) {
+          Text(tab.badge)
+            .fontSize(10)
+            .fontColor(Color.White)
+            .backgroundColor('#FF4444')
+            .borderRadius(8)
+            .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+            .margin({ left: 4 })
+        }
+      }
+      .justifyContent(FlexAlign.Center)
+      .alignItems(VerticalAlign.Center)
+    }
+    .width(this.layoutDirection === TabBarDirection.VERTICAL ? '90%' : 'auto')
+    .height(this.layoutDirection === TabBarDirection.VERTICAL ? 48 : 36)
+    .backgroundColor(tab.disabled ? this.getCurrentTheme().surfaceColor + '40' :
+                    (this.selectedTab === tab.key ? this.getCurrentTheme().primary + '15' : Color.Transparent))
+    .borderRadius(8)
+    .border({ 
+      width: 1, 
+      color: tab.disabled ? this.getCurrentTheme().borderColor + '40' :
+             (this.selectedTab === tab.key ? this.getCurrentTheme().primary : this.getCurrentTheme().borderColor)
+    })
+    .padding({ 
+      left: this.layoutDirection === TabBarDirection.VERTICAL ? 12 : 10, 
+      right: this.layoutDirection === TabBarDirection.VERTICAL ? 12 : 10, 
+      top: this.layoutDirection === TabBarDirection.VERTICAL ? 8 : 6, 
+      bottom: this.layoutDirection === TabBarDirection.VERTICAL ? 8 : 6 
+    })
+    .margin({ 
+      left: this.layoutDirection === TabBarDirection.VERTICAL ? 0 : 6, 
+      right: this.layoutDirection === TabBarDirection.VERTICAL ? 0 : 6,
+      top: this.layoutDirection === TabBarDirection.VERTICAL ? 4 : 0,
+      bottom: this.layoutDirection === TabBarDirection.VERTICAL ? 4 : 0
+    })
+    .enabled(!tab.disabled)
+    .onClick(() => {
+      if (!tab.disabled && this.onTabClick) {
+        this.onTabClick(tab.key)
+      }
+    })
+    .animation({
+      duration: 200,
+      curve: Curve.EaseInOut
+    })
+  }
+
+  build() {
+    if (this.layoutDirection === TabBarDirection.HORIZONTAL) {
+      this.buildHorizontalTabBar()
+    } else {
+      this.buildVerticalTabBar()
+    }
+  }
+}
