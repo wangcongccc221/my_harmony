@@ -78,7 +78,27 @@ export class UseDragDrop {
       const wrapper: SystemWrapper = JSON.parse(extraParams) as SystemWrapper
       payloadStr = String(wrapper.extraInfo ?? extraParams)
     }
-    const parsed: LoosePayload = JSON.parse(payloadStr) as LoosePayload
+    
+    let parsed: LoosePayload
+    try {
+      parsed = JSON.parse(payloadStr) as LoosePayload
+    } catch (error) {
+      console.error('解析拖拽数据失败:', error, '原始数据:', payloadStr)
+      return { type: 'error', value: payloadStr }
+    }
+    
+    // 处理多选拖拽数据（来自 GridTable 的多选拖拽）
+    if (parsed.type === 'multi_select' && parsed.values && Array.isArray(parsed.values)) {
+      console.log('🎯 检测到多选拖拽数据:', parsed.values.length, '个值')
+      
+      // 数据已经在 GridTable 中优化过了，直接使用
+      parsed.count = parsed.count || parsed.values.length
+      
+      console.log('🎯 多选拖拽解析结果:', {
+        values: parsed.values,
+        count: parsed.count
+      })
+    }
     
     // 处理 fullRowData 字段（来自 GridTable 的整行拖拽）
     if (parsed.fullRowData && !parsed.rowData) {

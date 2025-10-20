@@ -144,3 +144,9 @@ export interface MultiSelectCell {
   sourceTable: string
   cellId: string
 }
+
+// 多选状态接口
+export interface MultiSelectState {
+  cells: MultiSelectCell[]
+  isActive: boolean
+}

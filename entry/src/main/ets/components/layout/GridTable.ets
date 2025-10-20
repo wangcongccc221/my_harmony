@@ -13,6 +13,8 @@
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { TableRow } from './LevelTable'
+import { MultiSelectCell, MultiSelectState } from '../ThreeLayerCard/types'
+import { StorageKeys } from '../../utils/constants/StorageKeys'
 
 // 拖拽数据接口
 interface DragData {
@@ -30,6 +32,10 @@ export struct GridTable {
   @Prop tableName: string = 'default'
   // 是否允许拖拽（默认true，主页可按业务关闭）
   @Prop enableDrag: boolean = true
+  
+  // 多选状态管理
+  @State private selectedCells: Set<string> = new Set()
+  @State private isMultiSelectMode: boolean = false
   
   // 表格数据（二维字符串）
   @Prop tableRows: TableRow[] = [
@@ -64,6 +70,93 @@ export struct GridTable {
   }
 
   /**
+   * 切换单元格选中状态
+   */
+  private toggleCellSelection(rowIndex: number, colIndex: number, cellText: string) {
+    if (!this.enableDrag) {
+      return
+    }
+    
+    const cellId = `${rowIndex}_${colIndex}`
+    
+    if (this.selectedCells.has(cellId)) {
+      // 取消选中
+      this.selectedCells.delete(cellId)
+      console.log('🔴 GridTable - 取消选中单元格:', cellText)
+    } else {
+      // 选中
+      this.selectedCells.add(cellId)
+      console.log('🟢 GridTable - 选中单元格:', cellText)
+    }
+    
+    // 更新多选模式状态
+    this.isMultiSelectMode = this.selectedCells.size > 1
+    
+    // 更新全局多选状态
+    this.updateGlobalMultiSelectState()
+    
+    console.log('📊 GridTable - 当前选中单元格数量:', this.selectedCells.size)
+  }
+
+  /**
+   * 更新全局多选状态
+   */
+  private updateGlobalMultiSelectState() {
+    if (!this.enableDrag) {
+      return
+    }
+    
+    const selectedCellsArray: MultiSelectCell[] = []
+    
+    this.selectedCells.forEach(cellId => {
+      const parts = cellId.split('_')
+      const rowIndex = Number(parts[0])
+      const colIndex = Number(parts[1])
+      const cellText = this.tableRows[rowIndex]?.[colIndex] || ''
+      
+      selectedCellsArray.push({
+        rowIndex: rowIndex,
+        colIndex: colIndex,
+        value: cellText,
+        sourceTable: this.tableName,
+        cellId: cellId
+      })
+    })
+    
+    const multiSelectState: MultiSelectState = {
+      cells: selectedCellsArray,
+      isActive: selectedCellsArray.length > 0
+    }
+    
+    AppStorage.set(StorageKeys.MULTI_SELECT_CELLS_KEY, multiSelectState)
+    AppStorage.set(StorageKeys.MULTI_SELECT_ACTIVE_KEY, multiSelectState.isActive)
+    
+    console.log('🔄 GridTable - 更新全局多选状态:', JSON.stringify(multiSelectState))
+  }
+
+  /**
+   * 清除所有选中状态
+   */
+  private clearAllSelections() {
+    this.selectedCells.clear()
+    this.isMultiSelectMode = false
+    
+    // 清除全局多选状态
+    AppStorage.set(StorageKeys.MULTI_SELECT_CELLS_KEY, { cells: [], isActive: false })
+    AppStorage.set(StorageKeys.MULTI_SELECT_ACTIVE_KEY, false)
+    
+    console.log('🧹 GridTable - 清除所有选中状态')
+  }
+
+  /**
+   * 检查单元格是否被选中
+   */
+  private isCellSelected(rowIndex: number, colIndex: number): boolean {
+    const cellId = `${rowIndex}_${colIndex}`
+    return this.selectedCells.has(cellId)
+  }
+
+  /**
    * 获取列模板字符串
    * 根据表头数量动态生成等宽列模板
    */
@@ -81,20 +174,63 @@ export struct GridTable {
       return { pixelMap: undefined, builder: undefined, extraInfo: '' }
     }
 
-    const dragData: DragData = {
-      rowIndex,
-      colIndex,
-      value: cellValue,
-      sourceTable: this.tableName
-    }
+    // 检查是否有多个选中的单元格
+    if (this.isMultiSelectMode && this.selectedCells.size > 1) {
+      // 多选拖拽：使用所有选中的单元格数据
+      console.log('🎯 GridTable - 开始多选拖拽，选中单元格数量:', this.selectedCells.size)
+      
+      const selectedCellsArray: MultiSelectCell[] = []
+      this.selectedCells.forEach(cellId => {
+        const parts = cellId.split('_')
+        const r = Number(parts[0])
+        const c = Number(parts[1])
+        const text = this.tableRows[r]?.[c] || ''
+        selectedCellsArray.push({
+          rowIndex: r,
+          colIndex: c,
+          value: text,
+          sourceTable: this.tableName,
+          cellId: cellId
+        })
+      })
+      
+      // 优化多选拖拽数据格式，减少数据量
+      const values = selectedCellsArray.map(cell => cell.value)
+      const dragDataStr = JSON.stringify({
+        type: 'multi_select',
+        values: values,
+        count: selectedCellsArray.length
+      })
+      
+      console.log('🎯 GridTable - 多选拖拽数据:', dragDataStr)
+      
+      // 拖拽完成后清除选中状态
+      setTimeout(() => {
+        this.clearAllSelections()
+      }, 100)
+      
+      return {
+        pixelMap: undefined,
+        builder: undefined,
+        extraInfo: dragDataStr
+      }
+    } else {
+      // 单选拖拽：使用当前单元格数据
+      const dragData: DragData = {
+        rowIndex,
+        colIndex,
+        value: cellValue,
+        sourceTable: this.tableName
+      }
 
-    const dragDataStr = JSON.stringify(dragData)
-    console.log('🚀 GridTable - 开始拖拽:', dragDataStr)
+      const dragDataStr = JSON.stringify(dragData)
+      console.log('🚀 GridTable - 开始单选拖拽:', dragDataStr)
 
-    return {
-      pixelMap: undefined,
-      builder: undefined,
-      extraInfo: dragDataStr
+      return {
+        pixelMap: undefined,
+        builder: undefined,
+        extraInfo: dragDataStr
+      }
     }
   }
 
@@ -299,13 +435,17 @@ export struct GridTable {
       .textAlign(TextAlign.Center)
       .layoutWeight(1)
       .height('100%')
-      .backgroundColor(this.getCurrentTheme().surfaceColor)
+      .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? '#E3F2FD' : this.getCurrentTheme().surfaceColor) // 选中时高亮背景
       .border({
         width: { right: 1, bottom: 1 },
-        color: this.getCurrentTheme().borderColor
+        color: this.isCellSelected(rowIndex, colIndex) ? '#2196F3' : this.getCurrentTheme().borderColor // 选中时蓝色边框
       })
       .padding(2)
       .draggable(this.enableDrag)
+      .onClick(() => {
+        // 点击切换选中状态
+        this.toggleCellSelection(rowIndex, colIndex, cellValue)
+      })
       .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
         return this.handleDragStart(rowIndex, colIndex, cellValue)
       })
@@ -397,13 +537,17 @@ export struct GridTable {
       .textAlign(TextAlign.Center)
       .layoutWeight(1)
       .height('100%')
-      .backgroundColor(this.getCurrentTheme().surfaceColor)
+      .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? '#E3F2FD' : this.getCurrentTheme().surfaceColor) // 选中时高亮背景
       .border({
         width: { right: 1, bottom: 1 },
-        color: this.getCurrentTheme().borderColor
+        color: this.isCellSelected(rowIndex, colIndex) ? '#2196F3' : this.getCurrentTheme().borderColor // 选中时蓝色边框
       })
       .padding(2)
       .draggable(this.enableDrag)
+      .onClick(() => {
+        // 点击切换选中状态
+        this.toggleCellSelection(rowIndex, colIndex, cellValue)
+      })
       .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
         return this.handleRowDragStart(rowIndex, this.tableRows[rowIndex])
       })
