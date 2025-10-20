@@ -158,93 +158,79 @@ export struct HistoryDataTable {
         .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().controlBg)
         .border({ width: 1, color: this.getCurrentTheme().borderColor })
 
-        // 可滚动数据区域
-        Scroll() {
-          Column() {
-            ForEach(this.tableManager.getData(), (item: HistoryTableData) => {
-              Grid() {
-                GridItem() {
-                  Text(item.id.toString())
-                    .fontSize(14)
-                    .fontColor(this.getCurrentTheme().textColor)
-                    .textAlign(TextAlign.Center)
-                    .padding(4)
-                }
-                GridItem() {
-                  Text(item.customerName)
-                    .fontSize(14)
-                    .fontColor(this.getCurrentTheme().textColor)
-                    .textAlign(TextAlign.Center)
-                    .padding(4)
-                }
-                GridItem() {
-                  Text(item.farmName)
-                    .fontSize(14)
-                    .fontColor(this.getCurrentTheme().textColor)
-                    .textAlign(TextAlign.Center)
-                    .padding(4)
-                }
-                GridItem() {
-                  Text(item.fruitName)
-                    .fontSize(14)
-                    .fontColor(this.getCurrentTheme().textColor)
-                    .textAlign(TextAlign.Center)
-                    .padding(4)
-                }
-                GridItem() {
-                  Text(item.status)
-                    .fontSize(14)
-                    .fontColor(this.getStatusColor(item.status))
-                    .textAlign(TextAlign.Center)
-                    .padding(4)
-                }
-                GridItem() {
-                  Text(item.startTime)
-                    .fontSize(14)
-                    .fontColor(this.getCurrentTheme().textColor)
-                    .textAlign(TextAlign.Center)
-                    .padding(4)
-                }
-                GridItem() {
-                  Text(item.endTime)
-                    .fontSize(14)
-                    .fontColor(item.endTime === '-' ? this.getCurrentTheme().subTextColor : this.getCurrentTheme().textColor)
-                    .textAlign(TextAlign.Center)
-                    .padding(4)
-                }
-                GridItem() {
-                  Text(item.weight.toString())
-                    .fontSize(14)
-                    .fontColor(this.getCurrentTheme().textColor)
-                    .textAlign(TextAlign.Center)
-                    .padding(4)
-                }
-                GridItem() {
-                  Text(item.count.toString())
-                    .fontSize(14)
-                    .fontColor(this.getCurrentTheme().textColor)
-                    .textAlign(TextAlign.Center)
-                    .padding(4)
-                }
+        // 可滚动数据区域（List + ListItem）
+        List() {
+          ForEach(this.tableManager.getData(), (item: HistoryTableData, rowIdx?: number) => {
+            ListItem() {
+              Row() {
+                Text(item.id.toString())
+                  .fontSize(14)
+                  .fontColor(this.getCurrentTheme().textColor)
+                  .textAlign(TextAlign.Center)
+                  .width('8%')
+
+                Text(item.customerName)
+                  .fontSize(14)
+                  .fontColor(this.getCurrentTheme().textColor)
+                  .textAlign(TextAlign.Center)
+                  .width('12%')
+
+                Text(item.farmName)
+                  .fontSize(14)
+                  .fontColor(this.getCurrentTheme().textColor)
+                  .textAlign(TextAlign.Center)
+                  .width('12%')
+
+                Text(item.fruitName)
+                  .fontSize(14)
+                  .fontColor(this.getCurrentTheme().textColor)
+                  .textAlign(TextAlign.Center)
+                  .width('10%')
+
+                Text(item.status)
+                  .fontSize(14)
+                  .fontColor(this.getStatusColor(item.status))
+                  .textAlign(TextAlign.Center)
+                  .width('10%')
+
+                Text(item.startTime)
+                  .fontSize(14)
+                  .fontColor(this.getCurrentTheme().textColor)
+                  .textAlign(TextAlign.Center)
+                  .width('12%')
+
+                Text(item.endTime)
+                  .fontSize(14)
+                  .fontColor(item.endTime === '-' ? this.getCurrentTheme().subTextColor : this.getCurrentTheme().textColor)
+                  .textAlign(TextAlign.Center)
+                  .width('12%')
+
+                Text(item.weight.toString())
+                  .fontSize(14)
+                  .fontColor(this.getCurrentTheme().textColor)
+                  .textAlign(TextAlign.Center)
+                  .width('12%')
+
+                Text(item.count.toString())
+                  .fontSize(14)
+                  .fontColor(this.getCurrentTheme().textColor)
+                  .textAlign(TextAlign.Center)
+                  .width('12%')
               }
-              .columnsTemplate('8fr 12fr 12fr 10fr 10fr 12fr 12fr 12fr 12fr')
-              .height(36)
-              .columnsGap(0)
-              .rowsGap(0)
               .width('100%')
-              .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-              .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-              .onClick(() => {
-                this.handleRowClick(item)
-              })
+              .height(36)
+              .backgroundColor((rowIdx ?? 0) % 2 === 0 ? (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor) : (this.getCurrentTheme().surfaceColor))
+              .padding({ left: 4, right: 4 })
+            }
+            .onClick(() => {
+              this.handleRowClick(item)
             })
-          }
-          .width('100%')
+            .border({ width: { bottom: 0.5 }, color: this.getCurrentTheme().borderColor })
+          }, (item: HistoryTableData, idx?: number) => `${idx}`)
         }
         .width('100%')
         .layoutWeight(1)
         .scrollBar(BarState.Auto)
-        .scrollable(ScrollDirection.Vertical)
         .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
         .border({ width: 1, color: this.getCurrentTheme().borderColor })
         .borderRadius(4)

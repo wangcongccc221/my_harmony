@@ -24,79 +24,92 @@ export struct ProcessingDataTable {
 
   build() {
     Column() {
-      // 表头
-      Row() {
-        Text('加工时间')
-          .fontSize(18)  // 表头字体调大到18px
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().textColor)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-        
-        Text('结束时间')
-          .fontSize(18)  // 表头字体调大到18px
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().textColor)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-        
-        Text('加工品种')
-          .fontSize(18)  // 表头字体调大到18px
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().textColor)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-        
-        Text('总重量(吨)')
-          .fontSize(18)  // 表头字体调大到18px
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().textColor)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
+      // 固定表头（Grid）
+      Grid() {
+        GridItem() {
+          Text('加工时间')
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+            .textAlign(TextAlign.Center)
+        }
+        GridItem() {
+          Text('结束时间')
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+            .textAlign(TextAlign.Center)
+        }
+        GridItem() {
+          Text('加工品种')
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+            .textAlign(TextAlign.Center)
+        }
+        GridItem() {
+          Text('总重量(吨)')
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+            .textAlign(TextAlign.Center)
+        }
       }
+      .columnsTemplate('1fr 1fr 1fr 1fr')
+      .columnsGap(0)
+      .rowsGap(0)
       .width('100%')
-      .padding({ top: 12, bottom: 12 })
-      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      .height(40)
+      .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor))
       .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
 
-      // 表格内容区域
-      Column() {
-        ForEach(this.data, (record: ProcessingRecord) => {
-          Row() {
-            Text(record.startTime)
-              .fontSize(16)  // 数据行字体调大到16px
-              .fontColor(this.getCurrentTheme().textColor)
-              .layoutWeight(1)
-              .textAlign(TextAlign.Center)
-            
-            Text(record.endTime)
-              .fontSize(16)  // 数据行字体调大到16px
-              .fontColor(this.getCurrentTheme().textColor)
-              .layoutWeight(1)
-              .textAlign(TextAlign.Center)
-            
-            Text(record.productType)
-              .fontSize(16)  // 数据行字体调大到16px
-              .fontColor(this.getCurrentTheme().textColor)
-              .layoutWeight(1)
-              .textAlign(TextAlign.Center)
-            
-            Text(record.totalWeight.toString())
-              .fontSize(16)  // 数据行字体调大到16px
-              .fontColor(this.getCurrentTheme().textColor)
-              .layoutWeight(1)
-              .textAlign(TextAlign.Center)
+      // 可滚动数据区域（List + ListItem）
+      List() {
+        ForEach(this.data, (record: ProcessingRecord, rowIdx?: number) => {
+          ListItem() {
+            Row() {
+              // 加工时间
+              Text(record.startTime)
+                .fontSize(16)
+                .fontColor(this.getCurrentTheme().textColor)
+                .textAlign(TextAlign.Center)
+                .width('25%')
+
+              // 结束时间
+              Text(record.endTime)
+                .fontSize(16)
+                .fontColor(this.getCurrentTheme().textColor)
+                .textAlign(TextAlign.Center)
+                .width('25%')
+
+              // 加工品种
+              Text(record.productType)
+                .fontSize(16)
+                .fontColor(this.getCurrentTheme().textColor)
+                .textAlign(TextAlign.Center)
+                .width('25%')
+
+              // 总重量(吨)
+              Text(`${record.totalWeight}`)
+                .fontSize(16)
+                .fontColor(this.getCurrentTheme().textColor)
+                .textAlign(TextAlign.Center)
+                .width('25%')
+            }
+            .width('100%')
+            .height(40)
+            .backgroundColor((rowIdx ?? 0) % 2 === 0 ? (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor) : (this.getCurrentTheme().surfaceColor))
+            .padding({ left: 4, right: 4 })
           }
-          .width('100%')
-          .padding({ top: 8, bottom: 8 })
-          .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
           .onClick(() => {
             this.onRowClick?.(record)
           })
-        })
+          .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+        }, (record: ProcessingRecord, idx?: number) => `${idx}`)
       }
       .width('100%')
       .layoutWeight(1)
+      .scrollBar(BarState.Auto)
     }
     .width('100%')
     .height('85%')

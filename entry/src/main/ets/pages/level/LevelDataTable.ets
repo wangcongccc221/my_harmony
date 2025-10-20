@@ -282,16 +282,26 @@ export struct LevelDataTable {
    * - 设置默认的等级名称、最小重量、装箱量
    */
   private initializeLevelData(): void {
-    const levelCount = this.levelCountIndex + 2 // 2-7个等级
+    // 优先使用父组件传入数据长度；若父组件未传入，则使用本卡片选择的数量（索引即数量：0-10）
+    const propCount = Array.isArray(this.levelData) ? this.levelData.length : 0
+    const levelCount = propCount > 0 ? propCount : this.levelCountIndex
+
+    if (levelCount <= 0) {
+      this.levelTableData = []
+      this.levelNameInputs = []
+      return
+    }
+
     this.levelTableData = []
     this.levelNameInputs = []
-    
+
     for (let i = 0; i < levelCount; i++) {
+      // 若父组件未提供具体字段，这里先用占位生成名称（1..N），避免空白
       this.levelTableData.push({
         id: i + 1,
         levelName: `${i + 1}`,
-        minWeight: 100 - i * 5, // 默认最小重量：100, 95, 90, 85...
-        packingWeight: 500 + i * 50 // 默认装箱量：500, 550, 600, 650...
+        minWeight: 100 - i * 5,
+        packingWeight: 500 + i * 50
       })
       this.levelNameInputs.push(`${i + 1}`)
     }
@@ -697,12 +707,8 @@ export struct LevelDataTable {
 
             // 等级数量选择器
             Select([
-              { value: '2' },
-              { value: '3' },
-              { value: '4' },
-              { value: '5' },
-              { value: '6' },
-              { value: '7' }
+              { value: '0' }, { value: '1' }, { value: '2' }, { value: '3' }, { value: '4' },
+              { value: '5' }, { value: '6' }, { value: '7' }, { value: '8' }, { value: '9' }, { value: '10' }
             ])
               .selected(0)
               .font({ size: 22 })

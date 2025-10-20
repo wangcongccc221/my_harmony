@@ -181,8 +181,8 @@ export struct LevelContent {
    * - 组件初始化时
    */
   private initializeData(): void {
-    this.dataManager.initializeLevelData()
-    this.stateManager.updateLevelData(this.dataManager.getLevelData())
+    // 不再预填充默认等级数据：等待用户选择后再生成
+    this.stateManager.updateLevelData([])
     this.stateManager.updateStatisticsData(this.dataManager.getStatisticsData())
   }
 
