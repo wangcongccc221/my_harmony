@@ -128,14 +128,6 @@ export struct LeftNavigationTabBar {
 
   build() {
     Column() {
-      // 导航标题
-      Text('导航')
-        .fontSize(20)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(this.getCurrentTheme().primary)
-        .margin({ bottom: 16 })
-        .alignSelf(ItemAlign.Center)
-
       // TabBar导航
       OmniTabBar({
         tabs: this.getNavigationTabs(),
@@ -155,6 +147,6 @@ export struct LeftNavigationTabBar {
     .width('100%')
     .height('100%')
     .padding({ top: 20, bottom: 20 })
-    .backgroundColor(this.getCurrentTheme().pageBg ?? this.getCurrentTheme().backgroundColor)
+    .backgroundColor(this.getCurrentTheme().surfaceColor)
   }
 }

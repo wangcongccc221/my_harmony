@@ -448,7 +448,7 @@ export struct GridTable {
       .textAlign(TextAlign.Center)
       .layoutWeight(1)
       .height('100%')
-      .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? '#E3F2FD' : this.getCurrentTheme().surfaceColor) // 选中时高亮背景
+      .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? '#E3F2FD' : (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)) // 选中时高亮背景
       .border({
         width: { right: 1, bottom: 1 },
         color: this.isCellSelected(rowIndex, colIndex) ? '#2196F3' : this.getCurrentTheme().borderColor // 选中时蓝色边框
@@ -480,11 +480,11 @@ export struct GridTable {
     Text(title)
       .fontSize(18)
       .fontWeight(FontWeight.Bold)
-      .fontColor(this.getCurrentTheme().textColor)
+      .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
       .textAlign(TextAlign.Center)
       .width('100%')
       .height('100%')
-      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
       .border({
         width: { right: 1, bottom: 1 },
         color: this.getCurrentTheme().borderColor
@@ -515,11 +515,11 @@ export struct GridTable {
     Text(title)
       .fontSize(18)
       .fontWeight(FontWeight.Bold)
-      .fontColor(this.getCurrentTheme().textColor)
+      .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
       .textAlign(TextAlign.Center)
       .layoutWeight(1)
       .height('100%')
-      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
       .border({
         width: { right: 1, bottom: 1 },
         color: this.getCurrentTheme().borderColor
@@ -550,7 +550,7 @@ export struct GridTable {
       .textAlign(TextAlign.Center)
       .layoutWeight(1)
       .height('100%')
-      .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? '#E3F2FD' : this.getCurrentTheme().surfaceColor) // 选中时高亮背景
+      .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? '#E3F2FD' : (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)) // 选中时高亮背景
       .border({
         width: { right: 1, bottom: 1 },
         color: this.isCellSelected(rowIndex, colIndex) ? '#2196F3' : this.getCurrentTheme().borderColor // 选中时蓝色边框
@@ -630,7 +630,7 @@ export struct GridTable {
       .alignItems(HorizontalAlign.Start)
     }
     .width(this.tableWidth)
-    .backgroundColor(this.containerBg || this.getCurrentTheme().surfaceColor)
+    .backgroundColor(this.containerBg || (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor))
     .border({ width: 1, color: this.getCurrentTheme().borderColor })
     .borderRadius(6)
     .padding(4)

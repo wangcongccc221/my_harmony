@@ -170,8 +170,8 @@ export struct OmniTabBar {
     .margin({ 
       left: this.layoutDirection === TabBarDirection.VERTICAL ? 0 : 6, 
       right: this.layoutDirection === TabBarDirection.VERTICAL ? 0 : 6,
-      top: this.layoutDirection === TabBarDirection.VERTICAL ? 4 : 0,
-      bottom: this.layoutDirection === TabBarDirection.VERTICAL ? 4 : 0
+      top: this.layoutDirection === TabBarDirection.VERTICAL ? 15 : 0,
+      bottom: this.layoutDirection === TabBarDirection.VERTICAL ? 15 : 0  //左边导航栏按钮间距
     })
     .enabled(!tab.disabled)
     .onClick(() => {
