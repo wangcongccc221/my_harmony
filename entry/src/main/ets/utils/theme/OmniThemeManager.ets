@@ -56,6 +56,9 @@ export interface ExtendedOmniThemeStyle extends OmniThemeStyle {
   navBg?: string                // 左侧导航栏背景
   pageBg?: string               // 页面根背景
   controlBg?: string            // 页面内控件统一底色
+  // 图表（可选）
+  chartBg?: string              // 图表背景色
+  chartLineColor?: string       // 折线图主线颜色
   // 按页面细分的左侧导航栏背景（可选）
   // 说明：以下字段若未设置，则在运行时回退到 navBg；仅作用于左侧导航区域，不影响右侧主内容区。
   // 建议：保持色彩轻浅、对比适中，避免喧宾夺主；可与页面主色(primary)形成弱对比。
@@ -133,6 +136,8 @@ const BLUE_THEME: ExtendedOmniThemeStyle = {
   navBg: '#E6F0FF',
   pageBg: '#2F4166',
   controlBg: '#21304A',
+  chartBg: '#21304A',
+  chartLineColor: '#4A90E2',
   
   // 三层卡片颜色配置
   cardBorderColor: '#4C5774',                    // 卡片边框颜色 - 中蓝色
@@ -168,6 +173,8 @@ const GREEN_THEME: ExtendedOmniThemeStyle = {
   navBg: '#E6F0FF',
   pageBg: '#F5F6F8',
   controlBg: '#FFFFFF',
+  chartBg: '#FFFFFF',
+  chartLineColor: '#50C878',
   
   // 三层卡片颜色配置
   cardBorderColor: '#446E5C',                    // 卡片边框颜色 - 绿色
@@ -203,6 +210,8 @@ const PURPLE_THEME: ExtendedOmniThemeStyle = {
   navBg: '#E6F0FF',
   pageBg: '#F5F6F8',
   controlBg: '#FFFFFF'
+  ,chartBg: '#FFFFFF'
+  ,chartLineColor: '#9370DB'
 }
 
 // 橙色主题配置 - 活力深色系
@@ -229,6 +238,8 @@ const ORANGE_THEME: ExtendedOmniThemeStyle = {
   navBg: '#E6F0FF',
   pageBg: '#F5F6F8',
   controlBg: '#FFFFFF'
+  ,chartBg: '#FFFFFF'
+  ,chartLineColor: '#FF8C42'
 }
 
 // 粉色主题配置 - 温柔深色系
@@ -255,6 +266,8 @@ const PINK_THEME: ExtendedOmniThemeStyle = {
   navBg: '#E6F0FF',
   pageBg: '#F5F6F8',
   controlBg: '#FFFFFF'
+  ,chartBg: '#FFFFFF'
+  ,chartLineColor: '#E57373'
 }
 
 // 青色主题配置 - 清新深色系
@@ -281,6 +294,8 @@ const TEAL_THEME: ExtendedOmniThemeStyle = {
   navBg: '#E6F0FF',
   pageBg: '#F5F6F8',
   controlBg: '#FFFFFF'
+  ,chartBg: '#FFFFFF'
+  ,chartLineColor: '#2DB5A8'
 }
 
 // 方案一：冷静深蓝风格（科技感）
@@ -303,6 +318,8 @@ const DEEP_BLUE_THEME: ExtendedOmniThemeStyle = {
   navBg: '#E6F0FF',
   pageBg: '#F5F6F8',
   controlBg: '#FFFFFF'
+  ,chartBg: '#FFFFFF'
+  ,chartLineColor: '#2F6BFF'
 }
 
 // 方案二：暖色质感风格（亲和力强）
@@ -334,6 +351,8 @@ const WARM_AMBER_THEME: ExtendedOmniThemeStyle = {
   navBg: '#E6F0FF',         // 左侧浅蓝（示范）
   pageBg: '#E9F6EF',        // 页面根背景：浅绿
   controlBg: '#FFFFFF',     // 卡片/表格等统一白色
+  chartBg: '#FFFFFF',
+  chartLineColor: '#EA7A10',
   
   // 三层卡片颜色配置
   cardBorderColor: '#DFC49E',                    // 卡片边框颜色 - 琥珀色
@@ -370,6 +389,8 @@ const MINIMAL_THEME: ExtendedOmniThemeStyle = {
   navBg: '#E6F0FF',
   pageBg: '#F5F6F8',
   controlBg: '#FFFFFF'
+  ,chartBg: '#FFFFFF'
+  ,chartLineColor: '#0066FF'
 }
 
 // 方案四：清新绿意风格（自然/生活类应用）
@@ -392,6 +413,8 @@ const FRESH_GREEN_THEME: ExtendedOmniThemeStyle = {
   navBg: '#E6F0FF',
   pageBg: '#F5F6F8',
   controlBg: '#FFFFFF'
+  ,chartBg: '#FFFFFF'
+  ,chartLineColor: '#3DAE43'
 }
 
 // 方案五：优雅紫调风格（艺术/教育类）
@@ -414,6 +437,8 @@ const ELEGANT_PURPLE_THEME: ExtendedOmniThemeStyle = {
   navBg: '#E6F0FF',
   pageBg: '#F5F6F8',
   controlBg: '#FFFFFF'
+  ,chartBg: '#FFFFFF'
+  ,chartLineColor: '#8858D6'
 }
 
 // 主题配置数据

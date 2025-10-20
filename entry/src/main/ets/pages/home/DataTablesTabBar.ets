@@ -251,7 +251,17 @@ export struct DataTablesTabBar {
                 axisFontBold: true,
                 labelFontBold: true,
                 lineWidthPx: 3,
-                pointRadiusPx: 5
+                pointRadiusPx: 5,
+                colors: {
+                  background: (this.getCurrentTheme().chartBg ?? this.getCurrentTheme().surfaceColor) as string,
+                  axis: this.getCurrentTheme().borderColor as string,
+                  grid: (this.getCurrentTheme().borderColor as string) + '40',
+                  line: (this.getCurrentTheme().chartLineColor ?? this.getCurrentTheme().primary) as string,
+                  pointFill: (this.getCurrentTheme().chartLineColor ?? this.getCurrentTheme().primary) as string,
+                  pointStroke: this.getCurrentTheme().surfaceColor as string,
+                  axisText: this.getCurrentTheme().textColor as string,
+                  labelText: this.getCurrentTheme().textColor as string
+                }
               }
               drawLineChart(this.lineCtx, opts)
             })
@@ -260,9 +270,9 @@ export struct DataTablesTabBar {
         .scrollBar(BarState.Auto)
         .width('100%')
         .height(this.lcChartHeight)
-        .border({ width: 1, color: '#E0E0E0' })
+        .border({ width: 1, color: this.getCurrentTheme().borderColor })
         .borderRadius(4)
-        .backgroundColor('#FFFFFF')
+        .backgroundColor(this.getCurrentTheme().chartBg ?? this.getCurrentTheme().surfaceColor)
       } else if (this.selectedTab === '加工柱状图') {
         ChartComponent({
           params: {

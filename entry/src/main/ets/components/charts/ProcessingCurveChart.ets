@@ -80,10 +80,11 @@ export struct ProcessingCurveChart {
         symbol: 'circle',
         symbolSize: 6,
         lineStyle: {
-          width: 3
+          width: 3,
+          color: this.getCurrentTheme().chartLineColor ?? this.getCurrentTheme().primary
         },
         itemStyle: {
-          color: '#1890ff'
+          color: this.getCurrentTheme().chartLineColor ?? this.getCurrentTheme().primary
         }
       }
     ],
@@ -165,16 +166,16 @@ export struct ProcessingCurveChart {
           symbolSize: 6,
           lineStyle: {
             width: 3,
-            color: this.getCurrentTheme().primary
+            color: this.getCurrentTheme().chartLineColor ?? this.getCurrentTheme().primary
           },
           itemStyle: {
-            color: this.getCurrentTheme().primary
+            color: this.getCurrentTheme().chartLineColor ?? this.getCurrentTheme().primary
           }
         }
       ],
       tooltip: {
         show: true,
-        backgroundColor: this.getCurrentTheme().surfaceColor,
+        backgroundColor: this.getCurrentTheme().chartBg ?? this.getCurrentTheme().surfaceColor,
         borderColor: this.getCurrentTheme().borderColor,
         textStyle: {
           color: this.getCurrentTheme().textColor
@@ -245,5 +246,6 @@ export struct ProcessingCurveChart {
     }
     .width('100%')
     .height('100%')
+    .backgroundColor(this.getCurrentTheme().chartBg ?? this.getCurrentTheme().surfaceColor)
   }
 }

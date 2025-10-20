@@ -1,4 +1,6 @@
 // 数据接口定义
+import { BaseComponentHelper } from './common/BaseComponent'
+import { ExtendedOmniThemeStyle } from '../utils/theme/OmniThemeManager'
 export interface ChartData {
   time: string;
   value: number;
@@ -22,6 +24,9 @@ export interface ChartComponentParams {
 
 @Component
 export struct ChartComponent {
+  // 主题接入
+  private baseComponentHelper = new BaseComponentHelper()
+  @Consume providedTheme: ExtendedOmniThemeStyle
   @State chartData: ChartData[] = [];
   @State dataCount: number = 50;
   @State startHour: number = 15;
@@ -175,6 +180,10 @@ export struct ChartComponent {
     this.stopRealTimeUpdate();
   }
 
+  getCurrentTheme(): ExtendedOmniThemeStyle {
+    return this.baseComponentHelper.getCurrentTheme(this.providedTheme)
+  }
+
   build() {
     Stack() {
       Column() {
@@ -188,7 +197,7 @@ export struct ChartComponent {
                 Text(value.toString())
                   .fontSize(this.axisFontSizePx)
                   .fontWeight(this.axisFontBold ? FontWeight.Bold : FontWeight.Regular)
-                  .fontColor('#666666')
+                  .fontColor(this.getCurrentTheme().subTextColor)
                   .width(40)
                   .textAlign(TextAlign.End)
                   .margin({ right: 5 })
@@ -198,7 +207,7 @@ export struct ChartComponent {
             .height(this.chartHeight)
             .justifyContent(FlexAlign.SpaceBetween)
             .padding({ top: 10, bottom: 10 })
-            .border({ width: 1, color: '#E0E0E0' })
+            .border({ width: 1, color: this.getCurrentTheme().borderColor })
 
             // 图表区域（可滚动）
             Scroll(this.scroller) {
@@ -208,7 +217,7 @@ export struct ChartComponent {
                     // 数值标签（在柱子顶部）
                     Text(data.value.toString())
                       .fontSize(16)
-                      .fontColor('#333333')
+                      .fontColor(this.getCurrentTheme().textColor)
                       .fontWeight(FontWeight.Bold)
                       .margin({ bottom: 2 })
                       .textAlign(TextAlign.Center)
@@ -217,7 +226,7 @@ export struct ChartComponent {
                     Column()
                       .width(this.barWidth) // 使用可配置的柱子宽度
                       .height(data.value * 2.5) // 根据数值设置高度
-                      .backgroundColor('#4A90E2')
+                      .backgroundColor(this.getCurrentTheme().chartLineColor ?? this.getCurrentTheme().primary)
                       .borderRadius({ topLeft: 3, topRight: 3 })
                       .onClick((event: ClickEvent) => {
                         this.handleDataClick(data, event);
@@ -238,7 +247,7 @@ export struct ChartComponent {
                     Text(data.time)
                       .fontSize(this.labelFontSizePx)
                       .fontWeight(this.labelFontBold ? FontWeight.Bold : FontWeight.Regular)
-                      .fontColor('#666666')
+                      .fontColor(this.getCurrentTheme().subTextColor)
                       .margin({ top: 5 })
                       .textAlign(TextAlign.Center)
                   }
@@ -253,12 +262,12 @@ export struct ChartComponent {
             }
             .scrollable(ScrollDirection.Horizontal)
             .scrollBar(this.showScrollBar ? BarState.Auto : BarState.Off)
-            .scrollBarColor('#CCCCCC')
+            .scrollBarColor(this.getCurrentTheme().borderColor)
             .scrollBarWidth(8)
             .layoutWeight(1)
-            .border({ width: 1, color: '#E0E0E0' })
+            .border({ width: 1, color: this.getCurrentTheme().borderColor })
             .borderRadius(4)
-            .backgroundColor('#FFFFFF')
+            .backgroundColor(this.getCurrentTheme().chartBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
             .onScroll((x: number, y: number) => {
               // 用户向左滚动（回看历史）则关闭自动跟随
               if (x < this.lastScrollX - 1) {
@@ -280,7 +289,7 @@ export struct ChartComponent {
         }
         .width('100%')
         .padding(20)
-        .backgroundColor('#FFFFFF')
+        .backgroundColor(this.getCurrentTheme().chartBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
         .borderRadius(8)
         .shadow({
           radius: 10,
@@ -292,7 +301,7 @@ export struct ChartComponent {
       .width('100%')
       .height('100%')
       .padding(20)
-      .backgroundColor('#F5F5F5')
+        .backgroundColor(this.getCurrentTheme().pageBg ?? this.getCurrentTheme().surfaceColor)
       .justifyContent(FlexAlign.Start)
 
       // 提示框
