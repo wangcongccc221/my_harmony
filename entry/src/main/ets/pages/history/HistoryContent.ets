@@ -176,7 +176,7 @@ export struct HistoryContent {
         })
                   }
                   .width('100%')
-                  .height('30%')
+                  .height('20%')
                   .padding(8)
                   .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
                   .border({ width: 1, color: this.getCurrentTheme().borderColor })

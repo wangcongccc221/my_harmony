@@ -73,214 +73,185 @@ export struct HistoryDataTable {
         .margin({ bottom: 8 })
         .alignSelf(ItemAlign.Start)
 
-      // 表格容器
+      // 表格容器（Grid 实现）
       Column() {
-        // 表头
-        Row() {
-          Text('序号')
-            .fontSize(16)  // 调大到16px
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
-            .textAlign(TextAlign.Center)
-            .width('8%')
-            .height(32)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-            .padding(4)
-
-          Text('客户名称')
-            .fontSize(16)  // 调大到16px
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
-            .textAlign(TextAlign.Center)
-            .width('12%')
-            .height(32)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-            .padding(4)
-
-          Text('农场名称')
-            .fontSize(16)  // 调大到16px
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
-            .textAlign(TextAlign.Center)
-            .width('12%')
-            .height(32)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-            .padding(4)
-
-          Text('水果名称')
-            .fontSize(16)  // 调大到16px
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
-            .textAlign(TextAlign.Center)
-            .width('10%')
-            .height(32)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-            .padding(4)
-
-          Text('加工状态')
-            .fontSize(16)  // 调大到16px
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
-            .textAlign(TextAlign.Center)
-            .width('10%')
-            .height(32)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-            .padding(4)
-
-          Text('开始时间')
-            .fontSize(16)  // 调大到16px
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
-            .textAlign(TextAlign.Center)
-            .width('12%')
-            .height(32)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-            .padding(4)
-
-          Text('完成时间')
-            .fontSize(16)  // 调大到16px
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
-            .textAlign(TextAlign.Center)
-            .width('12%')
-            .height(32)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-            .padding(4)
-
-          Text('批重量（吨）')
-            .fontSize(16)  // 调大到16px
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
-            .textAlign(TextAlign.Center)
-            .width('12%')
-            .height(32)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-            .padding(4)
-
-          Text('批个数')
-            .fontSize(16)  // 调大到16px
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
-            .textAlign(TextAlign.Center)
-            .width('12%')
-            .height(32)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-            .padding(4)
+        // 固定表头
+        Grid() {
+          GridItem() {
+            Text('序号')
+              .fontSize(14)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+              .textAlign(TextAlign.Center)
+              .padding(4)
+          }
+          GridItem() {
+            Text('客户名称')
+              .fontSize(14)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+              .textAlign(TextAlign.Center)
+              .padding(4)
+          }
+          GridItem() {
+            Text('农场名称')
+              .fontSize(14)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+              .textAlign(TextAlign.Center)
+              .padding(4)
+          }
+          GridItem() {
+            Text('水果名称')
+              .fontSize(14)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+              .textAlign(TextAlign.Center)
+              .padding(4)
+          }
+          GridItem() {
+            Text('加工状态')
+              .fontSize(14)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+              .textAlign(TextAlign.Center)
+              .padding(4)
+          }
+          GridItem() {
+            Text('开始时间')
+              .fontSize(14)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+              .textAlign(TextAlign.Center)
+              .padding(4)
+          }
+          GridItem() {
+            Text('完成时间')
+              .fontSize(14)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+              .textAlign(TextAlign.Center)
+              .padding(4)
+          }
+          GridItem() {
+            Text('批重量(吨)')
+              .fontSize(14)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+              .textAlign(TextAlign.Center)
+              .padding(4)
+          }
+          GridItem() {
+            Text('批个数')
+              .fontSize(14)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+              .textAlign(TextAlign.Center)
+              .padding(4)
+          }
         }
+        .columnsTemplate('8fr 12fr 12fr 10fr 10fr 12fr 12fr 12fr 12fr')
+        .height(36)
+        .columnsGap(0)
+        .rowsGap(0)
         .width('100%')
+        .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().controlBg)
+        .border({ width: 1, color: this.getCurrentTheme().borderColor })
 
-        // 表格数据区域
-        Column() {
-          ForEach(this.tableManager.getData(), (item: HistoryTableData, index: number) => {
-            Row() {
-              Text(item.id.toString())
-                .fontSize(16)  // 调大到16px
-                .fontColor(this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .width('8%')
-                .height(32)
-                .backgroundColor(this.getCurrentTheme().surfaceColor)
-                .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-                .padding(4)
-
-              Text(item.customerName)
-                .fontSize(16)  // 调大到16px
-                .fontColor(this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .width('12%')
-                .height(32)
-                .backgroundColor(this.getCurrentTheme().surfaceColor)
-                .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-                .padding(4)
-
-              Text(item.farmName)
-                .fontSize(16)  // 调大到16px
-                .fontColor(this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .width('12%')
-                .height(32)
-                .backgroundColor(this.getCurrentTheme().surfaceColor)
-                .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-                .padding(4)
-
-              Text(item.fruitName)
-                .fontSize(16)  // 调大到16px
-                .fontColor(this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .width('10%')
-                .height(32)
-                .backgroundColor(this.getCurrentTheme().surfaceColor)
-                .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-                .padding(4)
-
-              Text(item.status)
-                .fontSize(16)  // 调大到16px
-                .fontColor(this.getStatusColor(item.status))
-                .textAlign(TextAlign.Center)
-                .width('10%')
-                .height(32)
-                .backgroundColor(this.getCurrentTheme().surfaceColor)
-                .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-                .padding(4)
-
-              Text(item.startTime)
-                .fontSize(16)  // 调大到16px
-                .fontColor(this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .width('12%')
-                .height(32)
-                .backgroundColor(this.getCurrentTheme().surfaceColor)
-                .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-                .padding(4)
-
-              Text(item.endTime)
-                .fontSize(16)  // 调大到16px
-                .fontColor(item.endTime === '-' ? this.getCurrentTheme().subTextColor : this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .width('12%')
-                .height(32)
-                .backgroundColor(this.getCurrentTheme().surfaceColor)
-                .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-                .padding(4)
-
-              Text(item.weight.toString())
-                .fontSize(16)  // 调大到16px
-                .fontColor(this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .width('12%')
-                .height(32)
-                .backgroundColor(this.getCurrentTheme().surfaceColor)
-                .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-                .padding(4)
-
-              Text(item.count.toString())
-                .fontSize(16)  // 调大到16px
-                .fontColor(this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .width('12%')
-                .height(32)
-                .backgroundColor(this.getCurrentTheme().surfaceColor)
-                .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
-                .padding(4)
-            }
-            .width('100%')
-            .onClick(() => {
-              this.handleRowClick(item)
+        // 可滚动数据区域
+        Scroll() {
+          Column() {
+            ForEach(this.tableManager.getData(), (item: HistoryTableData) => {
+              Grid() {
+                GridItem() {
+                  Text(item.id.toString())
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .padding(4)
+                }
+                GridItem() {
+                  Text(item.customerName)
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .padding(4)
+                }
+                GridItem() {
+                  Text(item.farmName)
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .padding(4)
+                }
+                GridItem() {
+                  Text(item.fruitName)
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .padding(4)
+                }
+                GridItem() {
+                  Text(item.status)
+                    .fontSize(14)
+                    .fontColor(this.getStatusColor(item.status))
+                    .textAlign(TextAlign.Center)
+                    .padding(4)
+                }
+                GridItem() {
+                  Text(item.startTime)
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .padding(4)
+                }
+                GridItem() {
+                  Text(item.endTime)
+                    .fontSize(14)
+                    .fontColor(item.endTime === '-' ? this.getCurrentTheme().subTextColor : this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .padding(4)
+                }
+                GridItem() {
+                  Text(item.weight.toString())
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .padding(4)
+                }
+                GridItem() {
+                  Text(item.count.toString())
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .padding(4)
+                }
+              }
+              .columnsTemplate('8fr 12fr 12fr 10fr 10fr 12fr 12fr 12fr 12fr')
+              .height(36)
+              .columnsGap(0)
+              .rowsGap(0)
+              .width('100%')
+              .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+              .border({ width: 0.5, color: this.getCurrentTheme().borderColor })
+              .onClick(() => {
+                this.handleRowClick(item)
+              })
             })
-          })
+          }
+          .width('100%')
         }
         .width('100%')
+        .layoutWeight(1)
+        .scrollBar(BarState.Auto)
+        .scrollable(ScrollDirection.Vertical)
+        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+        .border({ width: 1, color: this.getCurrentTheme().borderColor })
+        .borderRadius(4)
       }
       .width('100%')
+      .height('70%')
+      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
       .border({ width: 1, color: this.getCurrentTheme().borderColor })
       .borderRadius(4)
     }

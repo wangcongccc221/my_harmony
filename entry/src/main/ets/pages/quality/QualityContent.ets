@@ -22,7 +22,7 @@
  * - 品质页面主界面
  * - 品质等级管理
  * - 出口设置配置
- * 
+ *
  * 集成说明：
  * - 使用QualityStateManager管理状态
  * - 使用QualityDataManager管理数据
