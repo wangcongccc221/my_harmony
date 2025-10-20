@@ -192,8 +192,10 @@ export struct LevelDataTable {
    */
   private readonly headerIndices: number[] = [0, 1, 2, 3, 4, 5, 6, 7]
 
-  // 右上卡片：根据“表格数量”联动的行（优先使用父级传入的 levelData，否则用默认数据占位）
+  // 右上卡片：根据"表格数量"联动的行（优先使用父级传入的 levelData，否则用默认数据占位）
   @State private topRightCount: number = 0
+  private scroller: Scroller = new Scroller(); // 滚动控制器
+  private lastTopRightCount: number = 0; // 记录上次的行数，用于检测变化
 
   private getTopRightRows(): LevelData[] {
     // 初始进入不展示任何数据；只有当用户在下拉框选择过后再联动
@@ -324,13 +326,15 @@ export struct LevelDataTable {
             .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
 
             // 数据行（从顶部开始依次向下，整体可滚动）
-            Scroll() {
+            Scroll(this.scroller) {
               Column() {
                 ForEach(this.getTopRightRows(), (row: LevelData, idx: number) => {
                   this.renderLevelRow(row)
                 })
               }
               .width('100%')
+              .alignItems(HorizontalAlign.Start)
+              .justifyContent(FlexAlign.Start)
             }
             .width('100%')
             .layoutWeight(0.8)
@@ -562,5 +566,19 @@ export struct LevelDataTable {
     }
     .width('100%')
     .alignItems(HorizontalAlign.Start)
+  }
+
+  aboutToAppear(): void {
+    // 初始化滚动位置到顶部
+    this.scroller.scrollTo({ xOffset: 0, yOffset: 0 })
+    this.lastTopRightCount = this.topRightCount
+  }
+
+  aboutToRender(): void {
+    // 当表格数量变化时，自动滚动到顶部
+    if (this.topRightCount !== this.lastTopRightCount) {
+      this.scroller.scrollTo({ xOffset: 0, yOffset: 0 })
+      this.lastTopRightCount = this.topRightCount
+    }
   }
 }
