@@ -177,7 +177,6 @@ export struct QualityDataTable {
   private baseComponentHelper = new BaseComponentHelper()
 
   // 内部滚动控制：自动从顶部开始
-  private scroller: Scroller = new Scroller()
   private lastCount: number = 0
   // 受控输入：按行存储“等级名称”的输入值，确保仅数字与不跳动
   @State private levelNameInputs: string[] = []
@@ -203,26 +202,84 @@ export struct QualityDataTable {
   }
 
   /**
-   * 构建数据行
+   * 构建表头
    * 
    * 功能说明：
-   * - 构建单个数据行的UI
+   * - 构建固定的表头UI
+   * - 包含等级名称、颜色等级、糖度等级三列
+   * - 支持主题适配
+   * 
+   * @returns 表头组件
+   */
+  @Builder
+  private buildTableHeader() {
+    Row() {
+      Text('等级名称')
+        .fontSize(18)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+        .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().primary)
+        .textAlign(TextAlign.Center)
+        .layoutWeight(1)
+        .padding({ left: 4, right: 4, top: 4, bottom: 4 })
+
+      // 分隔线
+      Divider()
+        .vertical(true)
+        .height('80%')
+        .color(this.getCurrentTheme().borderColor)
+
+      Text('颜色等级')
+        .fontSize(18)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+        .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().primary)
+        .textAlign(TextAlign.Center)
+        .layoutWeight(1)
+        .padding({ left: 4, right: 4, top: 4, bottom: 4 })
+
+      // 分隔线
+      Divider()
+        .vertical(true)
+        .height('80%')
+        .color(this.getCurrentTheme().borderColor)
+
+      Text('糖度等级')
+        .fontSize(18)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+        .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().primary)
+        .textAlign(TextAlign.Center)
+        .layoutWeight(1)
+        .padding({ left: 4, right: 4, top: 4, bottom: 4 })
+    }
+    .width('100%')
+    .height(40) // 设置固定高度
+    .padding(0)
+    .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+  }
+
+  /**
+   * 构建列表项
+   * 
+   * 功能说明：
+   * - 构建单个列表项的UI
    * - 包含等级名称、颜色等级、糖度等级
-   * - 支持点击事件和样式适配
+   * - 支持TextInput编辑、点击事件和样式适配
    * 
    * @param data 数据对象
    * @param index 数据索引
-   * @returns 数据行组件
+   * @returns 列表项组件
    * 
    * 使用场景：
-   * - 数据表格行渲染
+   * - List组件的数据项渲染
    * - 数据点击处理
    * - 样式适配
    */
   @Builder
-  private buildDataRow(data: QualityLevelData, index: number) {
+  private buildListItem(data: QualityLevelData, index: number) {
     Row() {
-      // 等级名称列
+      // 等级名称列 - 可编辑
       TextInput({ text: this.levelNameInputs[index] ?? data.levelName })
         .type(InputType.Number)
         .fontSize(24)
@@ -230,7 +287,6 @@ export struct QualityDataTable {
         .backgroundColor(Color.Transparent)
         .textAlign(TextAlign.Center)
         .layoutWeight(1)
-        .border({ width: { right: 1 }, color: this.getCurrentTheme().borderColor })
         .padding({ left: 4, right: 4, top: 6, bottom: 6 })
         .enterKeyType(EnterKeyType.Done)
         .onChange((value: string) => {
@@ -264,6 +320,12 @@ export struct QualityDataTable {
           }
         })
 
+      // 分隔线
+      Divider()
+        .vertical(true)
+        .height('80%')
+        .color(this.getCurrentTheme().borderColor)
+
       // 颜色等级列
       Text(data.colorLevel)
         .fontSize(24)
@@ -271,8 +333,13 @@ export struct QualityDataTable {
         .fontWeight(FontWeight.Medium)
         .layoutWeight(1)
         .textAlign(TextAlign.Center)
-        .border({ width: { right: 1 }, color: this.getCurrentTheme().borderColor })
         .padding({ left: 4, right: 4, top: 6, bottom: 6 })
+
+      // 分隔线
+      Divider()
+        .vertical(true)
+        .height('80%')
+        .color(this.getCurrentTheme().borderColor)
 
       // 糖度等级列
       Text(data.sugarLevel)
@@ -284,6 +351,7 @@ export struct QualityDataTable {
         .padding({ left: 4, right: 4, top: 6, bottom: 6 })
     }
     .width('100%')
+    .height(60)
     .padding(0)
     .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
     .onClick(() => {
@@ -298,95 +366,65 @@ export struct QualityDataTable {
    * 
    * 功能说明：
    * - 构建品质页面数据表格的UI结构
-   * - 包含表头和数据行
+   * - 使用List + ListItem实现高性能表格
+   * - 包含固定表头和可滚动数据区域
    * - 支持滚动显示和主题适配
    * 
    * 组件结构：
    * - 表头区域：显示列标题（等级名称、颜色等级、糖度等级）
-   * - 数据区域：显示具体的品质等级数据
-   * - 滚动区域：支持垂直滚动查看更多数据
+   * - 数据区域：使用List组件显示具体的品质等级数据
+   * - 滚动区域：List内置滚动，支持垂直滚动查看更多数据
    * 
    * 样式特性：
    * - 响应式设计：适配不同屏幕尺寸
    * - 主题适配：支持明暗主题
    * - 表格样式：统一的表格设计
-   * - 滚动优化：流畅的滚动体验
+   * - 滚动优化：List内置虚拟化，流畅的滚动体验
    * 
    * 事件处理：
    * - 数据行点击：触发onDataClick事件
    * - 数据更新：触发onDataUpdate事件
+   * - TextInput编辑：支持实时编辑和验证
    */
   build() {
     Column() {
-      // 表头（固定不滚动）
-      Row() {
-        Text('等级名称')
-          .fontSize(22)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
-          .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().primary)
-          .textAlign(TextAlign.Center)
-          .layoutWeight(1)
-          .border({ width: { right: 1 }, color: this.getCurrentTheme().borderColor })
-          .padding({ left: 4, right: 4, top: 6, bottom: 6 })
+      // 固定表头
+      this.buildTableHeader()
 
-        Text('颜色等级')
-          .fontSize(22)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
-          .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().primary)
-          .textAlign(TextAlign.Center)
-          .layoutWeight(1)
-          .border({ width: { right: 1 }, color: this.getCurrentTheme().borderColor })
-          .padding({ left: 4, right: 4, top: 6, bottom: 6 })
-
-        Text('糖度等级')
-          .fontSize(22)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
-          .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().primary)
-          .textAlign(TextAlign.Center)
-          .layoutWeight(1)
-          .padding({ left: 4, right: 4, top: 6, bottom: 6 })
+      // 可滚动数据区域 - 使用List组件
+      List() {
+        ForEach(this.qualityLevels, (data: QualityLevelData, index: number) => {
+          ListItem() {
+            this.buildListItem(data, index)
+          }
+        }, (data: QualityLevelData, index: number) => `${index}`)
       }
       .width('100%')
-      .padding(0)
-      .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
-
-      // 数据行（可滚动）
-      Scroll(this.scroller) {
-        Column() {
-          ForEach(this.qualityLevels, (data: QualityLevelData, index: number) => {
-            this.buildDataRow(data, index)
-          }, (data: QualityLevelData, index: number) => `${index}`)
-        }
-        .width('100%')
-        .height('100%')
-        .alignItems(HorizontalAlign.Start)
-        .justifyContent(FlexAlign.Start)
-      }
-      .width('100%')
-      .height('90%') // 设置更高的固定高度以启用滚动
-      .scrollable(ScrollDirection.Vertical)
+      .height('90%') // 设置固定高度以启用滚动
       .scrollBar(BarState.Auto)
+      .edgeEffect(EdgeEffect.Spring)
+      .friction(100)
+      .divider({
+        strokeWidth: 1,
+        color: this.getCurrentTheme().borderColor,
+        startMargin: 0,
+        endMargin: 0
+      })
     }
     .width('100%')
     .layoutWeight(1)
   }
 
   aboutToAppear(): void {
-    // 初次进入强制回到顶部
-    this.lastCount = this.qualityLevels ? this.qualityLevels.length : 0
-    this.scroller.scrollTo({ xOffset: 0, yOffset: 0 })
     // 初始化受控输入数组
     this.levelNameInputs = (this.qualityLevels || []).map(item => (item.levelName ?? '').replace(/\D+/g, ''))
+    this.lastCount = this.qualityLevels ? this.qualityLevels.length : 0
   }
 
   aboutToRender(): void {
     const current = this.qualityLevels ? this.qualityLevels.length : 0
     if (current !== this.lastCount) {
-      // 数据条数变化后强制回到顶部
-      this.scroller.scrollTo({ xOffset: 0, yOffset: 0 })
+      // 数据条数变化时更新计数
       this.lastCount = current
     }
     // 同步受控输入数组长度与值，避免因为数据刷新导致跳动

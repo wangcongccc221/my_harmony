@@ -44,6 +44,23 @@ import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY, useOmniThe
 import { LevelData, StatisticsData, TABLE_COUNT_OPTIONS, DEFAULT_LEVEL_DATA } from './LevelConstants'
 
 /**
+ * 统计表格数据项接口
+ * 
+ * 功能说明：
+ * - 定义统计表格中每个单元格的数据结构
+ * - 用于Grid组件的表格显示
+ * - 支持9列数据（1列项目名称 + 8列数值）
+ */
+interface StatisticsTableItem {
+  /** 数据项的唯一标识 */
+  id: number
+  /** 项目名称 */
+  itemName: string
+  /** 8列数据值 */
+  values: number[]
+}
+
+/**
  * Select选项接口
  * 
  * 功能说明：
@@ -57,6 +74,56 @@ import { LevelData, StatisticsData, TABLE_COUNT_OPTIONS, DEFAULT_LEVEL_DATA } fr
 interface SelectOption {
   /** 选项的值（用于内部逻辑） */
   value: string
+}
+
+/**
+ * Grid表格数据项接口
+ * 
+ * 功能说明：
+ * - 定义Grid表格中每个数据项的结构
+ * - 包含等级、重量、状态等信息
+ * - 用于Grid表格的数据展示
+ * 
+ * 属性说明：
+ * - id: 数据项的唯一标识
+ * - level: 等级编号
+ * - weight: 重量信息
+ * - status: 状态信息
+ */
+interface GridTableItem {
+  /** 数据项的唯一标识 */
+  id: number
+  /** 等级编号 */
+  level: string
+  /** 重量信息 */
+  weight: string
+  /** 状态信息 */
+  status: string
+}
+
+/**
+ * 等级表格数据项接口
+ * 
+ * 功能说明：
+ * - 定义等级表格中每个数据项的结构
+ * - 包含等级名称、最小重量、装箱量等信息
+ * - 用于List+ListItem表格的数据展示
+ * 
+ * 属性说明：
+ * - id: 数据项的唯一标识
+ * - levelName: 等级名称（可编辑）
+ * - minWeight: 最小重量（克）
+ * - packingWeight: 装箱量（克）
+ */
+interface LevelTableData {
+  /** 数据项的唯一标识 */
+  id: number
+  /** 等级名称（可编辑） */
+  levelName: string
+  /** 最小重量（克） */
+  minWeight: number
+  /** 装箱量（克） */
+  packingWeight: number
 }
 
 /**
@@ -111,6 +178,265 @@ export struct LevelDataTable {
    * - 支持3-6行的表格数量配置
    */
   @Prop tableCount: string = TABLE_COUNT_OPTIONS[0].value
+
+  /**
+   * 等级数量索引
+   * 
+   * 功能说明：
+   * - 控制品质表格显示的等级数量
+   * - 默认值为0（不显示）
+   * - 支持0-16个等级的选择
+   */
+
+  // ==================== 等级表格相关 ====================
+  
+  /**
+   * 等级数量索引
+   * 
+   * 功能说明：
+   * - 控制等级表格显示的等级数量
+   * - 默认值为0（2个等级）
+   * - 支持2-7个等级的选择
+   */
+  @State private levelCountIndex: number = 0
+
+  /**
+   * 等级表格数据
+   * 
+   * 功能说明：
+   * - 存储等级表格要显示的数据
+   * - 包含等级名称、最小重量、装箱量等信息
+   * - 支持动态更新和编辑
+   */
+  @State private levelTableData: LevelTableData[] = []
+
+  /**
+   * 等级名称输入数组
+   * 
+   * 功能说明：
+   * - 存储等级名称的输入值
+   * - 用于TextInput的受控组件
+   * - 支持实时编辑和验证
+   */
+  @State private levelNameInputs: string[] = []
+
+  // ==================== Grid表格相关 ====================
+  
+  /**
+   * Grid表格数据
+   * 
+   * 功能说明：
+   * - 存储Grid表格要显示的数据
+   * - 包含等级、重量、状态等信息
+   * - 支持动态更新
+   */
+  @State private gridTableData: GridTableItem[] = [
+    { id: 1, level: '1', weight: '100g', status: '正常' },
+    { id: 2, level: '2', weight: '95g', status: '正常' },
+    { id: 3, level: '3', weight: '90g', status: '正常' },
+    { id: 4, level: '4', weight: '85g', status: '正常' },
+    { id: 5, level: '5', weight: '80g', status: '正常' },
+    { id: 6, level: '6', weight: '75g', status: '正常' },
+    { id: 7, level: '7', weight: '70g', status: '正常' },
+    { id: 8, level: '8', weight: '65g', status: '正常' },
+    { id: 9, level: '9', weight: '60g', status: '正常' },
+    { id: 10, level: '10', weight: '55g', status: '正常' },
+    { id: 11, level: '11', weight: '50g', status: '正常' },
+    { id: 12, level: '12', weight: '45g', status: '正常' },
+    { id: 13, level: '13', weight: '40g', status: '正常' },
+    { id: 14, level: '14', weight: '35g', status: '正常' },
+    { id: 15, level: '15', weight: '30g', status: '正常' },
+    { id: 16, level: '16', weight: '25g', status: '正常' }
+  ]
+
+  /**
+   * 统计表格数据
+   * 
+   * 功能说明：
+   * - 存储统计表格要显示的数据
+   * - 包含6行数据：装箱数量、平均重量、设置重量（底部1和底部2各3行）
+   * - 支持动态更新
+   */
+  @State private statisticsTableData: StatisticsTableItem[] = []
+
+
+  // ==================== 生命周期方法 ====================
+  /**
+   * 组件即将出现时的生命周期方法
+   * 
+   * 功能说明：
+   * - 初始化统计表格数据
+   * - 将statisticsData转换为Grid表格格式
+   */
+  aboutToAppear(): void {
+    this.initializeStatisticsData()
+    this.initializeLevelData()
+  }
+
+  /**
+   * 初始化等级表格数据
+   * 
+   * 功能说明：
+   * - 根据等级数量创建等级表格数据
+   * - 初始化等级名称输入数组
+   * - 设置默认的等级名称、最小重量、装箱量
+   */
+  private initializeLevelData(): void {
+    const levelCount = this.levelCountIndex + 2 // 2-7个等级
+    this.levelTableData = []
+    this.levelNameInputs = []
+    
+    for (let i = 0; i < levelCount; i++) {
+      this.levelTableData.push({
+        id: i + 1,
+        levelName: `${i + 1}`,
+        minWeight: 100 - i * 5, // 默认最小重量：100, 95, 90, 85...
+        packingWeight: 500 + i * 50 // 默认装箱量：500, 550, 600, 650...
+      })
+      this.levelNameInputs.push(`${i + 1}`)
+    }
+  }
+
+  /**
+   * 构建等级表格表头
+   * 
+   * 功能说明：
+   * - 构建固定表头：等级名称|最小重量（克）|装箱量（克）
+   * - 表头固定不滚动
+   */
+  @Builder
+  buildLevelTableHeader() {
+    Row() {
+      // 等级名称列
+      Text('等级名称')
+        .fontSize(18)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(this.getCurrentTheme().textColor)
+        .width('33.33%')
+        .textAlign(TextAlign.Center)
+        .padding({ top: 4, bottom: 4 })
+
+      Divider().vertical(true).height(30).color(this.getCurrentTheme().borderColor)
+
+      // 最小重量列
+      Text('最小重量（克）')
+        .fontSize(18)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(this.getCurrentTheme().textColor)
+        .width('33.33%')
+        .textAlign(TextAlign.Center)
+        .padding({ top: 4, bottom: 4 })
+
+      Divider().vertical(true).height(30).color(this.getCurrentTheme().borderColor)
+
+      // 装箱量列
+      Text('装箱量（克）')
+        .fontSize(18)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(this.getCurrentTheme().textColor)
+        .width('33.33%')
+        .textAlign(TextAlign.Center)
+        .padding({ top: 4, bottom: 4 })
+    }
+    .width('100%')
+    .height(40)
+    .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+    .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+  }
+
+  /**
+   * 构建等级表格数据行
+   * 
+   * 功能说明：
+   * - 构建数据行：等级名称（可编辑）|最小重量|装箱量
+   * - 支持等级名称的实时编辑
+   */
+  @Builder
+  buildLevelListItem(data: LevelTableData, index: number) {
+    Row() {
+      // 等级名称列（可编辑）
+      TextInput({ text: this.levelNameInputs[index] || '' })
+        .fontSize(16)
+        .fontColor(this.getCurrentTheme().textColor)
+        .backgroundColor(this.getCurrentTheme().surfaceColor)
+        .width('33.33%')
+        .textAlign(TextAlign.Center)
+        .padding({ left: 4, right: 4, top: 6, bottom: 6 })
+        .border({ width: 0 })
+        .type(InputType.Number)
+        .onChange((value: string) => {
+          const numericValue = value.replace(/\D+/g, '')
+          this.levelNameInputs[index] = numericValue
+          this.levelTableData[index].levelName = numericValue
+        })
+
+      Divider().vertical(true).height(40).color(this.getCurrentTheme().borderColor)
+
+      // 最小重量列
+      Text(`${data.minWeight}`)
+        .fontSize(16)
+        .fontColor(this.getCurrentTheme().textColor)
+        .width('33.33%')
+        .textAlign(TextAlign.Center)
+        .padding({ left: 4, right: 4, top: 6, bottom: 6 })
+
+      Divider().vertical(true).height(40).color(this.getCurrentTheme().borderColor)
+
+      // 装箱量列
+      Text(`${data.packingWeight}`)
+        .fontSize(16)
+        .fontColor(this.getCurrentTheme().textColor)
+        .width('33.33%')
+        .textAlign(TextAlign.Center)
+        .padding({ left: 4, right: 4, top: 6, bottom: 6 })
+    }
+    .width('100%')
+    .height(60)
+    .padding(0)
+    .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+  }
+
+  /**
+   * 初始化统计表格数据
+   * 
+   * 功能说明：
+   * - 将statisticsData转换为StatisticsTableItem格式
+   * - 创建6行数据：底部1和底部2的各3行数据
+   */
+  private initializeStatisticsData(): void {
+    this.statisticsTableData = [
+      {
+        id: 1,
+        itemName: '装箱数量',
+        values: this.statisticsData.bottom1Counts
+      },
+      {
+        id: 2,
+        itemName: '平均重量',
+        values: this.statisticsData.bottom1Avgs
+      },
+      {
+        id: 3,
+        itemName: '设置重量',
+        values: this.statisticsData.bottom1Sets
+      },
+      {
+        id: 4,
+        itemName: '装箱数量',
+        values: this.statisticsData.bottom2Counts
+      },
+      {
+        id: 5,
+        itemName: '平均重量',
+        values: this.statisticsData.bottom2Avgs
+      },
+      {
+        id: 6,
+        itemName: '设置重量',
+        values: this.statisticsData.bottom2Sets
+      }
+    ]
+  }
 
   // ==================== 事件回调函数 ====================
   /**
@@ -192,52 +518,6 @@ export struct LevelDataTable {
    */
   private readonly headerIndices: number[] = [0, 1, 2, 3, 4, 5, 6, 7]
 
-  // 右上卡片：根据"表格数量"联动的行（优先使用父级传入的 levelData，否则用默认数据占位）
-  @State private topRightCount: number = 0
-  private scroller: Scroller = new Scroller(); // 滚动控制器
-  private lastTopRightCount: number = 0; // 记录上次的行数，用于检测变化
-
-  private getTopRightRows(): LevelData[] {
-    // 初始进入不展示任何数据；只有当用户在下拉框选择过后再联动
-    const n = this.topRightActivated ? this.topRightCount : 0
-    const source: LevelData[] = (Array.isArray(this.levelData) && this.levelData.length > 0)
-      ? this.levelData
-      : DEFAULT_LEVEL_DATA.map(item => ({
-          levelName: item.levelName,
-          minWeight: item.minWeight,
-          packingWeight: item.packingWeight
-        } as LevelData))
-    return source.slice(0, n)
-  }
-
-  // 渲染单行的复用构建器
-  @Builder
-  private renderLevelRow(row: LevelData) {
-    Row() {
-      Text(row.levelName)
-        .fontSize(20)
-        .fontColor(this.getCurrentTheme().textColor)
-        .textAlign(TextAlign.Center)
-        .padding({ left: 4, right: 4, top: 2, bottom: 2 })
-        .layoutWeight(1)
-
-      Text(`${row.minWeight}`)
-        .fontSize(20)
-        .fontColor(this.getCurrentTheme().textColor)
-        .textAlign(TextAlign.Center)
-        .padding({ left: 4, right: 4, top: 2, bottom: 2 })
-        .layoutWeight(1)
-
-      Text(`${row.packingWeight}`)
-        .fontSize(20)
-        .fontColor(this.getCurrentTheme().textColor)
-        .textAlign(TextAlign.Center)
-        .padding({ left: 4, right: 4, top: 2, bottom: 2 })
-        .layoutWeight(1)
-    }
-    .width('100%')
-    .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
-  }
 
   /**
    * 获取当前主题配置
@@ -253,278 +533,298 @@ export struct LevelDataTable {
     return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
   }
 
-  // 无需本地状态，直接由 props 衍生渲染
-  @State private topRightActivated: boolean = false
+  /**
+   * 构建Grid表格单元格
+   * 
+   * 功能说明：
+   * - 构建Grid表格中的单个单元格
+   * - 根据位置显示不同的内容（表头或数据）
+   * - 支持主题适配和样式配置
+   * 
+   * @param item 数据项
+   * @param index 索引位置
+   * @param isHeader 是否为表头
+   * @returns Grid单元格组件
+   */
+  @Builder
+  private buildGridCell(item: GridTableItem | null, index: number, isHeader: boolean = false) {
+    Column() {
+      if (isHeader) {
+        // 表头单元格
+        Text(this.getHeaderText(index))
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.getCurrentTheme().textColor)
+          .textAlign(TextAlign.Center)
+      } else if (item) {
+        // 数据单元格
+        Text(this.getCellText(item, index))
+          .fontSize(14)
+          .fontColor(this.getCurrentTheme().textColor)
+          .textAlign(TextAlign.Center)
+      }
+    }
+    .width('100%')
+    .height(40)
+    .backgroundColor(isHeader ? 
+      (this.getCurrentTheme().primary + '20') : 
+      (index % 2 === 0 ? this.getCurrentTheme().backgroundColor : this.getCurrentTheme().surfaceColor))
+    .border({ width: 1, color: this.getCurrentTheme().borderColor })
+    .justifyContent(FlexAlign.Center)
+  }
+
+  /**
+   * 获取表头文本
+   * 
+   * @param index 列索引
+   * @returns 表头文本
+   */
+  private getHeaderText(index: number): string {
+    const headers = ['等级', '重量', '状态']
+    return headers[index] || ''
+  }
+
+  /**
+   * 获取单元格文本
+   * 
+   * @param item 数据项
+   * @param index 列索引
+   * @returns 单元格文本
+   */
+  private getCellText(item: GridTableItem, index: number): string {
+    switch (index) {
+      case 0: return item.level
+      case 1: return item.weight
+      case 2: return item.status
+      default: return ''
+    }
+  }
+
+  /**
+   * 构建统计表格单元格
+   * 
+   * 功能说明：
+   * - 创建统计表格的单元格内容
+   * - 支持表头和数据单元格
+   * - 9列布局：1列项目名称 + 8列数据
+   * 
+   * @param item 统计表格数据项
+   * @param index 列索引
+   * @param isHeader 是否为表头
+   */
+  @Builder
+  private buildStatisticsCell(item: StatisticsTableItem | null, index: number, isHeader: boolean = false) {
+    Column() {
+      if (isHeader) {
+        // 表头单元格
+        Text(this.getStatisticsHeaderText(index))
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.getCurrentTheme().textColor)
+          .textAlign(TextAlign.Center)
+      } else if (item) {
+        // 数据单元格
+        Text(this.getStatisticsCellText(item, index))
+          .fontSize(14)
+          .fontColor(this.getCurrentTheme().textColor)
+          .textAlign(TextAlign.Center)
+      }
+    }
+    .width('100%')
+    .height(40)
+    .backgroundColor(isHeader ?
+      (this.getCurrentTheme().primary + '20') :
+      (index % 2 === 0 ? this.getCurrentTheme().backgroundColor : this.getCurrentTheme().surfaceColor))
+    .border({ width: 1, color: this.getCurrentTheme().borderColor })
+    .justifyContent(FlexAlign.Center)
+  }
+
+  /**
+   * 获取统计表格表头文本
+   * 
+   * 功能说明：
+   * - 返回指定列索引的表头文本
+   * - 第0列显示"项"，第1-8列显示数字索引
+   * 
+   * @param index 列索引
+   * @returns 表头文本
+   */
+  private getStatisticsHeaderText(index: number): string {
+    if (index === 0) {
+      return '项'
+    } else {
+      return `${index - 1}`
+    }
+  }
+
+  /**
+   * 获取统计表格单元格文本
+   * 
+   * 功能说明：
+   * - 返回指定数据项和列索引的单元格文本
+   * - 第0列显示项目名称，第1-8列显示对应的数值
+   * 
+   * @param item 统计表格数据项
+   * @param index 列索引
+   * @returns 单元格文本
+   */
+  private getStatisticsCellText(item: StatisticsTableItem, index: number): string {
+    if (index === 0) {
+      return item.itemName
+    } else {
+      const valueIndex = index - 1
+      return valueIndex < item.values.length ? `${item.values[valueIndex]}` : ''
+    }
+  }
+
+
+
+
 
   build() {
     Column() {
-      // 卡片：承载等级数量与等级表
+
+      // 右侧上方卡片：占比55%
       Column() {
-        // 内部卡片：清空内容（保留卡片样式与布局）
+        // 控制面板：等级数量选择
         Column() {
-          // 顶部行：表格数量 + 下拉框（紧凑）
           Row() {
-            Text('表格数量:')
+            // 等级数量标签
+            Text('等级数量:')
               .fontSize(24)
               .fontColor(this.getCurrentTheme().textColor)
-              .margin({ right: 6 })
+              .margin({ right: 8 })
 
-            Select(TABLE_COUNT_OPTIONS.map(count => ({ value: count.value } as SelectOption)))
-              .selected(TABLE_COUNT_OPTIONS.findIndex(count => count.value === this.tableCount))
-              .font({ size: 16 })
+            // 等级数量选择器
+            Select([
+              { value: '2' },
+              { value: '3' },
+              { value: '4' },
+              { value: '5' },
+              { value: '6' },
+              { value: '7' }
+            ])
+              .selected(0)
+              .font({ size: 22 })
               .fontColor(this.getCurrentTheme().textColor)
               .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
               .border({ width: 1, color: this.getCurrentTheme().borderColor })
-              .borderRadius(4)
-              .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-              .constraintSize({ minWidth: 60, maxWidth: 120 })
-              .height(26)
-              .onSelect((index: number, value: string) => {
-                if (this.onTableCountChange) {
-                  this.onTableCountChange(value)
-                }
-                this.topRightActivated = true
-                const n = Number(value)
-                this.topRightCount = Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0
+              .borderRadius(6)
+              .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+              .width('40%')
+              .onSelect((index: number) => {
+                this.levelCountIndex = index
+                this.initializeLevelData()
+                console.log('等级数量选择:', index)
               })
           }
           .width('100%')
-          .alignItems(VerticalAlign.Center)
           .justifyContent(FlexAlign.Start)
-          .margin({ bottom: 10 })
-
-          // 表格：表头 + 联动数据行
-          Column() {
-            // 表头
-            Row() {
-              Text('等级名称')
-                .fontSize(22)
-                .fontWeight(FontWeight.Medium)
-                .fontColor(this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .padding({ left: 4, right: 4, top: 2, bottom: 2 })
-                .layoutWeight(1)
-
-              Text('最小重量(克)')
-                .fontSize(22)
-                .fontWeight(FontWeight.Medium)
-                .fontColor(this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .padding({ left: 4, right: 4, top: 2, bottom: 2 })
-                .layoutWeight(1)
-
-              Text('装箱量（克）')
-                .fontSize(22)
-                .fontWeight(FontWeight.Medium)
-                .fontColor(this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .padding({ left: 4, right: 4, top: 2, bottom: 2 })
-                .layoutWeight(1)
-            }
-            .width('100%')
-            .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
-            .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
-
-            // 数据行（从顶部开始依次向下，整体可滚动）
-            Scroll(this.scroller) {
-              Column() {
-                ForEach(this.getTopRightRows(), (row: LevelData, idx: number) => {
-                  this.renderLevelRow(row)
-                })
-              }
-              .width('100%')
-              .alignItems(HorizontalAlign.Start)
-              .justifyContent(FlexAlign.Start)
-            }
-            .width('100%')
-            .layoutWeight(0.8)
-            .scrollable(ScrollDirection.Vertical)
-            .scrollBar(BarState.Auto)
-            .backgroundColor(this.getCurrentTheme().backgroundColor)
-            .border({ width: 1, color: this.getCurrentTheme().borderColor })
-            .borderRadius(8)
-            .margin({ top: 8 })
-          }
-          .width('100%')
         }
         .width('100%')
-        .height('90%')
-        .padding(12)
-        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
+        .padding(16)
+        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
         .border({ width: 1, color: this.getCurrentTheme().borderColor })
-        .borderRadius(8)
-        .shadow({ radius: 8, color: 'rgba(0,0,0,0.06)', offsetY: 2 })
-      }
-      .width('100%')
-      .height('52%')
-      .padding(16)
-      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-      .border({ width: 1, color: this.getCurrentTheme().borderColor })
-      .borderRadius(10)
-      .shadow({ radius: 10, color: 'rgba(0,0,0,0.08)', offsetY: 2 })
-
-      // 右侧下方卡片：占比40%，显示第二个表格
-      Column() {
-        // 表格外层容器（含边框与圆角）
+        .borderRadius(12)
+        .shadow({ radius: 8, color: 'rgba(0,0,0,0.15)', offsetY: 2 })
+        .margin({ bottom: 16 })
+        
+        // 等级表格：使用List+ListItem实现
         Column() {
-          // 表头（九列对齐：最左一列为"项"）
-          Row() {
-            Text('项')
-              .fontSize(18)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.getCurrentTheme().textColor)
-              .textAlign(TextAlign.Center)
-              .padding({ left: 2, right: 2, top: 2, bottom: 2 })
-              .border({ width: 1, color: this.getCurrentTheme().borderColor })
-              .layoutWeight(1)
-            ForEach(this.headerIndices, (idx: number) => {
-              Text(`${idx}`)
-                .fontSize(18)
-                .fontWeight(FontWeight.Medium)
-                .fontColor(this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .padding({ left: 2, right: 2, top: 2, bottom: 2 })
-                .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                .layoutWeight(1)
-            })
-          }
-          .width('100%')
-          .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
+          // 固定表头
+          this.buildLevelTableHeader()
 
-          // 六行数据（每个单元格都有边框，形成方块网格）
-          Row() {
-            Text('装箱数量')
-              .fontSize(18)
-              .fontColor(this.getCurrentTheme().textColor)
-              .textAlign(TextAlign.Center)
-              .padding({ left: 2, right: 2, top: 2, bottom: 2 })
-              .border({ width: 1, color: this.getCurrentTheme().borderColor })
-              .layoutWeight(1)
-            ForEach(this.statisticsData.bottom1Counts, (val: number) => {
-              Text(`${val}`)
-                .fontSize(18)
-                .fontColor(this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .padding({ left: 2, right: 2, top: 2, bottom: 2 })
-                .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                .layoutWeight(1)
-            })
+          // 可滚动数据区域 - 使用List组件
+          List() {
+            ForEach(this.levelTableData, (data: LevelTableData, index: number) => {
+              ListItem() {
+                this.buildLevelListItem(data, index)
+              }
+            }, (data: LevelTableData, index: number) => `${index}`)
           }
           .width('100%')
-
-          Row() {
-            Text('平均重量')
-              .fontSize(18)
-              .fontColor(this.getCurrentTheme().textColor)
-              .textAlign(TextAlign.Center)
-              .padding({ left: 2, right: 2, top: 2, bottom: 2 })
-              .border({ width: 1, color: this.getCurrentTheme().borderColor })
-              .layoutWeight(1)
-            ForEach(this.statisticsData.bottom1Avgs, (val: number) => {
-              Text(`${val}`)
-                .fontSize(18)
-                .fontColor(this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .padding({ left: 2, right: 2, top: 2, bottom: 2 })
-                .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                .layoutWeight(1)
-            })
-          }
-          .width('100%')
-
-          Row() {
-            Text('设置重量')
-              .fontSize(18)
-              .fontColor(this.getCurrentTheme().textColor)
-              .textAlign(TextAlign.Center)
-              .padding({ left: 2, right: 2, top: 2, bottom: 2 })
-              .border({ width: 1, color: this.getCurrentTheme().borderColor })
-              .layoutWeight(1)
-            ForEach(this.statisticsData.bottom1Sets, (val: number) => {
-              Text(`${val}`)
-                .fontSize(18)
-                .fontColor(this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .padding({ left: 2, right: 2, top: 2, bottom: 2 })
-                .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                .layoutWeight(1)
-            })
-          }
-          .width('100%')
-
-          Row() {
-            Text('装箱数量')
-              .fontSize(18)
-              .fontColor(this.getCurrentTheme().textColor)
-              .textAlign(TextAlign.Center)
-              .padding({ left: 2, right: 2, top: 2, bottom: 2 })
-              .border({ width: 1, color: this.getCurrentTheme().borderColor })
-              .layoutWeight(1)
-            ForEach(this.statisticsData.bottom2Counts, (val: number) => {
-              Text(`${val}`)
-                .fontSize(18)
-                .fontColor(this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .padding({ left: 2, right: 2, top: 2, bottom: 2 })
-                .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                .layoutWeight(1)
-            })
-          }
-          .width('100%')
-
-          Row() {
-            Text('平均重量')
-              .fontSize(18)
-              .fontColor(this.getCurrentTheme().textColor)
-              .textAlign(TextAlign.Center)
-              .padding({ left: 2, right: 2, top: 2, bottom: 2 })
-              .border({ width: 1, color: this.getCurrentTheme().borderColor })
-              .layoutWeight(1)
-            ForEach(this.statisticsData.bottom2Avgs, (val: number) => {
-              Text(`${val}`)
-                .fontSize(18)
-                .fontColor(this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .padding({ left: 2, right: 2, top: 2, bottom: 2 })
-                .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                .layoutWeight(1)
-            })
-          }
-          .width('100%')
-
-          Row() {
-            Text('设置重量')
-              .fontSize(18)
-              .fontColor(this.getCurrentTheme().textColor)
-              .textAlign(TextAlign.Center)
-              .padding({ left: 2, right: 2, top: 2, bottom: 2 })
-              .border({ width: 1, color: this.getCurrentTheme().borderColor })
-              .layoutWeight(1)
-            ForEach(this.statisticsData.bottom2Sets, (val: number) => {
-              Text(`${val}`)
-                .fontSize(18)
-                .fontColor(this.getCurrentTheme().textColor)
-                .textAlign(TextAlign.Center)
-                .padding({ left: 2, right: 2, top: 2, bottom: 2 })
-                .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                .layoutWeight(1)
-            })
-          }
-          .width('100%')
+          .layoutWeight(1)
+          .scrollBar(BarState.Auto)
+          .edgeEffect(EdgeEffect.Spring)
+          .friction(100)
+          .divider({
+            strokeWidth: 1,
+            color: this.getCurrentTheme().borderColor,
+            startMargin: 0,
+            endMargin: 0
+          })
         }
         .width('100%')
         .layoutWeight(1)
-        .backgroundColor(this.getCurrentTheme().backgroundColor)
         .border({ width: 1, color: this.getCurrentTheme().borderColor })
         .borderRadius(8)
+        .backgroundColor(this.getCurrentTheme().surfaceColor)
       }
       .width('100%')
-      .height('40%')
+      .height('55%')
       .padding(16)
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
       .border({ width: 1, color: this.getCurrentTheme().borderColor })
       .borderRadius(10)
       .shadow({ radius: 10, color: 'rgba(0,0,0,0.08)', offsetY: 2 })
+      .margin({ bottom: 16 })
+
+      // 统计表格卡片：使用Grid组件实现的表格
+      Column() {
+
+        // 表格容器：表头固定 + 数据滚动
+        Column() {
+          // 固定表头
+          Grid() {
+            ForEach([0, 1, 2, 3, 4, 5, 6, 7, 8], (colIndex: number) => {
+              GridItem() {
+                this.buildStatisticsCell(null, colIndex, true)
+              }
+            })
+          }
+          .columnsTemplate('1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr') // 9列等宽
+          .columnsGap(1)
+          .rowsGap(1)
+          .width('100%')
+          .height(40) // 表头固定高度
+          .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+
+          // 可滚动的数据区域
+          Scroll() {
+            Grid() {
+              // 数据行
+              ForEach(this.statisticsTableData, (item: StatisticsTableItem) => {
+                ForEach([0, 1, 2, 3, 4, 5, 6, 7, 8], (colIndex: number) => {
+                  GridItem() {
+                    this.buildStatisticsCell(item, colIndex, false)
+                  }
+                })
+              })
+            }
+            .columnsTemplate('1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr') // 9列等宽
+            .columnsGap(1)
+            .rowsGap(1)
+            .width('100%')
+            .height(this.statisticsTableData.length * 40) // 数据区域高度：数据行数 × 每行高度
+          }
+          .width('100%')
+          .height(240) // 数据区域固定高度：总高度280 - 表头40 = 240
+          .scrollable(ScrollDirection.Vertical)
+          .scrollBar(BarState.Auto)
+        }
+        .width('100%')
+        .height(280) // 总容器高度
+        .border({ width: 1, color: this.getCurrentTheme().borderColor })
+        .borderRadius(8)
+      }
+      .width('100%')
+      .height('35%')
+      .padding(16)
+      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      .border({ width: 1, color: this.getCurrentTheme().borderColor })
+      .borderRadius(10)
+      .shadow({ radius: 10, color: 'rgba(0,0,0,0.08)', offsetY: 2 })
+      .margin({ bottom: 16 })
 
       // 右侧两个卡片下方的透明卡片：放置取消/确认按钮
       Column() {
@@ -568,17 +868,6 @@ export struct LevelDataTable {
     .alignItems(HorizontalAlign.Start)
   }
 
-  aboutToAppear(): void {
-    // 初始化滚动位置到顶部
-    this.scroller.scrollTo({ xOffset: 0, yOffset: 0 })
-    this.lastTopRightCount = this.topRightCount
-  }
 
-  aboutToRender(): void {
-    // 当表格数量变化时，自动滚动到顶部
-    if (this.topRightCount !== this.lastTopRightCount) {
-      this.scroller.scrollTo({ xOffset: 0, yOffset: 0 })
-      this.lastTopRightCount = this.topRightCount
-    }
-  }
+
 }
