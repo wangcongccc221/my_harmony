@@ -199,7 +199,7 @@ export struct DataTablesTabBar {
             tableTitle: '等级表',
             headerTitles: ['等级', '30', '20', '10', '0'],
             tableWidth: '100%',
-            maxHeight: '70%',
+            maxHeight: '75%',
             enableDrag: true
           })
           .width('48%')
@@ -211,7 +211,7 @@ export struct DataTablesTabBar {
             tableTitle: '容器表',
             headerTitles: ['容器名称', '分选标准', '容器规格', '容器等级'],
             tableWidth: '100%',
-            maxHeight: '70%',
+            maxHeight: '75%',
             enableDrag: false
           })
           .width('48%')
@@ -222,13 +222,13 @@ export struct DataTablesTabBar {
         .justifyContent(FlexAlign.Start)
         .alignItems(VerticalAlign.Top)
       } else if (this.selectedTab === '等级统计表') {
-        LevelTable({
+        GridTable({
           tableName: '等级统计表',
           tableRows: this.statisticsTableData,
           tableTitle: '等级统计表',
           headerTitles: ['等级', '重量', '出口', '个数', '占比', '重量2', '占比2', '箱数', '占比3', '箱重', '平均'],
           tableWidth: '100%',
-          maxHeight: '400px',
+          maxHeight: '75%',
           enableDrag: false
         })
         .key(`statistics_table_${this.refreshKey}`)

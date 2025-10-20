@@ -24,6 +24,8 @@ interface DragData {
   sourceTable: string
   fullRowData?: string // 完整行数据（用于整行拖拽）
   fullColumnData?: string // 完整列数据（用于整列拖拽）
+  levelName?: string // 等级名称（用于等级统计表联动）
+  levelNames?: string[] // 等级名称数组（用于整列拖拽联动）
 }
 
 @Component
@@ -196,9 +198,12 @@ export struct GridTable {
       
       // 优化多选拖拽数据格式，减少数据量
       const values = selectedCellsArray.map(cell => cell.value)
+      // 收集所有涉及的等级名称（从第一列获取）
+      const levelNames = selectedCellsArray.map(cell => this.tableRows[cell.rowIndex]?.[0] || '')
       const dragDataStr = JSON.stringify({
         type: 'multi_select',
         values: values,
+        levelNames: levelNames, // 添加等级名称数组
         count: selectedCellsArray.length
       })
       
@@ -216,11 +221,15 @@ export struct GridTable {
       }
     } else {
       // 单选拖拽：使用当前单元格数据
+      // 获取当前行的等级名称（第一列的值）
+      const levelName = this.tableRows[rowIndex]?.[0] || ''
+      
       const dragData: DragData = {
         rowIndex,
         colIndex,
         value: cellValue,
-        sourceTable: this.tableName
+        sourceTable: this.tableName,
+        levelName: levelName // 添加等级名称字段，用于等级统计表联动
       }
 
       const dragDataStr = JSON.stringify(dragData)
@@ -253,7 +262,8 @@ export struct GridTable {
       colIndex: -1, // -1表示整行拖拽
       value: primaryValue,
       sourceTable: this.tableName,
-      fullRowData: JSON.stringify(dataWithoutFirstColumn) // 排除第一列的数据
+      fullRowData: JSON.stringify(dataWithoutFirstColumn), // 排除第一列的数据
+      levelName: primaryValue // 添加等级名称字段，用于等级统计表联动
     }
 
     const dragDataStr = JSON.stringify(dragData)
@@ -355,13 +365,16 @@ export struct GridTable {
 
     // 获取整列数据
     const columnData = this.tableRows.map(row => row[colIndex])
+    // 获取对应的等级名称（每行的第一列）
+    const levelNames = this.tableRows.map(row => row[0] || '')
     
     const dragData: DragData = {
       rowIndex: -1, // -1表示整列拖拽
       colIndex,
       value: this.headerTitles[colIndex] || '',
       sourceTable: this.tableName,
-      fullColumnData: JSON.stringify(columnData)
+      fullColumnData: JSON.stringify(columnData),
+      levelNames: levelNames // 添加等级名称数组，用于等级统计表联动
     }
 
     const dragDataStr = JSON.stringify(dragData)
