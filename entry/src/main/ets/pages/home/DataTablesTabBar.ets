@@ -23,6 +23,7 @@
  */
 
 import { LevelTable, TableRow } from '../../components/layout/LevelTable'
+import { GridTable } from '../../components/layout/GridTable'
 import { DraggableGridTable, DragData } from '../../components/layout/DraggableGridTable'
 import { BaseComponentHelper } from '../../components/common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
@@ -189,10 +190,10 @@ export struct DataTablesTabBar {
   private buildContent() {
     Column() {
       if (this.selectedTab === '等级表') {
-        // 显示等级表和容器表（左右分布）
+        // 显示等级表和容器表（左右分布）- 使用新的GridTable组件
         Row() {
-          // 左侧：等级表卡片
-          LevelTable({
+          // 左侧：等级表卡片（支持拖拽）
+          GridTable({
             tableName: '等级表',
             tableRows: this.levelTableData,
             tableTitle: '等级表',
@@ -203,8 +204,8 @@ export struct DataTablesTabBar {
           })
           .width('48%')
 
-          // 右侧：容器表卡片
-          LevelTable({
+          // 右侧：容器表卡片（不支持拖拽）
+          GridTable({
             tableName: '容器表',
             tableRows: this.containerTableData,
             tableTitle: '容器表',
