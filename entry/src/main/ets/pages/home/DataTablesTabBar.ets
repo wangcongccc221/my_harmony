@@ -199,7 +199,7 @@ export struct DataTablesTabBar {
             tableTitle: '等级表',
             headerTitles: ['等级', '30', '20', '10', '0'],
             tableWidth: '100%',
-            maxHeight: '400px',
+            maxHeight: '70%',
             enableDrag: true
           })
           .width('48%')
@@ -211,7 +211,7 @@ export struct DataTablesTabBar {
             tableTitle: '容器表',
             headerTitles: ['容器名称', '分选标准', '容器规格', '容器等级'],
             tableWidth: '100%',
-            maxHeight: '350px',
+            maxHeight: '70%',
             enableDrag: false
           })
           .width('48%')

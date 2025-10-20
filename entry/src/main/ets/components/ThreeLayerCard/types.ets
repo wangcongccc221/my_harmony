@@ -123,8 +123,10 @@ export interface LoosePayload {
   columnIndex?: number
   columnHeader?: string
   columnData?: string[]
+  fullColumnData?: string // 完整列数据（JSON字符串格式）
   // 整行拖拽数据字段
   rowData?: string[]
+  fullRowData?: string // 完整行数据（JSON字符串格式）
   outletInfo?: string // 出口信息（用于等级统计表）
 }
 

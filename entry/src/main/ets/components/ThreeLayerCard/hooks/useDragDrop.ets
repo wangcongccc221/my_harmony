@@ -79,6 +79,35 @@ export class UseDragDrop {
       payloadStr = String(wrapper.extraInfo ?? extraParams)
     }
     const parsed: LoosePayload = JSON.parse(payloadStr) as LoosePayload
+    
+    // 处理 fullRowData 字段（来自 GridTable 的整行拖拽）
+    if (parsed.fullRowData && !parsed.rowData) {
+      try {
+        const rowDataArray = JSON.parse(parsed.fullRowData) as string[]
+        if (Array.isArray(rowDataArray)) {
+          parsed.rowData = rowDataArray
+          parsed.type = 'row'
+          console.log('🎯 解析 fullRowData:', parsed.fullRowData, '转换为 rowData:', parsed.rowData)
+        }
+      } catch (error) {
+        console.error('解析 fullRowData 失败:', error)
+      }
+    }
+    
+    // 处理 fullColumnData 字段（来自 GridTable 的整列拖拽）
+    if (parsed.fullColumnData && !parsed.columnData) {
+      try {
+        const columnDataArray = JSON.parse(parsed.fullColumnData) as string[]
+        if (Array.isArray(columnDataArray)) {
+          parsed.columnData = columnDataArray
+          parsed.type = 'column'
+          console.log('🎯 解析 fullColumnData:', parsed.fullColumnData, '转换为 columnData:', parsed.columnData)
+        }
+      } catch (error) {
+        console.error('解析 fullColumnData 失败:', error)
+      }
+    }
+    
     return parsed
   }
 

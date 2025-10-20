@@ -20,6 +20,8 @@ interface DragData {
   colIndex: number
   value: string
   sourceTable: string
+  fullRowData?: string // 完整行数据（用于整行拖拽）
+  fullColumnData?: string // 完整列数据（用于整列拖拽）
 }
 
 @Component
@@ -97,6 +99,38 @@ export struct GridTable {
   }
 
   /**
+   * 处理整行拖拽开始
+   */
+  private handleRowDragStart(rowIndex: number, row: TableRow): DragItemInfo {
+    if (!this.enableDrag) {
+      return { pixelMap: undefined, builder: undefined, extraInfo: '' }
+    }
+
+    // 对于整行拖拽，我们传递第一列的值作为主要标识
+    const primaryValue = row[0] || ''
+    
+    // 排除第一列（等级名称），只传递后面的数据内容
+    const dataWithoutFirstColumn = row.slice(1)
+    
+    const dragData: DragData = {
+      rowIndex,
+      colIndex: -1, // -1表示整行拖拽
+      value: primaryValue,
+      sourceTable: this.tableName,
+      fullRowData: JSON.stringify(dataWithoutFirstColumn) // 排除第一列的数据
+    }
+
+    const dragDataStr = JSON.stringify(dragData)
+    console.log('🚀 GridTable - 开始整行拖拽:', dragDataStr)
+
+    return {
+      pixelMap: undefined,
+      builder: undefined,
+      extraInfo: dragDataStr
+    }
+  }
+
+  /**
    * 处理拖拽放置事件
    * 实现单元格内容交换
    */
@@ -142,6 +176,105 @@ export struct GridTable {
   }
 
   /**
+   * 处理整行拖拽放置事件
+   * 实现整行交换
+   */
+  private handleRowDrop(fromData: DragData, toRowIndex: number): void {
+    if (!this.enableDrag) return
+
+    const fromRowIndex = fromData.rowIndex
+
+    // 如果是同一行，不处理
+    if (fromRowIndex === toRowIndex) {
+      return
+    }
+
+    console.log('🎯 GridTable - 整行拖拽交换:', fromRowIndex, '到', toRowIndex)
+
+    // 交换整行数据
+    const fromRow = this.tableRows[fromRowIndex]
+    const toRow = this.tableRows[toRowIndex]
+
+    // 创建新的数据数组（保持响应式）
+    const newTableRows = this.tableRows.map((row, rowIdx) => {
+      if (rowIdx === fromRowIndex) {
+        return toRow
+      } else if (rowIdx === toRowIndex) {
+        return fromRow
+      }
+      return row
+    })
+
+    // 更新数据
+    this.tableRows = newTableRows
+  }
+
+  /**
+   * 处理整列拖拽开始
+   */
+  private handleColumnDragStart(colIndex: number): DragItemInfo {
+    if (!this.enableDrag) {
+      return { pixelMap: undefined, builder: undefined, extraInfo: '' }
+    }
+
+    // 获取整列数据
+    const columnData = this.tableRows.map(row => row[colIndex])
+    
+    const dragData: DragData = {
+      rowIndex: -1, // -1表示整列拖拽
+      colIndex,
+      value: this.headerTitles[colIndex] || '',
+      sourceTable: this.tableName,
+      fullColumnData: JSON.stringify(columnData)
+    }
+
+    const dragDataStr = JSON.stringify(dragData)
+    console.log('🚀 GridTable - 开始整列拖拽:', dragDataStr)
+
+    return {
+      pixelMap: undefined,
+      builder: undefined,
+      extraInfo: dragDataStr
+    }
+  }
+
+  /**
+   * 处理整列拖拽放置事件
+   * 实现整列交换
+   */
+  private handleColumnDrop(fromData: DragData, toColIndex: number): void {
+    if (!this.enableDrag) return
+
+    const fromColIndex = fromData.colIndex
+
+    // 如果是同一列，不处理
+    if (fromColIndex === toColIndex) {
+      return
+    }
+
+    console.log('🎯 GridTable - 整列拖拽交换:', fromColIndex, '到', toColIndex)
+
+    // 交换整列数据
+    const newTableRows = this.tableRows.map(row => {
+      const newRow = [...row]
+      const temp = newRow[fromColIndex]
+      newRow[fromColIndex] = newRow[toColIndex]
+      newRow[toColIndex] = temp
+      return newRow
+    })
+
+    // 交换表头
+    const newHeaderTitles = [...this.headerTitles]
+    const temp = newHeaderTitles[fromColIndex]
+    newHeaderTitles[fromColIndex] = newHeaderTitles[toColIndex]
+    newHeaderTitles[toColIndex] = temp
+
+    // 更新数据
+    this.tableRows = newTableRows
+    this.headerTitles = newHeaderTitles
+  }
+
+  /**
    * 构建拖拽预览
    */
   @Builder
@@ -161,17 +294,29 @@ export struct GridTable {
   @Builder
   private buildTableCell(cellValue: string, rowIndex: number, colIndex: number) {
     Text(cellValue)
-      .fontSize(24)
+      .fontSize(16)
       .fontColor(this.getCurrentTheme().textColor)
       .textAlign(TextAlign.Center)
-      .width('100%')
+      .layoutWeight(1)
       .height('100%')
       .backgroundColor(this.getCurrentTheme().surfaceColor)
-      .border({ 
-        width: { right: 1, bottom: 1 }, 
-        color: this.getCurrentTheme().borderColor 
+      .border({
+        width: { right: 1, bottom: 1 },
+        color: this.getCurrentTheme().borderColor
       })
-      .padding(8)
+      .padding(2)
+      .draggable(this.enableDrag)
+      .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
+        return this.handleDragStart(rowIndex, colIndex, cellValue)
+      })
+      .onDrop((event: DragEvent, extraParams: string) => {
+        try {
+          const dragData: DragData = JSON.parse(extraParams)
+          this.handleDrop(dragData, rowIndex, colIndex)
+        } catch (error) {
+          console.error('拖拽数据解析失败:', error)
+        }
+      })
   }
 
   /**
@@ -180,18 +325,96 @@ export struct GridTable {
   @Builder
   private buildHeaderCell(title: string, colIndex: number) {
     Text(title)
-      .fontSize(26)
+      .fontSize(18)
       .fontWeight(FontWeight.Bold)
       .fontColor(this.getCurrentTheme().textColor)
       .textAlign(TextAlign.Center)
       .width('100%')
       .height('100%')
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-      .border({ 
-        width: { right: 1, bottom: 1 }, 
-        color: this.getCurrentTheme().borderColor 
+      .border({
+        width: { right: 1, bottom: 1 },
+        color: this.getCurrentTheme().borderColor
       })
-      .padding(10)
+      .padding(2)
+  }
+
+  /**
+   * 构建表头左上角空白区域
+   */
+  @Builder
+  private buildHeaderCorner() {
+    Text('')
+      .width(40)
+      .height('100%')
+      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      .border({
+        width: { right: 1, bottom: 1 },
+        color: this.getCurrentTheme().borderColor
+      })
+  }
+
+  /**
+   * 构建列头 - 支持整列拖拽
+   */
+  @Builder
+  private buildColumnHeader(title: string, colIndex: number) {
+    Text(title)
+      .fontSize(18)
+      .fontWeight(FontWeight.Bold)
+      .fontColor(this.getCurrentTheme().textColor)
+      .textAlign(TextAlign.Center)
+      .layoutWeight(1)
+      .height('100%')
+      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      .border({
+        width: { right: 1, bottom: 1 },
+        color: this.getCurrentTheme().borderColor
+      })
+      .padding(2)
+      .draggable(this.enableDrag)
+      .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
+        return this.handleColumnDragStart(colIndex)
+      })
+      .onDrop((event: DragEvent, extraParams: string) => {
+        try {
+          const dragData: DragData = JSON.parse(extraParams)
+          this.handleColumnDrop(dragData, colIndex)
+        } catch (error) {
+          console.error('拖拽数据解析失败:', error)
+        }
+      })
+  }
+
+  /**
+   * 构建第一列单元格 - 支持整行拖拽
+   */
+  @Builder
+  private buildRowDragCell(cellValue: string, rowIndex: number, colIndex: number) {
+    Text(cellValue)
+      .fontSize(16)
+      .fontColor(this.getCurrentTheme().textColor)
+      .textAlign(TextAlign.Center)
+      .layoutWeight(1)
+      .height('100%')
+      .backgroundColor(this.getCurrentTheme().surfaceColor)
+      .border({
+        width: { right: 1, bottom: 1 },
+        color: this.getCurrentTheme().borderColor
+      })
+      .padding(2)
+      .draggable(this.enableDrag)
+      .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
+        return this.handleRowDragStart(rowIndex, this.tableRows[rowIndex])
+      })
+      .onDrop((event: DragEvent, extraParams: string) => {
+        try {
+          const dragData: DragData = JSON.parse(extraParams)
+          this.handleRowDrop(dragData, rowIndex)
+        } catch (error) {
+          console.error('拖拽数据解析失败:', error)
+        }
+      })
   }
 
   build() {
@@ -202,50 +425,40 @@ export struct GridTable {
         .fontWeight(FontWeight.Medium)
         .fontColor(this.getCurrentTheme().textColor)
         .alignSelf(ItemAlign.Start)
-        .margin({ bottom: 10 })
+        .margin({ bottom: 4 })
 
       // 表格容器
       Column() {
-        // 固定表头Grid
-        Grid() {
+        // 固定表头
+        Row() {
+          // 列头 - 整列拖拽
           ForEach(this.headerTitles, (title: string, colIndex: number) => {
-            GridItem() {
-              this.buildHeaderCell(title, colIndex)
-            }
+            this.buildColumnHeader(title, colIndex)
           })
         }
-        .columnsTemplate(this.getColumnsTemplate())
-        .columnsGap(0)
-        .rowsGap(0)
         .width('100%')
-        .height(50)
+        .height(24)
 
         // 可滚动数据区域
         Scroll() {
-          Grid() {
+          Column() {
             ForEach(this.tableRows, (row: TableRow, rowIndex: number) => {
-              ForEach(row, (cellValue: string, colIndex: number) => {
-                GridItem() {
-                  this.buildTableCell(cellValue, rowIndex, colIndex)
-                }
-                .draggable(this.enableDrag)
-                .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
-                  return this.handleDragStart(rowIndex, colIndex, cellValue)
-                })
-                .onDrop((event: DragEvent, extraParams: string) => {
-                  try {
-                    const dragData: DragData = JSON.parse(extraParams)
-                    this.handleDrop(dragData, rowIndex, colIndex)
-                  } catch (error) {
-                    console.error('拖拽数据解析失败:', error)
+              Row() {
+                // 数据单元格 - 第一列支持整行拖拽，其他列支持单格拖拽
+                ForEach(row, (cellValue: string, colIndex: number) => {
+                  if (colIndex === 0) {
+                    // 第一列（如"A级"、"B级"）支持整行拖拽
+                    this.buildRowDragCell(cellValue, rowIndex, colIndex)
+                  } else {
+                    // 其他列支持单格拖拽
+                    this.buildTableCell(cellValue, rowIndex, colIndex)
                   }
                 })
-              })
+              }
+              .width('100%')
+              .height(65)
             })
           }
-          .columnsTemplate(this.getColumnsTemplate())
-          .columnsGap(0)
-          .rowsGap(0)
           .width('100%')
         }
         .width('100%')
@@ -262,9 +475,9 @@ export struct GridTable {
     .width(this.tableWidth)
     .backgroundColor(this.containerBg || this.getCurrentTheme().surfaceColor)
     .border({ width: 1, color: this.getCurrentTheme().borderColor })
-    .borderRadius(12)
-    .padding(12)
-    .margin({ top: 12, left: 12, right: 12, bottom: 8 })
+    .borderRadius(6)
+    .padding(4)
+    .margin({ top: 4, left: 4, right: 4, bottom: 2 })
     .alignItems(HorizontalAlign.Center)
     .justifyContent(FlexAlign.Center)
   }
