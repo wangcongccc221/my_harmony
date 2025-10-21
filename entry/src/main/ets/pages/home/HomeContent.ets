@@ -393,7 +393,7 @@ export struct HomeContent {
         }
       })
       .width('100%')
-      .height('48%') // 表格区域占48%
+      .height('50%') // 表格区域占50%
       .margin({ bottom: 0 })
 
 

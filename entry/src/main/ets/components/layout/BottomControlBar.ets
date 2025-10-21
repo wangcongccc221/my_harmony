@@ -5,12 +5,18 @@
  */
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { FruitCupButton } from '../ui/FruitCupButton'
 
 @Component
 export struct BottomControlBar {
   // 分选状态
   @State private sortingStatus: boolean = true  // true=正常分选, false=异常分选
+
+  // 主题相关
+  @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
+  @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: string = OmniThemeManager.getInstance().getCurrentThemeType()
+  @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
 
   // 出口按钮点击回调
   onOutletClick?: (outletNumber: number) => void = () => {}
@@ -26,7 +32,7 @@ export struct BottomControlBar {
 
   // 获取当前主题配置
   private getCurrentTheme(): ExtendedOmniThemeStyle {
-    return OmniThemeManager.getInstance().getCurrentTheme()
+    return this.consumedTheme
   }
 
   // 获取分选状态字符串
@@ -50,7 +56,7 @@ export struct BottomControlBar {
       Button(this.getSortingStatusText())
         .fontSize(18)  // 调大到18px
         .fontWeight(FontWeight.Medium)
-        .fontColor(this.getCurrentTheme().textColor)
+        .fontColor(this.getCurrentTheme().textColor)  // 使用主题文字颜色
         .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
         .border({ width: 1, color: this.getCurrentTheme().borderColor })
         .borderRadius(4)
@@ -66,7 +72,7 @@ export struct BottomControlBar {
       Text('SCM:')
         .fontSize(18)  // 调大到18px
         .fontWeight(FontWeight.Medium)
-        .fontColor(this.getCurrentTheme().textColor)
+        .fontColor(this.getCurrentTheme().buttonBarTextColor ?? this.getCurrentTheme().textColor)  // 使用底部状态栏文字颜色
         .margin({ right: 8 })
         .alignSelf(ItemAlign.Center)
 
@@ -74,7 +80,7 @@ export struct BottomControlBar {
       Button('1')
         .fontSize(18)  // 调大到18px
         .fontWeight(FontWeight.Medium)
-        .fontColor(this.getCurrentTheme().textColor)
+        .fontColor(this.getCurrentTheme().textColor)  // 使用主题文字颜色
         .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
         .border({ width: 1, color: this.getCurrentTheme().borderColor })
         .borderRadius(4)
@@ -90,7 +96,7 @@ export struct BottomControlBar {
       Text('果杯:')
         .fontSize(18)  // 调大到18px
         .fontWeight(FontWeight.Medium)
-        .fontColor(this.getCurrentTheme().textColor)
+        .fontColor(this.getCurrentTheme().buttonBarTextColor ?? this.getCurrentTheme().textColor)  // 使用底部状态栏文字颜色
         .margin({ right: 8 })
         .alignSelf(ItemAlign.Center)
 

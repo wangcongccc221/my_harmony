@@ -18,7 +18,8 @@ export enum OmniThemeType {
   WARM_AMBER = 'warm_amber',
   MINIMAL = 'minimal',
   FRESH_GREEN = 'fresh_green',
-  ELEGANT_PURPLE = 'elegant_purple'
+  ELEGANT_PURPLE = 'elegant_purple',
+  PROFESSIONAL_BLUE = 'professional_blue'
 }
 
 // 扩展的主题配置接口
@@ -53,6 +54,7 @@ export interface ExtendedOmniThemeStyle extends OmniThemeStyle {
   tableHeaderTextColor?: string  // 表头文字颜色
   tableRowAltBg?: string        // 斑马纹行背景
   buttonBarBg?: string          // 底部按钮条背景
+  buttonBarTextColor?: string   // 底部按钮条文字颜色
   navBg?: string                // 左侧导航栏背景
   pageBg?: string               // 页面根背景
   controlBg?: string            // 页面内控件统一底色
@@ -441,6 +443,56 @@ const ELEGANT_PURPLE_THEME: ExtendedOmniThemeStyle = {
   ,chartLineColor: '#8858D6'
 }
 
+// 专业蓝色主题配置 - 深蓝色专业配色方案
+const PROFESSIONAL_BLUE_THEME: ExtendedOmniThemeStyle = {
+  primary: '#1890FF',                    // 强调色：蓝色
+  primaryColorWithOpacity: (opacity: number) => `rgba(24, 144, 255, ${opacity})`,
+  fontSizeXs: 10,
+  fontSizeSm: 12,
+  fontSizeMd: 14,
+  fontSizeLg: 16,
+  fontSizeXl: 20,
+  backgroundColor: '#E6F3FF',             // 内容区背景：浅蓝色（更明显）
+  surfaceColor: '#F0F8FF',               // 卡片背景：浅蓝色
+  textColor: '#1E3A5F',                  // 主文字：深蓝色
+  subTextColor: '#4A6FA5',               // 副文字：中蓝色
+  borderColor: '#B3D9FF',                // 边框：浅蓝色
+  headerColor: '#2C4A6B',                // 顶部任务栏：中蓝色（比深蓝浅一点）
+  sectionBg: '#F0F8FF',                  // 分区背景：浅蓝色
+  sectionEmphasisBg: '#E6F3FF',          // 强调分区：更浅的蓝色
+  tableHeaderBg: '#1E3A5F',              // 表头：深蓝色
+  tableHeaderTextColor: '#FFFFFF',        // 表头文字：白色
+  tableRowAltBg: '#F8FBFF',              // 表格斑马纹：极浅蓝色
+  buttonBarBg: '#2C4A6B',                // 底部状态栏：中蓝色（与顶部一致）
+  buttonBarTextColor: '#FFFFFF',          // 底部状态栏文字：白色（在深色背景上清晰）
+  // 布局分区配色
+  navBg: '#2C4A6B',                      // 左边导航栏：中蓝色（比深蓝浅一点）
+  pageBg: '#E6F3FF',                     // 主页背景：浅蓝色（更明显）
+  controlBg: '#F0F8FF',                  // 控件背景：浅蓝色
+  chartBg: '#F0F8FF',                    // 图表背景：浅蓝色
+  chartLineColor: '#1890FF',              // 图表线条：蓝色
+  
+  // 三层卡片颜色配置
+  cardBorderColor: '#B3D9FF',            // 卡片边框：浅蓝色
+  cardNumberTextColor: '#1E3A5F',        // 卡片序号：深蓝色
+  cardWavePercentTextColor: '#4A6FA5',   // 波浪百分比：中蓝色
+  cardDataListTextColor: '#1E3A5F',      // 数据列表：深蓝色
+  cardWaveGradientLeft: 'rgba(24, 144, 255, 0.7)',   // 波浪渐变左：蓝色
+  cardWaveGradientMid: 'rgba(30, 58, 95, 0.8)',      // 波浪渐变中：深蓝色
+  cardWaveGradientRight: 'rgba(47, 79, 79, 0.9)',    // 波浪渐变右：深灰色
+  
+  // 页面细分导航背景（可选）
+  navBgHome: '#2C4A6B',                   // 主页导航：中蓝色
+  navBgLevel: '#2C4A6B',                  // 等级页导航：中蓝色
+  navBgQuality: '#2C4A6B',                // 品质页导航：中蓝色
+  navBgMore: '#2C4A6B',                   // 更多页导航：中蓝色
+  
+  // 等级页专属配色
+  levelSectionBg: '#F0F8FF',              // 等级页分区：浅蓝色
+  levelControlBg: '#E6F3FF',              // 等级页控件：更浅的蓝色
+  levelDialogBg: '#F0F8FF'                // 等级页弹窗：浅蓝色
+}
+
 // 主题配置数据
 const THEME_CONFIGS: Record<OmniThemeType, ExtendedOmniThemeStyle> = {
   [OmniThemeType.BLUE]: BLUE_THEME,
@@ -453,7 +505,8 @@ const THEME_CONFIGS: Record<OmniThemeType, ExtendedOmniThemeStyle> = {
   [OmniThemeType.WARM_AMBER]: WARM_AMBER_THEME,
   [OmniThemeType.MINIMAL]: MINIMAL_THEME,
   [OmniThemeType.FRESH_GREEN]: FRESH_GREEN_THEME,
-  [OmniThemeType.ELEGANT_PURPLE]: ELEGANT_PURPLE_THEME
+  [OmniThemeType.ELEGANT_PURPLE]: ELEGANT_PURPLE_THEME,
+  [OmniThemeType.PROFESSIONAL_BLUE]: PROFESSIONAL_BLUE_THEME
 }
 
 // 主题变化回调函数类型
@@ -582,7 +635,8 @@ export class OmniThemeManager {
       [OmniThemeType.WARM_AMBER]: '暖色质感',
       [OmniThemeType.MINIMAL]: '极简黑白',
       [OmniThemeType.FRESH_GREEN]: '清新绿意',
-      [OmniThemeType.ELEGANT_PURPLE]: '优雅紫调'
+      [OmniThemeType.ELEGANT_PURPLE]: '优雅紫调',
+      [OmniThemeType.PROFESSIONAL_BLUE]: '专业蓝色'
     }
     return themeNames[theme] || '未知主题'
   }

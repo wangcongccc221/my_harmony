@@ -42,20 +42,67 @@ export interface LevelCountOption {
 }
 
 /**
+ * 自定义组件类型枚举
+ * 
+ * 功能说明：
+ * - 定义支持的自定义组件类型
+ * - 用于颜色等级列的自定义控件
+ * 
+ * 组件类型：
+ * - BUTTON: 按钮组件
+ * - SWITCH: 开关组件
+ * - INPUT: 输入框组件
+ * - SELECT: 下拉选择组件
+ * - TEXT: 纯文本显示
+ */
+export enum CustomComponentType {
+  BUTTON = 'button',
+  SWITCH = 'switch',
+  INPUT = 'input',
+  SELECT = 'select',
+  TEXT = 'text'
+}
+
+/**
+ * 自定义组件配置接口
+ * 
+ * 功能说明：
+ * - 定义自定义组件的配置参数
+ * - 支持不同类型的组件
+ * 
+ * 属性说明：
+ * - type: 组件类型
+ * - label: 显示标签
+ * - value: 当前值
+ * - options: 选项列表（用于SELECT类型）
+ * - enabled: 是否启用
+ * - placeholder: 占位符文本
+ */
+export interface CustomComponentConfig {
+  type: CustomComponentType
+  label: string
+  value: string | boolean
+  options?: string[]
+  enabled?: boolean
+  placeholder?: string
+}
+
+/**
  * 品质等级数据接口
  * 
  * 功能说明：
  * - 定义品质等级的数据结构
  * - 包含等级名称、颜色等级、糖度等级
+ * - 支持颜色等级的自定义组件配置
  * 
  * 属性说明：
  * - levelName: 等级名称
- * - colorLevel: 颜色等级描述
+ * - colorLevel: 颜色等级描述（字符串或自定义组件配置）
  * - sugarLevel: 糖度等级描述
  */
 export interface QualityLevelData {
   levelName: string
-  colorLevel: string
+  colorLevel: string | CustomComponentConfig
   sugarLevel: string
 }
 
@@ -198,11 +245,51 @@ export const SUGAR_LEVELS: string[] = [
  * - 按照从高到低的品质顺序排列
  */
 export const DEFAULT_QUALITY_LEVELS: QualityLevelData[] = [
-  { levelName: '1', colorLevel: '优秀', sugarLevel: '高糖度' },
-  { levelName: '2', colorLevel: '良好', sugarLevel: '中糖度' },
-  { levelName: '3', colorLevel: '一般', sugarLevel: '低糖度' },
-  { levelName: '4', colorLevel: '较差', sugarLevel: '极低糖度' },
-  { levelName: '5', colorLevel: '差', sugarLevel: '无糖度' },
+  { 
+    levelName: '1', 
+    colorLevel: {
+      type: CustomComponentType.SELECT,
+      label: '颜色等级',
+      value: '优秀',
+      options: ['优秀', '良好', '一般', '较差', '差', '极差', '零价值']
+    }, 
+    sugarLevel: '高糖度' 
+  },
+  { 
+    levelName: '2', 
+    colorLevel: {
+      type: CustomComponentType.BUTTON,
+      label: '颜色检测',
+      value: '良好',
+      enabled: true
+    }, 
+    sugarLevel: '中糖度' 
+  },
+  { 
+    levelName: '3', 
+    colorLevel: {
+      type: CustomComponentType.SWITCH,
+      label: '自动检测',
+      value: false,
+      enabled: true
+    }, 
+    sugarLevel: '低糖度' 
+  },
+  { 
+    levelName: '4', 
+    colorLevel: {
+      type: CustomComponentType.INPUT,
+      label: '自定义',
+      value: '较差',
+      placeholder: '请输入颜色等级'
+    }, 
+    sugarLevel: '极低糖度' 
+  },
+  { 
+    levelName: '5', 
+    colorLevel: '差', 
+    sugarLevel: '无糖度' 
+  },
   { levelName: '6', colorLevel: '极差', sugarLevel: '负糖度' },
   { levelName: '7', colorLevel: '零价值', sugarLevel: '零价值' },
   { levelName: '8', colorLevel: '特优', sugarLevel: '超高糖度' },

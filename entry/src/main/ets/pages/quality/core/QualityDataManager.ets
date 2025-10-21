@@ -339,7 +339,7 @@ export class QualityDataManager {
       errors.push('等级名称不能为空')
     }
     
-    if (!data.colorLevel || data.colorLevel.trim() === '') {
+    if (!data.colorLevel || (typeof data.colorLevel === 'string' && data.colorLevel.trim() === '')) {
       errors.push('颜色等级不能为空')
     }
     

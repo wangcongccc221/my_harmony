@@ -445,6 +445,7 @@ export struct MoreContent {
             this.buildThemeOption('⚫ 极简黑白', OmniThemeType.MINIMAL)
             this.buildThemeOption('🌿 清新绿意', OmniThemeType.FRESH_GREEN)
             this.buildThemeOption('💜 优雅紫调', OmniThemeType.ELEGANT_PURPLE)
+            this.buildThemeOption('🎯 专业蓝色', OmniThemeType.PROFESSIONAL_BLUE)
           }
           .width('100%')
           .padding(20)

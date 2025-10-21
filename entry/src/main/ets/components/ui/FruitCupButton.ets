@@ -5,21 +5,27 @@
  */
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 
 @Component
 export struct FruitCupButton {
   @Prop cupNumber: number = 1  // 果杯编号
   onCupClick?: (cupNumber: number) => void  // 点击回调
 
+  // 主题相关
+  @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
+  @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: string = OmniThemeManager.getInstance().getCurrentThemeType()
+  @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
+
   private getCurrentTheme(): ExtendedOmniThemeStyle {
-    return OmniThemeManager.getInstance().getCurrentTheme()
+    return this.consumedTheme
   }
 
   build() {
     Button(this.cupNumber.toString())
       .fontSize(18)  // 调大到18px
       .fontWeight(FontWeight.Medium)
-      .fontColor(this.getCurrentTheme().textColor)
+      .fontColor(this.getCurrentTheme().textColor)  // 使用主题文字颜色
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
       .border({ width: 1, color: this.getCurrentTheme().borderColor })
       .borderRadius(4)

@@ -513,7 +513,7 @@ export struct GridTable {
   @Builder
   private buildColumnHeader(title: string, colIndex: number) {
     Text(title)
-      .fontSize(18)
+      .fontSize(20)
       .fontWeight(FontWeight.Bold)
       .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
       .textAlign(TextAlign.Center)
@@ -524,7 +524,7 @@ export struct GridTable {
         width: { right: 1, bottom: 1 },
         color: this.getCurrentTheme().borderColor
       })
-      .padding(2)
+      .padding(6)
       .draggable(this.enableDrag)
       .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
         return this.handleColumnDragStart(colIndex)
@@ -594,7 +594,7 @@ export struct GridTable {
           })
         }
         .width('100%')
-        .height(24)
+        .height(50)
 
         // 可滚动数据区域
         Scroll() {

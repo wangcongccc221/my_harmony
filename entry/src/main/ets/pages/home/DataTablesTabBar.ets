@@ -309,13 +309,13 @@ export struct DataTablesTabBar {
             ForEach(['出口', '流水码', '装箱规格', '等级', '箱数', '纸箱规格', '纸箱净重', '箱数/分'], (title: string, index: number) => {
               GridItem() {
                 Text(title)
-                  .fontSize(18)
+                  .fontSize(20)
                   .fontWeight(FontWeight.Bold)
                   .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
                   .textAlign(TextAlign.Center)
                   .width('100%')
-                  .height(24)
-                  .padding(2)
+                  .height(50)
+                  .padding(6)
                   .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
                   .border({ width: { right: 1, bottom: 1 }, color: this.getCurrentTheme().borderColor })
               }
@@ -374,13 +374,13 @@ export struct DataTablesTabBar {
             ForEach(['成品码', '出口', '流水码', '容器名称', '等级', '包装时间', '纸箱规格', '纸箱净重'], (title: string, index: number) => {
               GridItem() {
                 Text(title)
-                  .fontSize(18)
+                  .fontSize(20)
                   .fontWeight(FontWeight.Bold)
                   .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
                   .textAlign(TextAlign.Center)
                   .width('100%')
-                  .height(24)
-                  .padding(2)
+                  .height(50)
+                  .padding(6)
                   .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
                   .border({ width: { right: 1, bottom: 1 }, color: this.getCurrentTheme().borderColor })
               }

@@ -413,14 +413,14 @@ export struct QualityContent {
     // 更新状态管理器
     this.stateManager.updateQualityLevel(index, {
       levelName: data.levelName,
-      colorLevel: data.colorLevel,
+      colorLevel: typeof data.colorLevel === 'string' ? data.colorLevel : String(data.colorLevel.value),
       sugarLevel: data.sugarLevel
     })
     
     // 更新数据管理器
     this.dataManager.updateQualityLevel(index, {
       levelName: data.levelName,
-      colorLevel: data.colorLevel,
+      colorLevel: typeof data.colorLevel === 'string' ? data.colorLevel : String(data.colorLevel.value),
       sugarLevel: data.sugarLevel
     })
     
