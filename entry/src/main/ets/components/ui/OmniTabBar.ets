@@ -86,6 +86,7 @@ export struct OmniTabBar {
     .backgroundColor(this.getCurrentTheme().surfaceColor)
     .borderRadius(12)
     .margin({ left: 16, right: 16, top: 16, bottom: 8 })
+    .padding({ left: 20 })
     .justifyContent(FlexAlign.Start)
     .alignItems(VerticalAlign.Center)
   }

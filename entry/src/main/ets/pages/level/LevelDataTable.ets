@@ -767,7 +767,7 @@ export struct LevelDataTable {
         .backgroundColor(this.getCurrentTheme().surfaceColor)
       }
       .width('100%')
-      .height('55%')
+      .height('70%')
       .padding(16)
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
       .border({ width: 1, color: this.getCurrentTheme().borderColor })
@@ -824,7 +824,7 @@ export struct LevelDataTable {
         .borderRadius(8)
       }
       .width('100%')
-      .height('35%')
+      .height('30%')
       .padding(16)
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
       .border({ width: 1, color: this.getCurrentTheme().borderColor })
@@ -832,41 +832,6 @@ export struct LevelDataTable {
       .shadow({ radius: 10, color: 'rgba(0,0,0,0.08)', offsetY: 2 })
       .margin({ bottom: 16 })
 
-      // 右侧两个卡片下方的透明卡片：放置取消/确认按钮
-      Column() {
-        Row() {
-          Blank().layoutWeight(1)
-          Button('取消')
-            .height(34)
-            .fontSize(19)
-            .fontColor('#000000')
-            .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
-            .border({ width: 1, color: this.getCurrentTheme().borderColor })
-            .borderRadius(6)
-            .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-            .onClick(() => {
-              if (this.onClearData) {
-                this.onClearData()
-              }
-            })
-          Button('确认')
-            .height(34)
-            .fontSize(19)
-            .margin({ left: 8 })
-            .backgroundColor(this.getCurrentTheme().primary)
-            .fontColor('#ffffff')
-            .borderRadius(6)
-            .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-            .onClick(() => {
-              if (this.onGenerateRandomData) {
-                this.onGenerateRandomData()
-              }
-            })
-        }
-        .width('100%')
-        .justifyContent(FlexAlign.End)
-      }
-      .width('100%')
       .padding({ top: 8 })
       .backgroundColor('rgba(0,0,0,0)')
     }

@@ -22,6 +22,9 @@ export struct TopStatusBar {
   // 实时时间状态
   @State private currentTime: string = ''
   private timeTimer: number | null = null
+  
+  // 模拟数据定时器
+  private dataTimer: number | null = null
 
   private getCurrentTheme(): ExtendedOmniThemeStyle {
     const __v: number = this.themeVersion
@@ -35,6 +38,13 @@ export struct TopStatusBar {
     this.timeTimer = setInterval(() => {
       this.updateCurrentTime()
     }, 1000)
+    
+    // 初始化模拟数据
+    this.initializeMockData()
+    // 启动模拟数据定时器，每3秒更新一次
+    this.dataTimer = setInterval(() => {
+      this.updateMockData()
+    }, 3000)
   }
 
   aboutToDisappear() {
@@ -42,6 +52,10 @@ export struct TopStatusBar {
     if (this.timeTimer) {
       clearInterval(this.timeTimer)
       this.timeTimer = null
+    }
+    if (this.dataTimer) {
+      clearInterval(this.dataTimer)
+      this.dataTimer = null
     }
   }
 
@@ -54,6 +68,51 @@ export struct TopStatusBar {
     const mm = String(now.getMinutes()).padStart(2, '0')
     const ss = String(now.getSeconds()).padStart(2, '0')
     this.currentTime = `${y}-${m}-${d} ${hh}:${mm}:${ss}`
+  }
+
+  /**
+   * 初始化模拟数据
+   */
+  private initializeMockData() {
+    // 设置初始模拟数据
+    this.productionTonPerHour = '1.25'
+    this.sumWeightTon = '45.8'
+    this.sumCounts = '1250'
+    this.avgGram = '36.6'
+    this.statusText = '分选进行中'
+    this.tcpConnected = true
+  }
+
+  /**
+   * 更新模拟数据
+   */
+  private updateMockData() {
+    // 模拟产量变化 (0.8 - 2.0 吨/小时)
+    const productionBase = 1.2
+    const productionVariation = (Math.random() - 0.5) * 0.8
+    this.productionTonPerHour = (productionBase + productionVariation).toFixed(2)
+
+    // 模拟总重量增长 (每次增加 0.1-0.3 吨)
+    const currentWeight = parseFloat(this.sumWeightTon) || 0
+    const weightIncrease = 0.1 + Math.random() * 0.2
+    this.sumWeightTon = (currentWeight + weightIncrease).toFixed(1)
+
+    // 模拟总计数增长 (每次增加 20-50 个)
+    const currentCounts = parseInt(this.sumCounts) || 0
+    const countsIncrease = 20 + Math.floor(Math.random() * 31)
+    this.sumCounts = (currentCounts + countsIncrease).toString()
+
+    // 模拟平均重量变化 (30-45 克)
+    const avgBase = 37.5
+    const avgVariation = (Math.random() - 0.5) * 8
+    this.avgGram = (avgBase + avgVariation).toFixed(1)
+
+    // 模拟状态文本变化
+    const statusTexts = ['分选进行中', '设备运行正常', '数据采集中', '质量检测中', '包装准备中']
+    this.statusText = statusTexts[Math.floor(Math.random() * statusTexts.length)]
+
+    // 模拟TCP连接状态 (95% 时间连接正常)
+    this.tcpConnected = Math.random() > 0.05
   }
 
   build() {

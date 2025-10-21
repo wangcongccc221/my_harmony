@@ -293,19 +293,134 @@ export struct DataTablesTabBar {
           }
         })
       } else if (this.selectedTab === '动态装箱') {
-        DraggableGridTable({
-          tableName: '动态装箱',
-          tableRows: this.dynamicPackingTableData,
-          tableTitle: '动态装箱',
-          headerTitles: ['等级', '30', '20', '10', '0']
-        })
+        // 使用Grid组件显示动态装箱表格（带卡片包裹）
+        Column() {
+          Text('动态装箱')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.getCurrentTheme().textColor)
+            .alignSelf(ItemAlign.Start)
+            .margin({ bottom: 4 })
+
+          // 表格容器（卡片样式）
+          Column() {
+            Grid() {
+            // 表头
+            ForEach(['出口', '流水码', '装箱规格', '等级', '箱数', '纸箱规格', '纸箱净重', '箱数/分'], (title: string, index: number) => {
+              GridItem() {
+                Text(title)
+                  .fontSize(18)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+                  .textAlign(TextAlign.Center)
+                  .width('100%')
+                  .height(24)
+                  .padding(2)
+                  .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+                  .border({ width: { right: 1, bottom: 1 }, color: this.getCurrentTheme().borderColor })
+              }
+            })
+            
+            // 数据行
+            ForEach(this.dynamicPackingTableData, (row: string[], rowIndex: number) => {
+              ForEach(row, (cell: string, colIndex: number) => {
+                GridItem() {
+                  Text(cell)
+                    .fontSize(16)
+                    .fontColor(this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .width('100%')
+                    .height(65)
+                    .padding(2)
+                    .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+                    .border({ width: { right: 1, bottom: 1 }, color: this.getCurrentTheme().borderColor })
+                }
+              })
+            })
+          }
+          .columnsTemplate('1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr')
+          .columnsGap(0)
+          .rowsGap(0)
+          .width('100%')
+          .height('75%')
+          .backgroundColor(this.getCurrentTheme().surfaceColor)
+          .borderRadius(8)
+        }
+        .width('100%')
+        .alignItems(HorizontalAlign.Start)
+      }
+      .width('100%')
+      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      .border({ width: 1, color: this.getCurrentTheme().borderColor })
+      .borderRadius(6)
+      .padding(4)
+      .margin({ top: 4, left: 4, right: 4, bottom: 2 })
+      .alignItems(HorizontalAlign.Center)
+      .justifyContent(FlexAlign.Center)
       } else if (this.selectedTab === '成品') {
-        DraggableGridTable({
-          tableName: '成品',
-          tableRows: this.finishedProductsTableData,
-          tableTitle: '成品',
-          headerTitles: ['等级', '30', '20', '10', '0']
-        })
+        // 使用Grid组件显示成品表格（带卡片包裹）
+        Column() {
+          Text('成品')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.getCurrentTheme().textColor)
+            .alignSelf(ItemAlign.Start)
+            .margin({ bottom: 4 })
+
+          // 表格容器（卡片样式）
+          Column() {
+            Grid() {
+            // 表头
+            ForEach(['成品码', '出口', '流水码', '容器名称', '等级', '包装时间', '纸箱规格', '纸箱净重'], (title: string, index: number) => {
+              GridItem() {
+                Text(title)
+                  .fontSize(18)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+                  .textAlign(TextAlign.Center)
+                  .width('100%')
+                  .height(24)
+                  .padding(2)
+                  .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+                  .border({ width: { right: 1, bottom: 1 }, color: this.getCurrentTheme().borderColor })
+              }
+            })
+            
+            // 数据行
+            ForEach(this.finishedProductsTableData, (row: string[], rowIndex: number) => {
+              ForEach(row, (cell: string, colIndex: number) => {
+                GridItem() {
+                  Text(cell)
+                    .fontSize(16)
+                    .fontColor(this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .width('100%')
+                    .height(65)
+                    .padding(2)
+                    .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+                    .border({ width: { right: 1, bottom: 1 }, color: this.getCurrentTheme().borderColor })
+                }
+              })
+            })
+          }
+          .columnsTemplate('1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr')
+          .columnsGap(0)
+          .rowsGap(0)
+          .width('100%')
+          .height('75%')
+          .backgroundColor(this.getCurrentTheme().surfaceColor)
+        }
+        .width('100%')
+        .alignItems(HorizontalAlign.Start)
+      }
+      .width('100%')
+      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      .border({ width: 1, color: this.getCurrentTheme().borderColor })
+      .borderRadius(6)
+      .padding(4)
+      .margin({ top: 4, left: 4, right: 4, bottom: 2 })
+      .alignItems(HorizontalAlign.Center)
+      .justifyContent(FlexAlign.Center)
       }
     }
     .width('100%')

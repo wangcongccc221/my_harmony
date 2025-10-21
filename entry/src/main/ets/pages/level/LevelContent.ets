@@ -42,6 +42,7 @@ import { LevelDataManager, LevelData, StatisticsData } from './core/LevelDataMan
 import { LevelEventHandler } from './core/LevelEventHandler'
 import { LevelStateManager } from './core/LevelStateManager'
 import { LAYOUT_CONFIG } from './LevelConstants'
+import { ArrowToggleButton } from '../../components/ui/ArrowToggleButton'
 
 /**
  * 等级页面主内容组件结构体
@@ -146,6 +147,9 @@ export struct LevelContent {
    * - 提供状态更新和同步功能
    */
   private stateManager = new LevelStateManager()
+
+  // 右侧操作栏展开/收起状态
+  @State private rightOpsExpanded: boolean = false
 
   /**
    * 获取当前主题配置
@@ -488,7 +492,7 @@ export struct LevelContent {
     Stack() {
       // ==================== 主要内容区域 ====================
       Column() {
-        // ==================== 第一行：左侧控制面板 + 右侧数据表格 ====================
+        // ==================== 第一行：左侧控制面板 + 中间数据表格 + 右侧操作栏 ====================
         Row() {
           // ==================== 左侧控制面板 ====================
           LevelControlPanel({
@@ -523,7 +527,7 @@ export struct LevelContent {
           .width(LAYOUT_CONFIG.LEFT_PANEL_WIDTH)                               // 左侧面板宽度（20%）
           .height('100%')                                                      // 左侧面板高度（100%）
 
-          // ==================== 右侧数据表格 ====================
+          // ==================== 中间数据表格 ====================
           LevelDataTable({
             levelData: this.stateManager.levelData,                            // 等级数据
             statisticsData: this.stateManager.statisticsData,                  // 统计数据
@@ -538,8 +542,58 @@ export struct LevelContent {
               this.handleClearData()
             }
           })
-          .width(LAYOUT_CONFIG.RIGHT_PANEL_WIDTH)                              // 右侧面板宽度（75%）
+          .layoutWeight(1)                                                     // 中间面板占满剩余空间
           .height('100%')                                                      // 右侧面板高度（100%）
+
+          // ==================== 右侧操作栏（与左侧导航一致的可折叠行为） ====================
+          Stack() {
+            // 展开时的按钮内容
+            if (this.rightOpsExpanded) {
+              Column() {
+                Blank().height(0) // 顶部留出空间给箭头位置
+
+                Button('取消')
+                  .width('100%')
+                  .height(42)
+                  .fontSize(16)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(this.getCurrentTheme().textColor)
+                  .backgroundColor(Color.Transparent)
+                  .border({ width: 1, color: this.getCurrentTheme().borderColor })
+                  .borderRadius(10)
+                  .margin({ bottom: 8 })
+                  .onClick(() => { this.handleClearData() })
+
+                Button('确认')
+                  .width('100%')
+                  .height(42)
+                  .fontSize(16)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(Color.White)
+                  .backgroundColor(this.getCurrentTheme().primary)
+                  .borderRadius(10)
+                  .onClick(() => { this.handleGenerateRandomData() })
+              }
+              .width('100%')
+              .height('100%')
+              .padding({ left: 8, right: 8, top: 8, bottom: 8 })
+              .justifyContent(FlexAlign.Start)
+              .alignItems(HorizontalAlign.Center)
+            }
+
+            // 悬浮箭头按钮（贴左边缘）
+            ArrowToggleButton({
+              isExpanded: this.rightOpsExpanded,
+              onToggle: () => { this.rightOpsExpanded = !this.rightOpsExpanded }
+            })
+            .position({ x: this.rightOpsExpanded ? 110 : 5, y: '50%' })
+            .translate({ y: -20 })
+            .zIndex(10)
+          }
+          .width(this.rightOpsExpanded ? 150 : 50)
+          .height('100%')
+          .backgroundColor(Color.Transparent)
+          .margin({ left: 12, right: 8, top: 8, bottom: 8 })
         }
         .width('100%')                                                         // 行宽度（100%）
         .height('100%')                                                        // 行高度（100%）

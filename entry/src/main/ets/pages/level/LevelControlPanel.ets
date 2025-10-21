@@ -313,7 +313,7 @@ export struct LevelControlPanel {
       // ==================== 水果表单卡片 ====================
       Column() {
         Text('水果')
-          .fontSize(24)  // 标题字体调大到24px
+          .fontSize(20)  // 标题字体优化到20px
           .fontWeight(FontWeight.Medium)
           .fontColor(this.getCurrentTheme().textColor)
           .margin({ top: 0, bottom: 4 })
@@ -322,7 +322,7 @@ export struct LevelControlPanel {
         // 种类选择行
         Row() {
           Text('种类:')
-            .fontSize(22)  // 标签字体调大到22px
+            .fontSize(18)  // 标签字体优化到18px
             .fontColor(this.getCurrentTheme().textColor)
             .margin({ right: 2 })
 
@@ -337,7 +337,7 @@ export struct LevelControlPanel {
             .padding({ left: 8, right: 8, top: 3, bottom: 3 })
             .layoutWeight(1)
             .constraintSize({ minWidth: 60, maxWidth: 140 })
-            .height(28)
+            .height(26)
             .onSelect((index: number, value: string) => {
               if (this.onFruitChange) {
                 this.onFruitChange(value)
@@ -346,21 +346,21 @@ export struct LevelControlPanel {
         }
         .width('100%')
         .alignItems(VerticalAlign.Center)
-        .margin({ bottom: 4 })
+        .margin({ bottom: 3 })
       }
       .width('100%')
-      .padding(10)
+      .padding(9)
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
       .border({ width: 1, color: this.getCurrentTheme().borderColor })
       .borderRadius(8)
       .shadow({ radius: 8, color: 'rgba(0,0,0,0.08)', offsetY: 2 })
       .alignItems(HorizontalAlign.Start)
-      .margin({ bottom: 4 })
+      .margin({ bottom: 3 })
 
       // 出口报警卡片
       Column() {
         Text('出口报警')
-          .fontSize(24)  // 标题字体调大到24px
+          .fontSize(20)  // 标题字体优化到20px
           .fontWeight(FontWeight.Medium)
           .fontColor(this.getCurrentTheme().textColor)
           .margin({ top: 0, bottom: 4 })
@@ -369,14 +369,14 @@ export struct LevelControlPanel {
         // 出口阀值输入行
         Row() {
           Text('出口阀值:')
-            .fontSize(22)  // 标签字体调大到22px
+            .fontSize(18)  // 标签字体优化到18px
             .fontColor(this.getCurrentTheme().textColor)
             .margin({ right: 2 })
 
           // 数字输入框（0-100）
           TextInput({ text: this.outletThreshold.toString() })
             .type(InputType.Number)
-            .fontSize(20)  // 输入框字体调大到20px
+            .fontSize(16)  // 输入框字体优化到16px
             .fontColor(this.getCurrentTheme().textColor)
             .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
             .border({ width: 1, color: this.getCurrentTheme().borderColor })
@@ -384,7 +384,7 @@ export struct LevelControlPanel {
             .padding({ left: 8, right: 8, top: 3, bottom: 3 })
             .layoutWeight(1)
             .constraintSize({ minWidth: 60, maxWidth: 120 })
-            .height(28)
+            .height(26)
             .onChange((val: string) => {
               let num = Number(val)
               if (isNaN(num)) {
@@ -399,27 +399,27 @@ export struct LevelControlPanel {
 
           // %符号
           Text('%')
-            .fontSize(22)  // 符号字体调大到22px
+            .fontSize(18)  // 符号字体优化到18px
             .fontColor(this.getCurrentTheme().textColor)
             .margin({ left: 4 })
         }
         .width('100%')
         .alignItems(VerticalAlign.Center)
-        .margin({ bottom: 4 })
+        .margin({ bottom: 3 })
       }
       .width('100%')
-      .padding(10)
+      .padding(9)
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
       .border({ width: 1, color: this.getCurrentTheme().borderColor })
       .borderRadius(8)
       .shadow({ radius: 8, color: 'rgba(0,0,0,0.08)', offsetY: 2 })
       .alignItems(HorizontalAlign.Start)
-      .margin({ bottom: 4 })
+      .margin({ bottom: 3 })
 
       // 分选标准卡片
       Column() {
         Text('分选标准')
-          .fontSize(24)  // 标题字体调大到24px
+          .fontSize(20)  // 标题字体优化到20px
           .fontWeight(FontWeight.Medium)
           .fontColor(this.getCurrentTheme().textColor)
           .margin({ top: 0, bottom: 6 })
@@ -466,7 +466,7 @@ export struct LevelControlPanel {
             .alignItems(VerticalAlign.Center)
           }
           .width('100%')
-          .margin({ bottom: 4 })
+          .margin({ bottom: 3 })
 
           // 第二行：直径、面积、体积
           Row() {
@@ -530,18 +530,18 @@ export struct LevelControlPanel {
         .alignItems(HorizontalAlign.Start)
       }
       .width('100%')
-      .padding(10)
+      .padding(9)
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
       .border({ width: 1, color: this.getCurrentTheme().borderColor })
       .borderRadius(8)
       .shadow({ radius: 8, color: 'rgba(0,0,0,0.08)', offsetY: 2 })
       .alignItems(HorizontalAlign.Start)
-      .margin({ bottom: 4 })
+      .margin({ bottom: 3 })
 
       // 计算每箱单位卡片
       Column() {
         Text('计算每箱单位')
-          .fontSize(24)  // 标题字体调大到24px
+          .fontSize(20)  // 标题字体优化到20px
           .fontWeight(FontWeight.Medium)
           .fontColor(this.getCurrentTheme().textColor)
           .margin({ top: 0, bottom: 4 })
@@ -597,7 +597,7 @@ export struct LevelControlPanel {
       // 装箱量卡片
       Column() {
         Text('装箱量')
-          .fontSize(24)  // 标题字体调大到24px
+          .fontSize(20)  // 标题字体优化到20px
           .fontWeight(FontWeight.Medium)
           .fontColor(this.getCurrentTheme().textColor)
           .margin({ top: 0, bottom: 4 })
@@ -606,13 +606,13 @@ export struct LevelControlPanel {
         // 装箱重量1
         Row() {
           Text('装箱重量1:')
-            .fontSize(22)  // 标签字体调大到22px
+            .fontSize(18)  // 标签字体优化到18px
             .fontColor(this.getCurrentTheme().textColor)
             .margin({ right: 2 })
 
           TextInput({ text: this.packingWeight1.toString() })
             .type(InputType.Number)
-            .fontSize(20)  // 输入框字体调大到20px
+            .fontSize(16)  // 输入框字体优化到16px
             .fontColor(this.getCurrentTheme().textColor)
             .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
             .border({ width: 1, color: this.getCurrentTheme().borderColor })
@@ -620,7 +620,7 @@ export struct LevelControlPanel {
             .padding({ left: 8, right: 8, top: 3, bottom: 3 })
             .layoutWeight(1)
             .constraintSize({ minWidth: 60, maxWidth: 120 })
-            .height(28)
+            .height(26)
             .onChange((val: string) => {
               const num = Number(val)
               if (this.onPackingWeight1Change) {
@@ -640,13 +640,13 @@ export struct LevelControlPanel {
         // 装箱重量2
         Row() {
           Text('装箱重量2:')
-            .fontSize(22)  // 标签字体调大到22px
+            .fontSize(18)  // 标签字体优化到18px
             .fontColor(this.getCurrentTheme().textColor)
             .margin({ right: 2 })
 
           TextInput({ text: this.packingWeight2.toString() })
             .type(InputType.Number)
-            .fontSize(20)  // 输入框字体调大到20px
+            .fontSize(16)  // 输入框字体优化到16px
             .fontColor(this.getCurrentTheme().textColor)
             .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
             .border({ width: 1, color: this.getCurrentTheme().borderColor })
@@ -654,7 +654,7 @@ export struct LevelControlPanel {
             .padding({ left: 8, right: 8, top: 3, bottom: 3 })
             .layoutWeight(1)
             .constraintSize({ minWidth: 60, maxWidth: 120 })
-            .height(28)
+            .height(26)
             .onChange((val: string) => {
               const num = Number(val)
               if (this.onPackingWeight2Change) {
@@ -690,7 +690,7 @@ export struct LevelControlPanel {
         .width('100%')
       }
       .width('100%')
-      .padding(10)
+      .padding(9)
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
       .border({ width: 1, color: this.getCurrentTheme().borderColor })
       .borderRadius(8)

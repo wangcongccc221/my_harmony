@@ -543,7 +543,7 @@ struct Page {
         .width(this.sideBarStatus ? 150 : 50)
         .height('100%')
         // .padding({ left: 8, right: 8, top: 8, bottom: 8 })
-        .backgroundColor(this.getNavBgForCurrentPage())
+        .backgroundColor(this.sideBarStatus ? this.getNavBgForCurrentPage() : this.getCurrentTheme().backgroundColor)
 
         // 右侧内容
         Column() {

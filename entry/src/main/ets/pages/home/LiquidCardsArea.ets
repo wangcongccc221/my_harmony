@@ -257,7 +257,7 @@ export struct LiquidCardsArea {
       .width('100%')
     }
     .width('100%')
-    .height('30%') // 液体卡片区域占30%
+    .height('36%') // 液体卡片区域占36%
     // 拖拽激活时禁用滚动，避免抢占onDrop事件
     .enabled(!this.gridDragActive)
     .scrollable(ScrollDirection.Vertical)

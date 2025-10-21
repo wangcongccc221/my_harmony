@@ -199,11 +199,11 @@ export struct SortingInfoCard {
     Column() {
       // ==================== 卡片标题 ====================
       Text('当前分选信息')
-        .fontSize(22)                                    // 字体大小（调大到22px）
-        .fontWeight(FontWeight.Medium)                   // 字体粗细
+        .fontSize(16)                                    // 字体大小（与等级表标题一致）
+        .fontWeight(FontWeight.Medium)                   // 字体粗细（与等级表标题一致）
         .fontColor(this.getCurrentTheme().textColor)     // 文字颜色（主题色）
         .alignSelf(ItemAlign.Start)                      // 左对齐
-        .margin({ bottom: 12 })                          // 底部边距调大
+        .margin({ bottom: 8 })                          // 底部边距（增加间距）
 
       // ==================== 信息内容区域 ====================
       // 内容一行布局（九个项目，按百分比等分，每项约11.11%）
@@ -223,7 +223,7 @@ export struct SortingInfoCard {
       .alignItems(VerticalAlign.Center)                  // 垂直居中
     }
     .width('100%')                                       // 宽度100%
-    .height('15%')                                       // 信息卡片占15%
+    .height('12%')                                       // 信息卡片占12%
     .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)  // 背景色（主题控制背景色或表面色）
     .border({ width: 1, color: this.getCurrentTheme().borderColor })  // 边框（1px主题边框色）
     .borderRadius(12)                                    // 圆角12px
@@ -260,19 +260,86 @@ export struct SortingInfoCard {
     Column() {
       // ==================== 信息标签 ====================
       Text(label)
-        .fontSize(16)                                    // 字体大小（调大到16px）
-        .fontColor('#888888')                            // 标签颜色（灰色）
-        .margin({ bottom: 4 })                          // 底部边距调大
+        .fontSize(16)                                    // 字体大小（加大到16px）
+        .fontWeight(FontWeight.Bold)                    // 字体粗细（加粗）
+        .fontColor(this.getCurrentTheme().subTextColor ?? '#888888')  // 标签颜色（主题副文字色或灰色）
+        .margin({ bottom: 12 })                         // 底部边距（增加间距，让标签和数据分离）
 
       // ==================== 信息数值 ====================
-      Text(valueGetter())
-        .fontSize(20)                                    // 字体大小（调大到20px）
-        .fontWeight(FontWeight.Medium)                   // 字体粗细
-        .fontColor('#222222')                            // 数值颜色（深色）
-        .maxLines(1)                                     // 最大行数1行
-        .textOverflow({ overflow: TextOverflow.Ellipsis })  // 文本溢出省略号
+      // 将数值和单位分开显示
+      Row() {
+        // 数值部分（突出显示）
+        Text(this.extractValue(valueGetter()))
+          .fontSize(20)                                    // 字体大小（加大到20px，突出数值）
+          .fontWeight(FontWeight.Bold)                     // 字体粗细（加粗，突出数值）
+          .fontColor(this.getCurrentTheme().textColor)     // 数值颜色（主题文字色）
+        
+        // 单位部分（保持原样）
+        Text(this.extractUnit(valueGetter()))
+          .fontSize(16)                                    // 字体大小（保持16px）
+          .fontWeight(FontWeight.Normal)                   // 字体粗细（正常）
+          .fontColor(this.getCurrentTheme().subTextColor ?? '#888888')  // 单位颜色（副文字色）
+          .margin({ left: 2 })                            // 与数值的间距
+      }
+      .alignItems(VerticalAlign.Bottom)                   // 底部对齐
     }
     .width(widthPercent !== undefined ? `${widthPercent}%` : '11.11%')  // 宽度（自定义或默认11.11%）
     .alignItems(HorizontalAlign.Start)                   // 左对齐
+  }
+
+  /**
+   * 提取数值部分（去掉单位）
+   * 
+   * 功能说明：
+   * - 从完整字符串中提取数值部分
+   * - 支持各种单位格式和时间格式
+   * 
+   * 参数说明：
+   * - fullText: 包含数值和单位的完整字符串
+   * 
+   * 返回值：
+   * - 只包含数值的字符串
+   */
+  private extractValue(fullText: string): string {
+    if (!fullText || fullText === '--:--:--' || fullText === '未选择') {
+      return fullText
+    }
+    
+    // 处理时间格式 (HH:MM:SS)
+    if (fullText.match(/^\d{2}:\d{2}:\d{2}$/)) {
+      return fullText // 时间格式整体显示，不分离
+    }
+    
+    // 匹配数值部分（包括小数点）
+    const match = fullText.match(/^([\d.]+)/)
+    return match ? match[1] : fullText
+  }
+
+  /**
+   * 提取单位部分
+   * 
+   * 功能说明：
+   * - 从完整字符串中提取单位部分
+   * - 支持各种单位格式和时间格式
+   * 
+   * 参数说明：
+   * - fullText: 包含数值和单位的完整字符串
+   * 
+   * 返回值：
+   * - 只包含单位的字符串
+   */
+  private extractUnit(fullText: string): string {
+    if (!fullText || fullText === '--:--:--' || fullText === '未选择') {
+      return ''
+    }
+    
+    // 处理时间格式 (HH:MM:SS) - 时间格式没有单位部分
+    if (fullText.match(/^\d{2}:\d{2}:\d{2}$/)) {
+      return '' // 时间格式没有单位
+    }
+    
+    // 匹配单位部分（数值后面的所有内容）
+    const match = fullText.match(/^[\d.]+(.+)$/)
+    return match ? match[1] : ''
   }
 }

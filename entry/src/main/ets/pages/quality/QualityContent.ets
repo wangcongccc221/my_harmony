@@ -41,6 +41,7 @@ import { QualityDataTable } from './QualityDataTable'
 import { QualityOutletDialog } from './QualityOutletDialog'
 import { QualityLevelData } from './QualityConstants'
 import { DEFAULT_QUALITY_SETTINGS } from './QualityConstants'
+import { ArrowToggleButton } from '../../components/ui/ArrowToggleButton'
 
 /**
  * 品质内容组件
@@ -113,6 +114,9 @@ export struct QualityContent {
 
   // 用于驱动UI刷新的可观察数据（表格与等级数量联动）
   @State private currentLevels: QualityLevelData[] = []
+  
+  // 右侧操作栏展开状态
+  @State private rightOpsExpanded: boolean = false
 
   // ==================== 主题相关 ====================
   
@@ -449,7 +453,8 @@ export struct QualityContent {
   build() {
     Stack() {
       // 主要内容
-      Column() {
+      Row() {
+        Column() {
         // 控制面板组件
         QualityControlPanel({
           levelCountIndex: this.stateManager.getLevelCountIndex(),
@@ -475,43 +480,79 @@ export struct QualityContent {
           }
         })
 
-        // 取消和确认按钮
-        Row() {
-          Blank().layoutWeight(1)
-          
-          Button('取消')
-            .fontSize(22)
-            .fontColor(this.getCurrentTheme().textColor)
-            .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
-            .border({ width: 1, color: this.getCurrentTheme().borderColor })
-            .borderRadius(8)
-            .padding({ left: 20, right: 20, top: 10, bottom: 10 })
-            .onClick(() => {
-              this.eventHandler.onDataReset()
-              console.log('品质页面：取消操作')
-            })
-
-          Button('确认')
-            .fontSize(22)
-            .fontColor(Color.White)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .borderRadius(8)
-            .padding({ left: 20, right: 20, top: 10, bottom: 10 })
-            .margin({ left: 10 })
-            .onClick(() => {
-              const first = this.stateManager.getQualityLevels()[0]
-              this.eventHandler.onDataUpdate(first, -1)
-              console.log('品质页面：确认操作')
-            })
         }
         .width('100%')
-        .justifyContent(FlexAlign.End)
-        .padding({ left: 16, right: 16, top: 0, bottom: 16 })
+        .height('100%')
+        .layoutWeight(1)
+        .justifyContent(FlexAlign.Start)
+
+        // 右侧操作栏（可折叠）
+        Stack() {
+          // 展开时的按钮内容
+          if (this.rightOpsExpanded) {
+            Column() {
+              Blank().height(0) // 顶部留出空间给箭头位置
+
+              Button('取消')
+                .width('100%')
+                .height(42)
+                .fontSize(16)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(this.getCurrentTheme().textColor)
+                .backgroundColor(Color.Transparent)
+                .border({ width: 1, color: this.getCurrentTheme().borderColor })
+                .borderRadius(10)
+                .margin({ bottom: 8 })
+                .onClick(() => {
+                  this.eventHandler.onDataReset()
+                  console.log('品质页面：取消操作')
+                })
+
+              Button('确认')
+                .width('100%')
+                .height(42)
+                .fontSize(16)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(Color.White)
+                .backgroundColor(this.getCurrentTheme().primary)
+                .borderRadius(10)
+                .onClick(() => {
+                  const first = this.stateManager.getQualityLevels()[0]
+                  this.eventHandler.onDataUpdate(first, -1)
+                  console.log('品质页面：确认操作')
+                })
+            }
+            .width('100%')
+            .height('100%')
+            .padding({ left: 8, right: 8, top: 8, bottom: 8 })
+            .justifyContent(FlexAlign.Start)
+            .alignItems(HorizontalAlign.Center)
+          }
+
+          // 悬浮箭头按钮（贴左边缘）
+          ArrowToggleButton({
+            isExpanded: this.rightOpsExpanded,
+            onToggle: () => { this.rightOpsExpanded = !this.rightOpsExpanded }
+          })
+          .position({ x: this.rightOpsExpanded ? 110 : 5, y: '50%' })
+          .translate({ y: -20 })
+          .zIndex(10)
+        }
+        .width(this.rightOpsExpanded ? 150 : 50)
+        .height('100%')
+        .backgroundColor(this.getCurrentTheme().surfaceColor)
+        .borderRadius(12)
+        .margin({ left: 12, right: 8, top: 8, bottom: 8 })
+        .shadow({
+          radius: 12,
+          color: 'rgba(0, 0, 0, 0.08)',
+          offsetX: 0,
+          offsetY: 6
+        })
       }
       .width('100%')
       .height('100%')
-      .justifyContent(FlexAlign.Start)
-      .alignItems(HorizontalAlign.Center)
+      .alignItems(VerticalAlign.Top)
       .backgroundColor(this.getCurrentTheme().pageBg ?? this.getCurrentTheme().backgroundColor)
       
       // 出口设置对话框 - 放在Stack的最上层

@@ -14,6 +14,7 @@ export struct SwitchControl {
   @Prop switchSize: number = 24  // 开关大小
   @Prop activeColor: string = '#EA7A10'  // 激活颜色
   @Prop inactiveColor: string = '#E0E0E0'  // 非激活颜色
+  @Prop isLastEnabled: boolean = false  // 是否为最后一个开启的设置（用于阻止关闭）
   
   onToggle?: () => void  // 切换回调
 
@@ -33,7 +34,13 @@ export struct SwitchControl {
         switchSize: this.switchSize,
         activeColor: this.activeColor,
         inactiveColor: this.inactiveColor,
-        onBeforeChange: (_next: boolean) => {
+        onBeforeChange: (next: boolean) => {
+          // 如果尝试关闭最后一个开启的设置，阻止操作
+          if (!next && this.isLastEnabled) {
+            console.log(`[SwitchControl] 无法关闭 ${this.label}，必须保持至少一个设置开启`)
+            return Promise.resolve(false) // 阻止关闭
+          }
+          
           if (this.onToggle) {
             this.onToggle()
           }

@@ -400,7 +400,7 @@ export struct QualityDataTable {
         }, (data: QualityLevelData, index: number) => `${index}`)
       }
       .width('100%')
-      .height('90%') // 设置固定高度以启用滚动
+      .layoutWeight(1) // 使用layoutWeight填满可用空间
       .scrollBar(BarState.Auto)
       .edgeEffect(EdgeEffect.Spring)
       .friction(100)

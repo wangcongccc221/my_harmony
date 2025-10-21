@@ -363,12 +363,14 @@ export struct HomeContent {
         onSetting3Change: () => { this.toggleSetting('设置3') },
         onSetting4Change: () => { this.toggleSetting('设置4') }
       })
-      .padding({ top: 0, left: 0, right: 20, bottom: 0 })
+      .padding({ top: 0, left: 0, right: 20, bottom: '1%' })
       // 主页信息卡片：分选速度 | 本批重量 | 本批个数 | 开始时间 | 分选程序 | 分选效率 | 平均重量 | 实时产量 | 间隔速度
       SortingInfoCard()
+      .margin({ bottom: '1%' })
 
       // 液体卡片区域：单容器自动换行，固定显示两排高度，支持纵向滚动查看更多
       LiquidCardsArea()
+      .margin({ bottom: '0.5%' })
 
       // 数据表格TabBar组件 - 替换原有的FunctionButtons和DataTablesCard
       DataTablesTabBar({
@@ -391,7 +393,7 @@ export struct HomeContent {
         }
       })
       .width('100%')
-      .height('47%') // 表格区域占47%
+      .height('48%') // 表格区域占48%
       .margin({ bottom: 0 })
 
 
