@@ -388,8 +388,8 @@ export interface LayoutConfig {
  * - cardPadding: 卡片内边距16px
  */
 export const QUALITY_LAYOUT_CONFIG: LayoutConfig = {
-  controlPanelHeight: '10%',
-  dataTableHeight: '75%',
+  controlPanelHeight: '6%',
+  dataTableHeight: '79%',
   cardMargin: 16,
   cardPadding: 16
 }

@@ -710,7 +710,8 @@ export struct LevelDataTable {
               { value: '0' }, { value: '1' }, { value: '2' }, { value: '3' }, { value: '4' },
               { value: '5' }, { value: '6' }, { value: '7' }, { value: '8' }, { value: '9' }, { value: '10' }
             ])
-              .selected(0)
+              .selected(this.levelCountIndex)
+              .value(this.levelCountIndex.toString())
               .font({ size: 22 })
               .fontColor(this.getCurrentTheme().textColor)
               .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
@@ -722,6 +723,39 @@ export struct LevelDataTable {
                 this.levelCountIndex = index
                 this.initializeLevelData()
                 console.log('等级数量选择:', index)
+              })
+              .onAxisEvent((event?: AxisEvent) => {
+                if (event) {
+                  const verticalValue = event.getVerticalAxisValue()
+                  const horizontalValue = event.getHorizontalAxisValue()
+                  
+                  console.log('🎡 等级页面滚轮事件触发 - 垂直值:', verticalValue, '水平值:', horizontalValue)
+                  
+                  // 处理垂直滚轮事件
+                  if (Math.abs(verticalValue) > Math.abs(horizontalValue)) {
+                    console.log('✅ 进入等级页面垂直滚轮处理逻辑')
+                    
+                    // 基于当前等级数量进行增减
+                    const currentCount = this.levelCountIndex
+                    let newCount = currentCount
+                    
+                    if (verticalValue > 0) {
+                      // 向上滚动，等级数量 -1（减少）
+                      newCount = Math.max(currentCount - 1, 0)
+                      console.log(`⬆️ 等级页面向上滚动，从 ${currentCount} 到 ${newCount}`)
+                    } else if (verticalValue < 0) {
+                      // 向下滚动，等级数量 +1（增加）
+                      newCount = Math.min(currentCount + 1, 10)
+                      console.log(`⬇️ 等级页面向下滚动，从 ${currentCount} 到 ${newCount}`)
+                    }
+                    
+                    if (newCount !== currentCount) {
+                      this.levelCountIndex = newCount
+                      this.initializeLevelData()
+                      console.log(`✅ 等级页面等级数量已更新为: ${newCount}`)
+                    }
+                  }
+                }
               })
           }
           .width('100%')

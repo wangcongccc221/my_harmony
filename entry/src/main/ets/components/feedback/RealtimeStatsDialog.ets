@@ -205,8 +205,8 @@ export struct RealtimeStatsDialog {
               ProcessingCurveChart({ 
                 title: '出口统计信息', 
                 chartHeight: '80%',  // 图表高度调整为80%
-                chartWidth: '100%',
-                data: this.getChartDataForTab('出口统计信息')
+                chartWidth: '100%'
+                // 不传入data，让组件自动模拟数据
               })
                 .width('100%').height('100%')
             } else if (this.currentInnerPage === '品质统计信息') {

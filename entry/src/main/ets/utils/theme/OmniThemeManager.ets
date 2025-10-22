@@ -515,7 +515,7 @@ export type ThemeChangeCallback = (theme: OmniThemeType) => void
 // Omni-UI 主题管理器类
 export class OmniThemeManager {
   private static instance: OmniThemeManager
-  private currentTheme: OmniThemeType = OmniThemeType.WARM_AMBER
+  private currentTheme: OmniThemeType = OmniThemeType.PROFESSIONAL_BLUE
   private themeChangeCallbacks: ThemeChangeCallback[] = []  // 主题变化回调列表
   private themeChangeFlag: number = 0  // 主题变化标志，每次主题变化时递增
   

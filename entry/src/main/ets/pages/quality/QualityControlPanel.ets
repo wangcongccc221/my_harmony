@@ -40,6 +40,7 @@ import { BaseComponentHelper } from '../../components/common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { LEVEL_COUNT_OPTIONS } from './QualityConstants'
+import { GlobalLevelCountManager } from '../../utils/GlobalLevelCountManager'
 
 /**
  * 品质页面控制面板组件
@@ -77,7 +78,47 @@ export struct QualityControlPanel {
    * - 数据处理时使用选中的等级数量
    * - 状态重置时恢复默认值
    */
-  @Prop levelCountIndex: number = 0
+  @Prop levelCountIndex: number = 9
+  
+  /**
+   * 当前实际数据条数
+   * 
+   * 功能说明：
+   * - 用于滚轮事件处理
+   * - 基于实际数据条数进行增减
+   */
+  @Prop currentDataCount: number = 0
+
+  /**
+   * 当前选中的等级数量索引（内部状态）
+   * 
+   * 功能说明：
+   * - 用于响应全局管理器的状态变化
+   * - 控制Select组件的显示
+   * - 与levelCountIndex保持同步
+   */
+  @State @Watch('onCurrentSelectedIndexChange') private currentSelectedIndex: number = 0
+  
+  /**
+   * 强制刷新标识
+   * 
+   * 功能说明：
+   * - 用于强制Select组件重新渲染
+   * - 解决Select组件不响应@State变化的问题
+   */
+  @State private forceRefresh: number = 0
+
+  // ==================== 全局管理器 ====================
+  
+  /**
+   * 全局等级数量管理器实例
+   * 
+   * 功能说明：
+   * - 管理全局的等级数量状态
+   * - 支持滚轮事件直接修改等级数量
+   * - 提供状态变化监听功能
+   */
+  private globalLevelCountManager = GlobalLevelCountManager.getInstance()
 
   // ==================== 事件回调 ====================
   
@@ -204,6 +245,86 @@ export struct QualityControlPanel {
   }
 
   /**
+   * 组件即将出现时的生命周期方法
+   * 
+   * 功能说明：
+   * - 初始化全局等级数量管理器
+   * - 设置状态变化监听器
+   * - 同步本地状态和全局状态
+   */
+  aboutToAppear(): void {
+    // 初始化内部状态
+    this.currentSelectedIndex = this.levelCountIndex
+    console.log(`🎯 QualityControlPanel aboutToAppear - 初始索引: ${this.levelCountIndex}, 内部状态: ${this.currentSelectedIndex}`)
+    this.initializeGlobalLevelCountManager()
+  }
+
+  /**
+   * 监听currentSelectedIndex变化
+   */
+  onCurrentSelectedIndexChange(): void {
+    console.log(`✅ currentSelectedIndex已更新为: ${this.currentSelectedIndex}`)
+    // 强制刷新Select组件
+    this.forceRefresh++
+    console.log(`🔄 强制刷新Select组件，刷新次数: ${this.forceRefresh}`)
+    
+    // 强制触发UI更新
+    this.forceRefresh = this.forceRefresh
+  }
+
+  /**
+   * 从外部更新等级数量选择器
+   * 
+   * 功能说明：
+   * - 根据表格数据条数更新等级数量选择器
+   * - 实现反向数据绑定
+   * - 同步选择器显示
+   * 
+   * @param dataCount 表格数据条数
+   */
+  public updateFromDataCount(dataCount: number): void {
+    console.log(`🎯 外部更新等级数量选择器: ${dataCount}条数据`)
+    
+    // 更新全局管理器
+    this.globalLevelCountManager.setCount(dataCount)
+    
+    console.log(`✅ 等级数量选择器已从外部更新为: ${dataCount}个等级`)
+  }
+
+  /**
+   * 初始化全局等级数量管理器
+   * 
+   * 功能说明：
+   * - 设置全局管理器的初始状态
+   * - 添加状态变化监听器
+   * - 同步本地状态和全局状态
+   */
+  private initializeGlobalLevelCountManager(): void {
+    // 设置全局管理器的初始索引
+    this.globalLevelCountManager.setIndex(this.levelCountIndex)
+    
+    // 添加状态变化监听器
+    this.globalLevelCountManager.addChangeListener((newCount: number, newIndex: number) => {
+      console.log(`🔄 全局等级数量变化: ${newCount} (索引: ${newIndex})`)
+      
+      // 更新内部状态，触发UI更新
+      this.currentSelectedIndex = newIndex
+      console.log(`🎯 更新Select组件显示索引: ${newIndex}`)
+      
+      // 强制刷新Select组件
+      this.forceRefresh++
+      console.log(`🔄 强制刷新Select组件，刷新次数: ${this.forceRefresh}`)
+      
+      // 触发本地回调函数
+      if (this.onLevelCountChange) {
+        this.onLevelCountChange(newIndex)
+      }
+    })
+    
+    console.log(`🎯 全局等级数量管理器初始化完成，当前索引: ${this.levelCountIndex}`)
+  }
+
+  /**
    * 构建组件UI
    * 
    * 功能说明：
@@ -237,9 +358,14 @@ export struct QualityControlPanel {
           .fontColor(this.getCurrentTheme().textColor)
           .margin({ right: 8 })
 
-        // 等级数量选择器
+        // 等级数量选择器 - 使用key强制重新创建
         Select(LEVEL_COUNT_OPTIONS)
-          .selected(this.levelCountIndex)
+          .key(`select-${this.currentSelectedIndex}-${this.forceRefresh}`)
+          .selected(this.currentSelectedIndex)
+          .value(LEVEL_COUNT_OPTIONS[this.currentSelectedIndex]?.value || '0')
+          .onAppear(() => {
+            console.log(`🎯 Select组件出现 - 当前选中索引: ${this.currentSelectedIndex}, 强制刷新: ${this.forceRefresh}`)
+          })
           .font({ size: 22 })
           .fontColor(this.getCurrentTheme().textColor)
           .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
@@ -251,6 +377,29 @@ export struct QualityControlPanel {
           .onSelect((index: number) => {
             if (this.onLevelCountChange) {
               this.onLevelCountChange(index)
+            }
+          })
+          .onAxisEvent((event?: AxisEvent) => {
+            if (event) {
+              const verticalValue = event.getVerticalAxisValue()
+              const horizontalValue = event.getHorizontalAxisValue()
+              
+              console.log('🎡 滚轮事件触发 - 垂直值:', verticalValue, '水平值:', horizontalValue)
+              
+              // 处理垂直滚轮事件
+              console.log('🔍 检查滚轮条件 - 垂直值绝对值:', Math.abs(verticalValue), '水平值绝对值:', Math.abs(horizontalValue))
+              
+              if (Math.abs(verticalValue) > Math.abs(horizontalValue)) {
+                console.log('✅ 进入垂直滚轮处理逻辑')
+                console.log('🎯 使用全局等级数量管理器处理滚轮事件')
+                
+                // 使用全局管理器处理滚轮事件，传入实际数据条数
+                this.globalLevelCountManager.handleWheelEvent(verticalValue, this.currentDataCount)
+                
+                console.log('✅ 全局管理器处理完成')
+              } else {
+                console.log('❌ 不满足垂直滚轮条件')
+              }
             }
           })
 
@@ -285,7 +434,7 @@ export struct QualityControlPanel {
       .width('100%')
     }
     .width('100%')
-    .height('10%')
+      .height('6%')
     .padding(16)
     .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
     .border({ width: 1, color: this.getCurrentTheme().borderColor })

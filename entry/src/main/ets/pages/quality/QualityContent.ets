@@ -118,6 +118,9 @@ export struct QualityContent {
   // 右侧操作栏展开状态
   @State private rightOpsExpanded: boolean = false
 
+  // 控制面板组件引用
+  private controlPanelRef: QualityControlPanel | null = null
+
   // ==================== 主题相关 ====================
   
   /**
@@ -246,6 +249,8 @@ export struct QualityContent {
    * - 程序自动设置等级数量时
    */
   private handleLevelCountChange(index: number): void {
+    console.log(`🔄 处理等级数量变化: ${index}`)
+    
     // 更新状态管理器
     this.stateManager.updateLevelCountIndex(index)
     
@@ -257,6 +262,8 @@ export struct QualityContent {
 
     // 刷新可观察数据，触发表格联动
     this.currentLevels = this.stateManager.getQualityLevels()
+    
+    console.log(`✅ 等级数量变化处理完成，当前数据条数: ${this.currentLevels.length}`)
   }
 
   /**
@@ -458,6 +465,7 @@ export struct QualityContent {
         // 控制面板组件
         QualityControlPanel({
           levelCountIndex: this.stateManager.getLevelCountIndex(),
+          currentDataCount: this.currentLevels.length,
           onLevelCountChange: (index: number) => {
             this.handleLevelCountChange(index)
           },
@@ -467,6 +475,10 @@ export struct QualityContent {
           onSettingsClick: () => {
             this.handleSettingsClick()
           }
+        })
+        .onAppear(() => {
+          // 获取控制面板组件引用
+          // this.controlPanelRef = this
         })
 
         // 数据表格组件
@@ -611,4 +623,5 @@ export struct QualityContent {
   aboutToDisappear(): void {
     this.eventHandler.onPageDestroy()
   }
+
 }

@@ -508,6 +508,7 @@ export struct QualityDataTable {
     // 初始化受控输入数组
     this.levelNameInputs = (this.qualityLevels || []).map(item => (item.levelName ?? '').replace(/\D+/g, ''))
     this.lastCount = this.qualityLevels ? this.qualityLevels.length : 0
+    console.log(`📊 品质数据表格初始化 - 数据条数: ${this.lastCount} 条`)
   }
 
   aboutToRender(): void {
@@ -515,6 +516,7 @@ export struct QualityDataTable {
     if (current !== this.lastCount) {
       // 数据条数变化时更新计数
       this.lastCount = current
+      console.log(`📊 品质数据表格 - 数据条数: ${current} 条`)
     }
     // 同步受控输入数组长度与值，避免因为数据刷新导致跳动
     const source = this.qualityLevels || []
