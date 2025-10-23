@@ -99,11 +99,9 @@ export struct GridTable {
     if (this.selectedCells.has(cellId)) {
       // 取消选中
       this.selectedCells.delete(cellId)
-      console.log('🔴 GridTable - 取消选中单元格:', cellText)
     } else {
       // 选中
       this.selectedCells.add(cellId)
-      console.log('🟢 GridTable - 选中单元格:', cellText)
     }
     
     // 更新多选模式状态
@@ -112,7 +110,6 @@ export struct GridTable {
     // 更新全局多选状态
     this.updateGlobalMultiSelectState()
     
-    console.log('📊 GridTable - 当前选中单元格数量:', this.selectedCells.size)
   }
 
   /**
@@ -148,7 +145,6 @@ export struct GridTable {
     AppStorage.set(StorageKeys.MULTI_SELECT_CELLS_KEY, multiSelectState)
     AppStorage.set(StorageKeys.MULTI_SELECT_ACTIVE_KEY, multiSelectState.isActive)
     
-    console.log('🔄 GridTable - 更新全局多选状态:', JSON.stringify(multiSelectState))
   }
 
   /**
@@ -162,7 +158,6 @@ export struct GridTable {
     AppStorage.set(StorageKeys.MULTI_SELECT_CELLS_KEY, { cells: [], isActive: false })
     AppStorage.set(StorageKeys.MULTI_SELECT_ACTIVE_KEY, false)
     
-    console.log('🧹 GridTable - 清除所有选中状态')
   }
 
   /**
@@ -194,7 +189,6 @@ export struct GridTable {
     // 检查是否有多个选中的单元格
     if (this.isMultiSelectMode && this.selectedCells.size > 1) {
       // 多选拖拽：使用所有选中的单元格数据
-      console.log('🎯 GridTable - 开始多选拖拽，选中单元格数量:', this.selectedCells.size)
       
       const selectedCellsArray: MultiSelectCell[] = []
       this.selectedCells.forEach(cellId => {
@@ -222,7 +216,6 @@ export struct GridTable {
         count: selectedCellsArray.length
       })
       
-      console.log('🎯 GridTable - 多选拖拽数据:', dragDataStr)
       
       // 拖拽完成后清除选中状态
       setTimeout(() => {
@@ -247,8 +240,7 @@ export struct GridTable {
         levelName: levelName // 添加等级名称字段，用于等级统计表联动
       }
 
-      const dragDataStr = JSON.stringify(dragData)
-      console.log('🚀 GridTable - 开始单选拖拽:', dragDataStr)
+    const dragDataStr = JSON.stringify(dragData)
 
       return {
         pixelMap: undefined,
@@ -282,7 +274,6 @@ export struct GridTable {
     }
 
     const dragDataStr = JSON.stringify(dragData)
-    console.log('🚀 GridTable - 开始整行拖拽:', dragDataStr)
 
     return {
       pixelMap: undefined,
@@ -298,39 +289,60 @@ export struct GridTable {
   private handleDrop(fromData: DragData, toRowIndex: number, toColIndex: number): void {
     if (!this.enableDrag) return
 
-    const fromRowIndex = fromData.rowIndex
-    const fromColIndex = fromData.colIndex
+    const fromRowIndex = fromData.rowIndex || 0
+    const fromColIndex = fromData.colIndex || 0
 
-    // 如果是同一个单元格，不处理
-    if (fromRowIndex === toRowIndex && fromColIndex === toColIndex) {
+    // 如果是同一个单元格且是同一表格，不处理
+    const isSameTable = fromData.sourceTable === this.tableName
+    if (fromRowIndex === toRowIndex && fromColIndex === toColIndex && isSameTable) {
       return
     }
 
-    console.log('🎯 GridTable - 拖拽交换:', fromData, '到', toRowIndex, toColIndex)
-
-    // 交换单元格内容
+    // 检查是否是跨表格拖拽（等级表到容器表）
+    const isCrossTableDrag = fromData.sourceTable && fromData.sourceTable !== this.tableName
+    const isLevelToContainer = fromData.sourceTable === '等级表' && this.tableName === '容器表'
+    
+    // 获取源值和目标值
     const fromValue = this.tableRows[fromRowIndex][fromColIndex]
     const toValue = this.tableRows[toRowIndex][toColIndex]
 
-    // 创建新的数据数组（保持响应式）
-    const newTableRows = this.tableRows.map((row, rowIdx) => {
-      if (rowIdx === fromRowIndex) {
-        return row.map((cell, colIdx) => {
-          if (colIdx === fromColIndex) {
-            return toValue
-          }
-          return cell
-        })
-      } else if (rowIdx === toRowIndex) {
-        return row.map((cell, colIdx) => {
-          if (colIdx === toColIndex) {
-            return fromValue
-          }
-          return cell
-        })
-      }
-      return row
-    })
+    let newTableRows: string[][]
+
+    if (isLevelToContainer) {
+      // 等级表到容器表：覆盖模式（使用拖拽数据中的value）
+      const dragValue = fromData.value || fromValue
+      newTableRows = this.tableRows.map((row, rowIdx) => {
+        if (rowIdx === toRowIndex) {
+          return row.map((cell, colIdx) => {
+            if (colIdx === toColIndex) {
+              return dragValue // 使用拖拽数据中的值覆盖
+            }
+            return cell
+          })
+        }
+        return row
+      })
+    } else {
+      // 其他情况：交换模式
+      newTableRows = this.tableRows.map((row, rowIdx) => {
+        if (rowIdx === fromRowIndex) {
+          return row.map((cell, colIdx) => {
+            if (colIdx === fromColIndex) {
+              return toValue
+            }
+            return cell
+          })
+        } else if (rowIdx === toRowIndex) {
+          return row.map((cell, colIdx) => {
+            if (colIdx === toColIndex) {
+              return fromValue
+            }
+            return cell
+          })
+        }
+        return row
+      })
+    }
 
     // 更新数据
     this.tableRows = newTableRows
@@ -343,41 +355,65 @@ export struct GridTable {
   private handleRowDrop(fromData: DragData, toRowIndex: number): void {
     if (!this.enableDrag) return
 
-    const fromRowIndex = fromData.rowIndex
+    const fromRowIndex = fromData.rowIndex || 0
 
-    // 如果是同一行，不处理
-    if (fromRowIndex === toRowIndex) {
+    // 如果是同一行且是同一表格，不处理
+    const isSameTable = fromData.sourceTable === this.tableName
+    if (fromRowIndex === toRowIndex && isSameTable) {
       return
     }
-
-    console.log('🎯 GridTable - 整行拖拽交换:', fromRowIndex, '到', toRowIndex)
 
     // 检查索引是否有效
     if (fromRowIndex < 0 || fromRowIndex >= this.tableRows.length || 
         toRowIndex < 0 || toRowIndex >= this.tableRows.length) {
-      console.warn('行索引超出范围:', fromRowIndex, toRowIndex)
       return
     }
+
+    // 检查是否是跨表格拖拽（等级表到容器表）
+    const isLevelToContainer = fromData.sourceTable === '等级表' && this.tableName === '容器表'
 
     // 获取完整的行数据
     const fromRow = [...this.tableRows[fromRowIndex]] // 深拷贝
     const toRow = [...this.tableRows[toRowIndex]] // 深拷贝
 
-    console.log('🔄 整行交换:', fromRow, '↔', toRow)
+    let newTableRows: string[][]
 
-    // 创建新的数据数组（保持响应式）
-    const newTableRows = this.tableRows.map((row, rowIdx) => {
-      if (rowIdx === fromRowIndex) {
-        return toRow
-      } else if (rowIdx === toRowIndex) {
-        return fromRow
-      }
-      return row
-    })
+    if (isLevelToContainer) {
+      // 等级表到容器表：覆盖模式（根据拖拽值决定替换哪一列）
+      const dragValue = fromData.value || fromRow[0]
+      
+      // 根据拖拽值决定替换策略
+      newTableRows = this.tableRows.map((row, rowIdx) => {
+        if (rowIdx === toRowIndex) {
+          // 如果是等级名称（A级、B级等），替换第一列（容器名称）
+          if (dragValue.includes('级')) {
+            return row.map((cell, colIdx) => {
+              if (colIdx === 0) {
+                return dragValue // 替换容器名称
+              }
+              return cell
+            })
+          } else {
+            // 如果是其他数据，替换整行
+            return fromRow
+          }
+        }
+        return row
+      })
+    } else {
+      // 其他情况：交换模式
+      newTableRows = this.tableRows.map((row, rowIdx) => {
+        if (rowIdx === fromRowIndex) {
+          return toRow
+        } else if (rowIdx === toRowIndex) {
+          return fromRow
+        }
+        return row
+      })
+    }
 
     // 更新数据
     this.tableRows = newTableRows
-    console.log('✅ 整行拖拽交换完成')
   }
 
   /**
@@ -403,7 +439,6 @@ export struct GridTable {
     }
 
     const dragDataStr = JSON.stringify(dragData)
-    console.log('🚀 GridTable - 开始整列拖拽:', dragDataStr)
 
     return {
       pixelMap: undefined,
@@ -426,22 +461,17 @@ export struct GridTable {
       return
     }
 
-    console.log('🎯 GridTable - 整列拖拽交换:', fromColIndex, '到', toColIndex)
 
     // 检查列索引是否有效
     if (fromColIndex < 0 || fromColIndex >= this.headerTitles.length ||
         toColIndex < 0 || toColIndex >= this.headerTitles.length) {
-      console.warn('列索引超出范围:', fromColIndex, toColIndex)
       return
     }
 
     // 检查表格数据是否为空
     if (this.tableRows.length === 0) {
-      console.warn('表格数据为空')
       return
     }
-
-    console.log('🔄 整列交换:', this.headerTitles[fromColIndex], '↔', this.headerTitles[toColIndex])
 
     // 交换整列数据
     const newTableRows = this.tableRows.map(row => {
@@ -462,13 +492,11 @@ export struct GridTable {
       const temp = newHeaderTitles[fromColIndex]
       newHeaderTitles[fromColIndex] = newHeaderTitles[toColIndex]
       newHeaderTitles[toColIndex] = temp
-      console.log('🔄 表头交换:', temp, '↔', newHeaderTitles[fromColIndex])
     }
 
     // 更新数据
     this.tableRows = newTableRows
     this.headerTitles = newHeaderTitles
-    console.log('✅ 整列拖拽交换完成')
   }
 
   /**
@@ -512,7 +540,8 @@ export struct GridTable {
       })
       .onDrop((event: DragEvent, extraParams: string) => {
         try {
-          const dragData: DragData = JSON.parse(extraParams)
+          const rawData: Record<string, string> = JSON.parse(extraParams)
+          const dragData: DragData = rawData.extraInfo ? JSON.parse(rawData.extraInfo) : rawData
           this.handleDrop(dragData, rowIndex, colIndex)
         } catch (error) {
           console.error('拖拽数据解析失败:', error)
@@ -614,7 +643,8 @@ export struct GridTable {
       })
       .onDrop((event: DragEvent, extraParams: string) => {
         try {
-          const dragData: DragData = JSON.parse(extraParams)
+          const rawData: Record<string, string> = JSON.parse(extraParams)
+          const dragData: DragData = rawData.extraInfo ? JSON.parse(rawData.extraInfo) : rawData
           this.handleRowDrop(dragData, rowIndex)
         } catch (error) {
           console.error('拖拽数据解析失败:', error)
