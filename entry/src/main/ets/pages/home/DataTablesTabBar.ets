@@ -199,8 +199,12 @@ export struct DataTablesTabBar {
             tableTitle: '等级表',
             headerTitles: ['等级', '30', '20', '10', '0'],
             tableWidth: '100%',
-            maxHeight: '75%',
-            enableDrag: true
+            maxHeight: '72%', // 等级表最大高度改为65%
+            enableDrag: true,
+            headerHeight: 60,  // 等级表表头高度
+            dataRowHeight: 75,  // 等级表数据行高度
+            dividerHeight: 75,   // 等级表分割线高度
+            customBorderWidth: 2      // 等级表边框宽度
           })
           .width('48%')
 
@@ -211,8 +215,12 @@ export struct DataTablesTabBar {
             tableTitle: '容器表',
             headerTitles: ['容器名称', '分选标准', '容器规格', '容器等级'],
             tableWidth: '100%',
-            maxHeight: '75%',
-            enableDrag: false
+            maxHeight: '72%',
+            enableDrag: true,
+            headerHeight: 62,  // 容器表表头高度
+            dataRowHeight: 73,  // 容器表数据行高度
+            dividerHeight: 73,   // 容器表分割线高度
+            customBorderWidth: 2      // 容器表边框宽度
           })
           .width('48%')
           .margin({ left: '2%', right: '2px' })
@@ -228,8 +236,13 @@ export struct DataTablesTabBar {
           tableTitle: '等级统计表',
           headerTitles: ['等级', '重量', '出口', '个数', '占比', '重量2', '占比2', '箱数', '占比3', '箱重', '平均'],
           tableWidth: '100%',
-          maxHeight: '75%',
-          enableDrag: false
+          maxHeight: '72%',
+          enableDrag: false,    // 拖拽设置
+          enableScroll: false, // 滚动设置
+            headerHeight: 60,  // 等级统计表表头高度
+            dataRowHeight: 75,  // 等级统计表数据行高度
+            dividerHeight: 75,   // 等级统计表分割线高度
+          customBorderWidth: 2      // 等级统计表边框宽度
         })
         .key(`statistics_table_${this.refreshKey}`)
       } else if (this.selectedTab === '加工曲线') {

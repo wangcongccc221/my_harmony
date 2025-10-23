@@ -60,6 +60,21 @@ export struct GridTable {
   
   // 外层容器背景色（不传则使用主题 surfaceColor）
   @Prop containerBg: string = ''
+  
+  // 表头行高（可配置）
+  @Prop headerHeight: number = 50
+  
+  // 数据行行高（可配置）
+  @Prop dataRowHeight: number = 65
+  
+  // 分割线高度（可配置）
+  @Prop dividerHeight: number = 50
+  
+  // 边框宽度（可配置）
+  @Prop customBorderWidth: number = 1
+  
+  // 是否启用滚动（可配置）
+  @Prop enableScroll: boolean = false 
 
   // 当前主题样式
   private currentTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
@@ -337,9 +352,18 @@ export struct GridTable {
 
     console.log('🎯 GridTable - 整行拖拽交换:', fromRowIndex, '到', toRowIndex)
 
-    // 交换整行数据
-    const fromRow = this.tableRows[fromRowIndex]
-    const toRow = this.tableRows[toRowIndex]
+    // 检查索引是否有效
+    if (fromRowIndex < 0 || fromRowIndex >= this.tableRows.length || 
+        toRowIndex < 0 || toRowIndex >= this.tableRows.length) {
+      console.warn('行索引超出范围:', fromRowIndex, toRowIndex)
+      return
+    }
+
+    // 获取完整的行数据
+    const fromRow = [...this.tableRows[fromRowIndex]] // 深拷贝
+    const toRow = [...this.tableRows[toRowIndex]] // 深拷贝
+
+    console.log('🔄 整行交换:', fromRow, '↔', toRow)
 
     // 创建新的数据数组（保持响应式）
     const newTableRows = this.tableRows.map((row, rowIdx) => {
@@ -353,6 +377,7 @@ export struct GridTable {
 
     // 更新数据
     this.tableRows = newTableRows
+    console.log('✅ 整行拖拽交换完成')
   }
 
   /**
@@ -364,7 +389,7 @@ export struct GridTable {
     }
 
     // 获取整列数据
-    const columnData = this.tableRows.map(row => row[colIndex])
+    const columnData = this.tableRows.map(row => row[ colIndex])
     // 获取对应的等级名称（每行的第一列）
     const levelNames = this.tableRows.map(row => row[0] || '')
     
@@ -403,24 +428,47 @@ export struct GridTable {
 
     console.log('🎯 GridTable - 整列拖拽交换:', fromColIndex, '到', toColIndex)
 
+    // 检查列索引是否有效
+    if (fromColIndex < 0 || fromColIndex >= this.headerTitles.length ||
+        toColIndex < 0 || toColIndex >= this.headerTitles.length) {
+      console.warn('列索引超出范围:', fromColIndex, toColIndex)
+      return
+    }
+
+    // 检查表格数据是否为空
+    if (this.tableRows.length === 0) {
+      console.warn('表格数据为空')
+      return
+    }
+
+    console.log('🔄 整列交换:', this.headerTitles[fromColIndex], '↔', this.headerTitles[toColIndex])
+
     // 交换整列数据
     const newTableRows = this.tableRows.map(row => {
       const newRow = [...row]
-      const temp = newRow[fromColIndex]
-      newRow[fromColIndex] = newRow[toColIndex]
-      newRow[toColIndex] = temp
+      // 确保列索引有效
+      if (fromColIndex < newRow.length && toColIndex < newRow.length) {
+        const temp = newRow[fromColIndex]
+        newRow[fromColIndex] = newRow[toColIndex]
+        newRow[toColIndex] = temp
+      }
       return newRow
     })
 
     // 交换表头
     const newHeaderTitles = [...this.headerTitles]
-    const temp = newHeaderTitles[fromColIndex]
-    newHeaderTitles[fromColIndex] = newHeaderTitles[toColIndex]
-    newHeaderTitles[toColIndex] = temp
+    // 确保表头索引有效
+    if (fromColIndex < newHeaderTitles.length && toColIndex < newHeaderTitles.length) {
+      const temp = newHeaderTitles[fromColIndex]
+      newHeaderTitles[fromColIndex] = newHeaderTitles[toColIndex]
+      newHeaderTitles[toColIndex] = temp
+      console.log('🔄 表头交换:', temp, '↔', newHeaderTitles[fromColIndex])
+    }
 
     // 更新数据
     this.tableRows = newTableRows
     this.headerTitles = newHeaderTitles
+    console.log('✅ 整列拖拽交换完成')
   }
 
   /**
@@ -450,7 +498,7 @@ export struct GridTable {
       .height('100%')
       .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? '#E3F2FD' : (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)) // 选中时高亮背景
       .border({
-        width: { right: 1, bottom: 1 },
+        width: { right: this.customBorderWidth, bottom: this.customBorderWidth },
         color: this.isCellSelected(rowIndex, colIndex) ? '#2196F3' : this.getCurrentTheme().borderColor // 选中时蓝色边框
       })
       .padding(2)
@@ -486,7 +534,7 @@ export struct GridTable {
       .height('100%')
       .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
       .border({
-        width: { right: 1, bottom: 1 },
+        width: { right: this.customBorderWidth, bottom: this.customBorderWidth },
         color: this.getCurrentTheme().borderColor
       })
       .padding(2)
@@ -502,7 +550,7 @@ export struct GridTable {
       .height('100%')
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
       .border({
-        width: { right: 1, bottom: 1 },
+        width: { right: this.customBorderWidth, bottom: this.customBorderWidth },
         color: this.getCurrentTheme().borderColor
       })
   }
@@ -521,7 +569,7 @@ export struct GridTable {
       .height('100%')
       .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
       .border({
-        width: { right: 1, bottom: 1 },
+        width: { right: this.customBorderWidth, bottom: this.customBorderWidth },
         color: this.getCurrentTheme().borderColor
       })
       .padding(6)
@@ -552,7 +600,7 @@ export struct GridTable {
       .height('100%')
       .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? '#E3F2FD' : (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)) // 选中时高亮背景
       .border({
-        width: { right: 1, bottom: 1 },
+        width: { right: this.customBorderWidth, bottom: this.customBorderWidth },
         color: this.isCellSelected(rowIndex, colIndex) ? '#2196F3' : this.getCurrentTheme().borderColor // 选中时蓝色边框
       })
       .padding(2)
@@ -594,7 +642,7 @@ export struct GridTable {
           })
         }
         .width('100%')
-        .height(50)
+        .height(this.headerHeight) 
 
         // 可滚动数据区域
         Scroll() {
@@ -613,15 +661,15 @@ export struct GridTable {
                 })
               }
               .width('100%')
-              .height(65)
+              .height(this.dataRowHeight)
             })
           }
           .width('100%')
         }
         .width('100%')
         .height(this.maxHeight)
-        .scrollable(ScrollDirection.Vertical)
-        .scrollBar(BarState.Auto)
+        .scrollable(this.enableScroll ? ScrollDirection.Vertical : ScrollDirection.None)
+        .scrollBar(this.enableScroll ? BarState.Auto : BarState.Off)
         .scrollBarColor(this.getCurrentTheme().borderColor)
         .scrollBarWidth(6)
         .friction(0.6)

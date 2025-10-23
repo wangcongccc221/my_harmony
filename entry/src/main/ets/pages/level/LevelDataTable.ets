@@ -220,6 +220,16 @@ export struct LevelDataTable {
    */
   @State private levelNameInputs: string[] = []
 
+  /**
+   * 最小重量输入数组（受控输入）
+   */
+  @State private minWeightInputs: string[] = []
+
+  /**
+   * 装箱量输入数组（受控输入）
+   */
+  @State private packingWeightInputs: string[] = []
+
   // ==================== Grid表格相关 ====================
   
   /**
@@ -294,6 +304,8 @@ export struct LevelDataTable {
 
     this.levelTableData = []
     this.levelNameInputs = []
+    this.minWeightInputs = []
+    this.packingWeightInputs = []
 
     for (let i = 0; i < levelCount; i++) {
       // 若父组件未提供具体字段，这里先用占位生成名称（1..N），避免空白
@@ -304,6 +316,8 @@ export struct LevelDataTable {
         packingWeight: 500 + i * 50
       })
       this.levelNameInputs.push(`${i + 1}`)
+      this.minWeightInputs.push(`${100 - i * 5}`)
+      this.packingWeightInputs.push(`${500 + i * 50}`)
     }
   }
 
@@ -364,8 +378,18 @@ export struct LevelDataTable {
   @Builder
   buildLevelListItem(data: LevelTableData, index: number) {
     Row() {
-      // 等级名称列（可编辑）
-      TextInput({ text: this.levelNameInputs[index] || '' })
+      // 等级名称列（只读显示）
+      Text(`${data.levelName}`)
+        .fontSize(16)
+        .fontColor(this.getCurrentTheme().textColor)
+        .width('33.33%')
+        .textAlign(TextAlign.Center)
+        .padding({ left: 4, right: 4, top: 6, bottom: 6 })
+
+      Divider().vertical(true).height(80).color(this.getCurrentTheme().borderColor) //修改第一个分割线的高度
+
+      // 最小重量列（可编辑）
+      TextInput({ text: this.minWeightInputs[index] || `${data.minWeight}` })
         .fontSize(16)
         .fontColor(this.getCurrentTheme().textColor)
         .backgroundColor(this.getCurrentTheme().surfaceColor)
@@ -375,33 +399,37 @@ export struct LevelDataTable {
         .border({ width: 0 })
         .type(InputType.Number)
         .onChange((value: string) => {
-          const numericValue = value.replace(/\D+/g, '')
-          this.levelNameInputs[index] = numericValue
-          this.levelTableData[index].levelName = numericValue
+          const numericStr = value.replace(/[^0-9.\-]/g, '')
+          this.minWeightInputs[index] = numericStr
+          const parsed = Number(numericStr)
+          if (!isNaN(parsed)) {
+            this.levelTableData[index].minWeight = parsed
+          }
         })
 
-      Divider().vertical(true).height(40).color(this.getCurrentTheme().borderColor)
+      Divider().vertical(true).height(80).color(this.getCurrentTheme().borderColor) //修改第二个分割线的高度
 
-      // 最小重量列
-      Text(`${data.minWeight}`)
+      // 装箱量列（可编辑）
+      TextInput({ text: this.packingWeightInputs[index] || `${data.packingWeight}` })
         .fontSize(16)
         .fontColor(this.getCurrentTheme().textColor)
+        .backgroundColor(this.getCurrentTheme().surfaceColor)
         .width('33.33%')
         .textAlign(TextAlign.Center)
         .padding({ left: 4, right: 4, top: 6, bottom: 6 })
-
-      Divider().vertical(true).height(40).color(this.getCurrentTheme().borderColor)
-
-      // 装箱量列
-      Text(`${data.packingWeight}`)
-        .fontSize(16)
-        .fontColor(this.getCurrentTheme().textColor)
-        .width('33.33%')
-        .textAlign(TextAlign.Center)
-        .padding({ left: 4, right: 4, top: 6, bottom: 6 })
+        .border({ width: 0 })
+        .type(InputType.Number)
+        .onChange((value: string) => {
+          const numericStr = value.replace(/[^0-9.\-]/g, '')
+          this.packingWeightInputs[index] = numericStr
+          const parsed = Number(numericStr)
+          if (!isNaN(parsed)) {
+            this.levelTableData[index].packingWeight = parsed
+          }
+        })
     }
     .width('100%')
-    .height(60)
+    .height(50)  //修改表格每一行的行高
     .padding(0)
     .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
   }

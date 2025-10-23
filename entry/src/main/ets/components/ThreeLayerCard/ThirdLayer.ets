@@ -125,10 +125,7 @@ export struct ThirdLayer {
   @Builder
   private buildDataItem(num: number, idx: number) {
     Row() {
-      Text(`${idx + 1}.`)
-        .fontSize(14)
-        .fontColor(this.cardColors.dataListText)
-        .margin({ right: 4 })
+      // 移除序号显示，直接显示数据内容
       Text(this.localChartDataStrings[idx] || String(num))
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
