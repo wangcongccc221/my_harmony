@@ -62,7 +62,8 @@ export class WaveConfigManager {
    */
   private getHeightPercent(cardIndex: number): number {
     // 根据卡片索引返回不同的高度百分比
-    const heights = [20, 40, 60, 30, 50, 70, 25, 45, 65, 35, 55, 75, 28, 48, 68, 32, 52, 72, 38, 58]
+    // 卡片0: 100%, 卡片1: 30%, 卡片2: 60%
+    const heights = [100, 30, 60, 30, 50, 70, 25, 45, 65, 35, 55, 75, 28, 48, 68, 32, 52, 72, 38, 58]
     return heights[cardIndex] || 50
   }
 
@@ -72,7 +73,8 @@ export class WaveConfigManager {
    */
   private getBaselinePercent(cardIndex: number): number {
     // 根据卡片索引返回不同的基准位置百分比
-    const baselines = [20, 40, 60, 30, 50, 70, 25, 45, 65, 35, 55, 75, 28, 48, 68, 32, 52, 72, 38, 58]
+    // 第三个卡片基准位置调低，让60%高度能正确显示
+    const baselines = [20, 40, 30, 30, 50, 70, 25, 45, 65, 35, 55, 75, 28, 48, 68, 32, 52, 72, 38, 58]
     return baselines[cardIndex] || 50
   }
 
@@ -81,9 +83,8 @@ export class WaveConfigManager {
    * @param cardIndex 卡片索引
    */
   private getAmplitude(cardIndex: number): number {
-    // 根据卡片索引返回不同的振幅
-    const amplitudes = [15, 20, 25, 18, 22, 28, 16, 21, 26, 19, 23, 29, 17, 24, 27, 20, 25, 30, 18, 22]
-    return amplitudes[cardIndex] || 20
+    // 所有卡片统一振幅5
+    return 5
   }
 
   /**
@@ -91,9 +92,9 @@ export class WaveConfigManager {
    * @param cardIndex 卡片索引
    */
   private getFrequency(cardIndex: number): number {
-    // 根据卡片索引返回不同的频率
-    const frequencies = [0.02, 0.03, 0.04, 0.025, 0.035, 0.045, 0.022, 0.032, 0.042, 0.028, 0.038, 0.048, 0.024, 0.034, 0.044, 0.026, 0.036, 0.046, 0.029, 0.039]
-    return frequencies[cardIndex] || 0.03
+    // 所有卡片统一频率0.03
+    return 0.03
+    return 0.03
   }
 
   /**
@@ -101,8 +102,8 @@ export class WaveConfigManager {
    * @param cardIndex 卡片索引
    */
   private getPhase(cardIndex: number): number {
-    // 根据卡片索引返回不同的相位
-    return cardIndex * 0.5
+    // 所有卡片统一相位1.5
+    return 1.5
   }
 
   /**
@@ -135,9 +136,9 @@ export class WaveConfigManager {
     return {
       heightPercent: 50,
       baselinePercent: 50,
-      amplitude: 20,
+      amplitude: 5,
       frequency: 0.03,
-      phase: 0,
+      phase: 1.5,
       color: '#2196F3'
     }
   }

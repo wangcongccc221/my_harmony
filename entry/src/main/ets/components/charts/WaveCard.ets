@@ -1,7 +1,7 @@
 @Component
 export struct WaveCard {
-  @Prop amplitude: number = 15
-  @Prop frequency: number = 0.02
+  @Prop amplitude: number = 10
+  @Prop frequency: number = 0.01
   @Prop speed: number = 0.02
   @Prop waveHeightPercent: number = 70  // 波浪图高度百分比（默认70%）
   @Prop baselinePercent: number = 50    // 波浪基准位置百分比（默认50%，即中间位置）
@@ -65,8 +65,9 @@ export struct WaveCard {
     // 计算波浪图从底部开始的实际高度
     const waveHeight = height * (this.waveHeightPercent / 100)
     
-    // 计算波浪基准位置：从底部开始，在波浪图内部的位置
-    const centerY = height - waveHeight + (waveHeight * (this.baselinePercent / 100))
+    // 计算波浪基准位置：让最高点刚好到达目标高度
+    // 基准位置 = 目标高度 - 振幅，这样最高点就是目标高度
+    const centerY = height - waveHeight + this.amplitude
 
     this.context.clearRect(0, 0, width, height)
 

@@ -11,7 +11,8 @@ export class GlobalCardDataManager {
   private readonly CARD_COUNT = 20
   
   // 波浪高度配置：每个卡片的波浪高度百分比
-  private waveHeightConfig: number[] = [100, 40, 60, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70]
+  // 卡片0: 100%, 卡片1: 30%, 卡片2: 60%
+  private waveHeightConfig: number[] = [100, 30, 60, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70]
 
   private constructor() {
     console.log('GlobalCardDataManager 构造函数被调用')

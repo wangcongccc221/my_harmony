@@ -8,6 +8,7 @@ import { WaveCard } from '../charts/WaveCard'
 import { DragHandlers, DragData } from '../../utils/drag/DragManager'
 import { CardColorConfig } from '../../utils/theme/CardColors'
 import { UseDragHandlers } from './hooks/useDragHandlers'
+import { WaveConfigManager } from '../../utils/animation/WaveConfig'
 
 // 运行期日志开关（仅用于屏蔽非关键调试日志）
 const DEBUG_LOGS: boolean = false
@@ -54,7 +55,7 @@ export struct ThirdLayer {
     }
     .width('100%')
     .layoutWeight(1) // 第三层：自动填充剩余空间
-    .padding({ left: 0, right: 0, top: 8, bottom: 0 })
+    .padding({ left: 0, right: 0, top: 0, bottom: 0 })
     .backgroundColor(Color.Transparent) // 第三层：透明背景
     .justifyContent(FlexAlign.Start)
     .border({ width: 1, color: this.cardColors.cardBorder }) // 恢复底部边框
@@ -214,8 +215,8 @@ export struct ThirdLayer {
   @Builder
   private buildWaveCard() {
     WaveCard({
-      amplitude: 15,
-      frequency: 0.02,
+      amplitude: this.getWaveAmplitude(),
+      frequency: this.getWaveFrequency(),
       speed: 0.02,
       waveHeightPercent: this.waveHeightPercent,
       baselinePercent: this.waveBaselinePercent,
@@ -226,6 +227,28 @@ export struct ThirdLayer {
     })
       .width('100%')
       .height('100%')
+  }
+  
+  // 获取卡片索引
+  private getCardIndex(): number {
+    const cardId = String(this.cardData.id || '')
+    // 从 card_0, card_1 等格式中提取数字
+    const match = cardId.match(/card_(\d+)/)
+    return match ? parseInt(match[1]) : 0
+  }
+  
+  // 获取波浪振幅
+  private getWaveAmplitude(): number {
+    const cardIndex = this.getCardIndex()
+    const waveConfig = WaveConfigManager.getInstance().getWaveConfig(cardIndex)
+    return waveConfig.amplitude
+  }
+  
+  // 获取波浪频率
+  private getWaveFrequency(): number {
+    const cardIndex = this.getCardIndex()
+    const waveConfig = WaveConfigManager.getInstance().getWaveConfig(cardIndex)
+    return waveConfig.frequency
   }
 
   @Builder

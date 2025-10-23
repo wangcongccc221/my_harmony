@@ -47,13 +47,13 @@ export class UseCardLogic {
    */
   static getWaveBaselinePercent(cardData: ThreeLayerCardData): number {
     const idStr: string = String(cardData?.id ?? '')
-    // 从 "card_0" 格式中提取数字，对应 0%/40%/60%
+    // 从 "card_0" 格式中提取数字，对应 0%/20%/30%
     const match = idStr.match(/card_(\d+)/)
     if (match && match[1]) {
       const index = parseInt(match[1])
       if (index === 0) { return 0 }   // card_0 -> 0%（100%高度时从底部开始占满）
-      if (index === 1) { return 40 }  // card_1 -> 40%
-      if (index === 2) { return 60 }  // card_2 -> 60%
+      if (index === 1) { return 20 }  // card_1 -> 20%（30%高度时从底部开始）
+      if (index === 2) { return 30 }  // card_2 -> 30%（60%高度时从底部开始）
     }
     return 50  // 其他卡片默认 50%（中间位置）
   }
