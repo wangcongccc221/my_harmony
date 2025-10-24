@@ -107,6 +107,9 @@ export struct HomeContent {
   @State private intervalSpeed: string = DEFAULT_HOME_STATE.intervalSpeed
   // 模拟实时数据定时器
   private mockSortingInfoTimerId?: number
+  
+  // 时间更新定时器
+  private timeUpdateTimerId?: number
   // ==================== 拖拽浮层预览状态 ====================
   @State private dragOverlayActive: boolean = false
   @State private dragOverlayX: number = 0
@@ -562,28 +565,43 @@ export struct HomeContent {
     AppStorage.setOrCreate('EFFICIENCY', this.efficiency)
     AppStorage.setOrCreate('INTERVAL_SPEED', this.intervalSpeed)
 
-    // 启动模拟实时更新（每秒刷新一次）
+    // 启动时间更新定时器（每秒更新一次）
+    if (!this.timeUpdateTimerId) {
+      console.log('[时间更新] 启动定时器')
+      this.timeUpdateTimerId = setInterval(() => {
+        // 更新开始时间（显示当前时间）
+        const now = new Date()
+        const hh = String(now.getHours()).padStart(2, '0')
+        const mm = String(now.getMinutes()).padStart(2, '0')
+        const ss = String(now.getSeconds()).padStart(2, '0')
+        this.startTime = `${hh}:${mm}:${ss}`
+        AppStorage.setOrCreate('START_TIME', this.startTime)
+        console.log('[时间更新] 当前时间:', this.startTime)
+      }, 1000) as number
+    }
+
+    // 启动模拟实时更新（每3秒刷新一次）
     if (!this.mockSortingInfoTimerId) {
       console.log('[模拟分选信息] 启动定时器')
       this.mockSortingInfoTimerId = setInterval(() => {
-        // 速度（件/分钟）
-        const speed = Math.max(0, Math.round(50 + Math.random() * 60))
+        // 速度（件/分钟）- 变化幅度减小
+        const speed = Math.max(0, Math.round(70 + Math.random() * 20))
         this.sortSpeed = `${speed} 件/分钟`
         AppStorage.setOrCreate('SORT_SPEED', this.sortSpeed)
 
-        // 实时产量（件/分钟）
-        const rto = Math.max(0, Math.round(40 + Math.random() * 50))
+        // 实时产量（件/分钟）- 变化幅度减小
+        const rto = Math.max(0, Math.round(60 + Math.random() * 20))
         this.realTimeOutput = `${rto} 件/分钟`
         AppStorage.setOrCreate('REALTIME_OUTPUT', this.realTimeOutput)
 
-        // 本批个数（累加）
+        // 本批个数（累加）- 变化幅度减小
         const currentCountNum = Number((this.batchCount || '0').toString().replace(/[^0-9]/g, ''))
-        const nextCount = currentCountNum + Math.max(1, Math.round(Math.random() * 5))
+        const nextCount = currentCountNum + Math.max(1, Math.round(Math.random() * 2))
         this.batchCount = `${nextCount} 件`
         AppStorage.setOrCreate('BATCH_COUNT', this.batchCount)
 
-        // 平均重量（g）
-        const avg = (100 + Math.random() * 50) // g
+        // 平均重量（g）- 变化幅度减小
+        const avg = (120 + Math.random() * 20) // g
         this.avgWeight = `${(avg / 1000).toFixed(2)} kg`
         AppStorage.setOrCreate('AVG_WEIGHT', this.avgWeight)
 
@@ -593,13 +611,13 @@ export struct HomeContent {
         this.batchWeight = `${kg.toFixed(2)} kg`
         AppStorage.setOrCreate('BATCH_WEIGHT', this.batchWeight)
 
-        // 效率（%）
-        const eff = 80 + Math.random() * 18
+        // 效率（%）- 变化幅度减小
+        const eff = 85 + Math.random() * 10
         this.efficiency = `${eff.toFixed(0)}%`
         AppStorage.setOrCreate('EFFICIENCY', this.efficiency)
 
-        // 间隔速度（ms）
-        const intervalMs = 500 + Math.random() * 1200
+        // 间隔速度（ms）- 变化幅度减小
+        const intervalMs = 800 + Math.random() * 400
         this.intervalSpeed = `${Math.round(intervalMs)} ms`
         AppStorage.setOrCreate('INTERVAL_SPEED', this.intervalSpeed)
         // 调试日志：观察9项是否在变化
@@ -610,7 +628,7 @@ export struct HomeContent {
           ' 产量=', this.realTimeOutput,
           ' 效率=', this.efficiency,
           ' 间隔=', this.intervalSpeed)
-      }, 1000) as number
+      }, 3000) as number
       // 立即刷新一次，避免首秒空窗
       {
         const speed = Math.max(0, Math.round(50 + Math.random() * 60))

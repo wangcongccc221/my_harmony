@@ -230,6 +230,27 @@ export struct LevelDataTable {
    */
   @State private packingWeightInputs: string[] = []
 
+  /**
+   * 控制每行是否显示+/-按钮
+   * 
+   * 功能说明：
+   * - 控制每行是否显示添加/删除按钮
+   * - 当用户点击最小重量列时显示按钮
+   * - 支持动态切换按钮显示状态
+   */
+  @State private showAddRemoveButtons: boolean[] = []
+
+  /**
+   * 当前选中的行索引
+   * 
+   * 功能说明：
+   * - 记录当前用户选中的行索引
+   * - 用于控制按钮的显示和隐藏
+   * - 支持单选模式
+   */
+  @State private selectedRowIndex: number = -1
+  @State private forceRefresh: number = 0 // 强制刷新UI
+
   // ==================== Grid表格相关 ====================
   
   /**
@@ -318,7 +339,152 @@ export struct LevelDataTable {
       this.levelNameInputs.push(`${i + 1}`)
       this.minWeightInputs.push(`${100 - i * 5}`)
       this.packingWeightInputs.push(`${500 + i * 50}`)
+      this.showAddRemoveButtons.push(false) // 初始化按钮显示状态
     }
+  }
+
+  /**
+   * 处理最小重量列点击事件
+   * 
+   * 功能说明：
+   * - 当用户点击最小重量列时显示+/-按钮
+   * - 隐藏其他行的按钮，只显示当前行的按钮
+   * - 支持切换按钮显示状态
+   * 
+   * @param index 行索引
+   */
+  private handleMinWeightClick(index: number): void {
+    // 隐藏所有按钮
+    this.showAddRemoveButtons = this.showAddRemoveButtons.map(() => false)
+    
+    // 如果点击的是当前选中的行，则隐藏按钮
+    if (this.selectedRowIndex === index) {
+      this.selectedRowIndex = -1
+    } else {
+      // 显示当前行的按钮
+      this.showAddRemoveButtons[index] = true
+      this.selectedRowIndex = index
+    }
+  }
+
+  /**
+   * 添加新行
+   * 
+   * 功能说明：
+   * - 在指定位置后添加新的等级行
+   * - 自动生成新的等级名称和默认值
+   * - 更新所有相关的数组
+   * - 插入后重新排序所有等级名称，确保连续性
+   * 
+   * @param index 插入位置（在指定行后插入）
+   */
+  private addNewRow(index: number): void {
+    const newId = Math.max(...this.levelTableData.map(item => item.id)) + 1
+    const newMinWeight = 100 - (this.levelTableData.length * 5)
+    const newPackingWeight = 500 + (this.levelTableData.length * 50)
+    
+    // 在指定位置后插入新行
+    const insertIndex = index + 1
+    this.levelTableData.splice(insertIndex, 0, {
+      id: newId,
+      levelName: '0', // 临时名称，稍后会重新排序
+      minWeight: newMinWeight,
+      packingWeight: newPackingWeight
+    })
+    
+    // 更新输入数组
+    this.levelNameInputs.splice(insertIndex, 0, '0') // 临时名称
+    this.minWeightInputs.splice(insertIndex, 0, `${newMinWeight}`)
+    this.packingWeightInputs.splice(insertIndex, 0, `${newPackingWeight}`)
+    this.showAddRemoveButtons.splice(insertIndex, 0, false)
+    
+    // 重新排序所有等级名称，确保连续性（1, 2, 3, 4...）
+    for (let i = 0; i < this.levelTableData.length; i++) {
+      const newLevelName = `${i + 1}`
+      this.levelTableData[i].levelName = newLevelName
+      this.levelNameInputs[i] = newLevelName
+    }
+    
+    // 更新等级数量选择器 - 直接使用行数作为索引
+    this.levelCountIndex = this.levelTableData.length
+    
+    // 强制刷新UI - 重新创建数组引用以触发UI更新
+    // 先清空数组，再重新赋值，确保UI完全刷新
+    const tempLevelTableData = [...this.levelTableData]
+    const tempLevelNameInputs = [...this.levelNameInputs]
+    const tempMinWeightInputs = [...this.minWeightInputs]
+    const tempPackingWeightInputs = [...this.packingWeightInputs]
+    const tempShowAddRemoveButtons = [...this.showAddRemoveButtons]
+    
+    // 清空原数组
+    this.levelTableData = []
+    this.levelNameInputs = []
+    this.minWeightInputs = []
+    this.packingWeightInputs = []
+    this.showAddRemoveButtons = []
+    
+    // 重新赋值
+    this.levelTableData = tempLevelTableData
+    this.levelNameInputs = tempLevelNameInputs
+    this.minWeightInputs = tempMinWeightInputs
+    this.packingWeightInputs = tempPackingWeightInputs
+    this.showAddRemoveButtons = tempShowAddRemoveButtons
+    
+    // 强制刷新UI
+    this.forceRefresh++
+    
+    // 保持当前行的按钮显示状态，不隐藏按钮
+    // 这样用户可以看到添加成功，并且可以继续操作
+    
+    console.log(`在位置${insertIndex}添加了新行，等级名称已重新排序:`, this.levelTableData.map(item => item.levelName))
+  }
+
+  /**
+   * 删除指定行
+   * 
+   * 功能说明：
+   * - 删除指定索引的等级行
+   * - 更新所有相关的数组
+   * - 确保至少保留一行数据
+   * - 删除后重新排序所有等级名称，确保连续性
+   * 
+   * @param index 要删除的行索引
+   */
+  private removeRow(index: number): void {
+    // 确保至少保留一行
+    if (this.levelTableData.length <= 1) {
+      console.log('至少需要保留一行数据')
+      return
+    }
+    
+    // 删除指定行
+    this.levelTableData.splice(index, 1)
+    this.levelNameInputs.splice(index, 1)
+    this.minWeightInputs.splice(index, 1)
+    this.packingWeightInputs.splice(index, 1)
+    this.showAddRemoveButtons.splice(index, 1)
+    
+    // 重新排序所有等级名称，确保连续性（1, 2, 3, 4...）
+    for (let i = 0; i < this.levelTableData.length; i++) {
+      const newLevelName = `${i + 1}`
+      this.levelTableData[i].levelName = newLevelName
+      this.levelNameInputs[i] = newLevelName
+    }
+    
+    // 更新等级数量选择器
+    this.levelCountIndex = this.levelTableData.length
+    
+    // 保持按钮显示状态，让用户可以继续操作
+    // 如果删除的是当前选中行，则清除选中状态
+    if (this.selectedRowIndex === index) {
+      this.selectedRowIndex = -1
+      this.showAddRemoveButtons = this.showAddRemoveButtons.map(() => false)
+    } else if (this.selectedRowIndex > index) {
+      // 如果删除的行在当前选中行之前，需要调整选中索引
+      this.selectedRowIndex = this.selectedRowIndex - 1
+    }
+    
+    console.log(`删除了位置${index}的行，等级名称已重新排序:`, this.levelTableData.map(item => item.levelName))
   }
 
   /**
@@ -336,7 +502,7 @@ export struct LevelDataTable {
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.getCurrentTheme().textColor)
-        .width('33.33%')
+        .width('20%')
         .textAlign(TextAlign.Center)
         .padding({ top: 4, bottom: 4 })
 
@@ -347,7 +513,7 @@ export struct LevelDataTable {
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.getCurrentTheme().textColor)
-        .width('33.33%')
+        .width('40%')
         .textAlign(TextAlign.Center)
         .padding({ top: 4, bottom: 4 })
 
@@ -358,7 +524,7 @@ export struct LevelDataTable {
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.getCurrentTheme().textColor)
-        .width('33.33%')
+        .width('40%')
         .textAlign(TextAlign.Center)
         .padding({ top: 4, bottom: 4 })
     }
@@ -379,33 +545,77 @@ export struct LevelDataTable {
   buildLevelListItem(data: LevelTableData, index: number) {
     Row() {
       // 等级名称列（只读显示）
-      Text(`${data.levelName}`)
+      Text(`${this.levelNameInputs[index] || data.levelName}`)
         .fontSize(16)
         .fontColor(this.getCurrentTheme().textColor)
-        .width('33.33%')
+        .width('20%')
         .textAlign(TextAlign.Center)
         .padding({ left: 4, right: 4, top: 6, bottom: 6 })
+        .id(`levelName_${data.id}_${index}_${this.forceRefresh}`) // 添加强制刷新ID
 
       Divider().vertical(true).height(80).color(this.getCurrentTheme().borderColor) //修改第一个分割线的高度
 
-      // 最小重量列（可编辑）
-      TextInput({ text: this.minWeightInputs[index] || `${data.minWeight}` })
-        .fontSize(16)
-        .fontColor(this.getCurrentTheme().textColor)
-        .backgroundColor(this.getCurrentTheme().surfaceColor)
-        .width('33.33%')
-        .textAlign(TextAlign.Center)
-        .padding({ left: 4, right: 4, top: 6, bottom: 6 })
-        .border({ width: 0 })
-        .type(InputType.Number)
-        .onChange((value: string) => {
-          const numericStr = value.replace(/[^0-9.\-]/g, '')
-          this.minWeightInputs[index] = numericStr
-          const parsed = Number(numericStr)
-          if (!isNaN(parsed)) {
-            this.levelTableData[index].minWeight = parsed
+      // 最小重量列（可编辑，带+/-按钮）
+      Row() {
+        TextInput({ text: this.minWeightInputs[index] || `${data.minWeight}` })
+          .fontSize(16)
+          .fontColor(this.getCurrentTheme().textColor)
+          .backgroundColor(this.getCurrentTheme().surfaceColor)
+          .layoutWeight(1)
+          .textAlign(TextAlign.Center)
+          .padding({ left: 4, right: 4, top: 6, bottom: 6 })
+          .border({ width: 0 })
+          .type(InputType.Number)
+          .onChange((value: string) => {
+            const numericStr = value.replace(/[^0-9.\-]/g, '')
+            this.minWeightInputs[index] = numericStr
+            const parsed = Number(numericStr)
+            if (!isNaN(parsed)) {
+              this.levelTableData[index].minWeight = parsed
+            }
+          })
+          .onClick(() => {
+            this.handleMinWeightClick(index)
+          })
+
+        // +/- 按钮区域
+        if (this.showAddRemoveButtons[index]) {
+          Row() {
+            // + 按钮
+            Button() {
+              Text('+')
+                .fontSize(14)
+                .fontColor(this.getCurrentTheme().textColor)
+            }
+            .width(24)
+            .height(24)
+            .backgroundColor(this.getCurrentTheme().primary)
+            .borderRadius(12)
+            .onClick(() => {
+              this.addNewRow(index)
+            })
+
+            // - 按钮
+            Button() {
+              Text('-')
+                .fontSize(14)
+                .fontColor(this.getCurrentTheme().textColor)
+            }
+            .width(24)
+            .height(24)
+            .backgroundColor('#FF5722')
+            .borderRadius(12)
+            .margin({ left: 4 })
+            .onClick(() => {
+              this.removeRow(index)
+            })
           }
-        })
+          .margin({ left: 8 })
+        }
+      }
+      .width('40%')
+      .justifyContent(FlexAlign.SpaceBetween)
+      .alignItems(VerticalAlign.Center)
 
       Divider().vertical(true).height(80).color(this.getCurrentTheme().borderColor) //修改第二个分割线的高度
 
@@ -414,7 +624,7 @@ export struct LevelDataTable {
         .fontSize(16)
         .fontColor(this.getCurrentTheme().textColor)
         .backgroundColor(this.getCurrentTheme().surfaceColor)
-        .width('33.33%')
+        .width('40%')
         .textAlign(TextAlign.Center)
         .padding({ left: 4, right: 4, top: 6, bottom: 6 })
         .border({ width: 0 })
@@ -487,23 +697,6 @@ export struct LevelDataTable {
    */
   onTableCountChange?: (count: string) => void
   
-  /**
-   * 生成随机数据回调函数
-   * 
-   * 功能说明：
-   * - 当用户点击生成随机数据按钮时触发
-   * - 用于处理生成随机数据逻辑
-   */
-  onGenerateRandomData?: () => void
-  
-  /**
-   * 清空数据回调函数
-   * 
-   * 功能说明：
-   * - 当用户点击清空数据按钮时触发
-   * - 用于处理清空数据逻辑
-   */
-  onClearData?: () => void
 
   // ==================== 主题相关属性 ====================
   /**

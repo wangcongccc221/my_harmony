@@ -83,7 +83,7 @@ export struct FloatingWindow {
         })
         .width(this.windowWidth)
         .height(this.windowHeight)
-        .backgroundColor(this.getCurrentTheme().surfaceColor)
+        .backgroundColor(this.getCurrentTheme().surfaceColor + 'E6') // 添加90%透明度
         .borderRadius(12)
         .shadow({ 
           radius: 20, 

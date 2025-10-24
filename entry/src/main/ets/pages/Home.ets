@@ -153,10 +153,10 @@ struct Page {
       'load': (): void => this.showLoadProgram(),
       'save': (): void => this.showSaveProgram(),
       'print': (): void => this.handlePrintClick(),
-      'quality': (): void => this.displayFloatingWindow('品质管理', '这里是品质管理相关的功能和设置。\n\n• 品质检测标准\n• 品质分级规则\n• 品质报告生成\n• 品质数据分析'),
-      'level': (): void => this.displayFloatingWindow('等级管理', '这里是等级管理相关的功能和设置。\n\n• 等级分类标准\n• 等级评定规则\n• 等级调整设置\n• 等级统计报告'),
-      'history': (): void => this.displayFloatingWindow('历史加工', '这里是历史加工记录和查询功能。\n\n• 加工历史查询\n• 历史数据分析\n• 历史报告导出\n• 历史记录管理'),
-      'end': (): void => this.displayFloatingWindow('结束加工', '这里是结束加工相关的功能。\n\n• 加工完成确认\n• 数据保存\n• 报告生成\n• 系统清理'),
+      'quality': (): void => { this.currentPage = 'quality' },
+      'level': (): void => { this.currentPage = 'level' },
+      'history': (): void => { this.currentPage = 'history' },
+      'end': (): void => { this.currentPage = 'end' },
       'more': (): void => this.displayFloatingWindow('更多设置', '这里是更多设置和系统配置。\n\n• 系统设置\n• 用户管理\n• 数据备份\n• 系统维护'),
       // 默认处理：正常页面切换
       'default': (): void => { this.currentPage = this.currentPage }
@@ -447,7 +447,7 @@ struct Page {
       }
       .width(350)
       .padding(20)
-      .backgroundColor(this.getCurrentTheme().surfaceColor)
+      .backgroundColor(this.getCurrentTheme().surfaceColor + 'E6') // 添加90%透明度
       .borderRadius(12)
       .shadow({
         radius: 20,

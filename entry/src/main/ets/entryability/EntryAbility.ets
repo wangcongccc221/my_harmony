@@ -70,7 +70,7 @@ export default class EntryAbility extends UIAbility {
       const success = await this.networkOptimizer.initialize();
       if (success) {
         hilog.info(DOMAIN, 'EntryAbility', '网络优化器初始化成功');
-      } else {
+      } else {'x'
         hilog.error(DOMAIN, 'EntryAbility', '网络优化器初始化失败');
       }
     } catch (error) {
