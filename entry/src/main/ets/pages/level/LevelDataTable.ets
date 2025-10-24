@@ -354,14 +354,12 @@ export struct LevelDataTable {
    * @param index 行索引
    */
   private handleMinWeightClick(index: number): void {
-    // 隐藏所有按钮
-    this.showAddRemoveButtons = this.showAddRemoveButtons.map(() => false)
-    
-    // 如果点击的是当前选中的行，则隐藏按钮
+    // 如果点击的是当前选中的行，则不做任何操作（保持按钮显示）
     if (this.selectedRowIndex === index) {
-      this.selectedRowIndex = -1
+      return // 点击同一行时保持按钮显示，不做任何操作
     } else {
-      // 显示当前行的按钮
+      // 隐藏所有按钮，然后显示当前行的按钮
+      this.showAddRemoveButtons = this.showAddRemoveButtons.map(() => false)
       this.showAddRemoveButtons[index] = true
       this.selectedRowIndex = index
     }
@@ -557,7 +555,7 @@ export struct LevelDataTable {
 
       // 最小重量列（可编辑，带+/-按钮）
       Row() {
-        TextInput({ text: this.minWeightInputs[index] || `${data.minWeight}` })
+        TextInput({ text: this.minWeightInputs[index] ?? `${data.minWeight}` })
           .fontSize(16)
           .fontColor(this.getCurrentTheme().textColor)
           .backgroundColor(this.getCurrentTheme().surfaceColor)
@@ -576,6 +574,11 @@ export struct LevelDataTable {
           })
           .onClick(() => {
             this.handleMinWeightClick(index)
+          })
+          .onBlur(() => {
+            // 失去焦点时隐藏按钮
+            this.showAddRemoveButtons = this.showAddRemoveButtons.map(() => false)
+            this.selectedRowIndex = -1
           })
 
         // +/- 按钮区域
@@ -620,7 +623,7 @@ export struct LevelDataTable {
       Divider().vertical(true).height(80).color(this.getCurrentTheme().borderColor) //修改第二个分割线的高度
 
       // 装箱量列（可编辑）
-      TextInput({ text: this.packingWeightInputs[index] || `${data.packingWeight}` })
+      TextInput({ text: this.packingWeightInputs[index] ?? `${data.packingWeight}` })
         .fontSize(16)
         .fontColor(this.getCurrentTheme().textColor)
         .backgroundColor(this.getCurrentTheme().surfaceColor)
@@ -1015,6 +1018,11 @@ export struct LevelDataTable {
             endMargin: 0
           })
         }
+        .onClick(() => {
+          // 点击表格外部区域时隐藏所有+/-按钮
+          this.showAddRemoveButtons = this.showAddRemoveButtons.map(() => false)
+          this.selectedRowIndex = -1
+        })
         .width('100%')
         .layoutWeight(1)
         .border({ width: 1, color: this.getCurrentTheme().borderColor })
