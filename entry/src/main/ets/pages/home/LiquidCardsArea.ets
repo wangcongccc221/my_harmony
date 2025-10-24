@@ -43,6 +43,7 @@ import { GRID_DRAG_ACTIVE_KEY } from '../../components/layout/DraggableGridTable
 import { getCurrentCellDragData, CellDragData, CELL_DRAG_ACTIVE_KEY } from '../../components/ui/SimpleDraggableCell'
 import { GlobalCardDataManager } from '../../utils/GlobalCardDataManager'
 import { CardDataManager } from '../../utils/card/CardDataManager'
+import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
 
 // 移除源数据接口
 interface RemoveSourceData {
@@ -62,6 +63,8 @@ export struct LiquidCardsArea {
   @StorageLink(StorageKeys.FORCE_REMOVE_SOURCE) private forceRemoveSource: RemoveSourceData | null = null
   @State private hoverIndex: number = -1
   @StorageLink(GRID_DRAG_ACTIVE_KEY) private gridDragActive: boolean = false
+  // FSM状态监听
+  @StorageLink(HOME_SELECTED_FSM) private selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
   // 简化：不记录几何，直接在卡片自身接收抬手投放
   
   // 全局数据管理器实例
@@ -131,6 +134,19 @@ export struct LiquidCardsArea {
   private getVisibleCardCount(): number {
     // 根据屏幕高度动态计算可见卡片数量，减少渲染开销
     return 20 // 减少到20个卡片，提升滚动性能
+  }
+
+  /**
+   * 获取波浪图数量（根据FSM状态）
+   * 
+   * 功能说明：
+   * - FSM1：显示3个波浪图
+   * - FSM2：显示5个波浪图
+   * 
+   * @returns 波浪图数量
+   */
+  private getWaveCount(): number {
+    return this.selectedFSM === 'FSM1' ? 3 : 5
   }
 
   /**
@@ -246,7 +262,7 @@ export struct LiquidCardsArea {
             cardWidth: 120,
             cardHeight: 160,
             mainColor: this.getCurrentTheme().primary,
-            enableWave: idx < 3 && (!cardData.thirdLayer.chartData || cardData.thirdLayer.chartData.length === 0),
+            enableWave: idx < this.getWaveCount() && (!cardData.thirdLayer.chartData || cardData.thirdLayer.chartData.length === 0),
             onCardDrop: (data: ThreeLayerCardData) => {
               this.handleCardDrop(idx, data)
             }
