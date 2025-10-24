@@ -34,6 +34,11 @@ export struct LeftNavigationTabBar {
   // 打印子按钮相关
   @Prop showPrintSubButtons: boolean = false
   onPrintSubButtonClick?: (subButtonName: string) => void
+  
+  // 悬浮窗相关
+  @Prop showFloatingWindow: boolean = false
+  @Prop floatingWindowTitle: string = ''
+  onFloatingWindowClose?: () => void
 
   // 获取当前主题配置
   private getCurrentTheme(): ExtendedOmniThemeStyle {
@@ -61,6 +66,13 @@ export struct LeftNavigationTabBar {
   private handlePageChange(pageKey: string) {
     if (this.onPageChange) {
       this.onPageChange(pageKey)
+    }
+  }
+  
+  // 处理悬浮窗关闭
+  private handleFloatingWindowClose() {
+    if (this.onFloatingWindowClose) {
+      this.onFloatingWindowClose()
     }
   }
 

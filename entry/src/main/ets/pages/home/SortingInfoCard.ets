@@ -173,6 +173,7 @@ export struct SortingInfoCard {
     return OmniThemeManager.getInstance().getCurrentTheme()
   }
 
+
   /**
    * 组件构建方法
    * 
@@ -208,15 +209,15 @@ export struct SortingInfoCard {
       // ==================== 信息内容区域 ====================
       // 内容一行布局（九个项目，按百分比等分，每项约11.11%）
       Row() {
-        this.buildInfoItem('分选速度', () => this.sortSpeed, 11.11)        // 分选速度信息项
-        this.buildInfoItem('本批重量', () => this.batchWeight, 11.11)      // 本批重量信息项
-        this.buildInfoItem('本批个数', () => this.batchCount, 11.11)       // 本批个数信息项
-        this.buildInfoItem('开始时间', () => this.startTime, 11.11)        // 开始时间信息项
+        this.buildInfoItem('分选速度', () => this.sortSpeed, 11.11)        // 分选速度信息项（保持自动模拟）
+        this.buildInfoItem('本批重量', () => this.batchWeight, 11.11)      // 本批重量信息项（保持自动模拟）
+        this.buildInfoItem('本批个数', () => this.batchCount, 11.11)       // 本批个数信息项（保持自动模拟）
+        this.buildInfoItem('开始时间', () => this.startTime, 11.11)        // 开始时间信息项（保持实时）
         this.buildInfoItem('分选程序', () => this.programName, 11.11)     // 分选程序信息项
-        this.buildInfoItem('分选效率', () => this.efficiency, 11.11)      // 分选效率信息项
-        this.buildInfoItem('平均重量', () => this.avgWeight, 11.11)       // 平均重量信息项
-        this.buildInfoItem('实时产量', () => this.realTimeOutput, 11.11)   // 实时产量信息项
-        this.buildInfoItem('间隔速度', () => this.intervalSpeed, 11.11)   // 间隔速度信息项
+        this.buildInfoItem('分选效率', () => this.efficiency, 11.11)      // 分选效率信息项（保持自动模拟）
+        this.buildInfoItem('平均重量', () => this.avgWeight, 11.11)       // 平均重量信息项（保持自动模拟）
+        this.buildInfoItem('实时产量', () => this.realTimeOutput, 11.11)   // 实时产量信息项（保持自动模拟）
+        this.buildInfoItem('间隔速度', () => this.intervalSpeed, 11.11)   // 间隔速度信息项（保持自动模拟）
       }
       .width('100%')                                     // 宽度100%
       .justifyContent(FlexAlign.Start)                   // 左对齐

@@ -172,6 +172,14 @@ export struct HomeContent {
     this.selectedFSM = fsm
     this.stateManager.updateSelectedFSM(fsm)
     this.eventHandler.switchFSM(fsm)
+    
+    // 更新数据管理器的FSM状态
+    this.dataManager.setFSM(fsm)
+    
+    // 更新顶部状态栏
+    this.updateTopBarForFSM()
+    
+    console.log(`主页切换到${fsm}，数据已更新`)
   }
 
   // 设置开关映射表
@@ -520,11 +528,8 @@ export struct HomeContent {
   }
 
   aboutToAppear() {
-    // 初始化/刷新顶部状态栏四项指标（可换成真实数据来源）
-    AppStorage.setOrCreate(TOP_PRODUCTION_TON_H, this.topProduction)
-    AppStorage.setOrCreate(TOP_SUM_WEIGHT_TON, this.topSumWeightTon)
-    AppStorage.setOrCreate(TOP_SUM_COUNTS, this.topSumCounts)
-    AppStorage.setOrCreate(TOP_AVG_G, this.topAvgG)
+    // 根据FSM状态初始化顶部状态栏四项指标
+    this.updateTopBarForFSM()
     // 初始化用户与状态
     AppStorage.setOrCreate(TOP_USER_NAME, '管理员')
     AppStorage.setOrCreate(TOP_STATUS_TEXT, '')
@@ -640,6 +645,28 @@ export struct HomeContent {
           ' 间隔=', this.intervalSpeed)
       }
     }
+  }
+
+  // 根据FSM状态更新顶部状态栏
+  private updateTopBarForFSM(): void {
+    let productionTonH: string, sumWeightTon: string, sumCounts: string, avgG: string
+    
+    if (this.selectedFSM === 'FSM1') {
+      // FSM1的顶部状态栏数据（去掉单位）
+      productionTonH = '2.5'
+      sumWeightTon = '1250.5'
+      sumCounts = '156'
+      avgG = '8.0'
+    } else {
+      // FSM2的顶部状态栏数据（去掉单位）
+      productionTonH = '3.8'
+      sumWeightTon = '1580.3'
+      sumCounts = '189'
+      avgG = '8.4'
+    }
+    
+    this.updateTopBar(productionTonH, sumWeightTon, sumCounts, avgG)
+    console.log(`顶部状态栏已更新为${this.selectedFSM}数据`)
   }
 
   // 示例：当你更新本地状态时，同步写回全局，顶部栏会自动刷新

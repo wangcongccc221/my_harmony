@@ -1,0 +1,355 @@
+{
+  "version": "2.0",
+  "ppid": 31376,
+  "events": [
+    {
+      "head": {
+        "id": "1f3bfd97-5f24-4acf-9b98-21bd44b42553",
+        "name": "hvigor build process will be closed.",
+        "description": "",
+        "type": "log"
+      },
+      "body": {
+        "pid": 32712,
+        "tid": "Main Thread",
+        "startTime": 161525299516900
+      },
+      "additional": {
+        "logType": "debug",
+        "children": []
+      }
+    },
+    {
+      "head": {
+        "id": "9f3d5535-6322-40bd-ae5a-c32032d60ce2",
+        "name": "worker[0] exits with exit code 0.",
+        "description": "",
+        "type": "log"
+      },
+      "body": {
+        "pid": 32712,
+        "tid": "Main Thread",
+        "startTime": 161525301712500
+      },
+      "additional": {
+        "logType": "debug",
+        "children": []
+      }
+    },
+    {
+      "head": {
+        "id": "b9c36bac-9d58-439d-894d-c8e735dbfa00",
+        "name": "watch worker: worker id should be larger than 0. Nothing will be sent to any worker thread.",
+        "description": "",
+        "type": "log"
+      },
+      "body": {
+        "pid": 32712,
+        "tid": "Main Thread",
+        "startTime": 161525302630500
+      },
+      "additional": {
+        "logType": "debug",
+        "children": []
+      }
+    },
+    {
+      "head": {
+        "id": "69ec9cf9-d7ba-4d82-b585-b893392c3d2c",
+        "name": "watch worker: worker id should be larger than 0. Nothing will be sent to any worker thread.",
+        "description": "",
+        "type": "log"
+      },
+      "body": {
+        "pid": 32712,
+        "tid": "Main Thread",
+        "startTime": 161525302859300
+      },
+      "additional": {
+        "logType": "debug",
+        "children": []
+      }
+    },
+    {
+      "head": {
+        "id": "5f92a58d-0184-4ca2-9484-3c21f42ab40d",
+        "name": "worker[1] exits with exit code 0.",
+        "description": "",
+        "type": "log"
+      },
+      "body": {
+        "pid": 32712,
+        "tid": "Main Thread",
+        "startTime": 161525303016000
+      },
+      "additional": {
+        "logType": "debug",
+        "children": []
+      }
+    },
+    {
+      "head": {
+        "id": "21b7fa1a-e3c2-4564-88ef-3f4aff67affd",
+        "name": "watch worker: worker id should be larger than 0. Nothing will be sent to any worker thread.",
+        "description": "",
+        "type": "log"
+      },
+      "body": {
+        "pid": 32712,
+        "tid": "Main Thread",
+        "startTime": 161532510974000
+      },
+      "additional": {
+        "logType": "debug",
+        "children": []
+      }
+    },
+    {
+      "head": {
+        "id": "5535bab8-a00c-4873-a166-f369d9aaa64d",
+        "name": "init",
+        "description": "Initialize and build task graph.",
+        "type": "duration"
+      },
+      "body": {
+        "pid": 32712,
+        "tid": "Main Thread",
+        "startTime": 161532515505500
+      },
+      "additional": {
+        "children": [
+          "f879d0fb-6f27-486d-9b9c-03f4f52fc444",
+          "ac12d06e-198c-4393-bcba-04189df2914d",
+          "db5a68aa-b85a-4b4a-aab3-3aacfcf2b6be",
+          "de74ed15-353a-457a-b0dd-b49cc56e9e1a"
+        ],
+        "state": "running",
+        "targetName": "",
+        "moduleName": "",
+        "category": "Init",
+        "taskRunReasons": []
+      },
+      "log": {
+        "_logger": {
+          "category": "DurationEvent",
+          "context": {},
+          "callStackSkipIndex": 0
+        },
+        "_filelogger": {
+          "category": "debug-file",
+          "context": {},
+          "callStackSkipIndex": 0
+        },
+        "anonymizeFileLogger": {
+          "fileLogger": {
+            "category": "debug-file",
+            "context": {},
+            "callStackSkipIndex": 0
+          }
+        }
+      }
+    },
+    {
+      "head": {
+        "id": "f879d0fb-6f27-486d-9b9c-03f4f52fc444",
+        "name": "create hvigor project model",
+        "description": "Initialize hvigor project model.",
+        "type": "duration"
+      },
+      "body": {
+        "pid": 32712,
+        "tid": "Main Thread",
+        "startTime": 161532515506700
+      },
+      "additional": {
+        "children": [],
+        "state": "running",
+        "targetName": "",
+        "moduleName": "",
+        "category": "",
+        "taskRunReasons": [],
+        "parent": "5535bab8-a00c-4873-a166-f369d9aaa64d"
+      },
+      "log": {
+        "_logger": {
+          "category": "DurationEvent",
+          "context": {},
+          "callStackSkipIndex": 0
+        },
+        "_filelogger": {
+          "category": "debug-file",
+          "context": {},
+          "callStackSkipIndex": 0
+        },
+        "anonymizeFileLogger": {
+          "fileLogger": {
+            "category": "debug-file",
+            "context": {},
+            "callStackSkipIndex": 0
+          }
+        }
+      }
+    },
+    {
+      "head": {
+        "id": "6d5ed9a5-ed26-4c80-b11b-af5c817f63b8",
+        "name": "hvigor build process will be closed with an error.",
+        "description": "",
+        "type": "log"
+      },
+      "body": {
+        "pid": 32712,
+        "tid": "Main Thread",
+        "startTime": 161532518135700
+      },
+      "additional": {
+        "logType": "debug",
+        "children": []
+      }
+    },
+    {
+      "head": {
+        "id": "44bc2bec-5533-4731-a830-93184416532e",
+        "name": "\u001b[31m00303010 Configuration Error\r\nError Message: The property of module should be an array in root project build-profile.json5. At file: C:\\Users\\AI008\\Desktop\\my_-harmony-master\\entry\\build-profile.json5\r\n\r\n* Try the following:\r\n  > Check the project-level build-profile.json5 file and ensure that the module's option is an array.\r\n\u001b[39m",
+        "description": "",
+        "type": "log"
+      },
+      "body": {
+        "pid": 32712,
+        "tid": "Main Thread",
+        "startTime": 161532518275900
+      },
+      "additional": {
+        "logType": "error",
+        "children": []
+      }
+    },
+    {
+      "head": {
+        "id": "09f88103-b1fd-43b2-b6a7-a5d9eaaba007",
+        "name": "ERROR: stacktrace = AdaptorError: \u001b[31m00303010 Configuration Error\r\nError Message: The property of module should be an array in root project build-profile.json5. At file: C:\\Users\\AI008\\Desktop\\my_-harmony-master\\entry\\build-profile.json5\r\n\r\n* Try the following:\r\n  > Check the project-level build-profile.json5 file and ensure that the module's option is an array.\r\n\u001b[39m\n    at HvigorLogger.printErrorExit (E:\\command-line-tools\\hvigor\\hvigor\\src\\base\\log\\hvigor-log.js:1:5062)\n    at checkProjectConfigFile (E:\\command-line-tools\\hvigor\\hvigor\\src\\base\\external\\core\\hvigor-config.js:1:3292)\n    at new HvigorConfig (E:\\command-line-tools\\hvigor\\hvigor\\src\\base\\external\\core\\hvigor-config.js:1:1465)\n    at hvigorConfigInit (E:\\command-line-tools\\hvigor\\hvigor\\src\\base\\external\\core\\hvigor-config.js:1:3708)\n    at init (E:\\command-line-tools\\hvigor\\hvigor\\src\\base\\internal\\lifecycle\\init.js:1:2867)\n    at start (E:\\command-line-tools\\hvigor\\hvigor\\src\\base\\boot\\index.js:1:2518)\n    at boot (E:\\command-line-tools\\hvigor\\hvigor\\src\\base\\boot\\index.js:1:1818)\n    at Worker.<anonymous> (E:\\command-line-tools\\hvigor\\hvigor\\src\\base\\daemon\\cluster\\worker-process-lifecycle.js:1:3505)\n    at Worker.emit (node:events:529:35)\n    at process.<anonymous> (node:internal/cluster/worker:35:12)",
+        "description": "",
+        "type": "log"
+      },
+      "body": {
+        "pid": 32712,
+        "tid": "Main Thread",
+        "startTime": 161532518457300
+      },
+      "additional": {
+        "logType": "debug",
+        "children": []
+      }
+    },
+    {
+      "head": {
+        "id": "1a30176e-03ab-46c5-98c1-65906841f893",
+        "name": "\"buildFinished\" hook function",
+        "description": "",
+        "type": "duration"
+      },
+      "body": {
+        "pid": 32712,
+        "tid": "Main Thread",
+        "startTime": 161532527117000,
+        "endTime": 161532527147200
+      },
+      "additional": {
+        "children": [],
+        "state": "success",
+        "targetName": "",
+        "moduleName": "",
+        "category": "",
+        "taskRunReasons": [],
+        "parent": "0568e83c-bd96-4d5c-b71b-5db8a2bf9d3a",
+        "logId": "c922128c-3efc-4992-9221-e8ff2cf26234"
+      },
+      "log": {
+        "_logger": {
+          "category": "DurationEvent",
+          "context": {},
+          "callStackSkipIndex": 0
+        },
+        "_filelogger": {
+          "category": "debug-file",
+          "context": {},
+          "callStackSkipIndex": 0
+        },
+        "anonymizeFileLogger": {
+          "fileLogger": {
+            "category": "debug-file",
+            "context": {},
+            "callStackSkipIndex": 0
+          }
+        }
+      }
+    },
+    {
+      "head": {
+        "id": "c922128c-3efc-4992-9221-e8ff2cf26234",
+        "name": "\"buildFinished\" hook function",
+        "description": "",
+        "type": "log"
+      },
+      "body": {
+        "pid": 32712,
+        "tid": "Main Thread",
+        "startTime": 161532527117000,
+        "endTime": 161532527147200
+      },
+      "additional": {
+        "logType": "info",
+        "children": [],
+        "durationId": "1a30176e-03ab-46c5-98c1-65906841f893"
+      }
+    },
+    {
+      "head": {
+        "id": "ae9c0ab0-89f7-42d9-91bb-9d2ed2bf8bf7",
+        "name": "assembleHap",
+        "description": "",
+        "type": "mark"
+      },
+      "body": {
+        "pid": 32712,
+        "tid": "Main Thread",
+        "startTime": 161532515083800,
+        "endTime": 161532527465100
+      },
+      "additional": {
+        "time": {
+          "year": 2025,
+          "month": 10,
+          "day": 24,
+          "hour": 13,
+          "minute": 58,
+          "second": 51
+        },
+        "completeCommand": "{\"prop\":[],\"parallel\":true,\"incremental\":true,\"daemon\":true,\"_\":[\"assembleHap\"],\"analyze\":\"normal\"};assembleHap",
+        "hvigorVersion": "5.19.7",
+        "markType": "history",
+        "nodeVersion": "v18.20.1",
+        "category": "build",
+        "state": "failed"
+      }
+    },
+    {
+      "head": {
+        "id": "facf8fb8-6655-4204-a8ab-2f0bd24aa1c8",
+        "name": "BUILD FAILED in 13 ms ",
+        "description": "",
+        "type": "log"
+      },
+      "body": {
+        "pid": 32712,
+        "tid": "Main Thread",
+        "startTime": 161532527529900
+      },
+      "additional": {
+        "logType": "error",
+        "children": []
+      }
+    }
+  ],
+  "workLog": []
+}

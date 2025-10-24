@@ -3,7 +3,6 @@ import { LevelContent } from './level/LevelContent'
 import { QualityContent } from './quality/QualityContent'
 import { HistoryContent } from './history/HistoryContent'
 import { EndProcessingContent } from './endprocessing/EndProcessingContent'
-import { MoreContent } from './more/MoreContent'
 // import { ThemeSelector } from '../components/ThemeSelector'
 import { ArrowToggleButton } from '../components/ui/ArrowToggleButton'
 import { NavButton } from '../components/ui/NavButton'
@@ -13,6 +12,8 @@ import { RealtimeStatsDialog } from '../components/feedback/RealtimeStatsDialog'
 import { LoadProgramDialog } from '../components/dialogs/LoadProgramDialog'
 import { SaveProgramDialog } from '../components/dialogs/SaveProgramDialog'
 import { SortingStatusDialog } from '../components/dialogs/SortingStatusDialog'
+import { FloatingWindow } from '../components/ui/FloatingWindow'
+import { EngineeringSettingsDialog } from '../components/dialogs/EngineeringSettingsDialog'
 import { BaseComponentHelper } from '../components/common/BaseComponent'
 import { NavigationUtils } from '../utils/helpers/NavigationUtils'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../utils/theme/OmniThemeManager'
@@ -99,6 +100,18 @@ struct Page {
   @StorageLink('EDIT_USER_LABEL_VISIBLE') private editUserLabelVisible: boolean = false
   @StorageLink('TEMP_USER_LABEL') private tempUserLabel: string = '姓名'
   
+  // 悬浮窗相关状态
+  @State showFloatingWindow: boolean = false
+  @State floatingWindowTitle: string = ''
+  @State floatingWindowContent: string = ''
+  @State selectedFloatingTab: string = 'export'
+  
+  // 主题选择器状态
+  @State selectedTheme: OmniThemeType = OmniThemeType.BLUE
+  
+  // 工程设置对话框状态
+  @State showEngineeringSettingsDialog: boolean = false
+  
   
   // 页面初始化时初始化 Omni-UI 和 IBest-UI
   aboutToAppear() {
@@ -140,6 +153,11 @@ struct Page {
       'load': (): void => this.showLoadProgram(),
       'save': (): void => this.showSaveProgram(),
       'print': (): void => this.handlePrintClick(),
+      'quality': (): void => this.displayFloatingWindow('品质管理', '这里是品质管理相关的功能和设置。\n\n• 品质检测标准\n• 品质分级规则\n• 品质报告生成\n• 品质数据分析'),
+      'level': (): void => this.displayFloatingWindow('等级管理', '这里是等级管理相关的功能和设置。\n\n• 等级分类标准\n• 等级评定规则\n• 等级调整设置\n• 等级统计报告'),
+      'history': (): void => this.displayFloatingWindow('历史加工', '这里是历史加工记录和查询功能。\n\n• 加工历史查询\n• 历史数据分析\n• 历史报告导出\n• 历史记录管理'),
+      'end': (): void => this.displayFloatingWindow('结束加工', '这里是结束加工相关的功能。\n\n• 加工完成确认\n• 数据保存\n• 报告生成\n• 系统清理'),
+      'more': (): void => this.displayFloatingWindow('更多设置', '这里是更多设置和系统配置。\n\n• 系统设置\n• 用户管理\n• 数据备份\n• 系统维护'),
       // 默认处理：正常页面切换
       'default': (): void => { this.currentPage = this.currentPage }
     }
@@ -245,6 +263,285 @@ struct Page {
     // 点击子按钮后不自动隐藏，保持子按钮显示状态
   }
 
+  // 处理悬浮窗显示
+  private displayFloatingWindow(title: string, content: string): void {
+    this.floatingWindowTitle = title
+    this.floatingWindowContent = content
+    this.showFloatingWindow = true
+  }
+
+  // 处理悬浮窗关闭
+  private handleFloatingWindowClose(): void {
+    this.showFloatingWindow = false
+    this.floatingWindowTitle = ''
+    this.floatingWindowContent = ''
+  }
+
+  // 处理主题切换
+  private handleThemeChange(theme: OmniThemeType): void {
+    const hook = useOmniTheme()
+    hook.setTheme(theme)
+    const themeName = this.omniThemeManager.getThemeName(theme)
+    this.omniUIUtils.showSuccess(`已切换到${themeName}`)
+    this.showThemeSelector = false
+  }
+
+  // 处理工程设置
+  private showEngineeringSettings(): void {
+    this.showEngineeringSettingsDialog = true
+  }
+
+  private handleEngineeringSettingsConfirm(): void {
+    this.omniUIUtils.showSuccess('工程设置已保存')
+    this.showEngineeringSettingsDialog = false
+  }
+
+  private handleEngineeringSettingsCancel(): void {
+    this.omniUIUtils.showInfo('已取消工程设置')
+    this.showEngineeringSettingsDialog = false
+  }
+
+  // 构建悬浮窗Tab按钮
+  @Builder
+  private buildFloatingTabButton(title: string, tabKey: string): void {
+    Button(title)
+      .fontSize(14)
+      .fontWeight(this.selectedFloatingTab === tabKey ? FontWeight.Bold : FontWeight.Normal)
+      .fontColor(this.selectedFloatingTab === tabKey ? this.getCurrentTheme().primary : this.getCurrentTheme().textColor)
+      .backgroundColor(this.selectedFloatingTab === tabKey ? this.getCurrentTheme().primary + '20' : Color.Transparent)
+      .borderRadius(6)
+      .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+      .layoutWeight(1)
+      .margin({ left: 4, right: 4 })
+      .onClick(() => {
+        this.selectedFloatingTab = tabKey
+      })
+  }
+
+  // 构建出口Tab内容
+  @Builder
+  private buildExportTabContent(): void {
+    Text('出口管理')
+      .fontSize(18)
+      .fontWeight(FontWeight.Bold)
+      .fontColor(this.getCurrentTheme().textColor)
+      .margin({ bottom: 16 })
+      .alignSelf(ItemAlign.Start)
+
+    // 按钮网格 - 4列布局
+    Grid() {
+      GridItem() { this.buildFloatingButton('🗑️', '出口清空') }
+      GridItem() { this.buildFloatingButton('⚡', '电磁阀厕所') }
+      GridItem() { this.buildFloatingButton('🔧', '电机使能') }
+      GridItem() { this.buildFloatingButton('🔄', '复位果杯') }
+      GridItem() { this.buildFloatingButton('🧪', '测试果杯') }
+      GridItem() { this.buildFloatingButton('📦', '纸箱规格') }
+      GridItem() { this.buildFloatingButton('📺', '出口屏显示') }
+      GridItem() { this.buildFloatingButton('⚙️', '出口屏设置') }
+    }
+    .columnsTemplate('1fr 1fr 1fr 1fr')
+    .rowsGap(16)
+    .columnsGap(16)
+    .width('100%')
+  }
+
+  // 构建设置Tab内容
+  @Builder
+  private buildSettingsTabContent(): void {
+    Text('系统设置')
+      .fontSize(18)
+      .fontWeight(FontWeight.Bold)
+      .fontColor(this.getCurrentTheme().textColor)
+      .margin({ bottom: 16 })
+      .alignSelf(ItemAlign.Start)
+
+    // 按钮网格 - 4列布局
+    Grid() {
+      GridItem() { this.buildFloatingButton('⚙️', '工程设置') }
+      GridItem() { this.buildFloatingButton('📱', '设备信息') }
+      GridItem() { this.buildFloatingButton('🗑️', '数据清零') }
+      GridItem() { this.buildFloatingButton('🔧', '配置设置') }
+      GridItem() { this.buildFloatingButton('👨', '用户设置') }
+      GridItem() { this.buildFloatingButton('⬇️', '下载配置') }
+      GridItem() { this.buildFloatingButton('⚠️', '故障信息') }
+      GridItem() { this.buildFloatingButton('🔌', '电器故障设置') }
+      GridItem() { this.buildFloatingButton('🏷️', '贴标设置') }
+      GridItem() { this.buildFloatingButton('🛠️', '系统故障设置') }
+      GridItem() { this.buildFloatingButton('🔄', '复位掉果杯') }
+      GridItem() { this.buildFloatingButton('🎨', '主题切换') }
+    }
+    .columnsTemplate('1fr 1fr 1fr 1fr')
+    .rowsGap(16)
+    .columnsGap(16)
+    .width('100%')
+  }
+
+  // 构建帮助Tab内容
+  @Builder
+  private buildHelpTabContent(): void {
+    Text('帮助支持')
+      .fontSize(18)
+      .fontWeight(FontWeight.Bold)
+      .fontColor(this.getCurrentTheme().textColor)
+      .margin({ bottom: 16 })
+      .alignSelf(ItemAlign.Start)
+
+    // 按钮网格 - 4列布局
+    Grid() {
+      GridItem() { this.buildFloatingButton('📖', '用户手册') }
+      GridItem() { this.buildFloatingButton('🔄', '检查新版本') }
+      GridItem() { this.buildFloatingButton('💾', '备份设置') }
+      GridItem() { this.buildFloatingButton('📥', '恢复设置') }
+      GridItem() { this.buildFloatingButton('🔌', '关闭IPM') }
+      GridItem() { this.buildFloatingButton('📋', '分选日志') }
+      GridItem() { this.buildFloatingButton('ℹ️', '关于') }
+      GridItem() { this.buildFloatingButton('🌐', '语言') }
+      GridItem() { this.buildFloatingButton('🚪', '退出') }
+      GridItem() { this.buildFloatingButton('👨', '用户切换') }
+    }
+    .columnsTemplate('1fr 1fr 1fr 1fr')
+    .rowsGap(16)
+    .columnsGap(16)
+    .width('100%')
+  }
+
+  // 构建主题选择器
+  @Builder
+  private buildThemeSelector(): void {
+    Stack() {
+      // 背景遮罩
+      Column()
+        .width('100%')
+        .height('100%')
+        .backgroundColor('rgba(0, 0, 0, 0.5)')
+        .onClick(() => {
+          this.showThemeSelector = false
+        })
+      
+      // 主题选择器内容
+      Column() {
+        // 标题
+        Text('选择主题')
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.getCurrentTheme().textColor)
+          .margin({ bottom: 20 })
+        
+        // 主题选项
+        Column() {
+          this.buildThemeOption(OmniThemeType.BLUE, '🔵 蓝色主题', '#1976D2')
+          this.buildThemeOption(OmniThemeType.GREEN, '🟢 绿色主题', '#388E3C')
+          this.buildThemeOption(OmniThemeType.PURPLE, '🟣 紫色主题', '#7B1FA2')
+          this.buildThemeOption(OmniThemeType.ORANGE, '🟠 橙色主题', '#F57C00')
+          this.buildThemeOption(OmniThemeType.PINK, '🌸 粉色主题', '#C2185B')
+          this.buildThemeOption(OmniThemeType.TEAL, '🌊 青色主题', '#00796B')
+          this.buildThemeOption(OmniThemeType.DEEP_BLUE, '💙 冷静深蓝', '#1565C0')
+          this.buildThemeOption(OmniThemeType.WARM_AMBER, '🧡 暖色质感', '#FF8F00')
+          this.buildThemeOption(OmniThemeType.MINIMAL, '⚫ 极简黑白', '#424242')
+          this.buildThemeOption(OmniThemeType.FRESH_GREEN, '🌿 清新绿意', '#4CAF50')
+          this.buildThemeOption(OmniThemeType.ELEGANT_PURPLE, '💜 优雅紫调', '#9C27B0')
+          this.buildThemeOption(OmniThemeType.PROFESSIONAL_BLUE, '🎯 专业蓝色', '#1976D2')
+        }
+        .width('100%')
+        .margin({ top: 12, bottom: 12 })
+      }
+      .width(350)
+      .padding(20)
+      .backgroundColor(this.getCurrentTheme().surfaceColor)
+      .borderRadius(12)
+      .shadow({
+        radius: 20,
+        color: 'rgba(0, 0, 0, 0.15)',
+        offsetX: 0,
+        offsetY: 8
+      })
+    }
+    .width('100%')
+    .height('100%')
+    .position({ x: 0, y: 0 })
+    .zIndex(2000)
+  }
+
+  // 构建主题选项
+  @Builder
+  private buildThemeOption(theme: OmniThemeType, name: string, color: string): void {
+    Row() {
+      // 颜色指示器
+      Column()
+        .width(20)
+        .height(20)
+        .backgroundColor(color)
+        .borderRadius(10)
+        .margin({ right: 12 })
+      
+      // 主题名称
+      Text(name)
+        .fontSize(16)
+        .fontColor(this.getCurrentTheme().textColor)
+        .layoutWeight(1)
+      
+      // 选中指示器
+      if (this.selectedTheme === theme) {
+        Text('✓')
+          .fontSize(16)
+          .fontColor(this.getCurrentTheme().textColor)
+          .fontWeight(FontWeight.Bold)
+      }
+    }
+    .width('100%')
+    .height(50)
+    .padding({ left: 16, right: 16 })
+    .backgroundColor(this.selectedTheme === theme ? this.getCurrentTheme().textColor + '20' : Color.Transparent)
+    .borderRadius(8)
+    .border({ 
+      width: this.selectedTheme === theme ? 2 : 1, 
+      color: this.selectedTheme === theme ? this.getCurrentTheme().textColor : this.getCurrentTheme().borderColor 
+    })
+    .onClick(() => {
+      this.handleThemeChange(theme)
+    })
+  }
+
+  // 构建悬浮窗按钮
+  @Builder
+  private buildFloatingButton(icon: string, title: string): void {
+    Button() {
+      Column() {
+        Text(icon)
+          .fontSize(32)
+          .margin({ bottom: 8 })
+        
+        Text(title)
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCurrentTheme().textColor)
+          .textAlign(TextAlign.Center)
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+      }
+      .width('100%')
+      .height('100%')
+      .justifyContent(FlexAlign.Center)
+      .alignItems(HorizontalAlign.Center)
+    }
+    .width('100%')
+    .height(120)
+    .backgroundColor(this.getCurrentTheme().surfaceColor)
+    .border({ width: 1, color: this.getCurrentTheme().borderColor })
+    .borderRadius(8)
+    .onClick(() => {
+      console.log('悬浮窗按钮被点击:', title)
+      if (title === '主题切换') {
+        this.selectedTheme = this.consumedThemeType // 初始化选中主题为当前主题
+        this.showThemeSelector = true
+      } else if (title === '工程设置') {
+        this.showEngineeringSettings()
+      } else {
+        this.omniUIUtils.showInfo(`已点击${title}`)
+      }
+    })
+  }
+
 
 
   // 创建导航按钮配置（pageName 使用英文键）
@@ -288,8 +585,6 @@ struct Page {
       HistoryContent()
     } else if (this.currentPage === 'end') {
       EndProcessingContent()
-    } else if (this.currentPage === 'more') {
-      MoreContent()
     } else {
       // 默认页面内容
       this.renderDefaultPage()
@@ -773,6 +1068,87 @@ struct Page {
       })
       .width('100%')
       .zIndex(100) // 确保在最上层
+
+      // 悬浮窗组件
+      if (this.showFloatingWindow) {
+        FloatingWindow({
+          isVisible: this.showFloatingWindow,
+          title: this.floatingWindowTitle,
+          windowWidth: '600px',
+          windowHeight: '700px',
+          windowPosition: { x: 120, y: 400 },
+          onClose: () => {
+            this.handleFloatingWindowClose()
+          }
+        }) {
+          // 悬浮窗内容 - 3个Tab的设置页面
+          Column() {
+            // Tab导航栏
+            Row() {
+              this.buildFloatingTabButton('出口', 'export')
+              this.buildFloatingTabButton('设置', 'settings')
+              this.buildFloatingTabButton('帮助', 'help')
+            }
+            .width('100%')
+            .height(50)
+            .backgroundColor(this.getCurrentTheme().surfaceColor)
+            .borderRadius(8)
+            .margin({ bottom: 16 })
+
+            // Tab内容区域
+            if (this.floatingWindowTitle === '更多设置') {
+              if (this.selectedFloatingTab === 'export') {
+                this.buildExportTabContent()
+              } else if (this.selectedFloatingTab === 'settings') {
+                this.buildSettingsTabContent()
+              } else if (this.selectedFloatingTab === 'help') {
+                this.buildHelpTabContent()
+              }
+            } else {
+              // 其他页面的简单内容
+              Text(this.floatingWindowContent)
+                .fontSize(14)
+                .fontColor(this.getCurrentTheme().textColor)
+                .lineHeight(24)
+                .padding(16)
+                .width('100%')
+                .textAlign(TextAlign.Start)
+            }
+          }
+          .width('100%')
+          .height('100%')
+        }
+      }
+      
+      // 主题选择器
+      if (this.showThemeSelector) {
+        Stack() {
+          this.buildThemeSelector()
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(2000) // 主题选择器层级
+      }
+      
+      // 工程设置对话框
+      if (this.showEngineeringSettingsDialog) {
+        Stack() {
+          EngineeringSettingsDialog({
+            isVisible: this.showEngineeringSettingsDialog,
+            onConfirm: () => {
+              this.handleEngineeringSettingsConfirm()
+            },
+            onCancel: () => {
+              this.handleEngineeringSettingsCancel()
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(3000) // 确保在最上层
+      }
     }
     .width('100%')
     .height('100%')

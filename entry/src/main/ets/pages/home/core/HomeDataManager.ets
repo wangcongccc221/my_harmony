@@ -53,6 +53,11 @@ export class HomeDataManager {
    * }
    */
   private allTableData: Record<string, TableRow[]> = {}
+  
+  /**
+   * 当前FSM状态
+   */
+  private currentFSM: 'FSM1' | 'FSM2' = 'FSM1'
 
   /**
    * 添加数据到指定表格
@@ -82,12 +87,32 @@ export class HomeDataManager {
   }
 
   /**
+   * 设置当前FSM状态
+   * 
+   * @param fsm FSM状态
+   */
+  setFSM(fsm: 'FSM1' | 'FSM2'): void {
+    this.currentFSM = fsm
+    console.log(`数据管理器切换到: ${fsm}`)
+  }
+
+  /**
+   * 获取当前FSM状态
+   * 
+   * @returns 当前FSM状态
+   */
+  getCurrentFSM(): 'FSM1' | 'FSM2' {
+    return this.currentFSM
+  }
+
+  /**
    * 获取指定表格的数据
    * 
    * 功能说明：
    * - 根据表格名称获取对应的表格数据
    * - 如果表格不存在，返回空数组
    * - 返回的数据是表格行数据的数组
+   * - 根据FSM状态返回不同的数据
    * 
    * @param tableName 表格名称（如：'等级表', '容器表'等）
    * @returns 表格数据（TableRow数组），如果表格不存在则返回空数组
@@ -99,7 +124,9 @@ export class HomeDataManager {
    * ```
    */
   getTableData(tableName: string): TableRow[] {
-    return this.allTableData[tableName] || []
+    // 根据FSM状态返回不同的数据
+    const fsmKey = `${tableName}_${this.currentFSM}`
+    return this.allTableData[fsmKey] || this.allTableData[tableName] || []
   }
 
   /**
@@ -163,13 +190,31 @@ export class HomeDataManager {
    * ```
    */
   initializeLevelTableData(): void {
-    const levelData: TableRow[] = [
-      ['A级', '1250.5', '28.5%', '156', '25.2%'],
-      ['B级', '980.2', '22.3%', '98', '15.8%'],
-      ['C级', '756.8', '17.2%', '78', '12.6%'],
-      ['D级', '654.3', '14.9%', '65', '10.5%']
-    ]
-    this.addTableData('等级表', levelData)
+    let levelData: TableRow[]
+    
+    if (this.currentFSM === 'FSM1') {
+      // FSM1的等级表数据
+      levelData = [
+        ['A级', '1250.5', '28.5%', '156', '25.2%'],
+        ['B级', '980.2', '22.3%', '98', '15.8%'],
+        ['C级', '756.8', '17.2%', '78', '12.6%'],
+        ['D级', '654.3', '14.9%', '65', '10.5%']
+      ]
+    } else {
+      // FSM2的等级表数据（不同的等级和数值）
+      levelData = [
+        ['特级', '1580.3', '32.1%', '189', '28.7%'],
+        ['优级', '1120.7', '22.8%', '134', '20.3%'],
+        ['良级', '890.4', '18.1%', '107', '16.2%'],
+        ['合格', '720.6', '14.6%', '87', '13.2%'],
+        ['次品', '450.2', '9.1%', '54', '8.2%']
+      ]
+    }
+    
+    // 使用FSM特定的键名存储数据
+    const fsmKey = `等级表_${this.currentFSM}`
+    this.allTableData[fsmKey] = levelData
+    console.log(`初始化${this.currentFSM}等级表数据:`, levelData)
   }
 
   /**
@@ -193,13 +238,31 @@ export class HomeDataManager {
    * ```
    */
   initializeContainerTableData(): void {
-    const containerData: TableRow[] = [
-      ['A01', '重量+尺寸', '600×400×300', 'A级'],
-      ['B02', '外观+颜色', '500×350×280', 'B级'],
-      ['C03', '尺寸', '400×300×250', 'C级'],
-      ['D04', '重量', '550×380×290', 'A级']
-    ]
-    this.addTableData('容器表', containerData)
+    let containerData: TableRow[]
+    
+    if (this.currentFSM === 'FSM1') {
+      // FSM1的容器表数据
+      containerData = [
+        ['A01', '重量+尺寸', '600×400×300', 'A级'],
+        ['B02', '外观+颜色', '500×350×280', 'B级'],
+        ['C03', '尺寸', '400×300×250', 'C级'],
+        ['D04', '重量', '550×380×290', 'A级']
+      ]
+    } else {
+      // FSM2的容器表数据（不同的容器配置）
+      containerData = [
+        ['T01', '全自动分选', '800×500×400', '特级'],
+        ['Y01', '智能识别', '700×450×350', '优级'],
+        ['L01', '精密分选', '600×400×300', '良级'],
+        ['H01', '标准分选', '500×350×280', '合格'],
+        ['C01', '基础分选', '400×300×250', '次品']
+      ]
+    }
+    
+    // 使用FSM特定的键名存储数据
+    const fsmKey = `容器表_${this.currentFSM}`
+    this.allTableData[fsmKey] = containerData
+    console.log(`初始化${this.currentFSM}容器表数据:`, containerData)
   }
 
   /**
@@ -314,12 +377,25 @@ export class HomeDataManager {
    * ```
    */
   initializeAllTableData(): void {
+    // 为FSM1初始化数据
+    this.currentFSM = 'FSM1'
     this.initializeLevelTableData()
     this.initializeContainerTableData()
     this.initializeStatisticsTableData()
     this.initializeDynamicPackingTableData()
     this.initializeFinishedProductsTableData()
-    console.log('所有表格数据初始化完成')
+    
+    // 为FSM2初始化数据
+    this.currentFSM = 'FSM2'
+    this.initializeLevelTableData()
+    this.initializeContainerTableData()
+    this.initializeStatisticsTableData()
+    this.initializeDynamicPackingTableData()
+    this.initializeFinishedProductsTableData()
+    
+    // 重置为FSM1
+    this.currentFSM = 'FSM1'
+    console.log('所有表格数据初始化完成（FSM1和FSM2）')
   }
 
   /**

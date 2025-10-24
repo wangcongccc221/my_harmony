@@ -1,0 +1,28 @@
+{
+  "HVIGOR": {
+    "IS_INCREMENTAL": true,
+    "IS_DAEMON": true,
+    "IS_PARALLEL": true,
+    "IS_HVIGORFILE_TYPE_CHECK": false,
+    "TASK_TIME": {},
+    "APIS": [],
+    "CONFIG_PROPERTIES": {
+      "enableSignTask": true,
+      "skipNativeIncremental": false,
+      "hvigor_keepDependency": true
+    },
+    "TOTAL_TIME": 19379800,
+    "BUILD_ID": "202510241443595480",
+    "ERROR_MESSAGE": [
+      {
+        "CODE": "00303230",
+        "MESSAGE": "The required attribute module-srcPath is missing",
+        "SOLUTIONS": [
+          "Access the build-profile.json5 file in the project root directory and make sure the srcPath field exists under modules.",
+          "Access the configuration file of the module dynamically added in the hvigorconfig.ts file in the project root directory, and make sure the srcPath field exists."
+        ],
+        "TIMESTAMP": "1761288239551"
+      }
+    ]
+  }
+}
