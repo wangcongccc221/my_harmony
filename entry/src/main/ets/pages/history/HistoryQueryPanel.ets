@@ -95,6 +95,8 @@ export struct HistoryQueryPanel {
   onLevelMergeExportClick?: () => void
   /** 日期错误回调函数 */
   onDateError?: () => void
+  /** 导出成功回调函数 */
+  onExportSuccess?: (filePath: string, count: number) => void
 
   // ==================== 主题相关属性 ====================
   /** 当前主题样式 */
@@ -230,6 +232,11 @@ export struct HistoryQueryPanel {
         onDateError: () => {
           if (this.onDateError) {
             this.onDateError()
+          }
+        },
+        onExportSuccess: (filePath: string, count: number) => {
+          if (this.onExportSuccess) {
+            this.onExportSuccess(filePath, count)
           }
         }
       })

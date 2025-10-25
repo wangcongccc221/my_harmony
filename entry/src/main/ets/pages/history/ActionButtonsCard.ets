@@ -29,6 +29,8 @@
 import { BaseComponentHelper } from '../../components/common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import fs from '@ohos.file.fs'
+import common from '@ohos.app.ability.common'
 
 /**
  * 操作按钮卡片组件结构体
@@ -75,6 +77,8 @@ export struct ActionButtonsCard {
   onLevelMergeExportClick?: () => void
   /** 日期错误回调函数 */
   onDateError?: () => void
+  /** 导出成功回调函数 */
+  onExportSuccess?: (filePath: string, count: number) => void
 
   // ==================== 主题相关属性 ====================
   /** 当前主题样式 */
@@ -140,10 +144,121 @@ export struct ActionButtonsCard {
   private async handleMergeExport(): Promise<void> {
     console.log('执行合并导出操作')
     
-    // TODO: 在这里添加实际的导出逻辑
-    // 例如：生成Excel文件、调用导出API等
-    await new Promise<void>(resolve => setTimeout(resolve, 500))
-    console.log('合并导出完成')
+    try {
+      // 获取应用上下文
+      const context = getContext(this) as common.UIAbilityContext;
+      const filesDir = context.filesDir;
+      
+      // 生成文件名（包含时间戳）
+      const now = new Date();
+      const timestamp = now.getFullYear() + 
+        String(now.getMonth() + 1).padStart(2, '0') + 
+        String(now.getDate()).padStart(2, '0') + '_' +
+        String(now.getHours()).padStart(2, '0') + 
+        String(now.getMinutes()).padStart(2, '0');
+      
+      const fileName = `历史加工数据_${timestamp}.csv`;
+      const filePath = `${filesDir}/${fileName}`;
+      
+      // 生成CSV内容
+      const csvContent = this.generateHistoryCSVData();
+      
+      // 创建CSV文件
+      const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
+      fs.writeSync(file.fd, csvContent);
+      fs.closeSync(file);
+      
+      console.log('CSV文件创建成功:', filePath);
+      
+      // 尝试保存到公共目录
+      await this.saveToPublicDirectory(filePath, fileName, csvContent);
+      
+    } catch (error) {
+      console.error('合并导出失败:', error);
+    }
+  }
+
+  /**
+   * 生成历史加工CSV数据
+   */
+  private generateHistoryCSVData(): string {
+    // CSV头部
+    let csvContent = '加工时间,结束时间,加工品种,总重量(吨),客户名称,农场名称,水果类型,等级,出口编号\n';
+    
+    // 模拟历史加工数据
+    const sampleData = [
+      ['2024-01-15 08:30', '2024-01-15 12:45', '苹果', '15.5', '客户A', '农场1', '红富士', 'A级', '出口1'],
+      ['2024-01-15 14:20', '2024-01-15 18:30', '橙子', '12.3', '客户B', '农场2', '脐橙', 'B级', '出口2'],
+      ['2024-01-16 09:15', '2024-01-16 13:20', '香蕉', '8.7', '客户C', '农场3', '香蕉', 'A级', '出口1'],
+      ['2024-01-16 15:00', '2024-01-16 19:15', '葡萄', '6.2', '客户A', '农场1', '巨峰', 'A级', '出口1'],
+      ['2024-01-17 08:45', '2024-01-17 12:30', '梨子', '10.8', '客户D', '农场4', '雪花梨', 'B级', '出口2'],
+      ['2024-01-17 14:10', '2024-01-17 18:45', '桃子', '7.9', '客户B', '农场2', '水蜜桃', 'A级', '出口1'],
+      ['2024-01-18 09:30', '2024-01-18 13:45', '草莓', '4.5', '客户E', '农场5', '草莓', 'A级', '出口1'],
+      ['2024-01-18 15:20', '2024-01-18 19:30', '樱桃', '3.8', '客户C', '农场3', '车厘子', 'A级', '出口1']
+    ];
+    
+    // 添加数据行
+    sampleData.forEach(row => {
+      csvContent += row.join(',') + '\n';
+    });
+    
+    return csvContent;
+  }
+
+  /**
+   * 保存到公共目录
+   */
+  private async saveToPublicDirectory(filePath: string, fileName: string, csvContent: string): Promise<void> {
+    try {
+      // 尝试保存到多个可能的公共路径
+      const targetPaths = [
+        '/storage/emulated/0/Download/',
+        '/storage/emulated/0/Documents/',
+        '/sdcard/Download/',
+        '/sdcard/Documents/'
+      ];
+
+      let successCount = 0;
+      let successPaths: string[] = [];
+
+      // 读取原文件内容
+      const file = fs.openSync(filePath, fs.OpenMode.READ_ONLY);
+      const stat = fs.statSync(filePath);
+      const buffer = new ArrayBuffer(stat.size);
+      fs.readSync(file.fd, buffer);
+      fs.closeSync(file);
+
+      // 尝试保存到每个路径
+      for (const targetDir of targetPaths) {
+        try {
+          const targetPath = `${targetDir}${fileName}`;
+          const targetFile = fs.openSync(targetPath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
+          fs.writeSync(targetFile.fd, buffer);
+          fs.closeSync(targetFile);
+          successCount++;
+          successPaths.push(targetPath);
+          console.log(`成功保存到: ${targetPath}`);
+        } catch (error) {
+          console.warn(`保存到 ${targetDir} 失败:`, error);
+        }
+      }
+
+      if (successCount > 0) {
+        console.log(`文件已保存到 ${successCount} 个位置:`, successPaths);
+        // 这里可以触发导出成功对话框
+        if (this.onExportSuccess) {
+          this.onExportSuccess(successPaths[0], successCount);
+        }
+      } else {
+        console.log('所有公共路径保存失败，文件保存在应用沙箱中');
+        if (this.onExportSuccess) {
+          this.onExportSuccess(filePath, 1);
+        }
+      }
+      
+    } catch (error) {
+      console.error('保存到公共目录失败:', error);
+    }
   }
 
   /**

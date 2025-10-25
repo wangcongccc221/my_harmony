@@ -23,6 +23,7 @@ import { HistoryQueryPanel } from './HistoryQueryPanel'
 import { HistoryDataTable } from './HistoryDataTable'
 import { HistoryTableData } from './core/HistoryTableManager'
 import { DateErrorDialog } from '../../components/dialogs/DateErrorDialog'
+import { ExportSuccessDialog } from '../../components/dialogs/ExportSuccessDialog'
 
 /**
  * 历史加工内容组件结构体
@@ -73,6 +74,12 @@ export struct HistoryContent {
   // ==================== 对话框状态 ====================
   /** 日期错误对话框显示状态 */
   @State private showDateErrorDialog: boolean = false
+  /** 导出成功对话框显示状态 */
+  @State private showExportSuccessDialog: boolean = false
+  /** 导出文件路径 */
+  @State private exportFilePath: string = ''
+  /** 导出数据条数 */
+  @State private exportCount: number = 0
 
   /**
    * 获取当前主题配置
@@ -100,6 +107,22 @@ export struct HistoryContent {
    */
   private closeDateErrorDialog(): void {
     this.showDateErrorDialog = false
+  }
+
+  /**
+   * 处理导出成功
+   */
+  private handleExportSuccess(filePath: string, count: number): void {
+    this.exportFilePath = filePath
+    this.exportCount = count
+    this.showExportSuccessDialog = true
+  }
+
+  /**
+   * 关闭导出成功对话框
+   */
+  private closeExportSuccessDialog(): void {
+    this.showExportSuccessDialog = false
   }
 
   
@@ -172,6 +195,9 @@ export struct HistoryContent {
           },
           onDateError: () => {
             this.showDateErrorDialogHandler()
+          },
+          onExportSuccess: (filePath: string, count: number) => {
+            this.handleExportSuccess(filePath, count)
           }
         })
                   }
@@ -212,6 +238,16 @@ export struct HistoryContent {
         },
         onCancel: () => {
           this.closeDateErrorDialog()
+        }
+      })
+
+      // ==================== 导出成功对话框 ====================
+      ExportSuccessDialog({
+        isVisible: this.showExportSuccessDialog,
+        filePath: this.exportFilePath,
+        exportCount: this.exportCount,
+        onConfirm: () => {
+          this.closeExportSuccessDialog()
         }
       })
     }
