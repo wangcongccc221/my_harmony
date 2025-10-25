@@ -194,7 +194,8 @@ export struct HomeContent {
     // 更新顶部状态栏
     this.updateTopBarForFSM()
     
-    console.log(`主页切换到${fsm}，数据已更新`)
+    // 刷新表格数据
+    this.tablesRefreshKey++
   }
 
   // 设置开关映射表
@@ -264,21 +265,16 @@ export struct HomeContent {
 
   // 处理等级统计更新：为指定等级追加出口编号（去重）
   private applyLevelStatUpdate(levelName: string, exitNum: number): void {
-    console.log(`🔄 开始处理等级统计更新: 等级=${levelName}, 出口=${exitNum}`)
     const tableName = '等级统计表'
     const rows: TableRow[] = this.dataManager.getTableData(tableName)
-    console.log(`📊 当前等级统计表数据:`, rows)
     const idx: number = rows.findIndex((r: TableRow) => String(r && r[0]) === levelName)
-    console.log(`🔍 查找等级行索引: ${idx}`)
     if (idx < 0) {
-      console.warn(`❌ 未在${tableName}中找到等级行:`, levelName)
+      console.warn(`未在${tableName}中找到等级行:`, levelName)
       return
     }
     const updatedRow: TableRow = [...rows[idx]]
-    console.log(`📝 原始行数据:`, updatedRow)
     const exitColIndex = 2 // 等级出口
     const currentVal: string = String(updatedRow[exitColIndex] || '').trim()
-    console.log(`📋 当前出口值: "${currentVal}"`)
     const entry = `出口${exitNum}`
     let nextVal: string
     if (!currentVal) {
@@ -288,16 +284,14 @@ export struct HomeContent {
     } else {
       nextVal = `${currentVal}、${entry}`
     }
-    console.log(`🆕 新出口值: "${nextVal}"`)
     updatedRow[exitColIndex] = nextVal
 
     const newRows: TableRow[] = [...rows]
     newRows[idx] = updatedRow
-    console.log(`💾 更新后的完整数据:`, newRows)
-    this.dataManager.clearTableData(tableName)
-    this.dataManager.addTableData(tableName, newRows)
+    
+    // 使用FSM特定的键名更新数据
+    this.dataManager.updateFSMTableData(tableName, newRows)
     this.statsVersion++
-    console.log(`✅ 等级统计已更新: 等级=${levelName}, 新出口列=${nextVal}`)
   }
 
   // 处理等级统计移除：为指定等级移除某个出口编号
@@ -321,10 +315,10 @@ export struct HomeContent {
 
     const newRows: TableRow[] = [...rows]
     newRows[idx] = updatedRow
-    this.dataManager.clearTableData(tableName)
-    this.dataManager.addTableData(tableName, newRows)
+    
+    // 使用FSM特定的键名更新数据
+    this.dataManager.updateFSMTableData(tableName, newRows)
     this.statsVersion++
-    console.log(`🗑️ 等级统计已移除: 等级=${levelName}, 移除出口=${exitNum}, 新出口列=${nextVal}`)
   }
 
 
@@ -449,6 +443,18 @@ export struct HomeContent {
     Stack() {
       // 主要内容
       this.buildMainContent()
+      
+      // 侦听FSM切换事件（优化：减少重复监听）
+      if (this.selectedFSM) {
+        Blank()
+          .onAppear(() => {
+            // 静默更新，减少日志输出
+            this.dataManager.setFSM(this.selectedFSM)
+            this.updateTopBarForFSM()
+            this.tablesRefreshKey++
+          })
+      }
+      
       // 侦听等级统计更新事件（UI语法包裹，逻辑在回调内）
       if (this.levelStatUpdate && typeof this.levelStatUpdate['levelName'] === 'string' && typeof this.levelStatUpdate['exit'] !== 'undefined') {
         Blank()
@@ -712,7 +718,6 @@ export struct HomeContent {
     }
     
     this.updateTopBar(productionTonH, sumWeightTon, sumCounts, avgG)
-    console.log(`顶部状态栏已更新为${this.selectedFSM}数据`)
   }
 
   // 示例：当你更新本地状态时，同步写回全局，顶部栏会自动刷新

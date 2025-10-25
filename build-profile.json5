@@ -24,7 +24,6 @@
         "runtimeOS": "HarmonyOS",
         "buildOption": {
           "strictMode": {
-            "caseSensitiveCheck": true,
             "useNormalizedOHMUrl": true
           }
         }
