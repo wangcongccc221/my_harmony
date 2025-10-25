@@ -158,7 +158,7 @@ export struct MoreContent {
       // 出口功能列表
       Column() {
         this.buildExportItem('🗑️', '出口清空', '清空所有出口数据')
-        this.buildExportItem('⚡', '电磁阀厕所', '电磁阀厕所控制')
+        this.buildExportItem('⚡', '电磁阀测试', '电磁阀测试控制')
         this.buildExportItem('🔧', '电机使能', '电机使能控制')
         this.buildExportItem('🔄', '复位果杯', '复位果杯状态')
         this.buildExportItem('🧪', '测试果杯', '测试果杯功能')

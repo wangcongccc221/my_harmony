@@ -1,19 +1,10 @@
 /**
- * 操作按钮卡片组件
+ * 历史加工操作按钮卡片组件
+ * 功能：提供查询、导出、报告、删除、重置、批量导出、等级合并导出等操作按钮
+ * 用途：在历史加工页面中作为操作按钮区域显示
  * 
- * 功能说明：
- * - 提供历史加工相关的操作按钮
- * - 包含7个操作按钮：查询、合并导出、报告、删除、重置、批量导出、等级合并导出
- * - 支持按钮点击事件的处理和回调
- * 
- * 组件特点：
- * - 两行布局：上面4个按钮，下面3个按钮
- * - 按钮样式：统一的主题样式，圆角设计
- * - 事件处理：支持各种操作按钮的点击事件
- * - 主题支持：支持主题切换和样式更新
- * 
- * 使用方式：
- * ```typescript
+ * 使用示例：
+ * ```
  * ActionButtonsCard({
  *   onQueryClick: () => { this.handleQuery() },
  *   onMergeExportClick: () => { this.handleMergeExport() },
@@ -27,27 +18,12 @@
  */
 
 import { BaseComponentHelper } from '../../components/common/BaseComponent'
-import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { OmniThemeManager, ExtendedOmniThemeStyle, OmniThemeType } from '../../utils/theme/OmniThemeManager'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import { HistoryTableData } from './core/HistoryTableManager'
 import fs from '@ohos.file.fs'
 import common from '@ohos.app.ability.common'
 
-/**
- * 操作按钮卡片组件结构体
- * 
- * 属性说明：
- * - onQueryClick: 查询按钮点击回调函数
- * - onMergeExportClick: 合并导出按钮点击回调函数
- * - onReportClick: 报告按钮点击回调函数
- * - onDeleteClick: 删除按钮点击回调函数
- * - onResetClick: 重置按钮点击回调函数
- * - onBatchExportClick: 批量导出按钮点击回调函数
- * - onLevelMergeExportClick: 等级合并导出按钮点击回调函数
- * 
- * 方法说明：
- * - getCurrentTheme(): 获取当前主题配置
- * - build(): 构建操作按钮卡片的UI结构
- */
 @Component
 export struct ActionButtonsCard {
   // ==================== 日期数据属性 ====================
@@ -55,30 +31,54 @@ export struct ActionButtonsCard {
   @Prop startDate: string = ''
   /** 结束日期字符串 */
   @Prop endDate: string = ''
-  /** 选中的开始日期对象 */
+  /** 选中的开始日期 */
   @Prop selectedStartDate: Date = new Date()
-  /** 选中的结束日期对象 */
+  /** 选中的结束日期 */
   @Prop selectedEndDate: Date = new Date()
-  
-  // ==================== 事件回调函数 ====================
-  /** 查询按钮点击回调函数 */
+  /** 客户索引 */
+  @Prop customerIndex: number = 0
+  /** 农场索引 */
+  @Prop farmIndex: number = 0
+  /** 水果索引 */
+  @Prop fruitIndex: number = 0
+
+  // ==================== 事件回调属性 ====================
+  /** 开始日期变化回调函数 */
+  onStartDateChange?: (date: string) => void
+  /** 结束日期变化回调函数 */
+  onEndDateChange?: (date: string) => void
+  /** 客户变化回调函数 */
+  onCustomerChange?: (index: number) => void
+  /** 农场变化回调函数 */
+  onFarmChange?: (index: number) => void
+  /** 水果变化回调函数 */
+  onFruitChange?: (index: number) => void
+  /** 查询点击回调函数 */
   onQueryClick?: () => void
-  /** 合并导出按钮点击回调函数 */
+  /** 合并导出点击回调函数 */
   onMergeExportClick?: () => void
-  /** 报告按钮点击回调函数 */
+  /** 报告点击回调函数 */
   onReportClick?: () => void
-  /** 删除按钮点击回调函数 */
+  /** 删除点击回调函数 */
   onDeleteClick?: () => void
-  /** 重置按钮点击回调函数 */
+  /** 重置点击回调函数 */
   onResetClick?: () => void
-  /** 批量导出按钮点击回调函数 */
+  /** 批量导出点击回调函数 */
   onBatchExportClick?: () => void
-  /** 等级合并导出按钮点击回调函数 */
+  /** 等级合并导出点击回调函数 */
   onLevelMergeExportClick?: () => void
   /** 日期错误回调函数 */
   onDateError?: () => void
   /** 导出成功回调函数 */
   onExportSuccess?: (filePath: string, count: number) => void
+  /** 获取表格数据的回调函数 */
+  onGetTableData?: () => HistoryTableData[]
+  /** 获取选中数据的回调函数 */
+  onGetSelectedData?: () => HistoryTableData[]
+
+  // ==================== 文件命名对话框回调 ====================
+  /** 显示文件命名对话框回调 */
+  onShowFileNameDialog?: (exportType: string) => void
 
   // ==================== 主题相关属性 ====================
   /** 当前主题样式 */
@@ -99,82 +99,115 @@ export struct ActionButtonsCard {
    * - 用于组件样式配置
    * - 支持主题切换时的样式更新
    * 
-   * @returns 当前主题的扩展样式对象
+   * @returns 当前主题样式配置
    */
-  getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+  private getCurrentTheme(): ExtendedOmniThemeStyle {
+    return this.baseComponentHelper.getCurrentTheme()
   }
 
-  // ==================== 按钮事件处理函数 ====================
-  
   /**
-   * 查询操作
+   * 处理查询操作
+   * 
+   * 功能说明：
+   * - 执行历史数据查询操作
+   * - 调用查询回调函数
+   * - 处理查询结果
    */
   private async handleQuery(): Promise<void> {
     console.log('执行查询操作')
-    
-    // 打印日期数据
-    console.log('开始日期:', this.startDate)
-    console.log('结束日期:', this.endDate)
-    
-    // 检查日期范围
-    if (this.startDate && this.endDate) {
-      const startDateObj = new Date(this.startDate)
-      const endDateObj = new Date(this.endDate)
-      if (endDateObj < startDateObj) {
-        console.log('结束时间小于开始时间')
-        // 触发父组件的日期错误对话框
-        if (this.onDateError) {
-          this.onDateError()
-        }
-        return
-      }
+    if (this.onQueryClick) {
+      this.onQueryClick()
     }
-    
-    // TODO: 在这里添加实际的查询逻辑
-    // 例如：调用API、过滤数据、更新表格等
-    await new Promise<void>(resolve => setTimeout(resolve, 1000)) // 模拟异步操作
-    console.log('查询完成')
+  }
+
+  /**
+   * 处理合并导出操作
+   * 
+   * 功能说明：
+   * - 执行历史数据合并导出操作
+   * - 生成CSV文件并保存
+   * - 显示导出成功对话框
+   */
+  private async handleMergeExport(): Promise<void> {
+    console.log('执行合并导出操作')
+    if (this.onShowFileNameDialog) {
+      this.onShowFileNameDialog('merge')
+    }
+  }
+
+  /**
+   * 处理报告操作
+   * 
+   * 功能说明：
+   * - 执行历史数据报告生成操作
+   * - 调用报告回调函数
+   * - 处理报告结果
+   */
+  private async handleReport(): Promise<void> {
+    console.log('执行报告操作')
+    if (this.onReportClick) {
+      this.onReportClick()
+    }
+  }
+
+  /**
+   * 处理删除操作
+   * 
+   * 功能说明：
+   * - 执行历史数据删除操作
+   * - 调用删除回调函数
+   * - 处理删除结果
+   */
+  private async handleDelete(): Promise<void> {
+    console.log('执行删除操作')
+    if (this.onDeleteClick) {
+      this.onDeleteClick()
+    }
+  }
+
+  /**
+   * 处理重置操作
+   * 
+   * 功能说明：
+   * - 执行历史数据重置操作
+   * - 调用重置回调函数
+   * - 处理重置结果
+   */
+  private async handleReset(): Promise<void> {
+    console.log('执行重置操作')
+    if (this.onResetClick) {
+      this.onResetClick()
+    }
+  }
+
+  /**
+   * 处理批量导出操作
+   * 
+   * 功能说明：
+   * - 执行历史数据批量导出操作
+   * - 调用批量导出回调函数
+   * - 处理批量导出结果
+   */
+  private async handleBatchExport(): Promise<void> {
+    console.log('执行批量导出操作')
+    if (this.onShowFileNameDialog) {
+      this.onShowFileNameDialog('batch')
+    }
   }
 
 
   /**
-   * 合并导出操作
+   * 处理等级合并导出操作
+   * 
+   * 功能说明：
+   * - 执行历史数据等级合并导出操作
+   * - 调用等级合并导出回调函数
+   * - 处理等级合并导出结果
    */
-  private async handleMergeExport(): Promise<void> {
-    console.log('执行合并导出操作')
-    
-    try {
-      // 获取应用上下文
-      const context = getContext(this) as common.UIAbilityContext;
-      const filesDir = context.filesDir;
-      
-      // 生成文件名（包含时间戳）
-      const now = new Date();
-      const timestamp = now.getFullYear() + 
-        String(now.getMonth() + 1).padStart(2, '0') + 
-        String(now.getDate()).padStart(2, '0') + '_' +
-        String(now.getHours()).padStart(2, '0') + 
-        String(now.getMinutes()).padStart(2, '0');
-      
-      const fileName = `历史加工数据_${timestamp}.csv`;
-      const filePath = `${filesDir}/${fileName}`;
-      
-      // 生成CSV内容
-      const csvContent = this.generateHistoryCSVData();
-      
-      // 创建CSV文件
-      const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
-      fs.writeSync(file.fd, csvContent);
-      fs.closeSync(file);
-      
-      console.log('CSV文件创建成功:', filePath);
-      
-      // 尝试保存到公共目录
-      await this.saveToPublicDirectory(filePath, fileName, csvContent);
-      
-    } catch (error) {
-      console.error('合并导出失败:', error);
+  private async handleLevelMergeExport(): Promise<void> {
+    console.log('执行等级合并导出操作')
+    if (this.onLevelMergeExportClick) {
+      this.onLevelMergeExportClick()
     }
   }
 
@@ -185,20 +218,11 @@ export struct ActionButtonsCard {
     // CSV头部
     let csvContent = '加工时间,结束时间,加工品种,总重量(吨),客户名称,农场名称,水果类型,等级,出口编号\n';
     
-    // 模拟历史加工数据
-    const sampleData = [
-      ['2024-01-15 08:30', '2024-01-15 12:45', '苹果', '15.5', '客户A', '农场1', '红富士', 'A级', '出口1'],
-      ['2024-01-15 14:20', '2024-01-15 18:30', '橙子', '12.3', '客户B', '农场2', '脐橙', 'B级', '出口2'],
-      ['2024-01-16 09:15', '2024-01-16 13:20', '香蕉', '8.7', '客户C', '农场3', '香蕉', 'A级', '出口1'],
-      ['2024-01-16 15:00', '2024-01-16 19:15', '葡萄', '6.2', '客户A', '农场1', '巨峰', 'A级', '出口1'],
-      ['2024-01-17 08:45', '2024-01-17 12:30', '梨子', '10.8', '客户D', '农场4', '雪花梨', 'B级', '出口2'],
-      ['2024-01-17 14:10', '2024-01-17 18:45', '桃子', '7.9', '客户B', '农场2', '水蜜桃', 'A级', '出口1'],
-      ['2024-01-18 09:30', '2024-01-18 13:45', '草莓', '4.5', '客户E', '农场5', '草莓', 'A级', '出口1'],
-      ['2024-01-18 15:20', '2024-01-18 19:30', '樱桃', '3.8', '客户C', '农场3', '车厘子', 'A级', '出口1']
-    ];
+    // 获取所有历史加工数据
+    const allHistoryData = this.getAllHistoryData();
     
-    // 添加数据行
-    sampleData.forEach(row => {
+    // 添加所有数据行
+    allHistoryData.forEach(row => {
       csvContent += row.join(',') + '\n';
     });
     
@@ -206,253 +230,222 @@ export struct ActionButtonsCard {
   }
 
   /**
+   * 生成批量导出CSV数据
+   */
+  private generateBatchCSVData(selectedData: HistoryTableData[]): string {
+    // CSV头部
+    let csvContent = '加工时间,结束时间,加工品种,总重量(吨),客户名称,农场名称,水果类型,等级,出口编号\n';
+    
+    // 添加选中的数据行
+    selectedData.forEach(item => {
+      csvContent += [
+        item.startTime || '',
+        item.endTime || '',
+        item.fruitName || '',
+        item.weight?.toString() || '',
+        item.customerName || '',
+        item.farmName || '',
+        item.fruitName || '',
+        item.status || '',
+        item.id?.toString() || ''
+      ].join(',') + '\n';
+    });
+    
+    return csvContent;
+  }
+
+  /**
+   * 获取所有历史加工数据
+   */
+  private getAllHistoryData(): string[][] {
+    // 优先从表格获取数据
+    if (this.onGetTableData) {
+      const tableData = this.onGetTableData();
+      return tableData.map(item => [
+        item.startTime || '',
+        item.endTime || '',
+        item.fruitName || '',
+        item.weight?.toString() || '',
+        item.customerName || '',
+        item.farmName || '',
+        item.fruitName || '',
+        item.status || '',
+        item.id?.toString() || ''
+      ]);
+    }
+    
+    // 如果没有表格数据，返回空数组
+    return [];
+  }
+
+  /**
    * 保存到公共目录
    */
   private async saveToPublicDirectory(filePath: string, fileName: string, csvContent: string): Promise<void> {
     try {
-      // 尝试保存到多个可能的公共路径
       const targetPaths = [
+        '/storage/media/100/local/files/Docs/Download/',
         '/storage/emulated/0/Download/',
         '/storage/emulated/0/Documents/',
         '/sdcard/Download/',
         '/sdcard/Documents/'
       ];
-
+      
       let successCount = 0;
       let successPaths: string[] = [];
-
+      
       // 读取原文件内容
       const file = fs.openSync(filePath, fs.OpenMode.READ_ONLY);
       const stat = fs.statSync(filePath);
       const buffer = new ArrayBuffer(stat.size);
       fs.readSync(file.fd, buffer);
       fs.closeSync(file);
-
+      
       // 尝试保存到每个路径
-      for (const targetDir of targetPaths) {
+      for (const targetPath of targetPaths) {
         try {
-          const targetPath = `${targetDir}${fileName}`;
-          const targetFile = fs.openSync(targetPath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
+          const targetFile = fs.openSync(`${targetPath}${fileName}`, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
           fs.writeSync(targetFile.fd, buffer);
           fs.closeSync(targetFile);
           successCount++;
-          successPaths.push(targetPath);
-          console.log(`成功保存到: ${targetPath}`);
+          successPaths.push(`${targetPath}${fileName}`);
+          console.info(`成功保存到: ${targetPath}${fileName}`);
         } catch (error) {
-          console.warn(`保存到 ${targetDir} 失败:`, error);
-        }
-      }
-
-      if (successCount > 0) {
-        console.log(`文件已保存到 ${successCount} 个位置:`, successPaths);
-        // 这里可以触发导出成功对话框
-        if (this.onExportSuccess) {
-          this.onExportSuccess(successPaths[0], successCount);
-        }
-      } else {
-        console.log('所有公共路径保存失败，文件保存在应用沙箱中');
-        if (this.onExportSuccess) {
-          this.onExportSuccess(filePath, 1);
+          console.warn(`保存到 ${targetPath} 失败:`, error);
         }
       }
       
+      if (successCount > 0) {
+        console.log(`文件已保存到 ${successCount} 个位置:`, successPaths);
+        // 触发导出成功回调
+        if (this.onExportSuccess) {
+          this.onExportSuccess(successPaths[0], this.getAllHistoryData().length);
+        }
+      } else {
+        console.log('所有路径保存失败');
+      }
     } catch (error) {
       console.error('保存到公共目录失败:', error);
     }
   }
 
   /**
-   * 报告生成操作
-   */
-  private async handleReport(): Promise<void> {
-    console.log('生成报告操作')
-    
-    // TODO: 在这里添加实际的报告生成逻辑
-    // 例如：生成PDF报告、调用报告API等
-    console.log(this.startDate)
-    console.log(this.endDate)
-    await new Promise<void>(resolve => setTimeout(resolve, 800))
-    console.log('报告生成完成')
-    //  把数据添加到下方表格之中
-  }
-
-  /**
-   * 删除操作
-   */
-  private async handleDelete(): Promise<void> {
-    console.log('执行删除操作')
-    
-    // TODO: 在这里添加实际的删除逻辑
-    // 例如：显示确认对话框、调用删除API等
-    await new Promise<void>(resolve => setTimeout(resolve, 300))
-    console.log('删除完成')
-  }
-
-  /**
-   * 重置操作
-   */
-  private handleReset(): void {
-    console.log('执行重置操作')
-    
-    // TODO: 在这里添加重置逻辑
-    // 例如：重置表单、清空数据等
-    console.log('重置完成')
-  }
-
-  /**
-   * 批量导出操作
-   */
-  private async handleBatchExport(): Promise<void> {
-    console.log('执行批量导出操作')
-    
-    // TODO: 在这里添加实际的批量导出逻辑
-    // 例如：选择导出范围、设置导出参数等
-    await new Promise<void>(resolve => setTimeout(resolve, 1200))
-    console.log('批量导出完成')
-  }
-
-  /**
-   * 等级合并导出操作
-   */
-  private async handleLevelMergeExport(): Promise<void> {
-    console.log('执行等级合并导出操作')
-    
-    // TODO: 在这里添加实际的等级合并导出逻辑
-    // 例如：按等级分类、生成统计报告等
-    await new Promise<void>(resolve => setTimeout(resolve, 1000))
-    console.log('等级合并导出完成')
-  }
-
-  /**
-   * 组件构建方法
+   * 构建操作按钮卡片的UI结构
    * 
-   * 功能：
-   * - 构建操作按钮卡片的UI结构
-   * - 实现两行按钮的布局
-   * - 处理按钮点击事件
+   * 功能说明：
+   * - 构建包含查询、导出、报告、删除、重置、批量导出、等级合并导出等按钮的UI
+   * - 支持主题样式配置
+   * - 响应按钮点击事件
    * 
-   * 布局说明：
-   * - 使用Column布局垂直排列
-   * - 上面4个按钮：查询、合并导出、报告、删除
-   * - 下面3个按钮：重置、批量导出、等级合并导出
-   * - 按钮间有适当间距
-   * 
-   * 样式说明：
-   * - 卡片样式：透明背景，无边框，无阴影（隐形样式）
-   * - 按钮样式：主题背景色，白色文字，圆角设计
-   * - 按钮尺寸：统一高度40px，自适应宽度
-   * - 间距设计：按钮间有适当间距
+   * @returns 操作按钮卡片的UI结构
    */
   build() {
     Stack() {
       Column() {
-      // ==================== 上面4个按钮 ====================
-      Row() {
-        // 查询按钮
-        Button('查询')
-          .fontSize(16)  // 调大到16px
-          .fontColor(Color.White)
-          .backgroundColor(this.getCurrentTheme().primary)
-          .borderRadius(6)
-          .height(40)
-          .layoutWeight(1)
-          .margin({ right: 4 })
-          .onClick(async () => {
-            await this.handleQuery()
-          })
+        // ==================== 上面4个按钮 ====================
+        Row() {
+          // 查询按钮
+          Button('查询')
+            .fontSize(16)
+            .fontColor(Color.White)
+            .backgroundColor(this.getCurrentTheme().primary)
+            .borderRadius(6)
+            .height(40)
+            .layoutWeight(1)
+            .margin({ right: 4 })
+            .onClick(async () => {
+              await this.handleQuery()
+            })
 
-        // 合并导出按钮
-        Button('合并导出')
-          .fontSize(16)  // 调大到16px
-          .fontColor(Color.White)
-          .backgroundColor(this.getCurrentTheme().primary)
-          .borderRadius(6)
-          .height(40)
-          .layoutWeight(1)
-          .margin({ left: 2, right: 2 })
-          .onClick(async () => {
-            await this.handleMergeExport()
-          })
+          // 合并导出按钮
+          Button('合并导出')
+            .fontSize(16)
+            .fontColor(Color.White)
+            .backgroundColor(this.getCurrentTheme().primary)
+            .borderRadius(6)
+            .height(40)
+            .layoutWeight(1)
+            .margin({ left: 2, right: 4 })
+            .onClick(async () => {
+              await this.handleMergeExport()
+            })
 
-        // 报告按钮
-        Button('报告')
-          .fontSize(16)  // 调大到16px
-          .fontColor(Color.White)
-          .backgroundColor(this.getCurrentTheme().primary)
-          .borderRadius(6)
-          .height(40)
-          .layoutWeight(1)
-          .margin({ left: 2, right: 2 })
-          .onClick(async () => {
-            await this.handleReport()
-          })
+          // 报告按钮
+          Button('报告')
+            .fontSize(16)
+            .fontColor(Color.White)
+            .backgroundColor(this.getCurrentTheme().primary)
+            .borderRadius(6)
+            .height(40)
+            .layoutWeight(1)
+            .margin({ left: 2, right: 4 })
+            .onClick(async () => {
+              await this.handleReport()
+            })
 
-        // 删除按钮
-        Button('删除')
-          .fontSize(16)  // 调大到16px
-          .fontColor(Color.White)
-          .backgroundColor(this.getCurrentTheme().primary)
-          .borderRadius(6)
-          .height(40)
-          .layoutWeight(1)
-          .margin({ left: 4 })
-          .onClick(async () => {
-            await this.handleDelete()
-          })
+          // 删除按钮
+          Button('删除')
+            .fontSize(16)
+            .fontColor(Color.White)
+            .backgroundColor(this.getCurrentTheme().primary)
+            .borderRadius(6)
+            .height(40)
+            .layoutWeight(1)
+            .margin({ left: 2 })
+            .onClick(async () => {
+              await this.handleDelete()
+            })
+        }
+        .width('100%')
+        .margin({ bottom: 8 })
+
+        // ==================== 下面3个按钮 ====================
+        Row() {
+          // 重置按钮
+          Button('重置')
+            .fontSize(16)
+            .fontColor(Color.White)
+            .backgroundColor(this.getCurrentTheme().primary)
+            .borderRadius(6)
+            .height(40)
+            .layoutWeight(1)
+            .margin({ right: 4 })
+            .onClick(async () => {
+              await this.handleReset()
+            })
+
+          // 批量导出按钮
+          Button('批量导出')
+            .fontSize(16)
+            .fontColor(Color.White)
+            .backgroundColor(this.getCurrentTheme().primary)
+            .borderRadius(6)
+            .height(40)
+            .layoutWeight(1)
+            .margin({ left: 2, right: 4 })
+            .onClick(async () => {
+              await this.handleBatchExport()
+            })
+
+          // 等级合并导出按钮
+          Button('等级合并导出')
+            .fontSize(16)
+            .fontColor(Color.White)
+            .backgroundColor(this.getCurrentTheme().primary)
+            .borderRadius(6)
+            .height(40)
+            .layoutWeight(1)
+            .margin({ left: 2 })
+            .onClick(async () => {
+              await this.handleLevelMergeExport()
+            })
+        }
+        .width('100%')
       }
       .width('100%')
-      .margin({ bottom: 4 })
-
-      // ==================== 下面3个按钮 ====================
-      Row() {
-        // 重置按钮
-        Button('重置')
-          .fontSize(16)  // 调大到16px
-          .fontColor(Color.White)
-          .backgroundColor(this.getCurrentTheme().primary)
-          .borderRadius(6)
-          .height(40)
-          .layoutWeight(1)
-          .margin({ right: 4 })
-          .onClick(() => {
-            this.handleReset()
-          })
-
-        // 批量导出按钮
-        Button('批量导出')
-          .fontSize(16)  // 调大到16px
-          .fontColor(Color.White)
-          .backgroundColor(this.getCurrentTheme().primary)
-          .borderRadius(6)
-          .height(40)
-          .layoutWeight(1)
-          .margin({ left: 2, right: 2 })
-          .onClick(async () => {
-            await this.handleBatchExport()
-          })
-
-        // 等级合并导出按钮
-        Button('等级合并导出')
-          .fontSize(16)  // 调大到16px
-          .fontColor(Color.White)
-          .backgroundColor(this.getCurrentTheme().primary)
-          .borderRadius(6)
-          .height(40)
-          .layoutWeight(1)
-          .margin({ left: 4 })
-          .onClick(async () => {
-            await this.handleLevelMergeExport()
-          })
-      }
-      .width('100%')
-      }
-      .width('100%')
-      .padding(6)
-      .backgroundColor('transparent') // 透明背景，看起来像没有卡片
-      .border({ width: 0 }) // 无边框
-      .borderRadius(0) // 无圆角
-      .shadow({ radius: 0 }) // 无阴影
-
+      .height('auto')
+      .padding(0)
+      .backgroundColor(Color.Transparent)
     }
   }
 }

@@ -13,11 +13,16 @@ export struct HistoryDataTable {
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
   private baseComponentHelper = new BaseComponentHelper()
   private tableManager = HistoryTableManager.getInstance()
+  
+  // 选中状态管理
+  @State private selectedIds: number[] = []
 
   // 事件回调
   onRowClick?: (rowData: HistoryTableData) => void
   onEditClick?: (rowData: HistoryTableData) => void
   onDeleteClick?: (rowData: HistoryTableData) => void
+  onDataChange?: (data: HistoryTableData[]) => void
+  onSelectionChange?: (selectedIds: number[]) => void
 
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
@@ -63,6 +68,46 @@ export struct HistoryDataTable {
     this.onDeleteClick?.(rowData)
   }
 
+  /**
+   * 处理复选框选择
+   */
+  private handleCheckboxChange(id: number, checked: boolean): void {
+    if (checked) {
+      if (!this.selectedIds.includes(id)) {
+        this.selectedIds.push(id)
+      }
+    } else {
+      this.selectedIds = this.selectedIds.filter(selectedId => selectedId !== id)
+    }
+    
+    console.log('选中项:', this.selectedIds)
+    this.onSelectionChange?.(this.selectedIds)
+  }
+
+  /**
+   * 检查是否选中
+   */
+  private isSelected(id: number): boolean {
+    return this.selectedIds.includes(id)
+  }
+
+  /**
+   * 获取当前表格数据
+   */
+  getCurrentData(): HistoryTableData[] {
+    return this.tableManager.getData();
+  }
+
+  /**
+   * 组件挂载时通知数据变化
+   */
+  aboutToAppear() {
+    // 通知父组件当前数据
+    if (this.onDataChange) {
+      this.onDataChange(this.getCurrentData());
+    }
+  }
+
   build() {
     Column() {
       // 表格标题
@@ -77,6 +122,14 @@ export struct HistoryDataTable {
       Column() {
         // 固定表头
         Grid() {
+          GridItem() {
+            Text('选择')
+              .fontSize(14)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+              .textAlign(TextAlign.Center)
+              .padding(4)
+          }
           GridItem() {
             Text('序号')
               .fontSize(14)
@@ -150,7 +203,7 @@ export struct HistoryDataTable {
               .padding(4)
           }
         }
-        .columnsTemplate('8fr 12fr 12fr 10fr 10fr 12fr 12fr 12fr 12fr')
+        .columnsTemplate('6fr 8fr 12fr 12fr 10fr 10fr 12fr 12fr 12fr 12fr')
         .height(36)
         .columnsGap(0)
         .rowsGap(0)
@@ -163,6 +216,15 @@ export struct HistoryDataTable {
           ForEach(this.tableManager.getData(), (item: HistoryTableData, rowIdx?: number) => {
             ListItem() {
               Row() {
+                // 复选框列
+                Checkbox({ name: `checkbox_${item.id}`, group: 'tableCheckbox' })
+                  .select(this.isSelected(item.id))
+                  .onChange((value: boolean) => {
+                    this.handleCheckboxChange(item.id, value)
+                  })
+                  .width('6%')
+                  .height(20)
+
                 Text(item.id.toString())
                   .fontSize(14)
                   .fontColor(this.getCurrentTheme().textColor)

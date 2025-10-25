@@ -19,6 +19,7 @@ import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../
 import { DateQueryCard } from './DateQueryCard'
 import { CustomerQueryCard } from './CustomerQueryCard'
 import { ActionButtonsCard } from './ActionButtonsCard'
+import { HistoryTableData } from './core/HistoryTableManager'
 
 /**
  * 历史加工查询条件区域组件结构体
@@ -97,6 +98,12 @@ export struct HistoryQueryPanel {
   onDateError?: () => void
   /** 导出成功回调函数 */
   onExportSuccess?: (filePath: string, count: number) => void
+  /** 获取表格数据回调函数 */
+  onGetTableData?: () => HistoryTableData[]
+  /** 获取选中数据回调函数 */
+  onGetSelectedData?: () => HistoryTableData[]
+  /** 显示文件命名对话框回调函数 */
+  onShowFileNameDialog?: (exportType: string) => void
 
   // ==================== 主题相关属性 ====================
   /** 当前主题样式 */
@@ -237,6 +244,23 @@ export struct HistoryQueryPanel {
         onExportSuccess: (filePath: string, count: number) => {
           if (this.onExportSuccess) {
             this.onExportSuccess(filePath, count)
+          }
+        },
+        onGetTableData: () => {
+          if (this.onGetTableData) {
+            return this.onGetTableData()
+          }
+          return []
+        },
+        onGetSelectedData: () => {
+          if (this.onGetSelectedData) {
+            return this.onGetSelectedData()
+          }
+          return []
+        },
+        onShowFileNameDialog: (exportType: string) => {
+          if (this.onShowFileNameDialog) {
+            this.onShowFileNameDialog(exportType)
           }
         }
       })

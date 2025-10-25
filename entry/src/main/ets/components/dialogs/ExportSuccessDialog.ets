@@ -169,32 +169,32 @@ export struct ExportSuccessDialog {
           // 按钮区域
           Row() {
             Button('确定')
-              .fontSize(16)
+              .fontSize(18)
+              .fontWeight(FontWeight.Medium)
               .fontColor(Color.White)
               .backgroundColor(this.getCurrentTheme().primary)
-              .borderRadius(8)
-              .width(90)
-              .height(40)
+              .borderRadius(16)
+              .height(52)
+              .layoutWeight(1)
               .onClick(() => {
                 if (this.onConfirm) {
                   this.onConfirm()
                 }
               })
           }
+          .width('100%')
           .justifyContent(FlexAlign.Center)
         }
-        .width('70%')
-        .padding(24)
-        .backgroundColor(this.getCurrentTheme().surfaceColor)
-        .borderRadius(12)
+        .width('90%')
+        .constraintSize({ maxWidth: 480 })
+        .padding({ top: 32, bottom: 32, left: 32, right: 32 })
+        .backgroundColor(this.getCurrentTheme().backgroundColor)
+        .borderRadius(24)
         .shadow({ 
-          radius: 16, 
-          color: 'rgba(0,0,0,0.25)', 
-          offsetY: 6 
-        })
-        .border({ 
-          width: 1, 
-          color: this.getCurrentTheme().borderColor 
+          radius: 32, 
+          color: 'rgba(0, 0, 0, 0.2)', 
+          offsetX: 0, 
+          offsetY: 12 
         })
       }
       .width('100%')
