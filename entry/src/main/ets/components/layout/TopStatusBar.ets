@@ -1,6 +1,8 @@
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { TOP_PRODUCTION_TON_H, TOP_SUM_WEIGHT_TON, TOP_SUM_COUNTS, TOP_AVG_G, TOP_STATUS_TEXT, TOP_ALERT_HIDE, TCP_CONNECTION_STATUS } from '../../constants/TopBarKeys'
+import { CompactFsmToggle } from './CompactFsmToggle'
+import { IBestAvatar } from '@ibestservices/ibest-ui'
 // 已移除自定义对话框
 
 /**
@@ -18,6 +20,10 @@ export struct TopStatusBar {
   @StorageLink(TCP_CONNECTION_STATUS) tcpConnected: boolean = false
   @StorageLink(OMNI_THEME_VERSION_KEY) private themeVersion: number = 0
   @StorageLink('TOP_USER_LABEL') private userLabel: string = '姓名'
+  
+  // FSM状态
+  @Prop selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
+  onFSMChange?: (fsm: 'FSM1' | 'FSM2') => void
   
   // 实时时间状态
   @State private currentTime: string = ''
@@ -255,33 +261,52 @@ export struct TopStatusBar {
 
       Blank().layoutWeight(1)
 
-      // 个人信息：头像 + 姓名/管理员（同一列），点击触发全屏居中弹窗（由页面根部渲染）
+      // 个人信息区域：FSM切换 + 头像 + 姓名/管理员
       Row() {
-        Image($r('app.media.default_avatar'))
-          .width(28)
-          .height(28)
-          .objectFit(ImageFit.Cover)
-          .borderRadius(14)
-          .border({ width: 1, color: this.getCurrentTheme().borderColor })
+        // FSM切换按钮
+        CompactFsmToggle({
+          selectedFSM: this.selectedFSM,
+          onFSMChange: (fsm: 'FSM1' | 'FSM2') => {
+            if (this.onFSMChange) {
+              this.onFSMChange(fsm)
+            }
+          }
+        })
+        .margin({ right: 24 })
 
-        Column() {
-          Text(this.userLabel)
-            .fontSize(16)  // 调大到16px
-            .fontColor(this.getCurrentTheme().subTextColor)
-          Text('管理员')
-            .fontSize(16)  // 调大到16px
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.getCurrentTheme().textColor)
+        // 头像和用户信息
+        Row() {
+          IBestAvatar({
+            src: AppStorage.get('SELECTED_AVATAR_URL') || 'https://img1.baidu.com/it/u=700838104,4078529388&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=500',
+            defaultAvatar: $r('app.media.default_avatar'),
+            avatarSize: 40,
+            shape: 'circle',
+            onAvatarClick: () => {
+              AppStorage.setOrCreate('TEMP_USER_LABEL', this.userLabel)
+              AppStorage.setOrCreate('EDIT_USER_LABEL_VISIBLE', true)
+            }
+          })
+
+          Column() {
+            Text(this.userLabel)
+              .fontSize(18)  // 调大到18px
+              .fontColor(this.getCurrentTheme().subTextColor)
+            Text('管理员')
+              .fontSize(18)  // 调大到18px
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.getCurrentTheme().textColor)
+          }
+          .margin({ left: 8 })
+          .alignItems(HorizontalAlign.Start)
+          .onClick(() => {
+            AppStorage.setOrCreate('TEMP_USER_LABEL', this.userLabel)
+            AppStorage.setOrCreate('EDIT_USER_LABEL_VISIBLE', true)
+          })
         }
-        .margin({ left: 8 })
-        .alignItems(HorizontalAlign.Start)
+        .alignItems(VerticalAlign.Center)
       }
       .alignItems(VerticalAlign.Center)
       .margin({ right: 8 })
-      .onClick(() => {
-        AppStorage.setOrCreate('TEMP_USER_LABEL', this.userLabel)
-        AppStorage.setOrCreate('EDIT_USER_LABEL_VISIBLE', true)
-      })
 
       Text(this.currentTime)
         .fontSize(16)  // 调大到16px

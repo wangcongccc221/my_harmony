@@ -964,12 +964,12 @@ export struct LevelDataTable {
                     let newCount = currentCount
                     
                     if (verticalValue > 0) {
-                      // 向上滚动，等级数量 -1（减少）
-                      newCount = Math.max(currentCount - 1, 0)
+                      // 向上滚动，等级数量 +1（增加）
+                      newCount = Math.min(currentCount + 1, 10)
                       console.log(`⬆️ 等级页面向上滚动，从 ${currentCount} 到 ${newCount}`)
                     } else if (verticalValue < 0) {
-                      // 向下滚动，等级数量 +1（增加）
-                      newCount = Math.min(currentCount + 1, 10)
+                      // 向下滚动，等级数量 -1（减少）
+                      newCount = Math.max(currentCount - 1, 0)
                       console.log(`⬇️ 等级页面向下滚动，从 ${currentCount} 到 ${newCount}`)
                     }
                     

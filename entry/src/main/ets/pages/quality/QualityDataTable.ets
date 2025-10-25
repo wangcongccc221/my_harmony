@@ -219,13 +219,13 @@ export struct QualityDataTable {
         .fontWeight(FontWeight.Bold)
         .fontColor(this.getCurrentTheme().textColor)
         .textAlign(TextAlign.Center)
-        .layoutWeight(1)
+        .width('20%')
         .padding({ left: 4, right: 4, top: 4, bottom: 4 })
 
       // 分隔线
       Divider()
         .vertical(true)
-        .height('80%')
+        .height(60)
         .color(this.getCurrentTheme().borderColor)
 
       Text('颜色等级')
@@ -239,7 +239,7 @@ export struct QualityDataTable {
       // 分隔线
       Divider()
         .vertical(true)
-        .height('80%')
+        .height(60)
         .color(this.getCurrentTheme().borderColor)
 
       Text('糖度等级')
@@ -365,7 +365,7 @@ export struct QualityDataTable {
         .fontColor(this.getCurrentTheme().textColor)
         .backgroundColor(Color.Transparent)
         .textAlign(TextAlign.Center)
-        .layoutWeight(1)
+        .width('20%')
         .padding({ left: 4, right: 4, top: 6, bottom: 6 })
         .enterKeyType(EnterKeyType.Done)
         .onChange((value: string) => {
@@ -402,7 +402,7 @@ export struct QualityDataTable {
       // 分隔线
       Divider()
         .vertical(true)
-        .height('80%')
+        .height(60)
         .color(this.getCurrentTheme().borderColor)
 
       // 颜色等级列 - 支持自定义组件
@@ -427,7 +427,7 @@ export struct QualityDataTable {
       // 分隔线
       Divider()
         .vertical(true)
-        .height('80%')
+        .height(60)
         .color(this.getCurrentTheme().borderColor)
 
       // 糖度等级列

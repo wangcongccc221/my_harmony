@@ -22,7 +22,7 @@ import { OmniUIInit } from '../utils/helpers/OmniUIInit'
 import { OmniUIUtils } from '../utils/helpers/OmniUIUtils'
 import { OmniBottomTabBar, OmniBottomBarItem } from '@wuba58/omni-ui'
 // 导入 IBest-UI 组件
-import { IBestButton, IBestIcon, IBestTag, IBestInit } from '@ibestservices/ibest-ui'
+import { IBestButton, IBestIcon, IBestTag, IBestInit, IBestAvatar, IBestAvatarGroup } from '@ibestservices/ibest-ui'
 import { window } from '@kit.ArkUI'
 import { RectButton } from '../components/ui/RectButton'
 import { TopStatusBar } from '../components/layout/TopStatusBar'
@@ -73,6 +73,7 @@ interface SaveProgramInfo {
 @Component
 struct Page {
   @State currentPage: string = 'home'
+  @StorageLink('HOME_SELECTED_FSM') selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
   @State showThemeSelector: boolean = false  // 控制主题选择器显示
   @State sideBarStatus: boolean = true  // 控制侧边栏展开/收缩状态
   @State showFruitInfoDialog: boolean = false  // 控制水果信息对话框显示
@@ -98,7 +99,20 @@ struct Page {
   @State showPrintSubButtons: boolean = false
   // 顶部个人信息 - 全屏居中编辑弹窗全局状态
   @StorageLink('EDIT_USER_LABEL_VISIBLE') private editUserLabelVisible: boolean = false
-  @StorageLink('TEMP_USER_LABEL') private tempUserLabel: string = '姓名'
+  @State private tempUserLabel: string = '姓名'
+  @State private selectedAvatarUrl: string = ''
+  
+  // 可选头像列表
+  private avatarOptions: string[] = [
+    'https://img1.baidu.com/it/u=700838104,4078529388&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=500',
+    'https://img0.baidu.com/it/u=447148445,3812237851&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=500',
+    'https://img0.baidu.com/it/u=1596600438,2136408442&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=500',
+    'https://img0.baidu.com/it/u=2816983398,655618517&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=500',
+    'https://pics4.baidu.com/feed/1ad5ad6eddc451da34d4638413f67668d016325c.jpeg',
+    'https://img0.baidu.com/it/u=2397297586,1192210697&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=500',
+    'https://img0.baidu.com/it/u=781626259,587761743&fm=253&fmt=auto&app=138&f=JPEG?w=300&h=300',
+    'https://img0.baidu.com/it/u=3731477373,291511913&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=500'
+  ]
   
   // 悬浮窗相关状态
   @State showFloatingWindow: boolean = false
@@ -960,11 +974,12 @@ struct Page {
       // 全屏居中：个人信息编辑弹窗（由页面根部渲染，覆盖全屏）
       if (this.editUserLabelVisible) {
         Stack() {
-          Column() {
+          Scroll() {
+            Column() {
             // 标题
             Row() {
-              Text('修改姓名标签')
-                .fontSize(18)
+              Text('修改个人信息')
+                .fontSize(22)
                 .fontWeight(FontWeight.Bold)
                 .fontColor(this.getCurrentTheme().textColor)
             }
@@ -972,59 +987,157 @@ struct Page {
             .padding({ left: 20, right: 20, top: 16, bottom: 10 })
             .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
 
-            // 输入框
-            TextInput({ text: this.tempUserLabel, placeholder: '请输入显示标签' })
-              .fontSize(14)
-              .fontColor(this.getCurrentTheme().textColor)
-              .backgroundColor(this.getCurrentTheme().backgroundColor)
-              .border({ width: 1, color: this.getCurrentTheme().borderColor })
-              .borderRadius(8)
-              .padding({ left: 12, right: 12, top: 10, bottom: 10 })
-              .onChange((v: string) => { this.tempUserLabel = v })
+            // 个人信息设置区域
+            Column() {
+              // 当前头像和姓名预览
+              Row() {
+                Text('当前设置：')
+                  .fontSize(20)
+                  .fontColor(this.getCurrentTheme().textColor)
+                  .margin({ right: 12 })
+                
+                IBestAvatar({
+                  src: this.selectedAvatarUrl || this.avatarOptions[0],
+                  defaultAvatar: $r('app.media.default_avatar'),
+                  avatarSize: 60,
+                  shape: 'circle'
+                })
+                
+                Text(this.tempUserLabel)
+                  .fontSize(20)
+                  .fontColor(this.getCurrentTheme().textColor)
+                  .margin({ left: 12 })
+              }
+              .width('100%')
+              .alignItems(VerticalAlign.Center)
+              .margin({ bottom: 20 })
 
-            // 底部操作
+              // 头像选择
+              Column() {
+                Text('选择头像：')
+                  .fontSize(20)
+                  .fontColor(this.getCurrentTheme().textColor)
+                  .alignSelf(ItemAlign.Start)
+                  .margin({ bottom: 12 })
+                
+                // 头像网格
+                Grid() {
+                  ForEach(this.avatarOptions, (avatarUrl: string, index: number) => {
+                    GridItem() {
+                      IBestAvatar({
+                        src: avatarUrl,
+                        defaultAvatar: $r('app.media.default_avatar'),
+                        avatarSize: 60,
+                        shape: 'circle',
+                        onAvatarClick: () => {
+                          console.log('选择头像:', avatarUrl)
+                          this.selectedAvatarUrl = avatarUrl
+                        }
+                      })
+                      .border({
+                        width: this.selectedAvatarUrl === avatarUrl ? 3 : 1,
+                        color: this.selectedAvatarUrl === avatarUrl ? '#EA7A10' : this.getCurrentTheme().borderColor
+                      })
+                      .borderRadius(8)
+                      .padding(4)
+                    }
+                  })
+                }
+                .columnsTemplate('1fr 1fr 1fr 1fr')
+                .rowsGap(12)
+                .columnsGap(12)
+                .width('100%')
+              }
+              .width('100%')
+              .alignItems(HorizontalAlign.Start)
+              .margin({ bottom: 20 })
+
+              // 姓名输入框
+              Row() {
+                Text('姓名设置：')
+                  .fontSize(20)
+                  .fontColor(this.getCurrentTheme().textColor)
+                  .margin({ right: 12 })
+                
+                TextInput({ 
+                  text: this.tempUserLabel, 
+                  placeholder: '请输入显示标签' 
+                })
+                  .fontSize(18)
+                  .fontColor(this.getCurrentTheme().textColor)
+                  .backgroundColor(this.getCurrentTheme().backgroundColor)
+                  .border({ width: 1, color: this.getCurrentTheme().borderColor })
+                  .borderRadius(8)
+                  .padding({ left: 12, right: 12, top: 12, bottom: 12 })
+                  .layoutWeight(1)
+                  .onChange((v: string) => { this.tempUserLabel = v })
+              }
+              .width('100%')
+              .alignItems(VerticalAlign.Center)
+            }
+            .width('100%')
+            .padding({ left: 20, right: 20, top: 16, bottom: 16 })
+            .alignItems(HorizontalAlign.Start)
+
+            // 底部操作按钮
             Row() {
-              Blank()
               Button('取消')
-                .fontSize(14)
+                .fontSize(18)
+                .fontWeight(FontWeight.Medium)
                 .fontColor(this.getCurrentTheme().textColor)
                 .backgroundColor(this.getCurrentTheme().backgroundColor)
-                .border({ width: 1, color: this.getCurrentTheme().borderColor })
+                .border({ width: 2, color: this.getCurrentTheme().borderColor })
                 .borderRadius(8)
-                .padding({ left: 20, right: 20, top: 10, bottom: 10 })
-                .onClick(() => { AppStorage.set('EDIT_USER_LABEL_VISIBLE', false) })
+                .padding({ left: 40, right: 40, top: 16, bottom: 16 })
+                .layoutWeight(1)
+                .onClick(() => { 
+                  AppStorage.set('EDIT_USER_LABEL_VISIBLE', false) 
+                })
 
               Button('确认')
-                .fontSize(14)
+                .fontSize(18)
+                .fontWeight(FontWeight.Medium)
                 .fontColor(Color.White)
                 .backgroundColor(this.getThemePrimaryColor())
                 .borderRadius(8)
-                .padding({ left: 20, right: 20, top: 10, bottom: 10 })
-                .margin({ left: 10 })
+                .padding({ left: 40, right: 40, top: 16, bottom: 16 })
+                .layoutWeight(1)
+                .margin({ left: 12 })
                 .onClick(() => {
                   const text = (this.tempUserLabel || '').trim()
                   if (text.length > 0) {
                     AppStorage.setOrCreate('TOP_USER_LABEL', text)
                   }
+                  // 保存选中的头像
+                  console.log('保存头像:', this.selectedAvatarUrl)
+                  AppStorage.setOrCreate('SELECTED_AVATAR_URL', this.selectedAvatarUrl)
                   AppStorage.set('EDIT_USER_LABEL_VISIBLE', false)
                 })
             }
             .width('100%')
-            .justifyContent(FlexAlign.End)
-            .alignItems(VerticalAlign.Center)
-            .padding({ left: 20, right: 20, top: 16, bottom: 16 })
+            .padding({ left: 20, right: 20, top: 20, bottom: 20 })
+            .backgroundColor(this.getCurrentTheme().surfaceColor)
+            .border({ width: { top: 1 }, color: this.getCurrentTheme().borderColor })
+            }
+            .width('80%')
+            .constraintSize({ maxWidth: 460 })
+            .backgroundColor(this.getCurrentTheme().surfaceColor)
+            .borderRadius(12)
+            .shadow({ radius: 20, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 4 })
+            .onAppear(() => {
+              this.tempUserLabel = AppStorage.get('TOP_USER_LABEL') || '姓名'
+              this.selectedAvatarUrl = AppStorage.get('SELECTED_AVATAR_URL') || this.avatarOptions[0]
+              console.log('弹窗打开，当前头像URL:', this.selectedAvatarUrl)
+              console.log('头像选项列表:', this.avatarOptions)
+            })
           }
-          .width('80%')
-          .constraintSize({ maxWidth: 460 })
-          .backgroundColor(this.getCurrentTheme().surfaceColor)
-          .borderRadius(12)
-          .shadow({ radius: 20, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 4 })
+          .scrollable(ScrollDirection.Vertical)
+          .scrollBar(BarState.Auto)
         }
         .width('100%')
         .height('100%')
         .backgroundColor('rgba(0, 0, 0, 0.5)')
         .alignContent(Alignment.Center)
-        .onClick(() => { AppStorage.set('EDIT_USER_LABEL_VISIBLE', false) })
       }
 
 
@@ -1034,7 +1147,33 @@ struct Page {
   build() {
     Column() {
       // 顶部状态栏（全局可见）
-      TopStatusBar({ currentPage: this.currentPage })
+      TopStatusBar({ 
+        currentPage: this.currentPage,
+        selectedFSM: this.selectedFSM,
+        onFSMChange: (fsm: 'FSM1' | 'FSM2') => {
+          // 更新全局FSM状态
+          AppStorage.set('HOME_SELECTED_FSM', fsm)
+          
+          // FSM切换时自动切换主题配色
+          if (fsm === 'FSM2') {
+            // 切换到暖色调主题 - 使用暖琥珀色主题（暖色质感）
+            this.themeVersion = 1 // 暖色调
+            AppStorage.set('THEME_VERSION', 1)
+            // 使用OmniThemeManager切换主题
+            OmniThemeManager.getInstance().setTheme(OmniThemeType.WARM_AMBER)
+            console.log('切换到FSM2 - 暖色质感主题')
+          } else {
+            // 切换到冷色调主题 - 使用专业蓝色主题
+            this.themeVersion = 0 // 冷色调
+            AppStorage.set('THEME_VERSION', 0)
+            // 使用OmniThemeManager切换主题
+            OmniThemeManager.getInstance().setTheme(OmniThemeType.PROFESSIONAL_BLUE)
+            console.log('切换到FSM1 - 专业蓝色主题')
+          }
+          
+          console.log(`切换到 ${fsm}`)
+        }
+      })
 
       // 主体内容区域（可伸缩，占据中间空间）
       Column() {

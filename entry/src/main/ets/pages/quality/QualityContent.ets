@@ -41,7 +41,6 @@ import { QualityDataTable } from './QualityDataTable'
 import { QualityOutletDialog } from './QualityOutletDialog'
 import { QualityLevelData } from './QualityConstants'
 import { DEFAULT_QUALITY_SETTINGS } from './QualityConstants'
-import { ArrowToggleButton } from '../../components/ui/ArrowToggleButton'
 
 /**
  * 品质内容组件
@@ -115,8 +114,10 @@ export struct QualityContent {
   // 用于驱动UI刷新的可观察数据（表格与等级数量联动）
   @State private currentLevels: QualityLevelData[] = []
   
-  // 右侧操作栏展开状态
-  @State private rightOpsExpanded: boolean = false
+  // 悬浮按钮显示状态
+  @State private showFloatingButtons: boolean = true
+  // 悬浮按钮悬停状态
+  @State private isHovering: boolean = false
 
   // 控制面板组件引用
   private controlPanelRef: QualityControlPanel | null = null
@@ -498,74 +499,70 @@ export struct QualityContent {
         .layoutWeight(1)
         .justifyContent(FlexAlign.Start)
 
-        // 右侧操作栏（可折叠）
-        Stack() {
-          // 展开时的按钮内容
-          if (this.rightOpsExpanded) {
-            Column() {
-              Blank().height(0) // 顶部留出空间给箭头位置
-
-              Button('取消')
-                .width('100%')
-                .height(42)
-                .fontSize(16)
-                .fontWeight(FontWeight.Medium)
-                .fontColor(this.getCurrentTheme().textColor)
-                .backgroundColor(Color.Transparent)
-                .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                .borderRadius(10)
-                .margin({ bottom: 8 })
-                .onClick(() => {
-                  this.eventHandler.onDataReset()
-                  console.log('品质页面：取消操作')
-                })
-
-              Button('确认')
-                .width('100%')
-                .height(42)
-                .fontSize(16)
-                .fontWeight(FontWeight.Medium)
-                .fontColor(Color.White)
-                .backgroundColor(this.getCurrentTheme().primary)
-                .borderRadius(10)
-                .onClick(() => {
-                  const first = this.stateManager.getQualityLevels()[0]
-                  this.eventHandler.onDataUpdate(first, -1)
-                  console.log('品质页面：确认操作')
-                })
-            }
-            .width('100%')
-            .height('100%')
-            .padding({ left: 8, right: 8, top: 8, bottom: 8 })
-            .justifyContent(FlexAlign.Start)
-            .alignItems(HorizontalAlign.Center)
-          }
-
-          // 悬浮箭头按钮（贴左边缘）
-          ArrowToggleButton({
-            isExpanded: this.rightOpsExpanded,
-            onToggle: () => { this.rightOpsExpanded = !this.rightOpsExpanded }
-          })
-          .position({ x: this.rightOpsExpanded ? 110 : 5, y: '50%' })
-          .translate({ y: -20 })
-          .zIndex(10)
-        }
-        .width(this.rightOpsExpanded ? 150 : 50)
-        .height('100%')
-        .backgroundColor(this.getCurrentTheme().surfaceColor)
-        .borderRadius(12)
-        .margin({ left: 12, right: 8, top: 8, bottom: 8 })
-        .shadow({
-          radius: 12,
-          color: 'rgba(0, 0, 0, 0.08)',
-          offsetX: 0,
-          offsetY: 6
-        })
       }
       .width('100%')
       .height('100%')
       .alignItems(VerticalAlign.Top)
       .backgroundColor(this.getCurrentTheme().pageBg ?? this.getCurrentTheme().backgroundColor)
+      
+      // ==================== 悬浮按钮 ====================
+      if (this.showFloatingButtons) {
+        Column() {
+          // 确认按钮
+          Button('确认')
+            .width(80)
+            .height(50)
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(Color.White)
+            .backgroundColor(this.getCurrentTheme().primary)
+            .borderRadius(25)
+            .shadow({ radius: 8, color: 'rgba(0,0,0,0.15)', offsetY: 4 })
+            .animation({
+              duration: 300,
+              curve: Curve.EaseInOut
+            })
+            .onClick(() => {
+              const first = this.stateManager.getQualityLevels()[0]
+              this.eventHandler.onDataUpdate(first, -1)
+              console.log('品质页面：确认操作')
+            })
+
+          // 取消按钮
+          Button('取消')
+            .width(80)
+            .height(50)
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.getCurrentTheme().textColor)
+            .backgroundColor(Color.Transparent)
+            .border({ width: 1, color: this.getCurrentTheme().borderColor })
+            .borderRadius(25)
+            .shadow({ radius: 8, color: 'rgba(0,0,0,0.15)', offsetY: 4 })
+            .margin({ top: 12 })
+            .animation({
+              duration: 300,
+              curve: Curve.EaseInOut
+            })
+            .onClick(() => {
+              this.eventHandler.onDataReset()
+              console.log('品质页面：取消操作')
+            })
+        }
+        .position({ x: '100%', y: '50%' })
+        .translate({ 
+          x: this.isHovering ? -80 : -40, // 悬停时完全显示，半隐藏时一半在屏幕外
+          y: -56 
+        })
+        .zIndex(100)
+        .animation({
+          duration: 300,
+          curve: Curve.EaseInOut
+        })
+        .onHover((isHover: boolean) => {
+          this.isHovering = isHover
+        })
+      }
       
       // 出口设置对话框 - 放在Stack的最上层
       if (this.stateManager.getShowOutletDialog()) {

@@ -115,13 +115,13 @@ export class GlobalLevelCountManager {
     const baseCount = currentDataCount !== undefined ? currentDataCount : this.getCurrentCount()
     
     if (verticalValue > 0) {
-      // 向上滚动，等级数量 -1（减少）
-      const newCount = Math.max(baseCount - 1, 0)
+      // 向上滚动，等级数量 +1（增加）
+      const newCount = Math.min(baseCount + 1, 16)
       console.log(`⬆️ 向上滚动，从数值 ${baseCount} 到数值 ${newCount}`)
       this.setCount(newCount)
     } else if (verticalValue < 0) {
-      // 向下滚动，等级数量 +1（增加）
-      const newCount = Math.min(baseCount + 1, 16)
+      // 向下滚动，等级数量 -1（减少）
+      const newCount = Math.max(baseCount - 1, 0)
       console.log(`⬇️ 向下滚动，从数值 ${baseCount} 到数值 ${newCount}`)
       this.setCount(newCount)
     } else {

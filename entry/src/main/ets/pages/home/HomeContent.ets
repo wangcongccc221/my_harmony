@@ -12,7 +12,6 @@ import { DataTablesTabBar } from './DataTablesTabBar'
 import { DragData } from '../../components/layout/DraggableGridTable'
 import { TOP_PRODUCTION_TON_H, TOP_SUM_WEIGHT_TON, TOP_SUM_COUNTS, TOP_AVG_G, TOP_USER_NAME, TOP_STATUS_TEXT, TOP_ALERT_HIDE, HOME_SELECTED_FSM, HOME_SETTING1_ENABLED, HOME_SETTING2_ENABLED, HOME_SETTING3_ENABLED, HOME_SETTING4_ENABLED, HOME_SELECTED_BUTTON } from '../../constants/TopBarKeys'
 // 导入新的组件
-import FsmSettingsBar from '../../components/layout/FsmSettingsBar'
 import { SortingInfoCard } from './SortingInfoCard'
 import { LiquidCardsArea } from './LiquidCardsArea'
 import { StorageKeys } from '../../utils/constants/StorageKeys'
@@ -168,6 +167,19 @@ export struct HomeContent {
   // 获取当前主题配置的方法
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return OmniThemeManager.getInstance().getCurrentTheme()
+  }
+
+  /**
+   * 检查是否为最后一个开启的设置
+   * @param currentIndex 当前设置的索引
+   * @returns 是否为最后一个开启的设置
+   */
+  private isLastEnabledSetting(currentIndex: number): boolean {
+    const settings = [this.setting1Enabled, this.setting2Enabled, this.setting3Enabled, this.setting4Enabled]
+    const enabledCount = settings.filter(enabled => enabled).length
+    
+    // 如果只有一个设置开启，且当前设置是开启的，则不能关闭
+    return enabledCount === 1 && settings[currentIndex]
   }
 
   // 切换FSM状态
@@ -361,19 +373,35 @@ export struct HomeContent {
   @Builder
   private buildMainContent() {
     Column() {
-      // 顶部按钮区域：使用独立合并组件
-      FsmSettingsBar({
-        selectedFSM: this.selectedFSM,
-        onFSMChange: (fsm: 'FSM1' | 'FSM2') => { this.switchFSM(fsm) },
-        setting1Enabled: $setting1Enabled,
-        setting2Enabled: $setting2Enabled,
-        setting3Enabled: $setting3Enabled,
-        setting4Enabled: $setting4Enabled,
-        onSetting1Change: () => { this.toggleSetting('设置1') },
-        onSetting2Change: () => { this.toggleSetting('设置2') },
-        onSetting3Change: () => { this.toggleSetting('设置3') },
-        onSetting4Change: () => { this.toggleSetting('设置4') }
-      })
+      // 设置开关区域（FSM切换已移至顶部状态栏）
+      Row() {
+        SwitchControl({ 
+          label: '设置1', 
+          isEnabled: $setting1Enabled, 
+          isLastEnabled: this.isLastEnabledSetting(0),
+          onToggle: () => { this.toggleSetting('设置1') } 
+        })
+        SwitchControl({ 
+          label: '设置2', 
+          isEnabled: $setting2Enabled, 
+          isLastEnabled: this.isLastEnabledSetting(1),
+          onToggle: () => { this.toggleSetting('设置2') } 
+        })
+        SwitchControl({ 
+          label: '设置3', 
+          isEnabled: $setting3Enabled, 
+          isLastEnabled: this.isLastEnabledSetting(2),
+          onToggle: () => { this.toggleSetting('设置3') } 
+        })
+        SwitchControl({ 
+          label: '设置4', 
+          isEnabled: $setting4Enabled, 
+          isLastEnabled: this.isLastEnabledSetting(3),
+          onToggle: () => { this.toggleSetting('设置4') } 
+        })
+      }
+      .justifyContent(FlexAlign.End)
+      .alignItems(VerticalAlign.Center)
       .padding({ top: 0, left: 0, right: 20, bottom: '1%' })
       // 主页信息卡片：分选速度 | 本批重量 | 本批个数 | 开始时间 | 分选程序 | 分选效率 | 平均重量 | 实时产量 | 间隔速度
       SortingInfoCard()

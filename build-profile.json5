@@ -1,4 +1,4 @@
-  {
+{
   "app": {
     "signingConfigs": [
       {
@@ -7,11 +7,11 @@
         "material": {
           "certpath": "C:\\Users\\AI008\\.ohos\\config\\default_my_-harmony-master_1V8hOf65nuchsZenh4-sAEUYSHK5dPm45Zy5sDU6aOk=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001BD3B07F22574435C19C39C5FFB44020349D3521AED3C9542B4141A4CB80068359DC260AB5E898CB",
+          "keyPassword": "0000001B23D8544766A0EA91E63032D3A98CC85795813064B61AC3AA1657FA294D3F76E123060D28ABFE31",
           "profile": "C:\\Users\\AI008\\.ohos\\config\\default_my_-harmony-master_1V8hOf65nuchsZenh4-sAEUYSHK5dPm45Zy5sDU6aOk=.p7b",
           "signAlg": "SHA256withECDSA",
           "storeFile": "C:\\Users\\AI008\\.ohos\\config\\default_my_-harmony-master_1V8hOf65nuchsZenh4-sAEUYSHK5dPm45Zy5sDU6aOk=.p12",
-          "storePassword": "0000001B0E509C866ECFFFADDA7022EA218A7321CBC2985C4154D34EC06BD246DED475A8840FA1103E0346"
+          "storePassword": "0000001BE2C9F45A204FDF63C6A75352830F937D1AC762F3CBDF6C836F6FB2C50657ED6EFD96A911F46924"
         }
       }
     ],

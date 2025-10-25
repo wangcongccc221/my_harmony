@@ -7,6 +7,7 @@
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { FruitCupButton } from '../ui/FruitCupButton'
+import { PerformanceMonitor } from '../monitor/PerformanceMonitor'
 
 @Component
 export struct BottomControlBar {
@@ -52,70 +53,82 @@ export struct BottomControlBar {
 
   build() {
     Row() {
-      // 左侧按钮：分选状态（可点击）
-      Button(this.getSortingStatusText())
-        .fontSize(18)  // 调大到18px
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.getCurrentTheme().textColor)  // 使用主题文字颜色
-        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-        .borderRadius(4)
-        .padding({ left: 16, right: 16, top: 8, bottom: 8 })  // 增加内边距
-        .margin({ right: 16 })
-        .onClick(() => {
-          if (this.onSortingStatusClick) {
-            this.onSortingStatusClick()
-          }
-        })
-
-      // SCM标签
-      Text('SCM:')
-        .fontSize(18)  // 调大到18px
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.getCurrentTheme().buttonBarTextColor ?? this.getCurrentTheme().textColor)  // 使用底部状态栏文字颜色
-        .margin({ right: 8 })
-        .alignSelf(ItemAlign.Center)
-
-      // SCM按钮
-      Button('1')
-        .fontSize(18)  // 调大到18px
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.getCurrentTheme().textColor)  // 使用主题文字颜色
-        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-        .borderRadius(4)
-        .width(50)  // 增加宽度
-        .height(40)  // 增加高度
-        .margin({ right: 16 })
-        .onClick(() => {
-          console.log('SCM按钮被点击')
-          // TODO: 后期添加SCM相关逻辑
-        })
-
-      // 果杯标签
-      Text('果杯:')
-        .fontSize(18)  // 调大到18px
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.getCurrentTheme().buttonBarTextColor ?? this.getCurrentTheme().textColor)  // 使用底部状态栏文字颜色
-        .margin({ right: 8 })
-        .alignSelf(ItemAlign.Center)
-
-      // 8个果杯按钮（使用循环生成）
-      ForEach(this.buildNumberRange(1, 8), (index: number) => {
-        FruitCupButton({
-          cupNumber: index,
-          onCupClick: (cupNumber: number) => {
-            if (this.onFruitCupClick) {
-              this.onFruitCupClick(cupNumber)
+      // 左侧控制区域
+      Row() {
+        // 左侧按钮：分选状态（可点击）
+        Button(this.getSortingStatusText())
+          .fontSize(18)  // 调大到18px
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCurrentTheme().textColor)  // 使用主题文字颜色
+          .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+          .border({ width: 1, color: this.getCurrentTheme().borderColor })
+          .borderRadius(4)
+          .padding({ left: 16, right: 16, top: 8, bottom: 8 })  // 增加内边距
+          .margin({ right: 16 })
+          .onClick(() => {
+            if (this.onSortingStatusClick) {
+              this.onSortingStatusClick()
             }
-          }
+          })
+
+        // SCM标签
+        Text('SCM:')
+          .fontSize(18)  // 调大到18px
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCurrentTheme().buttonBarTextColor ?? this.getCurrentTheme().textColor)  // 使用底部状态栏文字颜色
+          .margin({ right: 8 })
+          .alignSelf(ItemAlign.Center)
+
+        // SCM按钮
+        Button('1')
+          .fontSize(18)  // 调大到18px
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCurrentTheme().textColor)  // 使用主题文字颜色
+          .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+          .border({ width: 1, color: this.getCurrentTheme().borderColor })
+          .borderRadius(4)
+          .width(50)  // 增加宽度
+          .height(40)  // 增加高度
+          .margin({ right: 16 })
+          .onClick(() => {
+            console.log('SCM按钮被点击')
+            // TODO: 后期添加SCM相关逻辑
+          })
+
+        // 果杯标签
+        Text('果杯:')
+          .fontSize(18)  // 调大到18px
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCurrentTheme().buttonBarTextColor ?? this.getCurrentTheme().textColor)  // 使用底部状态栏文字颜色
+          .margin({ right: 8 })
+          .alignSelf(ItemAlign.Center)
+
+        // 8个果杯按钮（使用循环生成）
+        ForEach(this.buildNumberRange(1, 8), (index: number) => {
+          FruitCupButton({
+            cupNumber: index,
+            onCupClick: (cupNumber: number) => {
+              if (this.onFruitCupClick) {
+                this.onFruitCupClick(cupNumber)
+              }
+            }
+          })
         })
-      })
+      }
+      .justifyContent(FlexAlign.Start)
+      .alignItems(VerticalAlign.Center)
+
+      // 中间空白区域，用于分隔左右两部分
+      Blank()
+
+      // 右侧性能监控区域
+      PerformanceMonitor()
+        .margin({ right: 20 })
     }
     .width('100%')
-    .justifyContent(FlexAlign.Start)
+    .justifyContent(FlexAlign.SpaceBetween)
     .alignItems(VerticalAlign.Center)
-    .padding({ left: 150, right: 20, top: 8, bottom: 0 })
+    .padding({ left: 150, right: 20, top: 8, bottom: 8 })
     .backgroundColor(this.getCurrentTheme().buttonBarBg ?? this.getCurrentTheme().surfaceColor)
     .border({ width: { top: 1 }, color: this.getCurrentTheme().borderColor })
   }

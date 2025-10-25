@@ -30,9 +30,12 @@ export struct ProcessingCurveChart {
 
   // 模拟数据与定时器
   private timerId?: number
-  private maxPoints: number = 60 // 最多保留60个点
+  private maxPoints: number = 1024 // 最多保留1024个点，用于内存泄漏测试
   private dataPoints: ChartDataItem[] = []
   private currentProgress: number = 0
+  private dataCount: number = 0 // 数据计数器
+  private clearCount: number = 0 // 清空次数计数器
+  @State private followLatest: boolean = true // 是否自动跟随最新数据
 
   // 默认数据（初始一组）
   private defaultData: ChartDataItem[] = [
@@ -180,7 +183,14 @@ export struct ProcessingCurveChart {
         textStyle: {
           color: this.getCurrentTheme().textColor
         }
-      }
+      },
+      // 自动追踪最新数据配置（暂时移除，使用其他方式实现）
+      // dataZoom: {
+      //   type: 'inside',
+      //   xAxisIndex: 0,
+      //   start: this.followLatest ? 100 : 0,
+      //   end: 100
+      // }
     })
   }
 
@@ -192,6 +202,7 @@ export struct ProcessingCurveChart {
     if (this.dataPoints.length === 0) {
       this.dataPoints = [...this.defaultData]
       this.currentProgress = this.dataPoints[this.dataPoints.length - 1]?.value ?? 0
+      this.dataCount = this.dataPoints.length
     }
     if (this.timerId) { return }
     this.timerId = setInterval(() => {
@@ -203,13 +214,38 @@ export struct ProcessingCurveChart {
       const step = (Math.random() * 10) - 5 // -5 ~ +5
       this.currentProgress = Math.max(0, Math.min(100, Math.round(this.currentProgress + step)))
       this.dataPoints.push({ time: `${hh}:${mm}:${ss}`, value: this.currentProgress })
-      if (this.dataPoints.length > this.maxPoints) {
-        this.dataPoints.shift()
+      this.dataCount++
+      
+      // 控制台输出当前数据条数
+      console.log(`📊 第${this.dataCount}条数据 - 时间: ${hh}:${mm}:${ss} - 进度: ${this.currentProgress}%`)
+      
+      // 当数据达到1024个时，清空所有数据重新开始
+      if (this.dataCount >= this.maxPoints) {
+        console.log(`🔄 数据达到${this.maxPoints}个，开始清空数据... (第${this.clearCount + 1}次清空)`)
+        this.dataPoints = []
+        this.dataCount = 0
+        this.clearCount++
+        this.currentProgress = 0
+        
+        // 重新初始化数据
+        this.dataPoints = [...this.defaultData]
+        this.dataCount = this.dataPoints.length
+        this.currentProgress = this.dataPoints[this.dataPoints.length - 1]?.value ?? 0
+        
+        console.log(`✅ 数据已清空，重新开始追踪 (清空次数: ${this.clearCount})`)
       }
+      
       // 使用 Options.setVal 增量更新（官方推荐）
       this.chartOptions.setVal({
         xAxis: { data: this.getTimeLabels() },
         series: [ { name: '加工进度', data: this.getChartData() } ]
+        // 自动追踪最新数据（暂时移除dataZoom配置）
+        // dataZoom: {
+        //   type: 'inside',
+        //   xAxisIndex: 0,
+        //   start: this.followLatest ? 100 : 0,
+        //   end: 100
+        // }
       })
     }, 1000) as number
   }
@@ -238,6 +274,38 @@ export struct ProcessingCurveChart {
 
   build() {
     Column() {
+      // 数据统计信息显示
+      Row() {
+        Text(`数据点: ${this.dataCount}/${this.maxPoints}`)
+          .fontSize(14)
+          .fontColor(this.getCurrentTheme().textColor)
+          .margin({ right: 16 })
+        
+        Text(`清空次数: ${this.clearCount}`)
+          .fontSize(14)
+          .fontColor(this.getCurrentTheme().primary)
+          .margin({ right: 16 })
+        
+        Text(`当前进度: ${this.currentProgress}%`)
+          .fontSize(14)
+          .fontColor(this.getCurrentTheme().chartLineColor ?? this.getCurrentTheme().primary)
+          .margin({ right: 16 })
+        
+        // 自动追踪开关（暂时注释掉，默认开启）
+        // Text(`自动追踪: ${this.followLatest ? '开启' : '关闭'}`)
+        //   .fontSize(14)
+        //   .fontColor(this.followLatest ? this.getCurrentTheme().primary : this.getCurrentTheme().subTextColor)
+        //   .onClick(() => {
+        //     this.followLatest = !this.followLatest
+        //   })
+      }
+      .width('100%')
+      .justifyContent(FlexAlign.Start)
+      .padding({ left: 16, right: 16, top: 8, bottom: 8 })
+      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      .borderRadius(4)
+      .margin({ bottom: 8 })
+
       McLineChart({
         options: this.chartOptions
       })

@@ -123,7 +123,7 @@ export struct DataTablesTabBar {
     this.lcTimeIndex = count
     this.lcRealtimeEnabled = true
 
-    // 启动持续追加数据（每秒1个点）- 先停用，仅保留初始10个点
+    // 启动持续追加数据（每秒1个点）- 启用自动添加数据功能
     if (this.lcRealtimeEnabled && !this.lcTimerId) {
       this.lcTimerId = setInterval(() => {
         const totalMin = startMinute + this.lcTimeIndex
@@ -140,6 +140,19 @@ export struct DataTablesTabBar {
         this.lcLabels = [...this.lcLabels, newLabel]
         this.lcData = [...this.lcData, this.lcCurrentValue]
         this.lcTimeIndex++
+
+        // 超过60个数据就自动清空，重新开始显示
+        const maxDataPoints = 60 
+        if (this.lcData.length > maxDataPoints) {
+          console.log(`🔄 数据量超过${maxDataPoints}，自动清空重新开始...`)
+          this.lcData = []
+          this.lcLabels = []
+          this.lcTimeIndex = 0
+          console.log(`✅ 数据已清空，重新开始追踪`)
+        }
+
+        // 控制台输出当前数据条数
+        console.log(`📊 第${this.lcTimeIndex}条数据 - 时间: ${newLabel} - 进度: ${this.lcCurrentValue}%`)
 
         // 数据更新后重绘
         setTimeout(() => {
