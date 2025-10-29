@@ -212,6 +212,11 @@ export struct LiquidCardsArea {
     this.initializeCardData()
   }
 
+  aboutToDisappear(): void {
+    // 离开时释放保存的组件实例引用，避免阻止GC
+    AppStorage.setOrCreate('LIQUID_CARDS_AREA_REF', null)
+  }
+
   /**
    * 监听FSM状态变化
    */

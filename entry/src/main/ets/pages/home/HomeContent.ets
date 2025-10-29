@@ -729,6 +729,20 @@ export struct HomeContent {
     }
   }
 
+  aboutToDisappear() {
+    // 清理定时器，避免页面离开后继续触发导致内存泄漏
+    if (this.timeUpdateTimerId) {
+      clearInterval(this.timeUpdateTimerId)
+      this.timeUpdateTimerId = undefined
+    }
+    if (this.mockSortingInfoTimerId) {
+      clearInterval(this.mockSortingInfoTimerId)
+      this.mockSortingInfoTimerId = undefined
+    }
+    // 释放通过AppStorage保存的页面实例引用，避免阻止GC
+    AppStorage.setOrCreate('HOME_CONTENT_REF', null)
+  }
+
   // 根据FSM状态更新顶部状态栏
   private updateTopBarForFSM(): void {
     let productionTonH: string, sumWeightTon: string, sumCounts: string, avgG: string

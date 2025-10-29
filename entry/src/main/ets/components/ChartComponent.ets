@@ -108,8 +108,15 @@ export struct ChartComponent {
       const newTime = this.generateNewTimeLabel();
       const newValue = this.generateNewValue();
       
-      // 添加新数据点（无上限）
-      this.chartData.push({ time: newTime, value: newValue });
+      // 添加新数据点；当数量超过60时，清空并重新开始显示
+      this.chartData = [...this.chartData, { time: newTime, value: newValue }];
+      const maxDataPoints: number = 60;
+      if (this.chartData.length > maxDataPoints) {
+        console.log(`🔄 数据量超过${maxDataPoints}，自动清空重新开始...`)
+        this.chartData = []
+        this.currentTimeIndex = 0
+        console.log(`✅ 数据已清空，重新开始追踪`)
+      }
       
       // 仅在跟随最新时，自动滚动到末尾
       if (this.followLatest) {

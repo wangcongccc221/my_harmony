@@ -167,7 +167,7 @@ export struct LevelDataTable {
    * - 包含底部1和底部2的各种数据
    * - 从父组件传入，支持动态更新
    */
-  @Prop statisticsData: StatisticsData
+  @Prop @Watch('onExternalStatsChange') statisticsData: StatisticsData
   
   /**
    * 表格数量
@@ -178,6 +178,16 @@ export struct LevelDataTable {
    * - 支持3-6行的表格数量配置
    */
   @Prop tableCount: string = TABLE_COUNT_OPTIONS[0].value
+  /** 父组件传入的刷新驱动键（数值变化即触发刷新） */
+  @Prop @Watch('onExternalStatsChange') refreshKey: number = 0
+  /**
+   * 统计表编辑回调：父组件接收单元格编辑并处理联动
+   * row: 'bottom1' | 'bottom2'
+   * field: 'count' | 'avg' | 'set'
+   * colIndex: 0..7 对应8列
+   * value: 新值（数字）
+   */
+  onEditStat?: (row: 'bottom1' | 'bottom2', field: 'count' | 'avg' | 'set', colIndex: number, value: number) => void
 
   /**
    * 等级数量索引
@@ -289,6 +299,14 @@ export struct LevelDataTable {
    * - 支持动态更新
    */
   @State private statisticsTableData: StatisticsTableItem[] = []
+  @State private statsRefreshTick: number = 0
+  // 输入缓冲，避免 onChange 直接触发父级重建导致焦点跳动
+  @State private bufB1Counts: number[] = []
+  @State private bufB1Avgs: number[] = []
+  @State private bufB1Sets: number[] = []
+  @State private bufB2Counts: number[] = []
+  @State private bufB2Avgs: number[] = []
+  @State private bufB2Sets: number[] = []
 
 
   // ==================== 生命周期方法 ====================
@@ -302,6 +320,25 @@ export struct LevelDataTable {
   aboutToAppear(): void {
     this.initializeStatisticsData()
     this.initializeLevelData()
+  }
+
+  /**
+   * 组件更新时同步最新的统计数据到内表
+   * - 当父组件传入的 statisticsData 发生变化时，重建 statisticsTableData
+   */
+  aboutToUpdate(): void {
+    this.initializeStatisticsData()
+    this.statsRefreshTick++
+    console.log('【等级页面】表格更新：已重建统计数据', JSON.stringify(this.statisticsTableData))
+  }
+
+  /**
+   * 外部统计数据或刷新键变化时的回调
+   */
+  private onExternalStatsChange(): void {
+    this.initializeStatisticsData()
+    this.statsRefreshTick++
+    console.log('【等级页面】收到外部统计变化：已重建统计数据', JSON.stringify(this.statisticsTableData))
   }
 
   /**
@@ -655,38 +692,36 @@ export struct LevelDataTable {
    * - 创建6行数据：底部1和底部2的各3行数据
    */
   private initializeStatisticsData(): void {
+    const b1Counts = this.statisticsData.bottom1Counts || []
+    const b1Sets = this.statisticsData.bottom1Sets || []
+    const b1AvgsComputed = b1Counts.map((cnt, i) => {
+      const setVal = b1Sets[i] ?? 0
+      return cnt > 0 ? Math.round(setVal / cnt) : (this.statisticsData.bottom1Avgs?.[i] ?? 0)
+    })
+
+    const b2Counts = this.statisticsData.bottom2Counts || []
+    const b2Sets = this.statisticsData.bottom2Sets || []
+    const b2AvgsComputed = b2Counts.map((cnt, i) => {
+      const setVal = b2Sets[i] ?? 0
+      return cnt > 0 ? Math.round(setVal / cnt) : (this.statisticsData.bottom2Avgs?.[i] ?? 0)
+    })
+
     this.statisticsTableData = [
-      {
-        id: 1,
-        itemName: '装箱数量',
-        values: this.statisticsData.bottom1Counts
-      },
-      {
-        id: 2,
-        itemName: '平均重量',
-        values: this.statisticsData.bottom1Avgs
-      },
-      {
-        id: 3,
-        itemName: '设置重量',
-        values: this.statisticsData.bottom1Sets
-      },
-      {
-        id: 4,
-        itemName: '装箱数量',
-        values: this.statisticsData.bottom2Counts
-      },
-      {
-        id: 5,
-        itemName: '平均重量',
-        values: this.statisticsData.bottom2Avgs
-      },
-      {
-        id: 6,
-        itemName: '设置重量',
-        values: this.statisticsData.bottom2Sets
-      }
+      { id: 1, itemName: '装箱数量', values: b1Counts },
+      { id: 2, itemName: '平均重量', values: b1AvgsComputed },
+      { id: 3, itemName: '设置重量', values: b1Sets },
+      { id: 4, itemName: '装箱数量', values: b2Counts },
+      { id: 5, itemName: '平均重量', values: b2AvgsComputed },
+      { id: 6, itemName: '设置重量', values: b2Sets }
     ]
+
+    // 同步缓冲
+    this.bufB1Counts = b1Counts.slice()
+    this.bufB1Avgs = b1AvgsComputed.slice()
+    this.bufB1Sets = b1Sets.slice()
+    this.bufB2Counts = b2Counts.slice()
+    this.bufB2Avgs = b2AvgsComputed.slice()
+    this.bufB2Sets = b2Sets.slice()
   }
 
   // ==================== 事件回调函数 ====================
@@ -857,11 +892,52 @@ export struct LevelDataTable {
           .fontColor(this.getCurrentTheme().textColor)
           .textAlign(TextAlign.Center)
       } else if (item) {
-        // 数据单元格
-        Text(this.getStatisticsCellText(item, index))
-          .fontSize(14)
-          .fontColor(this.getCurrentTheme().textColor)
-          .textAlign(TextAlign.Center)
+        // 数据单元格（第0列为项目名只读，其余列可编辑数值）
+        if (index === 0) {
+          Text(item.itemName)
+            .fontSize(14)
+            .fontColor(this.getCurrentTheme().textColor)
+            .textAlign(TextAlign.Center)
+        } else {
+          TextInput({ text: ((index - 1) < item.values.length ? `${item.values[index - 1]}` : '') })
+            .type(InputType.Number)
+            .fontSize(14)
+            .fontColor(this.getCurrentTheme().textColor)
+            .backgroundColor(this.getCurrentTheme().surfaceColor)
+            .textAlign(TextAlign.Center)
+            .border({ width: 0 })
+            // 输入过程中仅更新缓冲，避免父组件重建导致焦点跳动
+            .onChange((raw: string) => {
+              const numeric = raw.replace(/[^0-9.\-]/g, '')
+              const parsed = Number(numeric)
+              if (isNaN(parsed)) { return }
+              const vi = index - 1
+              switch (item.id) {
+                case 1: this.bufB1Counts[vi] = Math.max(0, Math.floor(parsed)); break
+                case 2: this.bufB1Avgs[vi] = Math.max(0, Math.round(parsed)); break
+                case 3: this.bufB1Sets[vi] = Math.max(0, Math.floor(parsed)); break
+                case 4: this.bufB2Counts[vi] = Math.max(0, Math.floor(parsed)); break
+                case 5: this.bufB2Avgs[vi] = Math.max(0, Math.round(parsed)); break
+                case 6: this.bufB2Sets[vi] = Math.max(0, Math.floor(parsed)); break
+              }
+            })
+            // 仅在回车提交时把缓冲写回父组件
+            .onSubmit((enterKey: EnterKeyType) => {
+              const vi = index - 1
+              let row: 'bottom1' | 'bottom2' = 'bottom1'
+              let field: 'count' | 'avg' | 'set' = 'count'
+              let value = 0
+              switch (item.id) {
+                case 1: row = 'bottom1'; field = 'count'; value = this.bufB1Counts[vi] || 0; break
+                case 2: row = 'bottom1'; field = 'avg'; value = this.bufB1Avgs[vi] || 0; break
+                case 3: row = 'bottom1'; field = 'set'; value = this.bufB1Sets[vi] || 0; break
+                case 4: row = 'bottom2'; field = 'count'; value = this.bufB2Counts[vi] || 0; break
+                case 5: row = 'bottom2'; field = 'avg'; value = this.bufB2Avgs[vi] || 0; break
+                case 6: row = 'bottom2'; field = 'set'; value = this.bufB2Sets[vi] || 0; break
+              }
+              if (this.onEditStat) { this.onEditStat(row, field, vi, value) }
+            })
+        }
       }
     }
     .width('100%')

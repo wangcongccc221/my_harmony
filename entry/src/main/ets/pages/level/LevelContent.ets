@@ -145,6 +145,8 @@ export struct LevelContent {
    * - 提供状态更新和同步功能
    */
   private stateManager = new LevelStateManager()
+  // 用于驱动右侧表格刷新
+  @State private statsVersion: number = 0
 
   // 悬浮按钮显示状态
   @State private showFloatingButtons: boolean = true
@@ -284,6 +286,10 @@ export struct LevelContent {
   private handlePackingWeight1Change(weight: number): void {
     this.stateManager.updatePackingWeight1(weight)
     this.eventHandler.onPackingWeightChange(weight, this.stateManager.packingWeight2)
+
+    // 根据装箱重量1联动右下统计表：更新底部1的设置重量与装箱数量
+    this.updateStatisticsByPackingWeight(1, weight)
+    this.statsVersion++
   }
 
   /**
@@ -303,6 +309,10 @@ export struct LevelContent {
   private handlePackingWeight2Change(weight: number): void {
     this.stateManager.updatePackingWeight2(weight)
     this.eventHandler.onPackingWeightChange(this.stateManager.packingWeight1, weight)
+
+    // 根据装箱重量2联动右下统计表：更新底部2的设置重量与装箱数量
+    this.updateStatisticsByPackingWeight(2, weight)
+    this.statsVersion++
   }
 
   /**
@@ -360,6 +370,65 @@ export struct LevelContent {
     this.dataManager.generateRandomStatisticsData()
     this.stateManager.updateStatisticsData(this.dataManager.getStatisticsData())
     this.eventHandler.onGenerateRandomData()
+  }
+
+  /**
+   * 将左侧装箱重量联动到右侧统计表
+   * - bottomIndex: 1 对应底部1，2 对应底部2
+   * - weightKg: 左侧输入的装箱重量（单位：公斤）
+   * 行为：
+   * - 设置重量(克) = weightKg × 1000，按列全量填充到对应 bottomXSets
+   * - 装箱数量 = floor(设置重量 ÷ 平均重量)，写入对应 bottomXCounts
+   */
+  private updateStatisticsByPackingWeight(bottomIndex: 1 | 2, weightKg: number): void {
+    const stats = this.stateManager.statisticsData
+    if (!stats) {
+      console.log('【等级页面】统计数据缺失，已跳过联动更新')
+      return
+    }
+
+    const setWeightGram = Math.max(0, Math.floor((isNaN(weightKg) ? 0 : weightKg) * 1000))
+    console.log('【等级页面】根据装箱重量联动更新', { 底部: bottomIndex, 装箱重量kg: weightKg, 设置重量g: setWeightGram })
+
+    if (bottomIndex === 1) {
+      const avgs = stats.bottom1Avgs || []
+      const newSets = (stats.bottom1Sets || []).map(() => setWeightGram)
+      const newCounts = avgs.map((avg) => {
+        const denom = isNaN(avg) || avg <= 0 ? 1 : avg
+        return Math.floor(setWeightGram / denom)
+      })
+      // 若业务要求：平均重量 = 设置重量 / 装箱数量，则在计算出数量后反推平均重量
+      const newAvgs = newCounts.map((cnt, idx) => cnt > 0 ? Math.round(setWeightGram / cnt) : avgs[idx] ?? 0)
+
+      console.log('【等级页面】底部1 新的设置重量/装箱数量/平均重量', newSets, newCounts, newAvgs)
+      this.stateManager.updateStatisticsData({
+        bottom1Counts: newCounts,
+        bottom1Avgs: newAvgs,
+        bottom1Sets: newSets,
+        bottom2Counts: stats.bottom2Counts.slice(),
+        bottom2Avgs: stats.bottom2Avgs.slice(),
+        bottom2Sets: stats.bottom2Sets.slice()
+      })
+    } else {
+      const avgs = stats.bottom2Avgs || []
+      const newSets = (stats.bottom2Sets || []).map(() => setWeightGram)
+      const newCounts = avgs.map((avg) => {
+        const denom = isNaN(avg) || avg <= 0 ? 1 : avg
+        return Math.floor(setWeightGram / denom)
+      })
+      // 反推平均重量
+      const newAvgs = newCounts.map((cnt, idx) => cnt > 0 ? Math.round(setWeightGram / cnt) : avgs[idx] ?? 0)
+
+      console.log('【等级页面】底部2 新的设置重量/装箱数量/平均重量', newSets, newCounts, newAvgs)
+      this.stateManager.updateStatisticsData({
+        bottom1Counts: stats.bottom1Counts.slice(),
+        bottom1Avgs: stats.bottom1Avgs.slice(),
+        bottom1Sets: stats.bottom1Sets.slice(),
+        bottom2Counts: newCounts,
+        bottom2Avgs: newAvgs,
+        bottom2Sets: newSets
+      })
+    }
   }
 
   /**
@@ -533,6 +602,10 @@ export struct LevelContent {
             levelData: this.stateManager.levelData,                            // 等级数据
             statisticsData: this.stateManager.statisticsData,                  // 统计数据
             tableCount: this.stateManager.tableCount,                          // 表格数量
+            refreshKey: this.statsVersion,                                     // 刷新驱动键
+            onEditStat: (row: 'bottom1' | 'bottom2', field: 'count' | 'avg' | 'set', colIndex: number, value: number) => {
+              this.handleEditStat(row, field, colIndex, value)
+            },
             onTableCountChange: (count: string) => {                           // 表格数量变化回调
               this.handleTableCountChange(count)
             }
@@ -624,6 +697,59 @@ export struct LevelContent {
     }
     .width('100%')                                                             // Stack宽度（100%）
     .height('100%')                                                             // Stack高度（100%）
+  }
+  /**
+   * 处理统计表单元格编辑：三列都可改，并做联动
+   * 规则：
+   * - 改 set：count = floor(set/avg) (avg>0)；avg = round(set/max(count,1))
+   * - 改 count：avg = round(set/max(count,1))
+   * - 改 avg：count = floor(set/max(avg,1))
+   */
+  private handleEditStat(row: 'bottom1' | 'bottom2', field: 'count' | 'avg' | 'set', colIndex: number, value: number): void {
+    const stats = this.stateManager.statisticsData
+    const safeIdx = Math.max(0, Math.min(colIndex, 7))
+    const setArr = row === 'bottom1' ? (stats.bottom1Sets.slice()) : (stats.bottom2Sets.slice())
+    const cntArr = row === 'bottom1' ? (stats.bottom1Counts.slice()) : (stats.bottom2Counts.slice())
+    const avgArr = row === 'bottom1' ? (stats.bottom1Avgs.slice()) : (stats.bottom2Avgs.slice())
+
+    if (field === 'set') {
+      setArr[safeIdx] = Math.max(0, Math.floor(value))
+      const denom = Math.max(1, Math.round(avgArr[safeIdx] || 0))
+      cntArr[safeIdx] = Math.max(0, Math.floor(setArr[safeIdx] / denom))
+      const countSafe = Math.max(1, cntArr[safeIdx])
+      avgArr[safeIdx] = Math.max(0, Math.round(setArr[safeIdx] / countSafe))
+    } else if (field === 'count') {
+      cntArr[safeIdx] = Math.max(0, Math.floor(value))
+      const countSafe = Math.max(1, cntArr[safeIdx])
+      avgArr[safeIdx] = Math.max(0, Math.round((setArr[safeIdx] || 0) / countSafe))
+    } else {
+      // field === 'avg'
+      avgArr[safeIdx] = Math.max(0, Math.round(value))
+      const denom = Math.max(1, avgArr[safeIdx])
+      cntArr[safeIdx] = Math.max(0, Math.floor((setArr[safeIdx] || 0) / denom))
+    }
+
+    if (row === 'bottom1') {
+      this.stateManager.updateStatisticsData({
+        bottom1Counts: cntArr,
+        bottom1Avgs: avgArr,
+        bottom1Sets: setArr,
+        bottom2Counts: stats.bottom2Counts.slice(),
+        bottom2Avgs: stats.bottom2Avgs.slice(),
+        bottom2Sets: stats.bottom2Sets.slice()
+      })
+    } else {
+      this.stateManager.updateStatisticsData({
+        bottom1Counts: stats.bottom1Counts.slice(),
+        bottom1Avgs: stats.bottom1Avgs.slice(),
+        bottom1Sets: stats.bottom1Sets.slice(),
+        bottom2Counts: cntArr,
+        bottom2Avgs: avgArr,
+        bottom2Sets: setArr
+      })
+    }
+
+    this.statsVersion++
   }
 
   // ==================== 生命周期方法 ====================
