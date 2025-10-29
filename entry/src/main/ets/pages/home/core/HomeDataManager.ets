@@ -200,6 +200,41 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
   }
 
   /**
+   * 清空等级统计表的出口信息
+   * 
+   * 功能说明：
+   * - 清空等级统计表中所有等级的出口信息
+   * - 保留其他数据（重量、个数、占比等）
+   * - 将出口列重置为空字符串
+   * 
+   * 使用示例：
+   * ```typescript
+   * dataManager.clearStatisticsTableExits()
+   * // 等级统计表的出口信息被清空
+   * ```
+   */
+  clearStatisticsTableExits(): void {
+    const tableName = '等级统计表'
+    const rows: TableRow[] = this.getTableData(tableName)
+    
+    if (rows.length === 0) {
+      console.log('等级统计表数据为空，无需清空出口信息')
+      return
+    }
+    
+    // 清空所有行的出口信息（第3列，索引2）
+    const updatedRows: TableRow[] = rows.map(row => {
+      const newRow: TableRow = [...row]
+      newRow[2] = '' // 清空出口列
+      return newRow
+    })
+    
+    // 更新数据
+    this.updateFSMTableData(tableName, updatedRows)
+    console.log('等级统计表出口信息已清空')
+  }
+
+  /**
    * 初始化等级表数据
    * 
    * 功能说明：

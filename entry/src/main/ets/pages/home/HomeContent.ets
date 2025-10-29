@@ -578,6 +578,9 @@ export struct HomeContent {
     // 初始化主页状态（新增的@StorageLink变量）
     AppStorage.setOrCreate(HOME_SELECTED_FSM, this.selectedFSM)
     AppStorage.setOrCreate(HOME_SETTING1_ENABLED, this.setting1Enabled)
+    
+    // 注册HomeDataManager到AppStorage，供其他组件使用
+    AppStorage.setOrCreate('HOME_DATA_MANAGER', this.dataManager)
     AppStorage.setOrCreate(HOME_SETTING2_ENABLED, this.setting2Enabled)
     AppStorage.setOrCreate(HOME_SETTING3_ENABLED, this.setting3Enabled)
     AppStorage.setOrCreate(HOME_SETTING4_ENABLED, this.setting4Enabled)

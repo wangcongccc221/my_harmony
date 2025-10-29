@@ -44,6 +44,7 @@ import { getCurrentCellDragData, CellDragData, CELL_DRAG_ACTIVE_KEY } from '../.
 import { GlobalCardDataManager } from '../../utils/GlobalCardDataManager'
 import { CardDataManager } from '../../utils/card/CardDataManager'
 import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
+import { HomeDataManager } from './core/HomeDataManager'
 
 // 移除源数据接口
 interface RemoveSourceData {
@@ -172,7 +173,24 @@ export struct LiquidCardsArea {
     // 更新本地状态
     this.cardDataList = this.globalDataManager.getCardDataList()
     
-    console.log('LiquidCardsArea: 所有卡片数据已清空')
+    // 同时清空等级统计表的出口信息
+    this.clearStatisticsTableExits()
+    
+    console.log('LiquidCardsArea: 所有卡片数据和等级统计表出口信息已清空')
+  }
+
+  /**
+   * 清空等级统计表的出口信息
+   */
+  private clearStatisticsTableExits(): void {
+    // 通过AppStorage获取HomeDataManager实例
+    const homeDataManager = AppStorage.get('HOME_DATA_MANAGER') as HomeDataManager | null
+    if (homeDataManager) {
+      homeDataManager.clearStatisticsTableExits()
+      console.log('LiquidCardsArea: 等级统计表出口信息已清空')
+    } else {
+      console.warn('LiquidCardsArea: 无法获取HomeDataManager实例，跳过清空等级统计表出口信息')
+    }
   }
 
   /**
