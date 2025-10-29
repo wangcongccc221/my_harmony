@@ -66,7 +66,7 @@ export struct LiquidCardsArea {
   @State private hoverIndex: number = -1
   @StorageLink(GRID_DRAG_ACTIVE_KEY) private gridDragActive: boolean = false
   // FSM状态监听
-  @StorageLink(HOME_SELECTED_FSM) private selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
+  @StorageLink(HOME_SELECTED_FSM) @Watch('onFSMChange') private selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
   // 简化：不记录几何，直接在卡片自身接收抬手投放
   
   // 全局数据管理器实例
@@ -208,6 +208,31 @@ export struct LiquidCardsArea {
   aboutToAppear(): void {
     // 将当前实例注册到AppStorage，供其他组件调用
     AppStorage.setOrCreate('LIQUID_CARDS_AREA_REF', this)
+    // 初始化卡片数据
+    this.initializeCardData()
+  }
+
+  /**
+   * 监听FSM状态变化
+   */
+  onFSMChange(): void {
+    console.log(`LiquidCardsArea: FSM状态变化到 ${this.selectedFSM}`)
+    this.globalDataManager.setFSM(this.selectedFSM)
+    this.cardDataList = this.globalDataManager.getCardDataList()
+    console.log(`LiquidCardsArea: 已切换到 ${this.selectedFSM} 的卡片数据，共 ${this.cardDataList.length} 个卡片`)
+  }
+
+  /**
+   * 监听强制移除信号
+   */
+  aboutToUpdate(): void {
+    // 监听强制移除信号
+    if (this.forceRemoveSource && this.forceRemoveSource.sourceCardId && this.forceRemoveSource.sourceValue) {
+      console.log('监听到强制移除信号:', this.forceRemoveSource)
+      this.performRemoveSourceData(this.forceRemoveSource)
+      // 清除信号
+      AppStorage.set(StorageKeys.FORCE_REMOVE_SOURCE, null)
+    }
   }
 
 
@@ -341,13 +366,4 @@ export struct LiquidCardsArea {
     })
   }
 
-  aboutToUpdate() {
-    // 监听强制移除信号
-    if (this.forceRemoveSource && this.forceRemoveSource.sourceCardId && this.forceRemoveSource.sourceValue) {
-      console.log('监听到强制移除信号:', this.forceRemoveSource)
-      this.performRemoveSourceData(this.forceRemoveSource)
-      // 清除信号
-      AppStorage.set(StorageKeys.FORCE_REMOVE_SOURCE, null)
-    }
-  }
 }

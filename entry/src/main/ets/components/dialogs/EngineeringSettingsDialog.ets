@@ -6,6 +6,7 @@
 
 import { BaseComponentHelper } from '../common/BaseComponent'
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { DialogButtons } from '../ui/DialogButtons'
 import { SystemStructurePage } from './pages/SystemStructurePage'
 import { ChannelRangePage } from './pages/ChannelRangePage'
@@ -24,6 +25,8 @@ export struct EngineeringSettingsDialog {
   private baseComponentHelper = new BaseComponentHelper()
   @Prop isVisible: boolean = false
   @State selectedTab: string = '系统结构设置'
+  @StorageLink(OMNI_THEME_KEY) @Watch('onThemeChange') consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
+  @StorageLink(OMNI_THEME_VERSION_KEY) @Watch('onThemeChange') themeVersion: number = 0
   
   // Tab配置映射
   private tabConfig: TabConfig[] = [
@@ -40,7 +43,12 @@ export struct EngineeringSettingsDialog {
 
   // 获取当前主题配置
   getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme()
+    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+  }
+
+  // 监听主题变化
+  onThemeChange(): void {
+    console.log('EngineeringSettingsDialog: 主题已变化，重新渲染')
   }
 
 

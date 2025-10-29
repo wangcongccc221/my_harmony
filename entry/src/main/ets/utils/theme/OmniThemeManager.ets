@@ -107,6 +107,20 @@ export interface ExtendedOmniThemeStyle extends OmniThemeStyle {
   levelSectionBg?: string
   levelControlBg?: string
   levelDialogBg?: string
+
+  // FSM切换按钮专属配色（可选）
+  // fsmToggleContainerBg: FSM切换按钮容器背景色；未配则回退 backgroundColor。
+  // fsmToggleButtonActiveBg: FSM切换按钮激活状态背景色；未配则回退 primary。
+  // fsmToggleButtonActiveTextColor: FSM切换按钮激活状态文字颜色；未配则回退 '#FFFFFF'。
+  // fsmToggleButtonInactiveBg: FSM切换按钮非激活状态背景色；未配则回退 Color.Transparent。
+  // fsmToggleButtonInactiveTextColor: FSM切换按钮非激活状态文字颜色；未配则回退 textColor。
+  // fsmToggleButtonBorderColor: FSM切换按钮边框颜色；未配则回退 borderColor。
+  fsmToggleContainerBg?: string
+  fsmToggleButtonActiveBg?: string
+  fsmToggleButtonActiveTextColor?: string
+  fsmToggleButtonInactiveBg?: string
+  fsmToggleButtonInactiveTextColor?: string
+  fsmToggleButtonBorderColor?: string
 }
 
 
@@ -368,7 +382,15 @@ const WARM_AMBER_THEME: ExtendedOmniThemeStyle = {
   // 等级页专属默认值（不设则按回退规则取通用语义色）
   levelSectionBg: '#FFF6DE',
   levelControlBg: '#FFFFFF',
-  levelDialogBg: '#FFFFFF'
+  levelDialogBg: '#FFFFFF',
+  
+  // FSM切换按钮专属配色
+  fsmToggleContainerBg: '#F7E7C7',        // FSM切换按钮容器：浅琥珀色
+  fsmToggleButtonActiveBg: '#EA7A10',     // FSM切换按钮激活：琥珀色
+  fsmToggleButtonActiveTextColor: '#FFFFFF', // FSM切换按钮激活文字：白色
+  fsmToggleButtonInactiveBg: 'transparent', // FSM切换按钮非激活：透明
+  fsmToggleButtonInactiveTextColor: '#2F221B', // FSM切换按钮非激活文字：深色
+  fsmToggleButtonBorderColor: '#DFC49E'   // FSM切换按钮边框：琥珀色
 }
 
 // 方案三：极简黑白风格（现代/企业）
@@ -490,7 +512,15 @@ const PROFESSIONAL_BLUE_THEME: ExtendedOmniThemeStyle = {
   // 等级页专属配色
   levelSectionBg: '#F0F8FF',              // 等级页分区：浅蓝色
   levelControlBg: '#E6F3FF',              // 等级页控件：更浅的蓝色
-  levelDialogBg: '#F0F8FF'                // 等级页弹窗：浅蓝色
+  levelDialogBg: '#F0F8FF',               // 等级页弹窗：浅蓝色
+  
+  // FSM切换按钮专属配色
+  fsmToggleContainerBg: '#E6F3FF',        // FSM切换按钮容器：浅蓝色
+  fsmToggleButtonActiveBg: '#1890FF',     // FSM切换按钮激活：蓝色
+  fsmToggleButtonActiveTextColor: '#FFFFFF', // FSM切换按钮激活文字：白色
+  fsmToggleButtonInactiveBg: 'transparent', // FSM切换按钮非激活：透明
+  fsmToggleButtonInactiveTextColor: '#1E3A5F', // FSM切换按钮非激活文字：深蓝色
+  fsmToggleButtonBorderColor: '#B3D9FF'   // FSM切换按钮边框：浅蓝色
 }
 
 // 主题配置数据

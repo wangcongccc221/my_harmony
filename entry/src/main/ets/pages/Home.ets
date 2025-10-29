@@ -82,9 +82,13 @@ struct Page {
   @State showLoadProgramDialog: boolean = false  // 控制载入程序对话框显示
   @State showSaveProgramDialog: boolean = false  // 控制保存程序对话框显示
   @State showSortingStatusDialog: boolean = false  // 控制分选状态对话框显示
-  @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
-  @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
-  @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
+  @StorageLink(OMNI_THEME_KEY) @Watch('onThemeChange') consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
+  @StorageLink(OMNI_THEME_TYPE_KEY) @Watch('onThemeChange') consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
+  @StorageLink(OMNI_THEME_VERSION_KEY) @Watch('onThemeChange') themeVersion: number = 0
+  
+  // FSM主题保存状态
+  @State fsm1Theme: OmniThemeType = OmniThemeType.PROFESSIONAL_BLUE
+  @State fsm2Theme: OmniThemeType = OmniThemeType.WARM_AMBER
   private omniThemeManager = OmniThemeManager.getInstance()  // Omni-UI 主题管理器实例
   private omniUIInit = OmniUIInit.getInstance()  // Omni-UI 初始化实例
   private omniUIUtils = OmniUIUtils.getInstance()  // Omni-UI 工具实例
@@ -142,6 +146,11 @@ struct Page {
     // 引用 themeVersion，确保主题版本变化触发本组件重建
     const __version: number = this.themeVersion
     return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+  }
+
+  // 监听主题变化
+  onThemeChange(): void {
+    console.log('Home: 主题已变化，重新渲染')
   }
 
   // 将页面键映射为展示标题（中文）
@@ -1170,27 +1179,53 @@ struct Page {
         currentPage: this.currentPage,
         selectedFSM: this.selectedFSM,
         onFSMChange: (fsm: 'FSM1' | 'FSM2') => {
-          // 更新全局FSM状态
-          AppStorage.set('HOME_SELECTED_FSM', fsm)
+          console.log(`🔄 FSM切换开始: ${this.selectedFSM} -> ${fsm}`)
+
+          // 先保存当前主题到当前FSM状态（在切换之前）
+          const currentTheme = this.omniThemeManager.getCurrentThemeType()
           
-          // FSM切换时自动切换主题配色
-          if (fsm === 'FSM2') {
-            // 切换到暖色调主题 - 使用暖琥珀色主题（暖色质感）
-            this.themeVersion = 1 // 暖色调
-            AppStorage.set('THEME_VERSION', 1)
-            // 使用OmniThemeManager切换主题
-            OmniThemeManager.getInstance().setTheme(OmniThemeType.WARM_AMBER)
-            console.log('切换到FSM2 - 暖色质感主题')
+          // 使用组件内部状态保存主题
+          if (this.selectedFSM === 'FSM1') {
+            this.fsm1Theme = currentTheme
+            console.log(`💾 保存当前FSM1的主题设置:`, currentTheme, `状态变量: fsm1Theme`)
           } else {
-            // 切换到冷色调主题 - 使用专业蓝色主题
-            this.themeVersion = 0 // 冷色调
-            AppStorage.set('THEME_VERSION', 0)
-            // 使用OmniThemeManager切换主题
-            OmniThemeManager.getInstance().setTheme(OmniThemeType.PROFESSIONAL_BLUE)
-            console.log('切换到FSM1 - 专业蓝色主题')
+            this.fsm2Theme = currentTheme
+            console.log(`💾 保存当前FSM2的主题设置:`, currentTheme, `状态变量: fsm2Theme`)
           }
           
-          console.log(`切换到 ${fsm}`)
+          // 立即验证保存是否成功
+          const currentThemeValue = this.selectedFSM === 'FSM1' ? this.fsm1Theme : this.fsm2Theme
+          console.log(`✅ 验证保存结果:`, currentThemeValue, `状态变量: ${this.selectedFSM === 'FSM1' ? 'fsm1Theme' : 'fsm2Theme'}`)
+          
+          // 更新全局FSM状态
+          AppStorage.set('HOME_SELECTED_FSM', fsm)
+          console.log(`🔄 已更新FSM状态为: ${fsm}`)
+
+          // 恢复目标FSM状态的主题设置
+          const targetTheme = fsm === 'FSM1' ? this.fsm1Theme : this.fsm2Theme
+          console.log(`🔍 查找目标${fsm}的主题设置:`, targetTheme, `状态变量: ${fsm === 'FSM1' ? 'fsm1Theme' : 'fsm2Theme'}`)
+          
+          // 检查组件状态中所有的FSM主题
+          console.log(`🔍 检查组件状态中的FSM主题:`)
+          console.log(`  fsm1Theme:`, this.fsm1Theme, `(类型: ${typeof this.fsm1Theme})`)
+          console.log(`  fsm2Theme:`, this.fsm2Theme, `(类型: ${typeof this.fsm2Theme})`)
+          
+          if (targetTheme) {
+            // 如果目标FSM有保存的主题设置，则恢复
+            this.omniThemeManager.setTheme(targetTheme)
+            console.log(`✅ 恢复${fsm}的主题设置:`, targetTheme)
+          } else {
+            // 如果目标FSM没有保存的主题设置，则使用默认主题
+            if (fsm === 'FSM2') {
+              this.omniThemeManager.setTheme(OmniThemeType.WARM_AMBER)
+              console.log(`🎨 使用${fsm}的默认主题: WARM_AMBER`)
+            } else {
+              this.omniThemeManager.setTheme(OmniThemeType.PROFESSIONAL_BLUE)
+              console.log(`🎨 使用${fsm}的默认主题: PROFESSIONAL_BLUE`)
+            }
+          }
+
+          console.log(`✅ FSM切换完成: ${fsm}`)
         }
       })
 

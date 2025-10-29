@@ -6,11 +6,16 @@ export struct MoreTabBar {
   @Prop selectedTab: string = '出口'
   onSwitch?: (tab: string) => void
 
-  @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
-  @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
+  @StorageLink(OMNI_THEME_KEY) @Watch('onThemeChange') consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
+  @StorageLink(OMNI_THEME_VERSION_KEY) @Watch('onThemeChange') themeVersion: number = 0
 
   private getTheme(): ExtendedOmniThemeStyle {
     return this.consumedTheme
+  }
+
+  // 监听主题变化
+  onThemeChange(): void {
+    console.log('MoreTabBar: 主题已变化，重新渲染')
   }
 
   build() {

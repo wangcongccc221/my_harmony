@@ -22,9 +22,9 @@ interface SettingItem {
 
 @Component
 export struct MoreContent {
-  @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
-  @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
-  @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
+  @StorageLink(OMNI_THEME_KEY) @Watch('onThemeChange') consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
+  @StorageLink(OMNI_THEME_TYPE_KEY) @Watch('onThemeChange') consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
+  @StorageLink(OMNI_THEME_VERSION_KEY) @Watch('onThemeChange') themeVersion: number = 0
   private baseComponentHelper = new BaseComponentHelper()
   private omniThemeManager = OmniThemeManager.getInstance()
   private omniUIUtils = OmniUIUtils.getInstance()
@@ -49,6 +49,19 @@ export struct MoreContent {
 
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+  }
+
+  // 监听主题变化
+  onThemeChange(): void {
+    console.log('MoreContent: 主题已变化，重新渲染')
+    // 强制刷新弹窗状态，确保弹窗背景色也能更新
+    if (this.showThemeSelector) {
+      this.showThemeSelector = false
+      // 使用setTimeout确保状态更新后再重新显示弹窗
+      setTimeout(() => {
+        this.showThemeSelector = true
+      }, 10)
+    }
   }
 
   // 主题切换处理

@@ -9,6 +9,12 @@ export class GlobalCardDataManager {
   private cardDataList: ThreeLayerCardData[] = []
   private isInitialized: boolean = false
   private readonly CARD_COUNT = 20
+  private currentFSM: 'FSM1' | 'FSM2' = 'FSM1'
+  // 为每个FSM状态维护独立的卡片数据
+  private fsmCardData: Record<string, ThreeLayerCardData[]> = {
+    'FSM1': [],
+    'FSM2': []
+  }
   
   // 波浪高度配置：每个卡片的波浪高度百分比
   // 卡片0: 100%, 卡片1: 30%, 卡片2: 60%
@@ -29,17 +35,33 @@ export class GlobalCardDataManager {
   }
 
   /**
+   * 设置当前FSM状态
+   */
+  public setFSM(fsm: 'FSM1' | 'FSM2'): void {
+    this.currentFSM = fsm
+    // 切换到对应FSM的卡片数据，如果数据不存在则初始化
+    if (!this.fsmCardData[fsm] || this.fsmCardData[fsm].length === 0) {
+      this.initializeCardData()
+    } else {
+      this.cardDataList = this.fsmCardData[fsm]
+    }
+    console.log(`GlobalCardDataManager 切换到: ${fsm}，数据长度: ${this.cardDataList.length}`)
+  }
+
+  /**
    * 初始化卡片数据
    */
   public initializeCardData(): ThreeLayerCardData[] {
     console.log('GlobalCardDataManager 初始化卡片数据...')
     
-    if (this.isInitialized && this.cardDataList.length > 0) {
-      console.log('数据已初始化，返回现有数据:', this.cardDataList.length, '个卡片')
+    // 检查当前FSM状态的数据是否已初始化
+    if (this.fsmCardData[this.currentFSM].length > 0) {
+      console.log(`${this.currentFSM}数据已初始化，返回现有数据:`, this.fsmCardData[this.currentFSM].length, '个卡片')
+      this.cardDataList = this.fsmCardData[this.currentFSM]
       return this.cardDataList.slice() // 返回副本，避免外部修改
     }
 
-    console.log('创建新的卡片数据...')
+    console.log(`创建新的${this.currentFSM}卡片数据...`)
     const newCardDataList: ThreeLayerCardData[] = []
     
     for (let i = 0; i < this.CARD_COUNT; i++) {
@@ -64,9 +86,11 @@ export class GlobalCardDataManager {
       })
     }
     
+    // 保存到对应FSM状态的数据中
+    this.fsmCardData[this.currentFSM] = newCardDataList
     this.cardDataList = newCardDataList
     this.isInitialized = true
-    console.log('创建了新的卡片数据:', newCardDataList.length, '个卡片')
+    console.log(`创建了新的${this.currentFSM}卡片数据:`, newCardDataList.length, '个卡片')
     return this.cardDataList.slice() // 返回副本
   }
 
@@ -83,7 +107,9 @@ export class GlobalCardDataManager {
   public updateCardData(cardIndex: number, newData: ThreeLayerCardData): void {
     if (cardIndex >= 0 && cardIndex < this.cardDataList.length) {
       this.cardDataList[cardIndex] = JSON.parse(JSON.stringify(newData)) // 深拷贝
-      console.log(`更新卡片${cardIndex + 1}的数据:`, newData.thirdLayer.chartData)
+      // 同时更新FSM状态的数据
+      this.fsmCardData[this.currentFSM][cardIndex] = JSON.parse(JSON.stringify(newData))
+      console.log(`更新${this.currentFSM}卡片${cardIndex + 1}的数据:`, newData.thirdLayer.chartData)
     }
   }
 
@@ -141,9 +167,10 @@ export class GlobalCardDataManager {
   public clearAllCardData(): void {
     console.log('开始清空所有卡片的第三层数据...')
     
-    for (let i = 0; i < this.cardDataList.length; i++) {
-      const card = this.cardDataList[i]
-      this.cardDataList[i] = {
+    // 清空FSM1的数据
+    for (let i = 0; i < this.fsmCardData['FSM1'].length; i++) {
+      const card = this.fsmCardData['FSM1'][i]
+      this.fsmCardData['FSM1'][i] = {
         id: card.id,
         firstLayer: card.firstLayer,
         secondLayer: card.secondLayer,
@@ -155,7 +182,25 @@ export class GlobalCardDataManager {
       }
     }
     
-    console.log('所有卡片的第三层数据已清空')
+    // 清空FSM2的数据
+    for (let i = 0; i < this.fsmCardData['FSM2'].length; i++) {
+      const card = this.fsmCardData['FSM2'][i]
+      this.fsmCardData['FSM2'][i] = {
+        id: card.id,
+        firstLayer: card.firstLayer,
+        secondLayer: card.secondLayer,
+        thirdLayer: {
+          chartType: 'waveform',
+          chartData: [],
+          chartConfig: {}
+        }
+      }
+    }
+    
+    // 更新当前显示的卡片数据
+    this.cardDataList = this.fsmCardData[this.currentFSM]
+    
+    console.log('所有FSM状态的卡片第三层数据已清空')
   }
 
   /**

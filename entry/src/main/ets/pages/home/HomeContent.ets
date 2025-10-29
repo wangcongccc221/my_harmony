@@ -83,7 +83,7 @@ export struct HomeContent {
   // ==================== 状态变量（用于UI绑定） ====================
   // 这些 @State 变量与状态管理器同步，确保UI能正确响应状态变化
   
-  @StorageLink(HOME_SELECTED_FSM) private selectedFSM: 'FSM1' | 'FSM2' = DEFAULT_HOME_STATE.selectedFSM
+  @StorageLink(HOME_SELECTED_FSM) @Watch('onFSMChange') private selectedFSM: 'FSM1' | 'FSM2' = DEFAULT_HOME_STATE.selectedFSM
   @StorageLink(HOME_SETTING1_ENABLED) private setting1Enabled: boolean = DEFAULT_HOME_STATE.setting1Enabled
   @StorageLink(HOME_SETTING2_ENABLED) private setting2Enabled: boolean = DEFAULT_HOME_STATE.setting2Enabled
   @StorageLink(HOME_SETTING3_ENABLED) private setting3Enabled: boolean = DEFAULT_HOME_STATE.setting3Enabled
@@ -192,6 +192,19 @@ export struct HomeContent {
     
     // 如果只有一个设置开启，且当前设置是开启的，则不能关闭
     return enabledCount === 1 && settings[currentIndex]
+  }
+
+  /**
+   * 监听FSM状态变化
+   */
+  onFSMChange(): void {
+    console.log(`HomeContent: FSM状态变化到 ${this.selectedFSM}`)
+    // 更新数据管理器的FSM状态
+    this.dataManager.setFSM(this.selectedFSM)
+    // 更新顶部状态栏
+    this.updateTopBarForFSM()
+    // 刷新表格数据
+    this.tablesRefreshKey++
   }
 
   // 切换FSM状态

@@ -10,6 +10,7 @@
  */
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 
 // 位置接口定义
 interface Position {
@@ -30,10 +31,19 @@ export struct FloatingWindow {
   
   // 关闭回调
   onClose?: () => void
+  
+  // 主题变化监听
+  @StorageLink(OMNI_THEME_KEY) @Watch('onThemeChange') consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
+  @StorageLink(OMNI_THEME_VERSION_KEY) @Watch('onThemeChange') themeVersion: number = 0
 
   // 获取当前主题配置
   private getCurrentTheme(): ExtendedOmniThemeStyle {
-    return OmniThemeManager.getInstance().getCurrentTheme()
+    return this.consumedTheme
+  }
+
+  // 监听主题变化
+  onThemeChange(): void {
+    console.log('FloatingWindow: 主题已变化，重新渲染')
   }
 
   build() {
@@ -83,7 +93,7 @@ export struct FloatingWindow {
         })
         .width(this.windowWidth)
         .height(this.windowHeight)
-        .backgroundColor(this.getCurrentTheme().surfaceColor + 'E6') // 添加90%透明度
+        .backgroundColor(this.getCurrentTheme().surfaceColor) // 使用不透明的主题色
         .borderRadius(12)
         .shadow({ 
           radius: 20, 

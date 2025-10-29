@@ -206,6 +206,7 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
    * - 清空等级统计表中所有等级的出口信息
    * - 保留其他数据（重量、个数、占比等）
    * - 将出口列重置为空字符串
+   * - 同时清空FSM1和FSM2的数据
    * 
    * 使用示例：
    * ```typescript
@@ -215,23 +216,32 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
    */
   clearStatisticsTableExits(): void {
     const tableName = '等级统计表'
-    const rows: TableRow[] = this.getTableData(tableName)
     
-    if (rows.length === 0) {
-      console.log('等级统计表数据为空，无需清空出口信息')
-      return
+    // 清空FSM1的数据
+    this.currentFSM = 'FSM1'
+    const rows1: TableRow[] = this.getTableData(tableName)
+    if (rows1.length > 0) {
+      const updatedRows1: TableRow[] = rows1.map(row => {
+        const newRow: TableRow = [...row]
+        newRow[2] = '' // 清空出口列
+        return newRow
+      })
+      this.updateFSMTableData(tableName, updatedRows1)
     }
     
-    // 清空所有行的出口信息（第3列，索引2）
-    const updatedRows: TableRow[] = rows.map(row => {
-      const newRow: TableRow = [...row]
-      newRow[2] = '' // 清空出口列
-      return newRow
-    })
+    // 清空FSM2的数据
+    this.currentFSM = 'FSM2'
+    const rows2: TableRow[] = this.getTableData(tableName)
+    if (rows2.length > 0) {
+      const updatedRows2: TableRow[] = rows2.map(row => {
+        const newRow: TableRow = [...row]
+        newRow[2] = '' // 清空出口列
+        return newRow
+      })
+      this.updateFSMTableData(tableName, updatedRows2)
+    }
     
-    // 更新数据
-    this.updateFSMTableData(tableName, updatedRows)
-    console.log('等级统计表出口信息已清空')
+    console.log('等级统计表出口信息已清空（FSM1和FSM2）')
   }
 
   /**
@@ -367,6 +377,13 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
    * ```
    */
   initializeStatisticsTableData(): void {
+    // 检查当前FSM状态的数据是否已存在，如果存在则不重新初始化
+    const fsmKey = `等级统计表_${this.currentFSM}`
+    if (this.allTableData[fsmKey] && this.allTableData[fsmKey].length > 0) {
+      console.log(`${this.currentFSM}等级统计表数据已存在，跳过初始化`)
+      return
+    }
+    
     let statisticsData: TableRow[]
     
     if (this.currentFSM === 'FSM1') {
@@ -397,7 +414,6 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
     }
     
     // 使用FSM特定的键名存储数据
-    const fsmKey = `等级统计表_${this.currentFSM}`
     this.allTableData[fsmKey] = statisticsData
     console.log(`初始化${this.currentFSM}等级统计表数据:`, statisticsData)
   }
