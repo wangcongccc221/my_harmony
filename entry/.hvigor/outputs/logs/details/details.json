@@ -11,18 +11,17 @@
       "skipNativeIncremental": false,
       "hvigor_keepDependency": true
     },
-    "TOTAL_TIME": 19379800,
-    "BUILD_ID": "202510241443595480",
+    "BUILD_ID": "202510290918497750",
     "ERROR_MESSAGE": [
       {
-        "CODE": "00303230",
-        "MESSAGE": "The required attribute module-srcPath is missing",
+        "CODE": "00303010",
+        "MESSAGE": "The property of module should be an array in root project %s. At file: %s",
         "SOLUTIONS": [
-          "Access the build-profile.json5 file in the project root directory and make sure the srcPath field exists under modules.",
-          "Access the configuration file of the module dynamically added in the hvigorconfig.ts file in the project root directory, and make sure the srcPath field exists."
+          "Check the project-level build-profile.json5 file and ensure that the module's option is an array."
         ],
-        "TIMESTAMP": "1761288239551"
+        "TIMESTAMP": "1761700729782"
       }
-    ]
+    ],
+    "TOTAL_TIME": 25290000
   }
 }

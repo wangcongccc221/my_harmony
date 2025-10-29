@@ -73,7 +73,7 @@ struct SwitchWrapper {
 @Component
 export struct HomeContent {
   // 数据管理器
-  private dataManager = new HomeDataManager()
+  private dataManager = HomeDataManager.getInstance()
   // 事件处理器
   private eventHandler = new HomeEventHandler()
   // 状态管理器
@@ -141,8 +141,11 @@ export struct HomeContent {
    * @returns 表格数据
    */
   private getTableData(tableName: string): TableRow[] {
-    return this.dataManager.getTableData(tableName)
+    const data = this.dataManager.getTableData(tableName)
+    console.log(`HomeContent 获取表格数据 ${tableName}:`, data, `当前FSM: ${this.dataManager.getCurrentFSM()}`)
+    return data
   }
+
 
   // 分选信息（占位数据）
   // 后续接入真实数据建议：

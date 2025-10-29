@@ -160,6 +160,29 @@ export struct LiquidCardsArea {
     console.log('从全局数据管理器获取数据:', this.cardDataList.length, '个卡片')
   }
 
+  /**
+   * 清空所有卡片的第三层数据
+   */
+  public clearAllCardData(): void {
+    console.log('LiquidCardsArea: 开始清空所有卡片数据...')
+    
+    // 使用全局数据管理器清空数据
+    this.globalDataManager.clearAllCardData()
+    
+    // 更新本地状态
+    this.cardDataList = this.globalDataManager.getCardDataList()
+    
+    console.log('LiquidCardsArea: 所有卡片数据已清空')
+  }
+
+  /**
+   * 组件出现时注册到AppStorage
+   */
+  aboutToAppear(): void {
+    // 将当前实例注册到AppStorage，供其他组件调用
+    AppStorage.setOrCreate('LIQUID_CARDS_AREA_REF', this)
+  }
+
 
 
   /**

@@ -136,6 +136,29 @@ export class GlobalCardDataManager {
   }
 
   /**
+   * 清空所有卡片的第三层数据（保留卡片结构，只清空拖拽数据）
+   */
+  public clearAllCardData(): void {
+    console.log('开始清空所有卡片的第三层数据...')
+    
+    for (let i = 0; i < this.cardDataList.length; i++) {
+      const card = this.cardDataList[i]
+      this.cardDataList[i] = {
+        id: card.id,
+        firstLayer: card.firstLayer,
+        secondLayer: card.secondLayer,
+        thirdLayer: {
+          chartType: 'waveform',
+          chartData: [],
+          chartConfig: {}
+        }
+      }
+    }
+    
+    console.log('所有卡片的第三层数据已清空')
+  }
+
+  /**
    * 获取指定卡片的波浪高度百分比
    * @param cardIndex 卡片索引（0-19）
    * @returns 波浪高度百分比

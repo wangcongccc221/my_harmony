@@ -3,6 +3,7 @@ import { LevelContent } from './level/LevelContent'
 import { QualityContent } from './quality/QualityContent'
 import { HistoryContent } from './history/HistoryContent'
 import { EndProcessingContent } from './endprocessing/EndProcessingContent'
+import { LiquidCardsArea } from './home/LiquidCardsArea'
 // import { ThemeSelector } from '../components/ThemeSelector'
 import { ArrowToggleButton } from '../components/ui/ArrowToggleButton'
 import { NavButton } from '../components/ui/NavButton'
@@ -125,6 +126,7 @@ struct Page {
   
   // 工程设置对话框状态
   @State showEngineeringSettingsDialog: boolean = false
+  
   
   
   // 页面初始化时初始化 Omni-UI 和 IBest-UI
@@ -315,6 +317,21 @@ struct Page {
     this.showEngineeringSettingsDialog = false
   }
 
+  // 处理出口清空功能
+  private handleExportClear(): void {
+    console.log('开始清空液体卡片数据...')
+    
+    // 从AppStorage获取LiquidCardsArea引用
+    const liquidCardsAreaRef: LiquidCardsArea | null = AppStorage.get('LIQUID_CARDS_AREA_REF') as LiquidCardsArea | null
+    if (liquidCardsAreaRef) {
+      liquidCardsAreaRef.clearAllCardData()
+      this.omniUIUtils.showSuccess('液体卡片数据已清空')
+    } else {
+      console.error('液体卡片区域引用为空，无法清空数据')
+      this.omniUIUtils.showError('清空失败：液体卡片区域未初始化')
+    }
+  }
+
   // 构建悬浮窗Tab按钮
   @Builder
   private buildFloatingTabButton(title: string, tabKey: string): void {
@@ -345,7 +362,7 @@ struct Page {
     // 按钮网格 - 4列布局
     Grid() {
       GridItem() { this.buildFloatingButton('🗑️', '出口清空') }
-      GridItem() { this.buildFloatingButton('⚡', '电磁阀厕所') }
+      GridItem() { this.buildFloatingButton('⚡', '电磁阀测试') }
       GridItem() { this.buildFloatingButton('🔧', '电机使能') }
       GridItem() { this.buildFloatingButton('🔄', '复位果杯') }
       GridItem() { this.buildFloatingButton('🧪', '测试果杯') }
@@ -550,6 +567,8 @@ struct Page {
         this.showThemeSelector = true
       } else if (title === '工程设置') {
         this.showEngineeringSettings()
+      } else if (title === '出口清空') {
+        this.handleExportClear()
       } else {
         this.omniUIUtils.showInfo(`已点击${title}`)
       }

@@ -39,6 +39,8 @@
 import { TableRow } from '../../../components/layout/LevelTable'
 
 export class HomeDataManager {
+  private static instance: HomeDataManager | null = null
+  
   /**
    * 所有表格数据的存储容器
    * 
@@ -58,6 +60,22 @@ export class HomeDataManager {
    * 当前FSM状态
    */
   private currentFSM: 'FSM1' | 'FSM2' = 'FSM1'
+
+  /**
+   * 私有构造函数，防止外部直接实例化
+   */
+  private constructor() {}
+
+  /**
+   * 获取单例实例
+   * @returns HomeDataManager实例
+   */
+  public static getInstance(): HomeDataManager {
+    if (!HomeDataManager.instance) {
+      HomeDataManager.instance = new HomeDataManager()
+    }
+    return HomeDataManager.instance
+  }
 
   /**
    * 添加数据到指定表格

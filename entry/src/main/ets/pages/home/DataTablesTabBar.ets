@@ -78,6 +78,7 @@ export struct DataTablesTabBar {
   // 拖拽事件回调
   onRowDragStart?: (dragData: DragData) => void
   onRowDragEnd?: () => void
+  
 
   // 获取当前主题配置
   private getCurrentTheme(): ExtendedOmniThemeStyle {
@@ -99,6 +100,7 @@ export struct DataTablesTabBar {
       this.onRowDragEnd()
     }
   }
+
 
   aboutToAppear() {
     // 生成折线图模拟数据（10点，09:00开始，每分钟一个）
@@ -221,7 +223,7 @@ export struct DataTablesTabBar {
           })
           .width('48%')
 
-          // 右侧：容器表卡片（不支持拖拽）
+          // 右侧：容器表卡片（支持拖拽）
           GridTable({
             tableName: '容器表',
             tableRows: this.containerTableData,

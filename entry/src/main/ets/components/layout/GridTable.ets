@@ -15,6 +15,7 @@ import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/Omni
 import { TableRow } from './LevelTable'
 import { MultiSelectCell, MultiSelectState } from '../ThreeLayerCard/types'
 import { StorageKeys } from '../../utils/constants/StorageKeys'
+import { HomeDataManager } from '../../pages/home/core/HomeDataManager'
 
 // 拖拽数据接口
 interface DragData {
@@ -34,6 +35,9 @@ export struct GridTable {
   @Prop tableName: string = 'default'
   // 是否允许拖拽（默认true，主页可按业务关闭）
   @Prop enableDrag: boolean = true
+  
+  // 导入HomeDataManager
+  private homeDataManager: HomeDataManager = HomeDataManager.getInstance()
   
   // 多选状态管理
   @State private selectedCells: Set<string> = new Set()
@@ -85,6 +89,7 @@ export struct GridTable {
   private getCurrentTheme(): ExtendedOmniThemeStyle {
     return this.currentTheme
   }
+
 
   /**
    * 切换单元格选中状态
@@ -298,9 +303,10 @@ export struct GridTable {
       return
     }
 
-    // 检查是否是跨表格拖拽（等级表到容器表）
+    // 检查是否是跨表格拖拽
     const isCrossTableDrag = fromData.sourceTable && fromData.sourceTable !== this.tableName
     const isLevelToContainer = fromData.sourceTable === '等级表' && this.tableName === '容器表'
+    const isContainerToLevel = fromData.sourceTable === '容器表' && this.tableName === '等级表'
     
     // 获取源值和目标值
     const fromValue = this.tableRows[fromRowIndex][fromColIndex]
@@ -308,8 +314,8 @@ export struct GridTable {
 
     let newTableRows: string[][]
 
-    if (isLevelToContainer) {
-      // 等级表到容器表：覆盖模式（使用拖拽数据中的value）
+    if (isLevelToContainer || isContainerToLevel) {
+      // 跨表格拖拽：覆盖模式（使用拖拽数据中的value）
       const dragValue = fromData.value || fromValue
       newTableRows = this.tableRows.map((row, rowIdx) => {
         if (rowIdx === toRowIndex) {
@@ -322,8 +328,9 @@ export struct GridTable {
         }
         return row
       })
+      console.log(`跨表格拖拽: ${fromData.sourceTable} -> ${this.tableName}, 值: ${dragValue}`)
     } else {
-      // 其他情况：交换模式
+      // 同表格内拖拽：交换模式
       newTableRows = this.tableRows.map((row, rowIdx) => {
         if (rowIdx === fromRowIndex) {
           return row.map((cell, colIdx) => {
@@ -346,6 +353,14 @@ export struct GridTable {
 
     // 更新数据
     this.tableRows = newTableRows
+    
+    // 直接保存到HomeDataManager
+    this.homeDataManager.updateFSMTableData(this.tableName, newTableRows)
+    console.log(`GridTable ${this.tableName} 已更新HomeDataManager数据，当前FSM: ${this.homeDataManager.getCurrentFSM()}`)
+    
+    // 验证数据是否已保存
+    const savedData = this.homeDataManager.getTableData(this.tableName)
+    console.log(`GridTable ${this.tableName} 验证保存的数据:`, savedData)
   }
 
   /**
@@ -369,8 +384,9 @@ export struct GridTable {
       return
     }
 
-    // 检查是否是跨表格拖拽（等级表到容器表）
+    // 检查是否是跨表格拖拽
     const isLevelToContainer = fromData.sourceTable === '等级表' && this.tableName === '容器表'
+    const isContainerToLevel = fromData.sourceTable === '容器表' && this.tableName === '等级表'
 
     // 获取完整的行数据
     const fromRow = [...this.tableRows[fromRowIndex]] // 深拷贝
@@ -378,8 +394,8 @@ export struct GridTable {
 
     let newTableRows: string[][]
 
-    if (isLevelToContainer) {
-      // 等级表到容器表：覆盖模式（根据拖拽值决定替换哪一列）
+    if (isLevelToContainer || isContainerToLevel) {
+      // 跨表格拖拽：覆盖模式（根据拖拽值决定替换哪一列）
       const dragValue = fromData.value || fromRow[0]
       
       // 根据拖拽值决定替换策略
@@ -400,8 +416,9 @@ export struct GridTable {
         }
         return row
       })
+      console.log(`跨表格行拖拽: ${fromData.sourceTable} -> ${this.tableName}, 值: ${dragValue}`)
     } else {
-      // 其他情况：交换模式
+      // 同表格内拖拽：交换模式
       newTableRows = this.tableRows.map((row, rowIdx) => {
         if (rowIdx === fromRowIndex) {
           return toRow
@@ -414,6 +431,9 @@ export struct GridTable {
 
     // 更新数据
     this.tableRows = newTableRows
+    
+    // 直接保存到HomeDataManager
+    this.homeDataManager.updateFSMTableData(this.tableName, newTableRows)
   }
 
   /**
