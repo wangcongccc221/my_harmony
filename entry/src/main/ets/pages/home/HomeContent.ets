@@ -146,6 +146,15 @@ export struct HomeContent {
     return data
   }
 
+  /**
+   * 触发等级统计表刷新
+   */
+  public refreshStatisticsTable(): void {
+    this.statsVersion++
+    this.tablesRefreshKey++
+    console.log('HomeContent: 等级统计表刷新已触发')
+  }
+
 
   // 分选信息（占位数据）
   // 后续接入真实数据建议：
@@ -581,6 +590,8 @@ export struct HomeContent {
     
     // 注册HomeDataManager到AppStorage，供其他组件使用
     AppStorage.setOrCreate('HOME_DATA_MANAGER', this.dataManager)
+    // 注册HomeContent实例到AppStorage，供其他组件使用
+    AppStorage.setOrCreate('HOME_CONTENT_REF', this)
     AppStorage.setOrCreate(HOME_SETTING2_ENABLED, this.setting2Enabled)
     AppStorage.setOrCreate(HOME_SETTING3_ENABLED, this.setting3Enabled)
     AppStorage.setOrCreate(HOME_SETTING4_ENABLED, this.setting4Enabled)

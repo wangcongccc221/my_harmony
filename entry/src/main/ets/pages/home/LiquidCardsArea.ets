@@ -45,6 +45,7 @@ import { GlobalCardDataManager } from '../../utils/GlobalCardDataManager'
 import { CardDataManager } from '../../utils/card/CardDataManager'
 import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
 import { HomeDataManager } from './core/HomeDataManager'
+import { HomeContent } from './HomeContent'
 
 // 移除源数据接口
 interface RemoveSourceData {
@@ -187,7 +188,15 @@ export struct LiquidCardsArea {
     const homeDataManager = AppStorage.get('HOME_DATA_MANAGER') as HomeDataManager | null
     if (homeDataManager) {
       homeDataManager.clearStatisticsTableExits()
-      console.log('LiquidCardsArea: 等级统计表出口信息已清空')
+      
+      // 通过AppStorage获取HomeContent实例来触发UI刷新
+      const homeContentRef = AppStorage.get('HOME_CONTENT_REF') as HomeContent | null
+      if (homeContentRef) {
+        homeContentRef.refreshStatisticsTable()
+        console.log('LiquidCardsArea: 等级统计表出口信息已清空，UI已刷新')
+      } else {
+        console.warn('LiquidCardsArea: 无法获取HomeContent实例，数据已清空但UI可能未刷新')
+      }
     } else {
       console.warn('LiquidCardsArea: 无法获取HomeDataManager实例，跳过清空等级统计表出口信息')
     }
