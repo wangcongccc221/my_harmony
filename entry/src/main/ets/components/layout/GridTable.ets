@@ -90,6 +90,16 @@ export struct GridTable {
     return this.currentTheme
   }
 
+  /**
+   * 等级/容器名称列禁用拖拽判定
+   */
+  private isDragDisabledForCell(colIndex: number): boolean {
+    const header = this.headerTitles[colIndex]
+    if (this.tableTitle === '等级表' && header === '等级') return true
+    if (this.tableTitle === '容器表' && header === '容器名称') return true
+    return false
+  }
+
 
   /**
    * 切换单元格选中状态
@@ -550,7 +560,7 @@ export struct GridTable {
         color: this.isCellSelected(rowIndex, colIndex) ? '#2196F3' : this.getCurrentTheme().borderColor // 选中时蓝色边框
       })
       .padding(2)
-      .draggable(this.enableDrag)
+      .draggable(this.enableDrag && !this.isDragDisabledForCell(colIndex))
       .onClick(() => {
         // 点击切换选中状态
         this.toggleCellSelection(rowIndex, colIndex, cellValue)
@@ -622,7 +632,7 @@ export struct GridTable {
         color: this.getCurrentTheme().borderColor
       })
       .padding(6)
-      .draggable(this.enableDrag)
+      .draggable(this.enableDrag && !this.isDragDisabledForCell(colIndex))
       .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
         return this.handleColumnDragStart(colIndex)
       })

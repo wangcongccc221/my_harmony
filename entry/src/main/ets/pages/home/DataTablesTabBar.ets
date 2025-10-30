@@ -43,9 +43,13 @@ export struct DataTablesTabBar {
   @State lcData: number[] = []
   @State lcLabels: string[] = []
   private lcTimerId?: number
+  private lcFlushTimerId?: number
   private lcCurrentValue: number = 50
   private lcTimeIndex: number = 0
   private lcRealtimeEnabled: boolean = false
+  private readonly LC_MAX_POINTS: number = 60
+  private lcPendingData: number[] = []
+  private lcPendingLabels: string[] = []
   
   // 主题相关
   @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
@@ -125,7 +129,7 @@ export struct DataTablesTabBar {
     this.lcTimeIndex = count
     this.lcRealtimeEnabled = true
 
-    // 启动持续追加数据（每秒1个点）- 启用自动添加数据功能
+    // 启动持续追加数据（每秒1个点）- 启用自动添加数据功能（仅入队，不直接重绘）
     if (this.lcRealtimeEnabled && !this.lcTimerId) {
       this.lcTimerId = setInterval(() => {
         const totalMin = startMinute + this.lcTimeIndex
@@ -139,42 +143,41 @@ export struct DataTablesTabBar {
         const step = (Math.random() - 0.5) * 20
         this.lcCurrentValue = Math.max(10, Math.min(90, Math.round(this.lcCurrentValue + step)))
 
-        this.lcLabels = [...this.lcLabels, newLabel]
-        this.lcData = [...this.lcData, this.lcCurrentValue]
+        // 入队，等待批量刷新
+        this.lcPendingLabels.push(newLabel)
+        this.lcPendingData.push(this.lcCurrentValue)
         this.lcTimeIndex++
-
-        // 超过60个数据就自动清空，重新开始显示
-        const maxDataPoints = 60 
-        if (this.lcData.length > maxDataPoints) {
-          console.log(`🔄 数据量超过${maxDataPoints}，自动清空重新开始...`)
-          this.lcData = []
-          this.lcLabels = []
-          this.lcTimeIndex = 0
-          console.log(`✅ 数据已清空，重新开始追踪`)
-        }
-
-        // 控制台输出当前数据条数
-        console.log(`📊 第${this.lcTimeIndex}条数据 - 时间: ${newLabel} - 进度: ${this.lcCurrentValue}%`)
-
-        // 数据更新后重绘
-        setTimeout(() => {
-          const opts: LineChartOptions = {
-            chartHeight: this.lcChartHeight,
-            canvasPadding: this.lcCanvasPadding,
-            xStep: this.lcXStep,
-            data: this.lcData,
-            labels: this.lcLabels,
-            yMax: 100,
-            axisFontSizePx: 18,
-            labelFontSizePx: 18,
-            axisFontBold: true,
-            labelFontBold: true,
-            lineWidthPx: 3,
-            pointRadiusPx: 5
-          }
-          drawLineChart(this.lineCtx, opts)
-        }, 0)
       }, 1000) as number
+    }
+
+    // 启动批量刷新（每50ms合并入固定窗口并重绘）
+    if (!this.lcFlushTimerId) {
+      this.lcFlushTimerId = setInterval(() => {
+        if (this.lcPendingData.length === 0) { return }
+        const mergedData = this.lcData.concat(this.lcPendingData)
+        const mergedLabels = this.lcLabels.concat(this.lcPendingLabels)
+        const needSlice = mergedData.length > this.LC_MAX_POINTS
+        this.lcData = needSlice ? mergedData.slice(mergedData.length - this.LC_MAX_POINTS) : mergedData
+        this.lcLabels = needSlice ? mergedLabels.slice(mergedLabels.length - this.LC_MAX_POINTS) : mergedLabels
+        this.lcPendingData = []
+        this.lcPendingLabels = []
+
+        const opts: LineChartOptions = {
+          chartHeight: this.lcChartHeight,
+          canvasPadding: this.lcCanvasPadding,
+          xStep: this.lcXStep,
+          data: this.lcData,
+          labels: this.lcLabels,
+          yMax: 100,
+          axisFontSizePx: 18,
+          labelFontSizePx: 18,
+          axisFontBold: true,
+          labelFontBold: true,
+          lineWidthPx: 3,
+          pointRadiusPx: 5
+        }
+        drawLineChart(this.lineCtx, opts)
+      }, 50) as number
     }
   }
 
@@ -183,6 +186,12 @@ export struct DataTablesTabBar {
       clearInterval(this.lcTimerId)
       this.lcTimerId = undefined
     }
+    if (this.lcFlushTimerId) {
+      clearInterval(this.lcFlushTimerId)
+      this.lcFlushTimerId = undefined
+    }
+    this.lcPendingData = []
+    this.lcPendingLabels = []
   }
 
   // Tab配置

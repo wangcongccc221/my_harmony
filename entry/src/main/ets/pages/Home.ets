@@ -334,7 +334,13 @@ struct Page {
     const liquidCardsAreaRef: LiquidCardsArea | null = AppStorage.get('LIQUID_CARDS_AREA_REF') as LiquidCardsArea | null
     if (liquidCardsAreaRef) {
       liquidCardsAreaRef.clearAllCardData()
-      this.omniUIUtils.showSuccess('液体卡片数据和等级统计表出口信息已清空')
+      this.omniUIUtils.showSuccess('清空成功！')//提示弹窗
+      // 显示系统对话框，确保用户可见
+      AlertDialog.show({
+        title: '提示',
+        message: '清空成功！',
+        confirm: { value: '确定', action: () => {} }
+      })
     } else {
       console.error('液体卡片区域引用为空，无法清空数据')
       this.omniUIUtils.showError('清空失败：液体卡片区域未初始化')

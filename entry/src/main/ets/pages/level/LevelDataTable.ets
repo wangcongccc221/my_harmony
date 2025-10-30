@@ -837,7 +837,7 @@ export struct LevelDataTable {
     .height(40)
     .backgroundColor(isHeader ? 
       (this.getCurrentTheme().primary + '20') : 
-      (index % 2 === 0 ? this.getCurrentTheme().backgroundColor : this.getCurrentTheme().surfaceColor))
+      this.getCurrentTheme().surfaceColor)
     .border({ width: 1, color: this.getCurrentTheme().borderColor })
     .justifyContent(FlexAlign.Center)
   }

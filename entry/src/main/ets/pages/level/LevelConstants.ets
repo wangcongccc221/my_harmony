@@ -392,8 +392,8 @@ export const DEFAULT_LEVEL_SETTINGS: DefaultLevelSettings = {
   outletThreshold: 0,
   selectedStandards: [],
   selectedUnit: 'gram',
-  packingWeight1: 0,
-  packingWeight2: 0,
+  packingWeight1: 1500,
+  packingWeight2: 1800,
   tableCount: '3'
 }
 

@@ -216,6 +216,8 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
    */
   clearStatisticsTableExits(): void {
     const tableName = '等级统计表'
+    // 记录清空前的FSM，避免副作用
+    const prevFSM = this.currentFSM
     
     // 清空FSM1的数据
     this.currentFSM = 'FSM1'
@@ -240,7 +242,8 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
       })
       this.updateFSMTableData(tableName, updatedRows2)
     }
-    
+    // 恢复原FSM，避免影响后续上报与显示
+    this.currentFSM = prevFSM
     console.log('等级统计表出口信息已清空（FSM1和FSM2）')
   }
 

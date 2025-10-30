@@ -43,15 +43,19 @@ export struct ChartComponent {
   @State tooltipText: string = '';
   @State tooltipX: number = 0;
   @State tooltipY: number = 0;
+  @State private chartReady: boolean = true;
   @Prop params: ChartComponentParams = {};
   scroller: Scroller = new Scroller();
   
   // 实时数据更新相关
   private timerId?: number;
+  private flushTimerId?: number;
   private currentValue: number = 50; // 当前数值
   @State private followLatest: boolean = true; // 是否自动跟随最新
   @State private lastScrollX: number = 0; // 最近一次滚动位置
   private currentTimeIndex: number = 0; // 当前时间索引
+  private readonly MAX_POINTS: number = 60; // 固定窗口上限
+  private pendingQueue: ChartData[] = []; // 待批量合并的数据队列
 
   // 生成时间标签
   generateTimeLabels(count: number): string[] {
@@ -100,32 +104,36 @@ export struct ChartComponent {
     return this.currentValue;
   }
 
-  // 启动实时数据更新
+  // 启动实时数据生成（只入队，不直接重绘）
   private startRealTimeUpdate(): void {
     if (this.timerId) return;
     
     this.timerId = setInterval(() => {
       const newTime = this.generateNewTimeLabel();
       const newValue = this.generateNewValue();
-      
-      // 添加新数据点；当数量超过60时，清空并重新开始显示
-      this.chartData = [...this.chartData, { time: newTime, value: newValue }];
-      const maxDataPoints: number = 60;
-      if (this.chartData.length > maxDataPoints) {
-        console.log(`🔄 数据量超过${maxDataPoints}，自动清空重新开始...`)
-        this.chartData = []
-        this.currentTimeIndex = 0
-        console.log(`✅ 数据已清空，重新开始追踪`)
-      }
-      
-      // 仅在跟随最新时，自动滚动到末尾
-      if (this.followLatest) {
-        setTimeout(() => {
-          this.scroller.scrollTo({ xOffset: this.chartData.length * (this.barWidth + this.barSpacing), yOffset: 0 });
-        }, 100);
-      }
+      this.pendingQueue.push({ time: newTime, value: newValue });
       
     }, 1000) as number;
+  }
+
+  // 启动批量合并刷新（节流，一帧/50ms）
+  private startFlushTimer(): void {
+    if (this.flushTimerId) return;
+    this.flushTimerId = setInterval(() => {
+      if (this.pendingQueue.length === 0) { return }
+      // 合并入现有数据并裁剪为固定窗口
+      const merged = this.chartData.concat(this.pendingQueue)
+      const needSlice = merged.length > this.MAX_POINTS
+      const next = needSlice ? merged.slice(merged.length - this.MAX_POINTS) : merged
+      this.chartData = next
+      this.pendingQueue = []
+
+      // 仅在跟随最新时，自动滚动到末尾（与绘制同节奏）
+      if (this.followLatest) {
+        const x = this.chartData.length * (this.barWidth + this.barSpacing)
+        this.scroller.scrollTo({ xOffset: x, yOffset: 0 })
+      }
+    }, 50) as number
   }
 
   // 停止实时数据更新
@@ -133,6 +141,10 @@ export struct ChartComponent {
     if (this.timerId) {
       clearInterval(this.timerId);
       this.timerId = undefined;
+    }
+    if (this.flushTimerId) {
+      clearInterval(this.flushTimerId);
+      this.flushTimerId = undefined;
     }
   }
 
@@ -178,17 +190,124 @@ export struct ChartComponent {
     // 初始化数据
     this.generateData();
     
-    // 启动实时数据更新
+    // 启动实时数据更新与批量刷新
     this.startRealTimeUpdate();
+    this.startFlushTimer();
   }
 
   aboutToDisappear(): void {
     // 停止实时数据更新
     this.stopRealTimeUpdate();
+    this.pendingQueue = [];
   }
 
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return this.baseComponentHelper.getCurrentTheme(this.providedTheme)
+  }
+
+  @Builder
+  private buildChartArea(): void {
+    // 图表主体区域
+    Row() {
+      // Y轴标签
+      Column() {
+        ForEach([100, 80, 60, 40, 20, 0], (value: number) => {
+          Text(value.toString())
+            .fontSize(this.axisFontSizePx)
+            .fontWeight(this.axisFontBold ? FontWeight.Bold : FontWeight.Regular)
+            .fontColor(this.getCurrentTheme().subTextColor)
+            .width(40)
+            .textAlign(TextAlign.End)
+            .margin({ right: 5 })
+        })
+      }
+      .width(45)
+      .height(this.chartHeight)
+      .justifyContent(FlexAlign.SpaceBetween)
+      .padding({ top: 10, bottom: 10 })
+      .border({ width: 1, color: this.getCurrentTheme().borderColor })
+
+      // 图表区域（可滚动）
+      Scroll(this.scroller) {
+        Row() {
+          ForEach(this.chartData, (data: ChartData, index: number) => {
+            Column() {
+              // 数值标签（在柱子顶部）
+              Text(data.value.toString())
+                .fontSize(16)
+                .fontColor(this.getCurrentTheme().textColor)
+                .fontWeight(FontWeight.Bold)
+                .margin({ bottom: 2 })
+                .textAlign(TextAlign.Center)
+
+              // 柱子
+              Column()
+                .width(this.barWidth)
+                .height(data.value * 2.5)
+                .backgroundColor(this.getCurrentTheme().chartLineColor ?? this.getCurrentTheme().primary)
+                .borderRadius({ topLeft: 3, topRight: 3 })
+                .onClick((event: ClickEvent) => {
+                  this.handleDataClick(data, event);
+                })
+                .onTouch((event: TouchEvent) => {
+                  if (event.type === TouchType.Down) {
+                    const clickEvent: ClickEvent = {
+                      x: event.touches[0].x,
+                      y: event.touches[0].y
+                    } as ClickEvent;
+                    this.handleDataClick(data, clickEvent);
+                  } else if (event.type === TouchType.Up) {
+                    this.hideTooltip();
+                  }
+                })
+
+              // 时间标签
+              Text(data.time)
+                .fontSize(this.labelFontSizePx)
+                .fontWeight(this.labelFontBold ? FontWeight.Bold : FontWeight.Regular)
+                .fontColor(this.getCurrentTheme().subTextColor)
+                .margin({ top: 5 })
+                .textAlign(TextAlign.Center)
+            }
+            .margin({ left: this.barSpacing / 2, right: this.barSpacing / 2 })
+            .alignItems(HorizontalAlign.Center)
+          })
+        }
+        .width(this.chartData.length * (this.barWidth + this.barSpacing))
+        .height(this.chartHeight)
+        .alignItems(VerticalAlign.Bottom)
+        .padding({ left: 10, right: 10 })
+      }
+      .scrollable(ScrollDirection.Horizontal)
+      .scrollBar(this.showScrollBar ? BarState.Auto : BarState.Off)
+      .scrollBarColor(this.getCurrentTheme().borderColor)
+      .scrollBarWidth(8)
+      .layoutWeight(1)
+      .border({ width: 1, color: this.getCurrentTheme().borderColor })
+      .borderRadius(4)
+      .backgroundColor(this.getCurrentTheme().chartBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      .onScroll((x: number, y: number) => {
+        if (x < this.lastScrollX - 1) {
+          this.followLatest = false;
+        } else {
+          const contentWidth = this.chartData.length * (this.barWidth + this.barSpacing);
+          const nearTailThreshold = 5 * (this.barWidth + this.barSpacing);
+          if (x >= Math.max(0, contentWidth - nearTailThreshold)) {
+            this.followLatest = true;
+          }
+        }
+        this.lastScrollX = x;
+      })
+    }
+    .width('100%')
+    .height(this.chartHeight)
+  }
+
+  @Builder
+  private buildChartPlaceholder(): void {
+    Blank()
+      .width('100%')
+      .height(this.chartHeight)
   }
 
   build() {
@@ -196,102 +315,7 @@ export struct ChartComponent {
       Column() {
         // 图表容器
         Column() {
-          // 图表主体区域
-          Row() {
-            // Y轴标签
-            Column() {
-              ForEach([100, 80, 60, 40, 20, 0], (value: number) => {
-                Text(value.toString())
-                  .fontSize(this.axisFontSizePx)
-                  .fontWeight(this.axisFontBold ? FontWeight.Bold : FontWeight.Regular)
-                  .fontColor(this.getCurrentTheme().subTextColor)
-                  .width(40)
-                  .textAlign(TextAlign.End)
-                  .margin({ right: 5 })
-              })
-            }
-            .width(45)
-            .height(this.chartHeight)
-            .justifyContent(FlexAlign.SpaceBetween)
-            .padding({ top: 10, bottom: 10 })
-            .border({ width: 1, color: this.getCurrentTheme().borderColor })
-
-            // 图表区域（可滚动）
-            Scroll(this.scroller) {
-              Row() {
-                ForEach(this.chartData, (data: ChartData, index: number) => {
-                  Column() {
-                    // 数值标签（在柱子顶部）
-                    Text(data.value.toString())
-                      .fontSize(16)
-                      .fontColor(this.getCurrentTheme().textColor)
-                      .fontWeight(FontWeight.Bold)
-                      .margin({ bottom: 2 })
-                      .textAlign(TextAlign.Center)
-
-                    // 柱子
-                    Column()
-                      .width(this.barWidth) // 使用可配置的柱子宽度
-                      .height(data.value * 2.5) // 根据数值设置高度
-                      .backgroundColor(this.getCurrentTheme().chartLineColor ?? this.getCurrentTheme().primary)
-                      .borderRadius({ topLeft: 3, topRight: 3 })
-                      .onClick((event: ClickEvent) => {
-                        this.handleDataClick(data, event);
-                      })
-                      .onTouch((event: TouchEvent) => {
-                        if (event.type === TouchType.Down) {
-                          const clickEvent: ClickEvent = {
-                            x: event.touches[0].x,
-                            y: event.touches[0].y
-                          } as ClickEvent;
-                          this.handleDataClick(data, clickEvent);
-                        } else if (event.type === TouchType.Up) {
-                          this.hideTooltip();
-                        }
-                      })
-
-                    // 时间标签
-                    Text(data.time)
-                      .fontSize(this.labelFontSizePx)
-                      .fontWeight(this.labelFontBold ? FontWeight.Bold : FontWeight.Regular)
-                      .fontColor(this.getCurrentTheme().subTextColor)
-                      .margin({ top: 5 })
-                      .textAlign(TextAlign.Center)
-                  }
-                  .margin({ left: this.barSpacing / 2, right: this.barSpacing / 2 }) // 使用可配置的间距
-                  .alignItems(HorizontalAlign.Center)
-                })
-              }
-              .width(this.chartData.length * (this.barWidth + this.barSpacing)) // 使用可配置的宽度计算
-              .height(this.chartHeight)
-              .alignItems(VerticalAlign.Bottom)
-              .padding({ left: 10, right: 10 })
-            }
-            .scrollable(ScrollDirection.Horizontal)
-            .scrollBar(this.showScrollBar ? BarState.Auto : BarState.Off)
-            .scrollBarColor(this.getCurrentTheme().borderColor)
-            .scrollBarWidth(8)
-            .layoutWeight(1)
-            .border({ width: 1, color: this.getCurrentTheme().borderColor })
-            .borderRadius(4)
-            .backgroundColor(this.getCurrentTheme().chartBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-            .onScroll((x: number, y: number) => {
-              // 用户向左滚动（回看历史）则关闭自动跟随
-              if (x < this.lastScrollX - 1) {
-                this.followLatest = false;
-              } else {
-                // 当滚动接近末尾若干柱宽度范围内，自动恢复跟随
-                const contentWidth = this.chartData.length * (this.barWidth + this.barSpacing);
-                const nearTailThreshold = 5 * (this.barWidth + this.barSpacing);
-                if (x >= Math.max(0, contentWidth - nearTailThreshold)) {
-                  this.followLatest = true;
-                }
-              }
-              this.lastScrollX = x;
-            })
-          }
-          .width('100%')
-          .height(this.chartHeight)
+          if (this.chartReady) { this.buildChartArea() } else { this.buildChartPlaceholder() }
 
         }
         .width('100%')
