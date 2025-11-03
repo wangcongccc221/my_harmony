@@ -4,6 +4,7 @@ import { TOP_PRODUCTION_TON_H, TOP_SUM_WEIGHT_TON, TOP_SUM_COUNTS, TOP_AVG_G, TO
 import { CompactFsmToggle } from './CompactFsmToggle'
 import { IBestAvatar } from '@ibestservices/ibest-ui'
 // 已移除自定义对话框
+import common from '@ohos.app.ability.common'
 
 /**
  * 顶部状态栏组件（精简版，无个人信息/头像/对话框）
@@ -32,6 +33,30 @@ export struct TopStatusBar {
   // 模拟数据定时器
   private dataTimer: number | null = null
 
+  private async minimizeApp() {
+    try {
+      interface MoveMinimize { moveMissionToBackground?: () => Promise<void> }
+      const ctx = getContext(this) as common.UIAbilityContext
+      const maybe = ctx as MoveMinimize
+      if (typeof maybe.moveMissionToBackground === 'function') {
+        await maybe.moveMissionToBackground()
+      } else {
+        console.warn('[TopStatusBar] 当前SDK不支持 moveMissionToBackground，已跳过最小化')
+      }
+    } catch (e) {
+      console.error('[TopStatusBar] 最小化失败:', JSON.stringify(e))
+    }
+  }
+
+  private async closeApp() {
+    try {
+      const ctx = getContext(this) as common.UIAbilityContext
+      await ctx.terminateSelf()
+    } catch (e) {
+      console.error('[TopStatusBar] 关闭应用失败:', JSON.stringify(e))
+    }
+  }
+
   private getCurrentTheme(): ExtendedOmniThemeStyle {
     const __v: number = this.themeVersion
     return OmniThemeManager.getInstance().getCurrentTheme()
@@ -45,12 +70,12 @@ export struct TopStatusBar {
       this.updateCurrentTime()
     }, 1000)
     
-    // 初始化模拟数据
-    this.initializeMockData()
-    // 启动模拟数据定时器，每3秒更新一次
-    this.dataTimer = setInterval(() => {
-      this.updateMockData()
-    }, 3000)
+    // 【测试用】暂时注释掉模拟数据，测试卡顿问题
+    // this.initializeMockData()
+    // // 启动模拟数据定时器，每3秒更新一次
+    // this.dataTimer = setInterval(() => {
+    //   this.updateMockData()
+    // }, 3000)
   }
 
   aboutToDisappear() {
@@ -59,10 +84,11 @@ export struct TopStatusBar {
       clearInterval(this.timeTimer)
       this.timeTimer = null
     }
-    if (this.dataTimer) {
-      clearInterval(this.dataTimer)
-      this.dataTimer = null
-    }
+    // 【测试用】暂时注释掉模拟数据定时器清理
+    // if (this.dataTimer) {
+    //   clearInterval(this.dataTimer)
+    //   this.dataTimer = null
+    // }
   }
 
   private updateCurrentTime() {
@@ -86,7 +112,6 @@ export struct TopStatusBar {
     this.sumCounts = '1250'
     this.avgGram = '36.6'
     this.statusText = '分选进行中'
-    this.tcpConnected = true
   }
 
   /**
@@ -117,8 +142,7 @@ export struct TopStatusBar {
     const statusTexts = ['分选进行中', '设备运行正常', '数据采集中', '质量检测中', '包装准备中']
     this.statusText = statusTexts[Math.floor(Math.random() * statusTexts.length)]
 
-    // 模拟TCP连接状态 (95% 时间连接正常)
-    this.tcpConnected = Math.random() > 0.05
+    // TCP连接状态改为由真实网络模块更新（不再在此模拟）
   }
 
   build() {
@@ -311,6 +335,36 @@ export struct TopStatusBar {
       Text(this.currentTime)
         .fontSize(16)  // 调大到16px
         .fontColor(this.getCurrentTheme().subTextColor)
+
+      // 右上角窗口控制
+      Row() {
+        // 最小化按钮：-
+        Text('-')
+          .fontSize(20)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCurrentTheme().textColor)
+          .margin({ left: 12, right: 8 })
+          .borderRadius(4)
+          .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+          .backgroundColor(Color.Transparent)
+          .onClick(() => {
+            this.minimizeApp()
+          })
+
+        // 关闭按钮：×
+        Text('×')
+          .fontSize(20)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCurrentTheme().textColor)
+          .margin({ left: 8 })
+          .borderRadius(4)
+          .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+          .backgroundColor(Color.Transparent)
+          .onClick(() => {
+            this.closeApp()
+          })
+      }
+      .margin({ left: 8 })
 
       // （对话框改为系统级 CustomDialogController 实现）
     }

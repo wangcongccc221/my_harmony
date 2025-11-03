@@ -2,6 +2,8 @@ import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.Ab
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { NetworkOptimizer } from '../utils/network/NetworkOptimizer';
+import { startHttpServer, stopHttpServer } from '../utils/network/HttpServer';
+import { HttpServerHandler } from '../utils/network/HttpServerHandler';
 
 const DOMAIN = 0x0000;
 
@@ -15,6 +17,9 @@ export default class EntryAbility extends UIAbility {
 
     // 初始化网络优化器
     this.initNetworkOptimizer();
+    
+    // 启动HTTP服务器
+    this.initHttpServer();
   }
 
   onDestroy(): void {
@@ -22,6 +27,10 @@ export default class EntryAbility extends UIAbility {
 
     // 停止网络优化器
     this.networkOptimizer.stop();
+    
+    // 停止HTTP服务器
+    stopHttpServer();
+    hilog.info(DOMAIN, 'EntryAbility', 'HTTP服务器已停止');
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
@@ -70,11 +79,29 @@ export default class EntryAbility extends UIAbility {
       const success = await this.networkOptimizer.initialize();
       if (success) {
         hilog.info(DOMAIN, 'EntryAbility', '网络优化器初始化成功');
-      } else {'x'
+      } else {
         hilog.error(DOMAIN, 'EntryAbility', '网络优化器初始化失败');
       }
     } catch (error) {
       hilog.error(DOMAIN, 'EntryAbility', `网络优化器初始化异常: ${error.message}`);
+    }
+  }
+
+  // 初始化HTTP服务器
+  private async initHttpServer() {
+    try {
+      hilog.info(DOMAIN, 'EntryAbility', '开始启动HTTP服务器');
+      
+      // 使用HttpServerHandler创建处理器
+      // 可以选择使用默认处理器或路由处理器
+      // const handler = HttpServerHandler.createHandler(); // 简单处理器
+      const handler = HttpServerHandler.createRouterHandler(); // 带路由功能的处理器
+      
+      // 启动HTTP服务器，监听8080端口
+      await startHttpServer(8080, handler);
+      hilog.info(DOMAIN, 'EntryAbility', 'HTTP服务器启动成功，监听端口: 8080');
+    } catch (error) {
+      hilog.error(DOMAIN, 'EntryAbility', `HTTP服务器启动失败: ${error.message}`);
     }
   }
 }
