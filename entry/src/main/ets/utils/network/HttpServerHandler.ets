@@ -23,6 +23,23 @@ interface FileItem {
  */
 export class HttpServerHandler {
   private static fileBasePath: string = ''; // 存储文件基础路径
+  private static textEncoder: util.TextEncoder = new util.TextEncoder();
+  private static textDecoder: util.TextDecoder = util.TextDecoder.create('utf-8');
+  private static toBase64(data: Uint8Array): string {
+    let base64 = '';
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    for (let i = 0; i < data.length; i += 3) {
+      const b1 = data[i] || 0;
+      const b2 = data[i + 1] || 0;
+      const b3 = data[i + 2] || 0;
+      const bitmap = (b1 << 16) | (b2 << 8) | b3;
+      base64 += chars.charAt((bitmap >> 18) & 63);
+      base64 += chars.charAt((bitmap >> 12) & 63);
+      base64 += (i + 1 < data.length) ? chars.charAt((bitmap >> 6) & 63) : '=';
+      base64 += (i + 2 < data.length) ? chars.charAt(bitmap & 63) : '=';
+    }
+    return base64;
+  }
 
   /**
    * 设置文件浏览的基础路径
@@ -92,8 +109,7 @@ export class HttpServerHandler {
       </html>
     `;
 
-    const textEncoder = new util.TextEncoder();
-    const contentBuf = textEncoder.encodeInto(htmlContent);
+    const contentBuf = HttpServerHandler.textEncoder.encodeInto(htmlContent);
 
     return `HTTP/1.1 200 OK\r\n` +
            `Content-Type: text/html; charset=utf-8\r\n` +
@@ -130,7 +146,21 @@ export class HttpServerHandler {
         
         const requestLine = requestLines[0] || '';
         const pathParts = requestLine.split(' ');
-        const path = pathParts.length > 1 ? pathParts[1] : '/';
+        const rawPath = pathParts.length > 1 ? pathParts[1] : '/';
+        // 拆分路径与查询参数（避免解构声明）
+        const qIndex = rawPath.indexOf('?');
+        const path = qIndex >= 0 ? rawPath.substring(0, qIndex) : rawPath;
+        const queryString = qIndex >= 0 ? rawPath.substring(qIndex + 1) : '';
+        const params: Record<string, string> = {};
+        if (queryString && queryString.length > 0) {
+          const pairs = queryString.split('&');
+          for (let i = 0; i < pairs.length; i++) {
+            const kv = pairs[i].split('=');
+            const k = decodeURIComponent(kv[0] || '');
+            const v = decodeURIComponent(kv[1] || '');
+            if (k) { params[k] = v; }
+          }
+        }
         
         // 解析路径参数（处理 URL 编码）
         let decodedPath = path;
@@ -143,7 +173,7 @@ export class HttpServerHandler {
       
         // 根据路径返回不同内容
         if (path === '/' || path === '/index') {
-          return HttpServerHandler.getFileBrowserResponse();
+          return HttpServerHandler.getFileBrowserResponse(params);
         } else if (path === '/api/status') {
           return HttpServerHandler.getStatusResponse();
         } else if (path.startsWith('/files/') || path.startsWith('/file/')) {
@@ -152,7 +182,7 @@ export class HttpServerHandler {
           const filePath = decodedPath.replace(/^\/files?\//, '');
           if (filePath === '') {
             // 显示文件列表
-            return HttpServerHandler.getFileBrowserResponse();
+            return HttpServerHandler.getFileBrowserResponse(params);
           } else {
             // 显示或下载文件
             return HttpServerHandler.getFileResponse(filePath);
@@ -214,7 +244,7 @@ export class HttpServerHandler {
   /**
    * 文件浏览器响应（显示文件列表，类似 Jupyter Notebook）
    */
-  static getFileBrowserResponse(): string {
+  static getFileBrowserResponse(params?: Record<string, string>): string {
     if (!HttpServerHandler.fileBasePath) {
       return HttpServerHandler.getNotFoundResponse();
     }
@@ -228,13 +258,27 @@ export class HttpServerHandler {
       
       // 列出目录中的所有文件和文件夹
       const items: FileItem[] = [];
+      // 分页展示辅助变量（需在外层声明，模板中使用）
+      let prevHtml: string = '<span>上一页</span>';
+      let pageLabelHtml: string = '<span>第 1 页</span>';
+      let nextHtml: string = '<span>下一页</span>';
       
       try {
         const files = fs.listFileSync(targetDir);
-        
-        // 限制目录文件数量：最多处理 100 个文件，避免阻塞主线程
-        const MAX_FILES = 100;
-        const filesToProcess = files.length > MAX_FILES ? files.slice(0, MAX_FILES) : files;
+        // 分页参数
+        const pageSize = Math.max(1, Math.min(200, Number(params && params['pageSize'] ? params['pageSize'] : '50') || 50));
+        const page = Math.max(1, Number(params && params['page'] ? params['page'] : '1') || 1);
+        const total = files.length;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        const start = (page - 1) * pageSize;
+        const end = Math.min(total, start + pageSize);
+        const filesToProcess = files.slice(start, end);
+        // 预生成分页HTML（外层已声明，这里只赋值）
+        const prevPage = page > 1 ? page - 1 : 1;
+        const nextPage = page < totalPages ? page + 1 : totalPages;
+        prevHtml = page > 1 ? `<a href="/files/?page=${prevPage}&pageSize=${pageSize}">上一页</a>` : '<span>上一页</span>';
+        pageLabelHtml = `<span>第 ${page} 页 / 共 ${totalPages} 页</span>`;
+        nextHtml = page < totalPages ? `<a href="/files/?page=${nextPage}&pageSize=${pageSize}">下一页</a>` : '<span>下一页</span>';
         
         for (let i = 0; i < filesToProcess.length; i++) {
           const fileName = files[i];
@@ -253,9 +297,8 @@ export class HttpServerHandler {
           }
         }
         
-        if (files.length > MAX_FILES) {
-          hilog.warn(DOMAIN, 'HttpServerHandler', `目录文件过多（${files.length}），仅显示前 ${MAX_FILES} 个`);
-        }
+        // 分页信息日志（可选）
+        hilog.info(DOMAIN, 'HttpServerHandler', `分页: page=${page}, pageSize=${pageSize}, total=${total}`);
       } catch (error) {
         hilog.error(DOMAIN, 'HttpServerHandler', `Failed to list directory: ${JSON.stringify(error)}`);
       }
@@ -377,6 +420,9 @@ export class HttpServerHandler {
               padding: 60px 20px;
               color: #6c757d;
             }
+            .pagination { display: flex; justify-content: space-between; margin: 20px 0; }
+            .pagination a { color: #667eea; text-decoration: none; padding: 8px 12px; background: #f0f0ff; border-radius: 6px; }
+            .pagination span { color: #666; }
           </style>
         </head>
         <body>
@@ -389,6 +435,11 @@ export class HttpServerHandler {
               <div class="path-info">
                 当前路径: ${HttpServerHandler.escapeHtml(targetDir)}
               </div>
+              <div class="pagination">
+                <div>${prevHtml}</div>
+                <div>${pageLabelHtml}</div>
+                <div>${nextHtml}</div>
+              </div>
               <div class="file-list">
                 ${fileListHtml}
               </div>
@@ -398,8 +449,7 @@ export class HttpServerHandler {
         </html>
       `;
 
-      const textEncoder = new util.TextEncoder();
-      const contentBuf = textEncoder.encodeInto(htmlContent);
+      const contentBuf = HttpServerHandler.textEncoder.encodeInto(htmlContent);
 
       return `HTTP/1.1 200 OK\r\n` +
              `Content-Type: text/html; charset=utf-8\r\n` +
@@ -521,8 +571,7 @@ export class HttpServerHandler {
           </html>
         `;
 
-        const textEncoder = new util.TextEncoder();
-        const contentBuf = textEncoder.encodeInto(htmlContent);
+        const contentBuf = HttpServerHandler.textEncoder.encodeInto(htmlContent);
         return `HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${contentBuf.length}\r\n\r\n${htmlContent}`;
       }
 
@@ -557,14 +606,23 @@ export class HttpServerHandler {
 
       // 转换为字符串（文本文件）
       if (shouldDisplay && (contentType.startsWith('text/') || contentType.includes('json') || contentType.includes('javascript'))) {
-        const textDecoder = util.TextDecoder.create('utf-8');
+        // 文本预览大小限制（避免一次性渲染超大文本造成卡顿）
+        const TEXT_PREVIEW_LIMIT = 256 * 1024; // 256KB
+        if (fileSize > TEXT_PREVIEW_LIMIT) {
+          // 超过限制直接提供下载
+          const uint8ArrayAll = new Uint8Array(buffer);
+          let binaryStringAll = '';
+          for (let i = 0; i < uint8ArrayAll.length; i++) {
+            binaryStringAll += String.fromCharCode(uint8ArrayAll[i]);
+          }
+          return `HTTP/1.1 200 OK\r\nContent-Type: ${contentType}; charset=utf-8\r\nContent-Disposition: attachment; filename="${encodeURIComponent(relativePath.split('/').pop() || 'text')}"\r\nContent-Length: ${fileSize}\r\n\r\n${binaryStringAll}`;
+        }
         const uint8Array = new Uint8Array(buffer);
-        const textContent = textDecoder.decode(uint8Array);
+        const textContent = HttpServerHandler.textDecoder.decode(uint8Array);
         
         // 如果是 HTML 文件，直接返回原始 HTML 内容让浏览器渲染
         if (fileExt === 'html' || fileExt === 'htm') {
-          const textEncoder = new util.TextEncoder();
-          const contentBuf = textEncoder.encodeInto(textContent);
+          const contentBuf = HttpServerHandler.textEncoder.encodeInto(textContent);
           return `HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${contentBuf.length}\r\n\r\n${textContent}`;
         }
         
@@ -593,29 +651,23 @@ export class HttpServerHandler {
           </html>
         `;
 
-        const textEncoder = new util.TextEncoder();
-        const contentBuf = textEncoder.encodeInto(htmlContent);
+        const contentBuf = HttpServerHandler.textEncoder.encodeInto(htmlContent);
         return `HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${contentBuf.length}\r\n\r\n${htmlContent}`;
       } else {
-        // 二进制文件或图片，使用 base64 编码
+        // 二进制文件或图片
         const uint8Array = new Uint8Array(buffer);
-        // 简单的 base64 编码实现
-        let base64 = '';
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-        for (let i = 0; i < uint8Array.length; i += 3) {
-          const b1 = uint8Array[i] || 0;
-          const b2 = uint8Array[i + 1] || 0;
-          const b3 = uint8Array[i + 2] || 0;
-          const bitmap = (b1 << 16) | (b2 << 8) | b3;
-          base64 += chars.charAt((bitmap >> 18) & 63);
-          base64 += chars.charAt((bitmap >> 12) & 63);
-          base64 += (i + 1 < uint8Array.length) ? chars.charAt((bitmap >> 6) & 63) : '=';
-          base64 += (i + 2 < uint8Array.length) ? chars.charAt(bitmap & 63) : '=';
-        }
-        const dataUrl = `data:${contentType};base64,${base64}`;
+        const EMBED_IMAGE_LIMIT = 512 * 1024; // 512KB
         
         if (contentType.startsWith('image/')) {
-          // 图片直接显示
+          // 大图直接下载，小图内嵌显示
+          if (fileSize > EMBED_IMAGE_LIMIT) {
+            let binaryString = '';
+            for (let i = 0; i < uint8Array.length; i++) {
+              binaryString += String.fromCharCode(uint8Array[i]);
+            }
+            return `HTTP/1.1 200 OK\r\nContent-Type: ${contentType}\r\nContent-Disposition: attachment; filename="${encodeURIComponent(relativePath.split('/').pop() || 'image')}"\r\nContent-Length: ${fileSize}\r\n\r\n${binaryString}`;
+          }
+          const dataUrl = `data:${contentType};base64,${HttpServerHandler.toBase64(uint8Array)}`;
           const htmlContent = `
             <!DOCTYPE html>
             <html>
@@ -633,8 +685,7 @@ export class HttpServerHandler {
             </body>
             </html>
           `;
-          const textEncoder = new util.TextEncoder();
-          const contentBuf = textEncoder.encodeInto(htmlContent);
+          const contentBuf = HttpServerHandler.textEncoder.encodeInto(htmlContent);
           return `HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${contentBuf.length}\r\n\r\n${htmlContent}`;
         } else {
           // 其他二进制文件，提供下载

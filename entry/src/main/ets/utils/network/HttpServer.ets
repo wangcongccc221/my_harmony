@@ -41,7 +41,7 @@ class HttpServer implements IHttpServer {
     });
 
     this.server.on('connect', (clientSocket: socket.TCPSocketConnection) => {
-      clientSocket.on('message', (msgInfo: socket.SocketMessageInfo) => {
+      const onMessage = (msgInfo: socket.SocketMessageInfo) => {
         // 异步处理请求，避免阻塞主线程
         const request = buf2String(msgInfo.message);
         // 使用 Promise 的微任务将处理延迟到下一个事件循环，确保不阻塞主线程
@@ -74,10 +74,14 @@ class HttpServer implements IHttpServer {
           // 处理 Promise 拒绝，但这里应该不会发生，因为我们已经 catch 了所有错误
           hilog.error(0x0000, 'HttpServer', `Promise rejected: ${JSON.stringify(rejectedValue)}`);
         });
-      });
+      };
+
+      clientSocket.on('message', onMessage);
       
       // 处理连接断开事件
       clientSocket.on('close', () => {
+        // 移除监听，避免长时间保持引用导致内存上涨
+        clientSocket.off('message', onMessage);
         hilog.info(0x0000, 'HttpServer', 'Client socket closed');
       });
       

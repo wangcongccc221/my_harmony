@@ -3,6 +3,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { NetworkOptimizer } from '../utils/network/NetworkOptimizer';
 import { startHttpServer, stopHttpServer, isHttpServerRunning } from '../utils/network/HttpServer';
+import { ArkDataDemoService } from '../db/ArkDataDemo';
 import { HttpServerHandler } from '../utils/network/HttpServerHandler';
 import { copyRawDirectoryAuto } from '../utils/FileUtils';
 
@@ -23,6 +24,20 @@ export default class EntryAbility extends UIAbility {
     // 初始化网络优化器
     this.initNetworkOptimizer();
     
+    // 初始化数据库（RDB）
+    try {
+      ArkDataDemoService.init(this.context);
+      // 可选：预建演示表
+      ArkDataDemoService.createUsersTable().then(() => {
+        hilog.info(DOMAIN, 'EntryAbility', 'RDB users table ready');
+      }, (e: object) => {
+        hilog.error(DOMAIN, 'EntryAbility', `RDB users table error: ${JSON.stringify(e)}`);
+      });
+    } catch (error) {
+      const err = error as object;
+      hilog.error(DOMAIN, 'EntryAbility', `RDB init failed: ${JSON.stringify(err)}`);
+    }
+
     // 启动HTTP服务器
     this.initHttpServer();
   }

@@ -23,23 +23,11 @@ import { HomeStateManager } from './core/HomeStateManager'
 import { HomeState, DEFAULT_HOME_STATE } from './core/HomeState'
 import { DEFAULT_TOP_BAR_DATA, DEFAULT_SORTING_INFO, DEFAULT_SETTINGS, DEFAULT_SELECTED_BUTTON, DEFAULT_SELECTED_FSM } from './HomeConstants'
 
-// 确保全局AppStorage键在组件构建前已存在（供 SortingInfoCard @StorageLink 使用）
-// 模块加载时即初始化，避免首帧为空导致不联动
-(() => {
-  try {
-    AppStorage.setOrCreate('START_TIME', '--:--:--')
-    AppStorage.setOrCreate('PROGRAM_NAME', '未选择')
-    AppStorage.setOrCreate('SORT_SPEED', '0 件/分钟')
-    AppStorage.setOrCreate('REALTIME_OUTPUT', '0 件/分钟')
-    AppStorage.setOrCreate('BATCH_COUNT', '0 件')
-    AppStorage.setOrCreate('AVG_WEIGHT', '0.00 kg')
-    AppStorage.setOrCreate('BATCH_WEIGHT', '0.00 kg')
-    AppStorage.setOrCreate('EFFICIENCY', '0%')
-    AppStorage.setOrCreate('INTERVAL_SPEED', '0 ms')
-  } catch (e) {
-    console.error('初始化全局分选信息键失败:', e)
-  }
-})()
+// 日志总开关（减少频繁日志导致的内存与卡顿）
+const LOG_TIME_ENABLED: boolean = false
+const LOG_SORT_ENABLED: boolean = false
+
+// 相关全局键的初始化已前移到 aboutToAppear，避免模块级 IIFE 造成不必要的开销
 
 // [TODO 提醒 - 重要]
 // SwitchWrapper 与 IBestSwitch 的双向绑定注意：
@@ -631,7 +619,7 @@ export struct HomeContent {
 
     // 启动时间更新定时器（每秒更新一次）
     if (!this.timeUpdateTimerId) {
-      console.log('[时间更新] 启动定时器')
+      if (LOG_TIME_ENABLED) { console.log('[时间更新] 启动定时器') }
       this.timeUpdateTimerId = setInterval(() => {
         // 异步更新，避免阻塞主线程
         Promise.resolve().then(() => {
@@ -642,16 +630,16 @@ export struct HomeContent {
           const ss = String(now.getSeconds()).padStart(2, '0')
           this.startTime = `${hh}:${mm}:${ss}`
           AppStorage.setOrCreate('START_TIME', this.startTime)
-          console.log('[时间更新] 当前时间:', this.startTime)
+          if (LOG_TIME_ENABLED) { console.log('[时间更新] 当前时间:', this.startTime) }
         }).catch(() => {
           // 静默处理错误
         })
       }, 1000) as number
     }
 
-    // 启动模拟实时更新（每3秒刷新一次）
+    // 启动模拟实时更新（每60秒刷新一次）
     if (!this.mockSortingInfoTimerId) {
-      console.log('[模拟分选信息] 启动定时器')
+      if (LOG_SORT_ENABLED) { console.log('[模拟分选信息] 启动定时器 (60s)') }
       this.mockSortingInfoTimerId = setInterval(() => {
         // 异步批量更新，避免阻塞主线程
         Promise.resolve().then(() => {
@@ -691,18 +679,20 @@ export struct HomeContent {
           const intervalMs = 800 + Math.random() * 400
           this.intervalSpeed = `${Math.round(intervalMs)} ms`
           AppStorage.setOrCreate('INTERVAL_SPEED', this.intervalSpeed)
-          // 调试日志：观察9项是否在变化（减少日志频率）
-          console.log('[模拟分选信息] 速度=', this.sortSpeed,
-            ' 重量=', this.batchWeight,
-            ' 个数=', this.batchCount,
-            ' 均重=', this.avgWeight,
-            ' 产量=', this.realTimeOutput,
-            ' 效率=', this.efficiency,
-            ' 间隔=', this.intervalSpeed)
+          // 调试日志（可关闭）
+          if (LOG_SORT_ENABLED) {
+            console.log('[模拟分选信息] 速度=', this.sortSpeed,
+              ' 重量=', this.batchWeight,
+              ' 个数=', this.batchCount,
+              ' 均重=', this.avgWeight,
+              ' 产量=', this.realTimeOutput,
+              ' 效率=', this.efficiency,
+              ' 间隔=', this.intervalSpeed)
+          }
         }).catch(() => {
           // 静默处理错误，避免影响定时器
         })
-      }, 3000) as number
+      }, 60000) as number
       // 立即刷新一次，避免首秒空窗
       {
         const speed = Math.max(0, Math.round(50 + Math.random() * 60))
@@ -728,13 +718,15 @@ export struct HomeContent {
         const intervalMs = 500 + Math.random() * 1200
         this.intervalSpeed = `${Math.round(intervalMs)} ms`
         AppStorage.setOrCreate('INTERVAL_SPEED', this.intervalSpeed)
-        console.log('[模拟分选信息][首刷] 速度=', this.sortSpeed,
-          ' 重量=', this.batchWeight,
-          ' 个数=', this.batchCount,
-          ' 均重=', this.avgWeight,
-          ' 产量=', this.realTimeOutput,
-          ' 效率=', this.efficiency,
-          ' 间隔=', this.intervalSpeed)
+        if (LOG_SORT_ENABLED) {
+          console.log('[模拟分选信息][首刷] 速度=', this.sortSpeed,
+            ' 重量=', this.batchWeight,
+            ' 个数=', this.batchCount,
+            ' 均重=', this.avgWeight,
+            ' 产量=', this.realTimeOutput,
+            ' 效率=', this.efficiency,
+            ' 间隔=', this.intervalSpeed)
+        }
       }
     }
   }
