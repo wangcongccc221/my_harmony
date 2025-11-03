@@ -4,7 +4,7 @@ import { window } from '@kit.ArkUI';
 import { NetworkOptimizer } from '../utils/network/NetworkOptimizer';
 import { startHttpServer, stopHttpServer, isHttpServerRunning } from '../utils/network/HttpServer';
 import { HttpServerHandler } from '../utils/network/HttpServerHandler';
-import { copyRawDirectoryFilesToSandbox } from '../utils/FileUtils';
+import { copyRawDirectoryAuto } from '../utils/FileUtils';
 
 const DOMAIN = 0x0000;
 
@@ -112,6 +112,9 @@ export default class EntryAbility extends UIAbility {
     try {
       hilog.info(DOMAIN, 'EntryAbility', '开始启动HTTP服务器');
       
+      // 设置文件浏览基础路径
+      HttpServerHandler.setFileBasePath(this.context);
+      
       // 使用HttpServerHandler创建处理器
       // 可以选择使用默认处理器或路由处理器
       // const handler = HttpServerHandler.createHandler(); // 简单处理器
@@ -130,25 +133,16 @@ export default class EntryAbility extends UIAbility {
     }
   }
 
-  // 复制资源文件到存储目录
+  // 复制资源文件到存储目录（自动遍历整个目录）
   private async copyResourceFiles() {
     try {
-      hilog.info(DOMAIN, 'EntryAbility', '开始复制资源文件...');
+      hilog.info(DOMAIN, 'EntryAbility', '开始自动复制资源文件...');
       
-      // 定义要复制的文件列表（rawfile/file 文件夹中的文件）
-      const fileList = [
-        '123.txt',
-        '新建文本文档.txt',
-        '1/新建文本文档.txt',
-        '2/新建文本文档.txt',
-        '3/新建文本文档.txt'
-      ];
-      
-      // 使用 FileUtils 复制文件夹（使用配置中的默认路径，如果文件已存在会自动覆盖）
-      const result = await copyRawDirectoryFilesToSandbox(
+      // 使用自动遍历功能，无需手动维护文件列表
+      // 会自动扫描 rawfile/file 目录下的所有文件（包括子目录）
+      const result = await copyRawDirectoryAuto(
         this.context,
         'file',           // rawfile 中的文件夹路径
-        fileList,          // 文件列表
         undefined,         // 使用配置中的默认路径
         'file'             // 目标文件夹名（可选，默认使用原文件夹名）
       );

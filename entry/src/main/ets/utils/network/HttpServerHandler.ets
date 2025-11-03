@@ -1,8 +1,20 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { util } from '@kit.ArkTS';
+import { fileIo as fs } from '@kit.CoreFileKit';
+import { Context } from '@kit.AbilityKit';
 import { HttpRequestHandler } from './HttpServer';
+import { listFilesInDirectory, getDefaultStoragePath } from '../FileUtils';
 
 const DOMAIN = 0x0000;
+
+/**
+ * 文件项接口
+ */
+interface FileItem {
+  name: string;
+  isDir: boolean;
+  path: string;
+}
 
 /**
  * HTTP服务器请求处理器
@@ -10,6 +22,18 @@ const DOMAIN = 0x0000;
  * 用途：统一管理HTTP服务器的响应逻辑
  */
 export class HttpServerHandler {
+  private static fileBasePath: string = ''; // 存储文件基础路径
+
+  /**
+   * 设置文件浏览的基础路径
+   */
+  static setFileBasePath(context: Context): void {
+    HttpServerHandler.fileBasePath = getDefaultStoragePath(context);
+    hilog.info(DOMAIN, 'HttpServerHandler', `文件浏览基础路径已设置: ${HttpServerHandler.fileBasePath}`);
+    console.log(`HTTP服务器文件浏览基础路径: ${HttpServerHandler.fileBasePath}`);
+    console.log(`HTTP服务器实际浏览目录将是: ${HttpServerHandler.fileBasePath}/file`);
+  }
+
   /**
    * 默认HTTP请求处理器
    * 可以根据rawRequest解析请求内容，返回相应的响应
@@ -84,22 +108,70 @@ export class HttpServerHandler {
    */
   static createRouterHandler(): HttpRequestHandler {
     return (rawRequest: string): string => {
-      hilog.info(DOMAIN, 'HttpServerHandler', `处理路由请求: ${rawRequest.substring(0, 200)}...`);
+      try {
+        // 安全地截取请求内容用于日志
+        const requestPreview = rawRequest && rawRequest.length > 0 
+          ? rawRequest.substring(0, Math.min(200, rawRequest.length))
+          : '(empty request)';
+        hilog.info(DOMAIN, 'HttpServerHandler', `处理路由请求: ${requestPreview}...`);
+        
+        // 检查请求是否为空
+        if (!rawRequest || rawRequest.trim().length === 0) {
+          hilog.warn(DOMAIN, 'HttpServerHandler', '收到空请求');
+          return HttpServerHandler.getNotFoundResponse();
+        }
+        
+        // 解析请求路径
+        const requestLines = rawRequest.split('\r\n');
+        if (requestLines.length === 0) {
+          hilog.warn(DOMAIN, 'HttpServerHandler', '请求格式无效');
+          return HttpServerHandler.getNotFoundResponse();
+        }
+        
+        const requestLine = requestLines[0] || '';
+        const pathParts = requestLine.split(' ');
+        const path = pathParts.length > 1 ? pathParts[1] : '/';
+        
+        // 解析路径参数（处理 URL 编码）
+        let decodedPath = path;
+        try {
+          decodedPath = decodeURIComponent(path);
+        } catch (e) {
+          // 如果解码失败，使用原路径
+          hilog.warn(DOMAIN, 'HttpServerHandler', `URL解码失败: ${path}`);
+        }
       
-      // 解析请求路径（简单示例）
-      const requestLines = rawRequest.split('\r\n');
-      const requestLine = requestLines[0] || '';
-      const path = requestLine.split(' ')[1] || '/';
-      
-      // 根据路径返回不同内容
-      if (path === '/' || path === '/index') {
-        return HttpServerHandler.getDefaultResponse();
-      } else if (path === '/api/status') {
-        return HttpServerHandler.getStatusResponse();
-      } else if (path.startsWith('/api/')) {
-        return HttpServerHandler.getApiResponse(path);
-      } else {
-        return HttpServerHandler.getNotFoundResponse();
+        // 根据路径返回不同内容
+        if (path === '/' || path === '/index') {
+          return HttpServerHandler.getFileBrowserResponse();
+        } else if (path === '/api/status') {
+          return HttpServerHandler.getStatusResponse();
+        } else if (path.startsWith('/files/') || path.startsWith('/file/')) {
+          // 文件浏览路径: /files/ 或 /file/ （支持两种路径）
+          // 统一处理，去掉前缀
+          const filePath = decodedPath.replace(/^\/files?\//, '');
+          if (filePath === '') {
+            // 显示文件列表
+            return HttpServerHandler.getFileBrowserResponse();
+          } else {
+            // 显示或下载文件
+            return HttpServerHandler.getFileResponse(filePath);
+          }
+        } else if (path.startsWith('/api/')) {
+          return HttpServerHandler.getApiResponse(path);
+        } else {
+          return HttpServerHandler.getNotFoundResponse();
+        }
+      } catch (error) {
+        // 捕获所有异常，防止崩溃
+        hilog.error(DOMAIN, 'HttpServerHandler', `路由处理异常: ${JSON.stringify(error)}`);
+        try {
+          return HttpServerHandler.getNotFoundResponse();
+        } catch (e) {
+          // 如果连 404 响应都无法生成，返回最基本的错误响应
+          hilog.error(DOMAIN, 'HttpServerHandler', `无法生成错误响应: ${JSON.stringify(e)}`);
+          return 'HTTP/1.1 500 Internal Server Error\r\n\r\n';
+        }
       }
     };
   }
@@ -137,6 +209,459 @@ export class HttpServerHandler {
            `Content-Length: ${jsonContent.length}\r\n` +
            `\r\n` +
            jsonContent;
+  }
+
+  /**
+   * 文件浏览器响应（显示文件列表，类似 Jupyter Notebook）
+   */
+  static getFileBrowserResponse(): string {
+    if (!HttpServerHandler.fileBasePath) {
+      return HttpServerHandler.getNotFoundResponse();
+    }
+
+    try {
+      // 获取文件目录（file 文件夹）
+      const targetDir = `${HttpServerHandler.fileBasePath}/file`;
+      
+      hilog.info(DOMAIN, 'HttpServerHandler', `文件浏览器访问目录: ${targetDir}`);
+      console.log(`HTTP服务器文件浏览器访问目录: ${targetDir}`);
+      
+      // 列出目录中的所有文件和文件夹
+      const items: FileItem[] = [];
+      
+      try {
+        const files = fs.listFileSync(targetDir);
+        
+        // 限制目录文件数量：最多处理 100 个文件，避免阻塞主线程
+        const MAX_FILES = 100;
+        const filesToProcess = files.length > MAX_FILES ? files.slice(0, MAX_FILES) : files;
+        
+        for (let i = 0; i < filesToProcess.length; i++) {
+          const fileName = files[i];
+          const fullPath = `${targetDir}/${fileName}`;
+          
+          try {
+            const stat = fs.statSync(fullPath);
+            const item: FileItem = {
+              name: fileName,
+              isDir: stat.isDirectory(),
+              path: fileName
+            };
+            items.push(item);
+          } catch (e) {
+            hilog.warn(DOMAIN, 'HttpServerHandler', 'Cannot access: %{public}s', fullPath);
+          }
+        }
+        
+        if (files.length > MAX_FILES) {
+          hilog.warn(DOMAIN, 'HttpServerHandler', `目录文件过多（${files.length}），仅显示前 ${MAX_FILES} 个`);
+        }
+      } catch (error) {
+        hilog.error(DOMAIN, 'HttpServerHandler', `Failed to list directory: ${JSON.stringify(error)}`);
+      }
+
+      // 生成 HTML 文件列表
+      let fileListHtml = '';
+      if (items.length === 0) {
+        fileListHtml = '<p style="color: #999; padding: 20px;">目录为空</p>';
+      } else {
+        // 先显示文件夹，再显示文件
+        const dirs = items.filter(item => item.isDir).sort((a, b) => a.name.localeCompare(b.name));
+        const files = items.filter(item => !item.isDir).sort((a, b) => a.name.localeCompare(b.name));
+        
+        [...dirs, ...files].forEach(item => {
+          const icon = item.isDir ? '📁' : '📄';
+          const encodedPath = encodeURIComponent(item.path);
+          // 使用完整的URL路径，确保浏览器地址栏正确更新
+          fileListHtml += `
+            <div class="file-item" onclick="window.location.href='http://' + window.location.host + '/files/${encodedPath}'">
+              <span class="file-icon">${icon}</span>
+              <span class="file-name">${HttpServerHandler.escapeHtml(item.name)}</span>
+              ${item.isDir ? '<span class="file-type">目录</span>' : '<span class="file-type">文件</span>'}
+            </div>
+          `;
+        });
+      }
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html lang="zh-CN">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>文件浏览器 - HarmonyOS</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              min-height: 100vh;
+              padding: 20px;
+            }
+            .container {
+              max-width: 900px;
+              margin: 0 auto;
+              background: white;
+              border-radius: 12px;
+              box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+              overflow: hidden;
+            }
+            .header {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 30px;
+              text-align: center;
+            }
+            .header h1 {
+              font-size: 28px;
+              margin-bottom: 10px;
+            }
+            .header p {
+              opacity: 0.9;
+              font-size: 14px;
+            }
+            .file-browser {
+              padding: 30px;
+            }
+            .path-info {
+              background: #f8f9fa;
+              padding: 15px;
+              border-radius: 8px;
+              margin-bottom: 20px;
+              font-family: monospace;
+              color: #495057;
+              font-size: 14px;
+            }
+            .file-item {
+              display: flex;
+              align-items: center;
+              padding: 15px;
+              margin: 8px 0;
+              background: #f8f9fa;
+              border-radius: 8px;
+              cursor: pointer;
+              transition: all 0.2s;
+              border: 2px solid transparent;
+            }
+            .file-item:hover {
+              background: #e9ecef;
+              border-color: #667eea;
+              transform: translateX(5px);
+            }
+            .file-icon {
+              font-size: 24px;
+              margin-right: 15px;
+              width: 30px;
+              text-align: center;
+            }
+            .file-name {
+              flex: 1;
+              font-size: 16px;
+              color: #212529;
+              font-weight: 500;
+            }
+            .file-type {
+              background: #667eea;
+              color: white;
+              padding: 4px 12px;
+              border-radius: 12px;
+              font-size: 12px;
+              font-weight: 500;
+            }
+            .empty-message {
+              text-align: center;
+              padding: 60px 20px;
+              color: #6c757d;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>📂 文件浏览器</h1>
+              <p>HarmonyOS HTTP 服务器文件管理</p>
+            </div>
+            <div class="file-browser">
+              <div class="path-info">
+                当前路径: ${HttpServerHandler.escapeHtml(targetDir)}
+              </div>
+              <div class="file-list">
+                ${fileListHtml}
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const textEncoder = new util.TextEncoder();
+      const contentBuf = textEncoder.encodeInto(htmlContent);
+
+      return `HTTP/1.1 200 OK\r\n` +
+             `Content-Type: text/html; charset=utf-8\r\n` +
+             `Content-Length: ${contentBuf.length}\r\n` +
+             `\r\n` +
+             htmlContent;
+    } catch (error) {
+      hilog.error(DOMAIN, 'HttpServerHandler', `文件浏览器错误: ${JSON.stringify(error)}`);
+      return HttpServerHandler.getNotFoundResponse();
+    }
+  }
+
+  /**
+   * 文件响应（显示或下载文件内容）
+   * 注意：文件大小限制为 5MB，避免阻塞主线程
+   */
+  static getFileResponse(relativePath: string): string {
+    if (!HttpServerHandler.fileBasePath) {
+      return HttpServerHandler.getNotFoundResponse();
+    }
+
+    try {
+      const fullPath = `${HttpServerHandler.fileBasePath}/file/${relativePath}`;
+      
+      // 检查文件是否存在
+      if (!fs.accessSync(fullPath)) {
+        return HttpServerHandler.getNotFoundResponse();
+      }
+
+      const stat = fs.statSync(fullPath);
+      
+      // 限制文件大小：最大 5MB，避免阻塞主线程
+      const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+      if (stat.isFile() && stat.size > MAX_FILE_SIZE) {
+        hilog.warn(DOMAIN, 'HttpServerHandler', `文件过大，已跳过: ${fullPath} (${stat.size} bytes)`);
+        return `HTTP/1.1 413 Payload Too Large\r\nContent-Type: text/plain\r\n\r\n文件过大（超过 5MB），无法通过 HTTP 服务器预览。`;
+      }
+      
+      // 如果是目录，显示目录内容
+      if (stat.isDirectory()) {
+        const items: FileItem[] = [];
+        try {
+          const files = fs.listFileSync(fullPath);
+          
+          // 限制目录文件数量：最多处理 100 个文件，避免阻塞主线程
+          const MAX_FILES = 100;
+          const filesToProcess = files.length > MAX_FILES ? files.slice(0, MAX_FILES) : files;
+          
+          for (let i = 0; i < filesToProcess.length; i++) {
+            const fileName = filesToProcess[i];
+            const itemPath = `${fullPath}/${fileName}`;
+            try {
+              const itemStat = fs.statSync(itemPath);
+              const item: FileItem = {
+                name: fileName,
+                isDir: itemStat.isDirectory(),
+                path: `${relativePath}/${fileName}`
+              };
+              items.push(item);
+            } catch (e) {
+              // 忽略无法访问的文件
+            }
+            
+            // 每处理 10 个文件后，让出主线程（使用 setTimeout 延迟）
+            if (i > 0 && i % 10 === 0) {
+              // 注意：这里不能真正异步，但可以减少连续阻塞
+            }
+          }
+          
+          if (files.length > MAX_FILES) {
+            hilog.warn(DOMAIN, 'HttpServerHandler', `目录文件过多（${files.length}），仅显示前 ${MAX_FILES} 个`);
+          }
+        } catch (e) {
+          // 忽略错误
+        }
+
+        // 生成目录列表 HTML（类似文件浏览器）
+        let fileListHtml = '';
+        const dirs = items.filter(item => item.isDir).sort((a, b) => a.name.localeCompare(b.name));
+        const files = items.filter(item => !item.isDir).sort((a, b) => a.name.localeCompare(b.name));
+        
+        [...dirs, ...files].forEach(item => {
+          const icon = item.isDir ? '📁' : '📄';
+          const encodedPath = encodeURIComponent(item.path);
+          // 使用完整的URL路径，确保浏览器地址栏正确更新
+          fileListHtml += `
+            <div class="file-item" onclick="window.location.href='http://' + window.location.host + '/files/${encodedPath}'">
+              <span class="file-icon">${icon}</span>
+              <span class="file-name">${HttpServerHandler.escapeHtml(item.name)}</span>
+              ${item.isDir ? '<span class="file-type">目录</span>' : '<span class="file-type">文件</span>'}
+            </div>
+          `;
+        });
+
+        const htmlContent = `
+          <!DOCTYPE html>
+          <html lang="zh-CN">
+          <head>
+            <meta charset="utf-8">
+            <title>${HttpServerHandler.escapeHtml(relativePath)} - 文件浏览器</title>
+            <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+              .container { max-width: 900px; margin: 0 auto; background: white; border-radius: 8px; padding: 20px; }
+              .path-info { background: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-family: monospace; }
+              .file-item { display: flex; align-items: center; padding: 10px; margin: 5px 0; background: #f8f9fa; border-radius: 4px; cursor: pointer; }
+              .file-item:hover { background: #e9ecef; }
+              .file-icon { font-size: 20px; margin-right: 10px; }
+              .file-name { flex: 1; }
+              .file-type { background: #667eea; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="path-info">路径: ${HttpServerHandler.escapeHtml(fullPath)}</div>
+              <div class="file-list">${fileListHtml}</div>
+            </div>
+          </body>
+          </html>
+        `;
+
+        const textEncoder = new util.TextEncoder();
+        const contentBuf = textEncoder.encodeInto(htmlContent);
+        return `HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${contentBuf.length}\r\n\r\n${htmlContent}`;
+      }
+
+      // 读取文件内容
+      const file = fs.openSync(fullPath, fs.OpenMode.READ_ONLY);
+      const fileSize = stat.size;
+      const buffer = new ArrayBuffer(fileSize);
+      fs.readSync(file.fd, buffer);
+      fs.closeSync(file.fd);
+
+      // 判断文件类型
+      const fileExt = relativePath.split('.').pop()?.toLowerCase() || '';
+      let contentType = 'text/plain';
+      let shouldDisplay = true;
+
+      if (fileExt === 'html' || fileExt === 'htm') {
+        contentType = 'text/html';
+      } else if (fileExt === 'css') {
+        contentType = 'text/css';
+      } else if (fileExt === 'js') {
+        contentType = 'application/javascript';
+      } else if (fileExt === 'json') {
+        contentType = 'application/json';
+      } else if (fileExt === 'png' || fileExt === 'jpg' || fileExt === 'jpeg' || fileExt === 'gif') {
+        contentType = `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`;
+        shouldDisplay = false;
+      } else if (fileExt === 'txt') {
+        contentType = 'text/plain; charset=utf-8';
+      } else {
+        shouldDisplay = false;
+      }
+
+      // 转换为字符串（文本文件）
+      if (shouldDisplay && (contentType.startsWith('text/') || contentType.includes('json') || contentType.includes('javascript'))) {
+        const textDecoder = util.TextDecoder.create('utf-8');
+        const uint8Array = new Uint8Array(buffer);
+        const textContent = textDecoder.decode(uint8Array);
+        
+        // 如果是 HTML 文件，直接返回原始 HTML 内容让浏览器渲染
+        if (fileExt === 'html' || fileExt === 'htm') {
+          const textEncoder = new util.TextEncoder();
+          const contentBuf = textEncoder.encodeInto(textContent);
+          return `HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${contentBuf.length}\r\n\r\n${textContent}`;
+        }
+        
+        // 其他文本文件（txt, css, js, json）显示为代码预览
+        const htmlContent = `
+          <!DOCTYPE html>
+          <html lang="zh-CN">
+          <head>
+            <meta charset="utf-8">
+            <title>${HttpServerHandler.escapeHtml(relativePath)}</title>
+            <style>
+              body { font-family: 'Courier New', monospace; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
+              .header { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #444; }
+              .header h1 { color: #fff; margin-bottom: 5px; }
+              .file-path { color: #999; font-size: 12px; }
+              pre { background: #252526; padding: 15px; border-radius: 4px; overflow-x: auto; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>📄 ${HttpServerHandler.escapeHtml(relativePath)}</h1>
+              <div class="file-path">${HttpServerHandler.escapeHtml(fullPath)}</div>
+            </div>
+            <pre>${HttpServerHandler.escapeHtml(textContent)}</pre>
+          </body>
+          </html>
+        `;
+
+        const textEncoder = new util.TextEncoder();
+        const contentBuf = textEncoder.encodeInto(htmlContent);
+        return `HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${contentBuf.length}\r\n\r\n${htmlContent}`;
+      } else {
+        // 二进制文件或图片，使用 base64 编码
+        const uint8Array = new Uint8Array(buffer);
+        // 简单的 base64 编码实现
+        let base64 = '';
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+        for (let i = 0; i < uint8Array.length; i += 3) {
+          const b1 = uint8Array[i] || 0;
+          const b2 = uint8Array[i + 1] || 0;
+          const b3 = uint8Array[i + 2] || 0;
+          const bitmap = (b1 << 16) | (b2 << 8) | b3;
+          base64 += chars.charAt((bitmap >> 18) & 63);
+          base64 += chars.charAt((bitmap >> 12) & 63);
+          base64 += (i + 1 < uint8Array.length) ? chars.charAt((bitmap >> 6) & 63) : '=';
+          base64 += (i + 2 < uint8Array.length) ? chars.charAt(bitmap & 63) : '=';
+        }
+        const dataUrl = `data:${contentType};base64,${base64}`;
+        
+        if (contentType.startsWith('image/')) {
+          // 图片直接显示
+          const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <title>${HttpServerHandler.escapeHtml(relativePath)}</title>
+              <style>
+                body { text-align: center; padding: 20px; background: #f5f5f5; }
+                img { max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+              </style>
+            </head>
+            <body>
+              <h2>${HttpServerHandler.escapeHtml(relativePath)}</h2>
+              <img src="${dataUrl}" alt="${HttpServerHandler.escapeHtml(relativePath)}">
+            </body>
+            </html>
+          `;
+          const textEncoder = new util.TextEncoder();
+          const contentBuf = textEncoder.encodeInto(htmlContent);
+          return `HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${contentBuf.length}\r\n\r\n${htmlContent}`;
+        } else {
+          // 其他二进制文件，提供下载
+          // 将 Uint8Array 转换为字符串（用于二进制数据）
+          let binaryString = '';
+          for (let i = 0; i < uint8Array.length; i++) {
+            binaryString += String.fromCharCode(uint8Array[i]);
+          }
+          return `HTTP/1.1 200 OK\r\nContent-Type: ${contentType}\r\nContent-Disposition: attachment; filename="${encodeURIComponent(relativePath.split('/').pop() || 'file')}"\r\nContent-Length: ${fileSize}\r\n\r\n${binaryString}`;
+        }
+      }
+    } catch (error) {
+      hilog.error(DOMAIN, 'HttpServerHandler', `文件读取错误: ${JSON.stringify(error)}`);
+      return HttpServerHandler.getNotFoundResponse();
+    }
+  }
+
+  /**
+   * HTML 转义
+   */
+  private static escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   /**

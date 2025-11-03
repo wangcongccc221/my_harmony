@@ -1,6 +1,7 @@
 import { socket } from '@kit.NetworkKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { util } from '@kit.ArkTS';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 
 export type HttpRequestHandler = (requestRaw: string) => string;
 
@@ -43,20 +44,46 @@ class HttpServer implements IHttpServer {
       clientSocket.on('message', (msgInfo: socket.SocketMessageInfo) => {
         // 异步处理请求，避免阻塞主线程
         const request = buf2String(msgInfo.message);
-        // 使用 Promise 将同步处理改为异步，避免阻塞
-        Promise.resolve().then(() => {
+        // 使用 Promise 的微任务将处理延迟到下一个事件循环，确保不阻塞主线程
+        const promise: Promise<void> = Promise.resolve().then(() => {
           try {
             const response = (this.handler as HttpRequestHandler)(request);
-            clientSocket.send({ data: response });
+            // 检查 socket 是否仍然有效
+            if (this.running && clientSocket) {
+              clientSocket.send({ data: response });
+            }
           } catch (error) {
             // 错误处理，返回500错误
-            const errorResponse = 'HTTP/1.1 500 Internal Server Error\r\n\r\n';
-            clientSocket.send({ data: errorResponse });
+            const errorObj: Error | BusinessError | object = error as Error | BusinessError | object;
+            hilog.error(0x0000, 'HttpServer', `Request handler error: ${JSON.stringify(errorObj)}`);
+            try {
+              if (this.running && clientSocket) {
+                const errorResponse = 'HTTP/1.1 500 Internal Server Error\r\n\r\n';
+                clientSocket.send({ data: errorResponse });
+              }
+            } catch (sendError) {
+              const sendErrorObj: Error | BusinessError | object = sendError as Error | BusinessError | object;
+              hilog.error(0x0000, 'HttpServer', `Failed to send error response: ${JSON.stringify(sendErrorObj)}`);
+            }
           }
-        }).catch(() => {
-          const errorResponse = 'HTTP/1.1 500 Internal Server Error\r\n\r\n';
-          clientSocket.send({ data: errorResponse });
         });
+        // 静默处理 Promise 拒绝，避免未捕获的 Promise 警告
+        promise.then(() => {
+          // Promise 成功处理，无需额外操作
+        }, (rejectedValue: Error | BusinessError | object) => {
+          // 处理 Promise 拒绝，但这里应该不会发生，因为我们已经 catch 了所有错误
+          hilog.error(0x0000, 'HttpServer', `Promise rejected: ${JSON.stringify(rejectedValue)}`);
+        });
+      });
+      
+      // 处理连接断开事件
+      clientSocket.on('close', () => {
+        hilog.info(0x0000, 'HttpServer', 'Client socket closed');
+      });
+      
+      // 处理错误事件
+      clientSocket.on('error', (error: BusinessError) => {
+        hilog.error(0x0000, 'HttpServer', `Socket error: ${JSON.stringify(error)}`);
       });
     });
   }

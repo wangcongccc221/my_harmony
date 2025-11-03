@@ -333,6 +333,179 @@ export function getSandboxDirPath(
 }
 
 /**
+ * 自动扫描 rawfile 目录中的所有文件（使用 getRawFileList）
+ * @param context 应用上下文
+ * @param rawFileDir rawfile 中的目录路径前缀（例如: "file" 表示扫描 file/ 下的所有文件）
+ * @returns Promise<string[]> 文件列表（相对路径，相对于 rawFileDir）
+ */
+/**
+ * 递归扫描 rawfile 子目录
+ */
+async function scanRawFileSubDirectory(
+  context: Context,
+  rawFileDir: string,
+  subDir: string,
+  fileList: string[]
+): Promise<void> {
+  try {
+    const subDirPath = subDir ? `${rawFileDir}/${subDir}` : rawFileDir;
+    const subFiles: string[] = await context.resourceManager.getRawFileList(subDirPath);
+    
+    if (subFiles && subFiles.length > 0) {
+      for (let i = 0; i < subFiles.length; i++) {
+        let fileName = subFiles[i];
+        
+        // 去掉可能的子目录前缀
+        const prefix = `${subDir}/`;
+        if (fileName && fileName.startsWith(prefix)) {
+          fileName = fileName.substring(prefix.length);
+        }
+        
+        if (fileName && fileName.length > 0) {
+          // 检查是否是子目录（包含 / 的路径）
+          if (fileName.includes('/')) {
+            // 这是一个更深层的子目录文件
+            const relativePath = subDir ? `${subDir}/${fileName}` : fileName;
+            fileList.push(relativePath);
+            hilog.debug(DOMAIN, TAG, '找到子目录文件: %{public}s', relativePath);
+          } else {
+            // 这是当前目录的文件
+            const relativePath = subDir ? `${subDir}/${fileName}` : fileName;
+            fileList.push(relativePath);
+            hilog.debug(DOMAIN, TAG, '找到文件: %{public}s', relativePath);
+            
+            // 如果这个文件可能是一个目录，尝试递归扫描（但 rawfile 中没有目录概念）
+            // 我们通过尝试读取子路径来判断
+          }
+        }
+      }
+    }
+  } catch (error) {
+    // 子目录可能不存在，忽略错误
+    hilog.debug(DOMAIN, TAG, '子目录 %{public}s 扫描失败（可能不存在）: %{public}s', subDir, JSON.stringify(error));
+  }
+}
+
+async function scanRawFileDirectory(
+  context: Context,
+  rawFileDir: string
+): Promise<string[]> {
+  const fileList: string[] = [];
+  
+  try {
+    // 第一步：获取根目录下的所有文件
+    const rootFiles: string[] = await context.resourceManager.getRawFileList(rawFileDir);
+    
+    if (rootFiles && rootFiles.length > 0) {
+      hilog.info(DOMAIN, TAG, 'rawfile/%{public}s 目录下共有 %{public}d 个条目', rawFileDir, rootFiles.length);
+      
+      const prefix = `${rawFileDir}/`;
+      
+      for (let i = 0; i < rootFiles.length; i++) {
+        let fileName = rootFiles[i];
+        
+        // 去掉 rawFileDir 前缀
+        if (fileName && fileName.startsWith(prefix)) {
+          fileName = fileName.substring(prefix.length);
+        }
+        
+        if (fileName && fileName.length > 0) {
+          // 检查是否包含 /，可能是子目录或子目录文件
+          if (fileName.includes('/')) {
+            // 这是一个子目录中的文件路径（如 "1/1.html"）
+            fileList.push(fileName);
+            hilog.debug(DOMAIN, TAG, '找到子目录文件: %{public}s (原始: %{public}s)', fileName, rootFiles[i]);
+          } else {
+            // 这是根目录下的文件（如 "123.txt"）
+            fileList.push(fileName);
+            hilog.debug(DOMAIN, TAG, '找到根目录文件: %{public}s (原始: %{public}s)', fileName, rootFiles[i]);
+            
+            // 检查这个文件名是否可能是目录（通过尝试读取子目录）
+            // 如果文件名是纯数字或已知目录名，尝试递归扫描
+            try {
+              const testSubPath = `${rawFileDir}/${fileName}`;
+              const subFiles: string[] = await context.resourceManager.getRawFileList(testSubPath);
+              if (subFiles && subFiles.length > 0) {
+                // 这是一个子目录，递归扫描
+                await scanRawFileSubDirectory(context, rawFileDir, fileName, fileList);
+              }
+            } catch (e) {
+              // 不是目录，忽略
+            }
+          }
+        }
+      }
+      
+      // 第二步：如果 getRawFileList 没有递归返回所有文件，手动扫描已知子目录
+      // 尝试扫描常见的子目录（1, 2, 3 等）
+      for (let dirNum = 1; dirNum <= 10; dirNum++) {
+        await scanRawFileSubDirectory(context, rawFileDir, dirNum.toString(), fileList);
+      }
+    } else {
+      hilog.warn(DOMAIN, TAG, 'rawfile/%{public}s 目录下未找到文件，尝试手动扫描子目录', rawFileDir);
+      
+      // 如果没有找到文件，尝试手动扫描子目录
+      for (let dirNum = 1; dirNum <= 10; dirNum++) {
+        await scanRawFileSubDirectory(context, rawFileDir, dirNum.toString(), fileList);
+      }
+    }
+    
+    hilog.info(DOMAIN, TAG, '在 rawfile/%{public}s 目录下找到 %{public}d 个文件', rawFileDir, fileList.length);
+    hilog.info(DOMAIN, TAG, '文件列表: %{public}s', fileList.join(', '));
+    console.log(`扫描结果: 共找到 ${fileList.length} 个文件`);
+    console.log(`文件列表: ${fileList.join(', ')}`);
+  } catch (error) {
+    hilog.error(DOMAIN, TAG, '扫描 rawfile 目录失败: %{public}s', JSON.stringify(error));
+  }
+  
+  return fileList;
+}
+
+/**
+ * 自动遍历并复制 rawfile 目录中的所有文件
+ * @param context 应用上下文
+ * @param rawFileDir rawfile 中的目录路径
+ * @param sandboxDirName 沙箱中的目标目录名
+ * @param targetDirName 目标目录名
+ * @returns Promise 返回复制结果
+ */
+/**
+ * 自动遍历并复制 rawfile 目录中的所有文件
+ * 使用 getRawFileList 自动获取所有文件，无需手动维护文件列表
+ * @param context 应用上下文
+ * @param rawFileDir rawfile 中的目录路径（例如: "file" 会扫描 file/ 下的所有文件）
+ * @param sandboxDirName 沙箱中的目标目录名
+ * @param targetDirName 目标目录名
+ * @returns Promise 返回复制结果
+ */
+export async function copyRawDirectoryAuto(
+  context: Context,
+  rawFileDir: string,
+  sandboxDirName?: string,
+  targetDirName?: string,
+  useCustomPath?: boolean,
+  customPath?: string
+): Promise<DirectoryCopyResult> {
+  // 自动扫描所有文件（使用 getRawFileList，需要 await）
+  const fileList = await scanRawFileDirectory(context, rawFileDir);
+  
+  if (fileList.length === 0) {
+    hilog.warn(DOMAIN, TAG, '未在 rawfile/%{public}s 目录下找到任何文件', rawFileDir);
+  }
+  
+  // 使用现有的复制函数
+  return await copyRawDirectoryFilesToSandbox(
+    context,
+    rawFileDir,
+    fileList,
+    sandboxDirName,
+    targetDirName,
+    useCustomPath,
+    customPath
+  );
+}
+
+/**
  * 递归复制 rawfile 目录中的所有文件（需要提供文件列表）
  * @param context 应用上下文
  * @param rawFileDir rawfile 中的目录路径
@@ -405,6 +578,7 @@ export async function copyRawDirectoryFilesToSandbox(
         copiedFiles.push(file);
         copiedCount++;
         hilog.info(DOMAIN, TAG, 'Copied file: %{public}s', file);
+        console.log(`保存成功，保存路径：${targetFilePath}`);
       } catch (error) {
         hilog.warn(DOMAIN, TAG, 'Failed to copy file %{public}s: %{public}s', file, JSON.stringify(error));
       }
