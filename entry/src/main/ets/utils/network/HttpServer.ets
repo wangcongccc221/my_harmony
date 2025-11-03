@@ -41,9 +41,22 @@ class HttpServer implements IHttpServer {
 
     this.server.on('connect', (clientSocket: socket.TCPSocketConnection) => {
       clientSocket.on('message', (msgInfo: socket.SocketMessageInfo) => {
+        // 异步处理请求，避免阻塞主线程
         const request = buf2String(msgInfo.message);
-        const response = (this.handler as HttpRequestHandler)(request);
-        clientSocket.send({ data: response });
+        // 使用 Promise 将同步处理改为异步，避免阻塞
+        Promise.resolve().then(() => {
+          try {
+            const response = (this.handler as HttpRequestHandler)(request);
+            clientSocket.send({ data: response });
+          } catch (error) {
+            // 错误处理，返回500错误
+            const errorResponse = 'HTTP/1.1 500 Internal Server Error\r\n\r\n';
+            clientSocket.send({ data: errorResponse });
+          }
+        }).catch(() => {
+          const errorResponse = 'HTTP/1.1 500 Internal Server Error\r\n\r\n';
+          clientSocket.send({ data: errorResponse });
+        });
       });
     });
   }
