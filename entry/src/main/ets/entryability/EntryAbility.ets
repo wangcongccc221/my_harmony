@@ -33,6 +33,20 @@ export default class EntryAbility extends UIAbility {
       }, (e: object) => {
         hilog.error(DOMAIN, 'EntryAbility', `RDB users table error: ${JSON.stringify(e)}`);
       });
+      // 预建加工历史表并预热缓存
+      ArkDataDemoService.createProcessingHistoryTable().then(() => {
+        hilog.info(DOMAIN, 'EntryAbility', 'RDB processing table ready');
+        // 触发一次缓存预热
+        try {
+          ArkDataDemoService.queryAllProcessing().then((rows) => {
+            // 调用 Handler 的静态属性进行预热
+            // 这里无法直接写入私有属性，交给 Handler 自己在首次访问时加载
+            hilog.info(DOMAIN, 'EntryAbility', `processing preload size=${rows.length}`);
+          }, () => {});
+        } catch (_) {}
+      }, (e: object) => {
+        hilog.error(DOMAIN, 'EntryAbility', `RDB processing table error: ${JSON.stringify(e)}`);
+      });
     } catch (error) {
       const err = error as object;
       hilog.error(DOMAIN, 'EntryAbility', `RDB init failed: ${JSON.stringify(err)}`);

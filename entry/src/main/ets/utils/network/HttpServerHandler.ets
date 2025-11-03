@@ -4,6 +4,7 @@ import { fileIo as fs } from '@kit.CoreFileKit';
 import { Context } from '@kit.AbilityKit';
 import { HttpRequestHandler } from './HttpServer';
 import { listFilesInDirectory, getDefaultStoragePath } from '../FileUtils';
+import { ArkDataDemoService, ProcessingRow, ProcessingInsertParams } from '../../db/ArkDataDemo';
 
 const DOMAIN = 0x0000;
 
@@ -25,6 +26,42 @@ export class HttpServerHandler {
   private static fileBasePath: string = ''; // 存储文件基础路径
   private static textEncoder: util.TextEncoder = new util.TextEncoder();
   private static textDecoder: util.TextDecoder = util.TextDecoder.create('utf-8');
+  // 加工历史缓存
+  private static processingCacheLoaded: boolean = false;
+  private static processingCache: ProcessingRow[] = [];
+  private static getProcessingCacheFile(): string {
+    return `${HttpServerHandler.fileBasePath}/processing_cache.json`;
+  }
+  private static loadProcessingCacheFromDisk(): void {
+    try {
+      const fp = HttpServerHandler.getProcessingCacheFile();
+      if (fs.accessSync(fp)) {
+        const f = fs.openSync(fp, fs.OpenMode.READ_ONLY);
+        const st = fs.statSync(fp);
+        const buf = new ArrayBuffer(st.size);
+        fs.readSync(f.fd, buf);
+        fs.closeSync(f.fd);
+        const arr = new Uint8Array(buf);
+        const txt = HttpServerHandler.textDecoder.decode(arr);
+        const data = JSON.parse(txt) as ProcessingRow[];
+        if (data && data instanceof Array) {
+          HttpServerHandler.processingCache = data;
+          HttpServerHandler.processingCacheLoaded = true;
+        }
+      }
+    } catch (_) {}
+  }
+  private static saveProcessingCacheToDisk(): void {
+    try {
+      const list = HttpServerHandler.processingCache || [];
+      const txt = JSON.stringify(list);
+      const arr = HttpServerHandler.textEncoder.encodeInto(txt);
+      const fp = HttpServerHandler.getProcessingCacheFile();
+      const f = fs.openSync(fp, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
+      fs.writeSync(f.fd, arr);
+      fs.closeSync(f.fd);
+    } catch (_) {}
+  }
   private static toBase64(data: Uint8Array): string {
     let base64 = '';
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -138,13 +175,13 @@ export class HttpServerHandler {
         }
         
         // 解析请求路径
-        const requestLines = rawRequest.split('\r\n');
+      const requestLines = rawRequest.split('\r\n');
         if (requestLines.length === 0) {
           hilog.warn(DOMAIN, 'HttpServerHandler', '请求格式无效');
           return HttpServerHandler.getNotFoundResponse();
         }
         
-        const requestLine = requestLines[0] || '';
+      const requestLine = requestLines[0] || '';
         const pathParts = requestLine.split(' ');
         const rawPath = pathParts.length > 1 ? pathParts[1] : '/';
         // 拆分路径与查询参数（避免解构声明）
@@ -171,11 +208,11 @@ export class HttpServerHandler {
           hilog.warn(DOMAIN, 'HttpServerHandler', `URL解码失败: ${path}`);
         }
       
-        // 根据路径返回不同内容
-        if (path === '/' || path === '/index') {
+      // 根据路径返回不同内容
+      if (path === '/' || path === '/index') {
           return HttpServerHandler.getFileBrowserResponse(params);
-        } else if (path === '/api/status') {
-          return HttpServerHandler.getStatusResponse();
+      } else if (path === '/api/status') {
+        return HttpServerHandler.getStatusResponse();
         } else if (path.startsWith('/files/') || path.startsWith('/file/')) {
           // 文件浏览路径: /files/ 或 /file/ （支持两种路径）
           // 统一处理，去掉前缀
@@ -187,10 +224,11 @@ export class HttpServerHandler {
             // 显示或下载文件
             return HttpServerHandler.getFileResponse(filePath);
           }
-        } else if (path.startsWith('/api/')) {
-          return HttpServerHandler.getApiResponse(path);
-        } else {
-          return HttpServerHandler.getNotFoundResponse();
+      } else if (path.startsWith('/api/')) {
+          // 注意：这里需要包含查询串，否则 getApiResponse 无法解析 action 等参数
+          return HttpServerHandler.getApiResponse(rawPath);
+      } else {
+        return HttpServerHandler.getNotFoundResponse();
         }
       } catch (error) {
         // 捕获所有异常，防止崩溃
@@ -215,10 +253,10 @@ export class HttpServerHandler {
       timestamp: new Date().toISOString(),
       server: 'HarmonyOS HTTP Server'
     });
-
+    const jsonBuf = HttpServerHandler.textEncoder.encodeInto(jsonContent);
     return `HTTP/1.1 200 OK\r\n` +
            `Content-Type: application/json; charset=utf-8\r\n` +
-           `Content-Length: ${jsonContent.length}\r\n` +
+           `Content-Length: ${jsonBuf.length}\r\n` +
            `\r\n` +
            jsonContent;
   }
@@ -227,18 +265,211 @@ export class HttpServerHandler {
    * API响应处理
    */
   static getApiResponse(path: string): string {
-    // TODO: 实现具体的API逻辑
-    const jsonContent = JSON.stringify({
+    // /api/processing?action=listJson|insert|update|delete
+    if (path.indexOf('/api/processing') === 0) {
+      try {
+        const idx = path.indexOf('?');
+        const queryString = idx >= 0 ? path.substring(idx + 1) : '';
+        const params: Record<string, string> = {};
+        if (queryString) {
+          const pairs = queryString.split('&');
+          for (let i = 0; i < pairs.length; i++) {
+            const kv = pairs[i].split('=');
+            const k = decodeURIComponent(kv[0] || '');
+            const v = decodeURIComponent(kv[1] || '');
+            if (k) { params[k] = v; }
+          }
+        }
+
+        const action = params['action'] || 'listJson';
+        // 首次访问时加载缓存
+        if (!HttpServerHandler.processingCacheLoaded) {
+          try {
+            ArkDataDemoService.createProcessingHistoryTable().then(() => {
+              ArkDataDemoService.queryAllProcessing().then((rows) => {
+                HttpServerHandler.processingCache = rows;
+                HttpServerHandler.processingCacheLoaded = true;
+              }, () => {});
+            }, () => {});
+          } catch (_) {}
+        }
+
+        if (action === 'listJson') {
+          if (!HttpServerHandler.processingCacheLoaded) {
+            HttpServerHandler.loadProcessingCacheFromDisk();
+          }
+          const src = HttpServerHandler.processingCache || [];
+          // 兼容旧数据：填充缺失字段，避免前端显示为空
+          const data: ProcessingRow[] = [];
+          for (let i = 0; i < src.length; i++) {
+            const r = src[i];
+            const norm: ProcessingRow = {
+              id: r.id,
+              startTime: r.startTime,
+              endTime: r.endTime,
+              productType: r.productType,
+              totalWeight: r.totalWeight,
+              customerName: r.customerName || '',
+              farmName: r.farmName || '',
+              fruitName: r.fruitName || r.productType || '',
+              status: r.status || '',
+              count: (typeof r.count === 'number') ? r.count : 0,
+              weight: (typeof r.weight === 'number') ? r.weight : (r.totalWeight || 0)
+            };
+            data.push(norm);
+          }
+          const json = JSON.stringify({ ok: true, data });
+          const buf = HttpServerHandler.textEncoder.encodeInto(json);
+          return `HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${buf.length}\r\n\r\n${json}`;
+        } else if (action === 'insert') {
+          const startTime = params['startTime'] || '';
+          const endTime = params['endTime'] || '';
+          const productType = params['productType'] || '';
+          const totalWeight = Number(params['totalWeight'] || '0');
+          // 新增扩展字段（仅缓存/页面显示）
+          const customerName = params['customerName'] || '';
+          const farmName = params['farmName'] || '';
+          const fruitName = params['fruitName'] || productType;
+          const status = params['status'] || '';
+          const count = Number(params['count'] || '0');
+          const weight = Number(params['weight'] || totalWeight || '0');
+          // 参数校验：非空与时间先后
+          if (!startTime || !endTime || !fruitName || !(params['totalWeight'] || params['weight'] || '').toString().length) {
+            const errJson = JSON.stringify({ ok: false, message: '参数不能为空' });
+            const errBuf = HttpServerHandler.textEncoder.encodeInto(errJson);
+            return `HTTP/1.1 400 Bad Request\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${errBuf.length}\r\n\r\n${errJson}`;
+          }
+          // 尝试比较时间
+          let invalidOrder = false;
+          try {
+            const sNum = Date.parse(startTime);
+            const eNum = Date.parse(endTime);
+            if (!isNaN(sNum) && !isNaN(eNum) && sNum > eNum) {
+              invalidOrder = true;
+            }
+          } catch (_) {}
+          if (invalidOrder) {
+            const errJson = JSON.stringify({ ok: false, message: '开始时间不能晚于结束时间' });
+            const errBuf = HttpServerHandler.textEncoder.encodeInto(errJson);
+            return `HTTP/1.1 400 Bad Request\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${errBuf.length}\r\n\r\n${errJson}`;
+          }
+          // 先更新内存缓存，保证前端立即可见
+          try {
+            // 生成一个更贴近业务的临时ID：取当前缓存最大ID+1（若无则为1）
+            let nextId = 1;
+            try {
+              const listForId = HttpServerHandler.processingCache || [];
+              for (let i = 0; i < listForId.length; i++) {
+                const cid = listForId[i] && typeof listForId[i].id === 'number' ? listForId[i].id : 0;
+                if (cid >= nextId) { nextId = cid + 1; }
+              }
+            } catch (_) {}
+            const tmpRow: ProcessingRow = { id: nextId, startTime, endTime, productType, totalWeight, customerName, farmName, fruitName, status, count, weight };
+            if (!HttpServerHandler.processingCache) { HttpServerHandler.processingCache = []; }
+            HttpServerHandler.processingCache.unshift(tmpRow);
+            HttpServerHandler.processingCacheLoaded = true;
+          } catch (_) {}
+          try {
+            const payload: ProcessingInsertParams = {
+              startTime: startTime,
+              endTime: endTime,
+              productType: productType,
+              totalWeight: totalWeight,
+              customerName: customerName,
+              farmName: farmName,
+              fruitName: fruitName,
+              status: status,
+              count: count,
+              weight: weight
+            };
+            ArkDataDemoService.insertProcessingFull(payload).then(() => {
+              ArkDataDemoService.queryAllProcessing().then((rows) => {
+                HttpServerHandler.processingCache = rows;
+                HttpServerHandler.processingCacheLoaded = true;
+                HttpServerHandler.saveProcessingCacheToDisk();
+              }, () => {});
+            }, () => {});
+          } catch (_) {}
+          // 立即把当前内存列表返回，便于前端无需等待缓存刷新
+          HttpServerHandler.saveProcessingCacheToDisk();
+          const json = JSON.stringify({ ok: true, data: HttpServerHandler.processingCache || [] });
+          const buf = HttpServerHandler.textEncoder.encodeInto(json);
+          return `HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${buf.length}\r\n\r\n${json}`;
+        } else if (action === 'update') {
+          const id = Number(params['id'] || '0');
+          const startTime = params['startTime'] || '';
+          const endTime = params['endTime'] || '';
+          const productType = params['productType'] || '';
+          const totalWeight = Number(params['totalWeight'] || '0');
+          // 先更新内存缓存
+          try {
+            const list = HttpServerHandler.processingCache || [];
+            for (let i = 0; i < list.length; i++) {
+              if (list[i].id === id) {
+                list[i] = { id, startTime, endTime, productType, totalWeight };
+                break;
+              }
+            }
+            HttpServerHandler.processingCache = list;
+            HttpServerHandler.processingCacheLoaded = true;
+          } catch (_) {}
+          try {
+            ArkDataDemoService.updateProcessingById(id, startTime, endTime, productType, totalWeight).then(() => {
+              ArkDataDemoService.queryAllProcessing().then((rows) => {
+                HttpServerHandler.processingCache = rows;
+                HttpServerHandler.processingCacheLoaded = true;
+                HttpServerHandler.saveProcessingCacheToDisk();
+              }, () => {});
+            }, () => {});
+          } catch (_) {}
+          HttpServerHandler.saveProcessingCacheToDisk();
+          const json = JSON.stringify({ ok: true, data: HttpServerHandler.processingCache || [] });
+          const buf = HttpServerHandler.textEncoder.encodeInto(json);
+          return `HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${buf.length}\r\n\r\n${json}`;
+        } else if (action === 'delete') {
+          const id = Number(params['id'] || '0');
+          // 先更新内存缓存
+          try {
+            const list = HttpServerHandler.processingCache || [];
+            const next: ProcessingRow[] = [];
+            for (let i = 0; i < list.length; i++) {
+              if (list[i].id !== id) { next.push(list[i]); }
+            }
+            HttpServerHandler.processingCache = next;
+            HttpServerHandler.processingCacheLoaded = true;
+          } catch (_) {}
+          try {
+            ArkDataDemoService.deleteProcessingById(id).then(() => {
+              ArkDataDemoService.queryAllProcessing().then((rows) => {
+                HttpServerHandler.processingCache = rows;
+                HttpServerHandler.processingCacheLoaded = true;
+                HttpServerHandler.saveProcessingCacheToDisk();
+              }, () => {});
+            }, () => {});
+          } catch (_) {}
+          HttpServerHandler.saveProcessingCacheToDisk();
+          const json = JSON.stringify({ ok: true, data: HttpServerHandler.processingCache || [] });
+          const buf = HttpServerHandler.textEncoder.encodeInto(json);
+          return `HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${buf.length}\r\n\r\n${json}`;
+        }
+      } catch (e) {
+        const json = JSON.stringify({ ok: false });
+        const buf = HttpServerHandler.textEncoder.encodeInto(json);
+        return `HTTP/1.1 500 Internal Server Error\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${buf.length}\r\n\r\n${json}`;
+      }
+    }
+    // 默认占位
+    const jsonContent2 = JSON.stringify({
       path: path,
       message: 'API endpoint',
       data: null
     });
-
+    const jsonBuf2 = HttpServerHandler.textEncoder.encodeInto(jsonContent2);
     return `HTTP/1.1 200 OK\r\n` +
            `Content-Type: application/json; charset=utf-8\r\n` +
-           `Content-Length: ${jsonContent.length}\r\n` +
+           `Content-Length: ${jsonBuf2.length}\r\n` +
            `\r\n` +
-           jsonContent;
+           jsonContent2;
   }
 
   /**
@@ -250,11 +481,11 @@ export class HttpServerHandler {
     }
 
     try {
-      // 获取文件目录（file 文件夹）
-      const targetDir = `${HttpServerHandler.fileBasePath}/file`;
+      // 根目录页：展示基础路径下的第一层目录（包含 file）
+      const targetDir = `${HttpServerHandler.fileBasePath}`;
       
-      hilog.info(DOMAIN, 'HttpServerHandler', `文件浏览器访问目录: ${targetDir}`);
-      console.log(`HTTP服务器文件浏览器访问目录: ${targetDir}`);
+      hilog.info(DOMAIN, 'HttpServerHandler', `文件浏览器访问目录(根): ${targetDir}`);
+      console.log(`HTTP服务器文件浏览器访问目录(根): ${targetDir}`);
       
       // 列出目录中的所有文件和文件夹
       const items: FileItem[] = [];
@@ -370,6 +601,9 @@ export class HttpServerHandler {
             .file-browser {
               padding: 30px;
             }
+            .quick-links { display:flex; gap:10px; margin-bottom: 16px; }
+            .quick-links a { color:#fff; background:#667eea; padding:8px 12px; border-radius:6px; text-decoration:none; }
+            .quick-links a:hover { background:#556cdf; }
             .path-info {
               background: #f8f9fa;
               padding: 15px;
@@ -432,8 +666,11 @@ export class HttpServerHandler {
               <p>HarmonyOS HTTP 服务器文件管理</p>
             </div>
             <div class="file-browser">
+              <div class="quick-links">
+                <a href="/files/file/processing.html">加工历史管理</a>
+              </div>
               <div class="path-info">
-                当前路径: ${HttpServerHandler.escapeHtml(targetDir)}
+                当前位置: ${HttpServerHandler.buildBreadcrumb('')}
               </div>
               <div class="pagination">
                 <div>${prevHtml}</div>
@@ -451,10 +688,10 @@ export class HttpServerHandler {
 
       const contentBuf = HttpServerHandler.textEncoder.encodeInto(htmlContent);
 
-      return `HTTP/1.1 200 OK\r\n` +
+    return `HTTP/1.1 200 OK\r\n` +
              `Content-Type: text/html; charset=utf-8\r\n` +
              `Content-Length: ${contentBuf.length}\r\n` +
-             `\r\n` +
+           `\r\n` +
              htmlContent;
     } catch (error) {
       hilog.error(DOMAIN, 'HttpServerHandler', `文件浏览器错误: ${JSON.stringify(error)}`);
@@ -472,7 +709,7 @@ export class HttpServerHandler {
     }
 
     try {
-      const fullPath = `${HttpServerHandler.fileBasePath}/file/${relativePath}`;
+      const fullPath = `${HttpServerHandler.fileBasePath}/${relativePath}`;
       
       // 检查文件是否存在
       if (!fs.accessSync(fullPath)) {
@@ -564,7 +801,7 @@ export class HttpServerHandler {
           </head>
           <body>
             <div class="container">
-              <div class="path-info">路径: ${HttpServerHandler.escapeHtml(fullPath)}</div>
+              <div class="path-info">当前位置: ${HttpServerHandler.buildBreadcrumb(relativePath)}</div>
               <div class="file-list">${fileListHtml}</div>
             </div>
           </body>
@@ -713,6 +950,32 @@ export class HttpServerHandler {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+  }
+
+  /**
+   * 构建面包屑导航 HTML
+   * relativePath 例如 "", "logs", "logs/2025-11"
+   */
+  static buildBreadcrumb(relativePath: string): string {
+    // 根
+    if (!relativePath || relativePath.trim().length === 0) {
+      return `<a href="/files/">首页</a>`;
+    }
+    const safe = relativePath.replace(/^\/+|\/+$/g, '');
+    const parts = safe.split('/');
+    let acc = '';
+    let html = `<a href="/files/">首页</a>`;
+    for (let i = 0; i < parts.length; i++) {
+      const name = parts[i];
+      acc = acc ? (acc + '/' + name) : name;
+      const href = '/files/' + encodeURIComponent(acc);
+      if (i < parts.length - 1) {
+        html += ` / <a href="${href}">${HttpServerHandler.escapeHtml(name)}</a>`;
+      } else {
+        html += ` / <span>${HttpServerHandler.escapeHtml(name)}</span>`;
+      }
+    }
+    return html;
   }
 
   /**

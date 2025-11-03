@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>加工历史管理</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root{--primary:#6366f1;--bg:#0ea5e9;--card:#ffffff;--muted:#6b7280}
+    html, body{height:100%;}
+    body{font-family:Inter,Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#60a5fa,#a78bfa);padding:0;margin:0;min-height:100vh}
+    .card{width:100%;height:100%;max-width:100%;margin:0;background:var(--card);border-radius:0;box-shadow:none;padding:16px;box-sizing:border-box}
+    h2{margin:0 0 14px;font-weight:700;letter-spacing:.3px}
+    .desc{color:var(--muted);margin-bottom:12px}
+    .row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-items:end;margin-bottom:12px}
+    .field{display:flex;flex-direction:column;gap:6px}
+    label{font-size:12px;color:#374151}
+    input,button,select{padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px}
+    input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+    button{background:var(--primary);color:#fff;border:none;cursor:pointer;font-weight:600}
+    button:hover{filter:brightness(.95)}
+    table{width:100%;border-collapse:collapse;margin-top:12px;table-layout:fixed}
+    th{color:#374151;text-align:left;font-size:12px;padding:10px;border:1px solid #e5e7eb;background:#f8fafc;vertical-align:middle;box-sizing:border-box}
+    td{padding:10px;border:1px solid #e5e7eb;background:#ffffff;vertical-align:middle;box-sizing:border-box}
+    .ops button{margin-right:6px;background:#eef2ff;color:#374151}
+    .ops button:last-child{margin-right:0}
+    .ops button:hover{background:#e0e7ff}
+    @media (max-width:900px){.row{grid-template-columns:1fr 1fr;}}
+  </style>
+  <script>
+    function fullUrl(p){
+      if (p.startsWith('http')) return p;
+      return 'http://' + window.location.host + p;
+    }
+    async function api(path){
+      const res = await fetch(fullUrl(path), { cache: 'no-store' });
+      return await res.json();
+    }
+    async function loadList(){
+      try{
+        const json = await api('/api/processing?action=listJson');
+        const tbody = document.getElementById('rows');
+        tbody.innerHTML = '';
+        if(json && json.data){
+          json.data.forEach((r, idx)=>{
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${idx + 1}</td>
+              <td>${r.customerName||''}</td>
+              <td>${r.farmName||''}</td>
+              <td>${r.fruitName||r.productType||''}</td>
+              <td>${r.status||''}</td>
+              <td>${r.startTime||''}</td>
+              <td>${r.endTime||''}</td>
+              <td>${r.weight!=null?r.weight:(r.totalWeight||'')}</td>
+              <td>${r.count!=null?r.count:''}</td>
+              <td class="ops"><button onclick="onUpdate(${r.id})">更新</button><button onclick="onDelete(${r.id})">删除</button></td>`;
+            tbody.appendChild(tr);
+          });
+        }
+        if(!json || !json.data || !json.data.length){
+          setTimeout(async ()=>{
+            try{
+              const j2 = await api('/api/processing?action=listJson');
+              const tb2 = document.getElementById('rows');
+              if(j2 && j2.data && j2.data.length){
+                tb2.innerHTML = '';
+                j2.data.forEach((r, idx)=>{
+                  const tr = document.createElement('tr');
+                  tr.innerHTML = `
+                    <td>${idx + 1}</td>
+                    <td>${r.customerName||''}</td>
+                    <td>${r.farmName||''}</td>
+                    <td>${r.fruitName||r.productType||''}</td>
+                    <td>${r.status||''}</td>
+                    <td>${r.startTime||''}</td>
+                    <td>${r.endTime||''}</td>
+                    <td>${r.weight!=null?r.weight:(r.totalWeight||'')}</td>
+                    <td>${r.count!=null?r.count:''}</td>
+                    <td class="ops"><button onclick="onUpdate(${r.id})">更新</button><button onclick="onDelete(${r.id})">删除</button></td>`;
+                  tb2.appendChild(tr);
+                });
+              }
+            }catch(_){ }
+          }, 600);
+        }
+      }catch(e){
+        alert('加载失败: ' + e);
+      }
+    }
+    function renderRows(list){
+      const tbody = document.getElementById('rows');
+      tbody.innerHTML = '';
+      (list||[]).forEach((r, idx)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td>${r.customerName||''}</td>
+          <td>${r.farmName||''}</td>
+          <td>${r.fruitName||r.productType||''}</td>
+          <td>${r.status||''}</td>
+          <td>${r.startTime||''}</td>
+          <td>${r.endTime||''}</td>
+          <td>${r.weight!=null?r.weight:(r.totalWeight||'')}</td>
+          <td>${r.count!=null?r.count:''}</td>
+          <td class="ops"><button onclick="onUpdate(${r.id})">更新</button><button onclick="onDelete(${r.id})">删除</button></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function clearForm(){
+      var ids = ['cn','fn','fruit','st','s','e','w','c'];
+      for (var i = 0; i < ids.length; i++) {
+        var el = document.getElementById(ids[i]);
+        if (!el) continue;
+        if (el.tagName === 'SELECT') { el.value = ''; }
+        else if (typeof el.value !== 'undefined') { el.value = ''; }
+      }
+    }
+
+    async function onAdd(){
+      var cn = document.getElementById('cn').value;
+      var fn = document.getElementById('fn').value;
+      var fruit = document.getElementById('fruit').value;
+      var st = document.getElementById('st').value;
+      var s = document.getElementById('s').value;
+      var e = document.getElementById('e').value;
+      var w = document.getElementById('w').value;
+      var c = document.getElementById('c').value;
+      if(!cn || !fn || !fruit || !st || !s || !e || !w || !c){ alert('添加失败：所有字段均为必填'); return; }
+      try{ if(Date.parse(s) > Date.parse(e)) { alert('添加失败：开始时间不能晚于结束时间'); return; } }catch(_){ }
+      var q = `/api/processing?action=insert&startTime=${encodeURIComponent(s)}&endTime=${encodeURIComponent(e)}&productType=${encodeURIComponent(fruit)}&totalWeight=${encodeURIComponent(w)}&customerName=${encodeURIComponent(cn)}&farmName=${encodeURIComponent(fn)}&fruitName=${encodeURIComponent(fruit)}&status=${encodeURIComponent(st)}&count=${encodeURIComponent(c)}&weight=${encodeURIComponent(w)}`;
+      try{
+        var json = await api(q);
+        if(json && json.ok){
+          clearForm();
+          alert('添加成功');
+          if(json.data){ renderRows(json.data); return; }
+        } else {
+          alert('添加失败：' + (json && json.message ? json.message : '未知错误'));
+        }
+      }catch(err){ alert('添加失败: ' + err); }
+      setTimeout(loadList, 300);
+      setTimeout(loadList, 900);
+    }
+    async function onUpdate(id){
+      var s = prompt('开始时间'); if(s===null) return;
+      var e = prompt('结束时间'); if(e===null) return;
+      var p = prompt('品类'); if(p===null) return;
+      var w = prompt('重量'); if(w===null) return;
+      var q = `/api/processing?action=update&id=${id}&startTime=${encodeURIComponent(s)}&endTime=${encodeURIComponent(e)}&productType=${encodeURIComponent(p)}&totalWeight=${encodeURIComponent(w)}`;
+      try{
+        var json = await api(q);
+        if(json && json.ok){ alert('更新成功'); if(json.data){ renderRows(json.data); return; } }
+      }catch(err){ alert('更新失败: ' + err); }
+      setTimeout(loadList, 300);
+      setTimeout(loadList, 900);
+    }
+    async function onDelete(id){
+      if(!confirm('确定删除?')) return;
+      var q = `/api/processing?action=delete&id=${id}`;
+      try{
+        var json = await api(q);
+        if(json && json.ok){ alert('删除成功'); if(json.data){ renderRows(json.data); return; } }
+      }catch(err){ alert('删除失败: ' + err); }
+      setTimeout(loadList, 300);
+      setTimeout(loadList, 900);
+    }
+    // 将方法挂载到 window（纯 JS 语法）
+    window.loadList = loadList;
+    window.onAdd = onAdd;
+    window.onUpdate = onUpdate;
+    window.onDelete = onDelete;
+    window.addEventListener('load', loadList);
+  </script>
+  </head>
+  <body>
+    <div class="card">
+      <h2>加工历史管理</h2>
+      <div class="row" style="margin-bottom:0">
+        <div class="field"><label>&nbsp;</label><button onclick="loadList()">刷新</button></div>
+      </div>
+      <p class="desc">请填写加工记录，开始/结束时间支持日期选择器。</p>
+      <div class="row">
+        <div class="field">
+          <label for="cn">客户名称</label>
+          <input id="cn" placeholder="客户名称" />
+        </div>
+        <div class="field">
+          <label for="fn">农场名称</label>
+          <input id="fn" placeholder="农场名称" />
+        </div>
+        <div class="field">
+          <label for="fruit">水果名称</label>
+          <input id="fruit" placeholder="水果名称" />
+        </div>
+        <div class="field">
+          <label for="st">加工状态</label>
+          <select id="st">
+            <option value="">选择状态</option>
+            <option value="已完成">已完成</option>
+            <option value="进行中">进行中</option>
+            <option value="待开始">待开始</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="s">开始时间</label>
+          <input id="s" type="datetime-local" />
+        </div>
+        <div class="field">
+          <label for="e">结束时间</label>
+          <input id="e" type="datetime-local" />
+        </div>
+        <div class="field">
+          <label for="w">重量(kg)</label>
+          <input id="w" type="number" step="0.01" placeholder="例如：2.50" />
+        </div>
+        <div class="field">
+          <label for="c">批个数</label>
+          <input id="c" type="number" step="1" placeholder="例如：100" />
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button onclick="onAdd()">新增</button>
+        </div>
+      </div>
+      <table>
+        <colgroup>
+          <col style="width:8%" /> 
+          <col style="width:14%" /> 
+          <col style="width:14%" /> 
+          <col style="width:12%" /> 
+          <col style="width:12%" /> 
+          <col style="width:14%" /> 
+          <col style="width:14%" /> 
+          <col style="width:6%" /> 
+          <col style="width:6%" /> 
+          <col style="width:10%" /> 
+        </colgroup>
+        <thead><tr><th>序号</th><th>客户名称</th><th>农场名称</th><th>水果名称</th><th>加工状态</th><th>开始时间</th><th>完成时间</th><th>批重量(kg)</th><th>批个数</th><th>操作</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </body>
+</html>
+
+
