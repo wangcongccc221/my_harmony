@@ -20,6 +20,51 @@
   - 网络服务：`utils/network/(HttpServer|HttpServerHandler|TcpClient|TCPServer|NetworkOptimizer).ets`
   - 折线图工具：`utils/lineChart.ts`（被 `DataTablesTabBar.ets` 使用）
 
+### 2.1 tree:文件目录：
+C:.
+|-- AppScope
+|   \-- resources\base\(element|media)
+|-- entry
+|   |-- build\...
+|   |-- src\main
+|   |   |-- ets\(components|pages|utils|entryability|...)
+|   |   \-- resources
+|   |       |-- base\(element|media|profile)
+|   |       \-- rawfile\file\(1|2|3)
+|   \-- outputs\...
+|-- oh_modules\...
+|-- playwright-tests
+|   |-- tests\(smoke.spec.ts|database-stability.spec.ts)
+|   |-- k6-load-test.js
+|   |-- k6-load-test-extreme.js
+|   |-- playwright.config.ts
+|   \-- (package.json|README.md|report|test-results)
+|-- README使用文档.md
+|-- README详细文档.md
+|-- 测试总结文档.md
+
+### 2.2 重要文件说明（用途概览）
+- `entry/src/main/ets/entryability/EntryAbility.ets`：应用入口 Ability，初始化 HTTP 服务、资源清理（调用 `AppCleanup`），生命周期日志。
+- `entry/src/main/ets/components/layout/TopStatusBar.ets`：顶部状态栏（指标、时间、客户信息、最小化/关闭按钮）。
+- `entry/src/main/ets/pages/history/HistoryContent.ets`：历史页主容器，处理查询、重置、表格刷新、输入清空等逻辑。
+- `entry/src/main/ets/pages/history/HistoryDataTable.ets`：历史表格渲染，支持传入 `filteredData`，使用稳定 key(`id`)。
+- `entry/src/main/ets/pages/history/core/HistoryTableManager.ets`：历史数据管理与筛选（精确匹配与严格日期区间；`productType`→`fruitName` 映射）。
+- `entry/src/main/ets/pages/history/CustomerQueryCard.ets`：客户/农场/水果输入组件，`TextInput` 正确双向绑定（`text` 参数）。
+- `entry/src/main/ets/utils/network/HttpServer.ets`：HTTP 服务器管理（启动/停止、端口），统一 `TextEncoder.encode`。
+- `entry/src/main/ets/utils/network/HttpServerHandler.ets`：接口路由处理（`listJson`/`insert` 等），响应编码统一。
+- `entry/src/main/ets/utils/network/TcpClientManager.ets`：TCP 客户端管理，提供批量清理，修复 ArkTS 解构报错。
+- `entry/src/main/ets/utils/AppCleanup.ets`：统一清理（HTTP/TCP/优化器及注册回调），`EntryAbility.onStop()` 调用。
+- `entry/src/main/ets/utils/lineChart.ts`：折线图工具函数（被数据表页引用）。
+- `entry/src/main/resources/rawfile/file/processing.html`：历史联调静态页（如用到）。
+- `entry/src/main/resources/rawfile/file/1/1.html`：演示页，已改为实时显示当前时间。
+
+- `playwright-tests/playwright.config.ts`：Playwright 配置，`baseURL` 默认 `http://127.0.0.1:8080`，可被 `BASE_URL` 覆盖。
+- `playwright-tests/tests/smoke.spec.ts`：接口冒烟测试（读列表/插入轮询校验，兼容 `{ok,data}` 返回）。
+- `playwright-tests/tests/database-stability.spec.ts`：长稳测试（约15分钟，每3秒插入一条，统计成功率）。
+- `playwright-tests/k6-load-test.js`：15 分钟 K6 压测脚本（1m 预热/13m 稳态/1m 降载，70% 查询/30% 插入）。
+- `playwright-tests/k6-load-test-extreme.js`：更激进的压测脚本（并发/时长更高）。
+- `playwright-tests/README.md`：测试子项目使用说明。
+
 ## 3. 环境要求
 - DevEco Studio（含 hvigor、hdc）
 - 模拟器或真机已连接（`hdc list targets`）
