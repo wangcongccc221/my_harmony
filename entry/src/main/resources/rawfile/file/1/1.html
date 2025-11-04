@@ -1,53 +1,25 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>测试页面</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-        .content {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-top: 20px;
-        }
-        p {
-            line-height: 1.6;
-            color: #666;
-        }
-        .highlight {
-            color: #1976D2;
-            font-weight: bold;
-        }
-    </style>
-</head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>当前时间</title>
+  <style>
+    body { font-family: Arial, sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
+    .clock { font-size: 28px; color: #333; }
+  </style>
+  <script>
+    function updateClock() {
+      const el = document.getElementById('clock');
+      if (el) el.textContent = new Date().toLocaleString('zh-CN');
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      updateClock();
+      setInterval(updateClock, 1000);
+    });
+  </script>
+  </head>
 <body>
-    <h1>欢迎使用 HarmonyOS 应用</h1>
-    <div class="content">
-        <p>这是一个 <span class="highlight">HTML 测试页面</span>。</p>
-        <p>当前时间: <span id="currentTime"></span></p>
-        <p>这个页面是从 rawfile 资源文件中加载的。</p>
-        <ul>
-            <li>支持完整的 HTML5 语法</li>
-            <li>可以包含 CSS 样式</li>
-            <li>可以使用 JavaScript 功能</li>
-        </ul>
-    </div>
-    <script>
-        // 显示当前时间
-        document.getElementById('currentTime').textContent = new Date().toLocaleString('zh-CN');
-    </script>
+  <div class="clock" id="clock"></div>
 </body>
 </html>

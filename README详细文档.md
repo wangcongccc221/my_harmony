@@ -63,6 +63,65 @@ hdc fport rm tcp:9999             # 删除映射
 - 查询：`GET http://127.0.0.1:9999/api/processing?action=listJson`
 - 插入：`GET http://127.0.0.1:9999/api/processing?action=insert&startTime=...&endTime=...&customerName=...&farmName=...&fruitName=...`
 
+### 6.1 HTTP 接口参数表
+
+1) 查询加工记录
+
+- URL：`GET /api/processing?action=listJson`
+- 描述：返回当前数据库中的加工记录列表（JSON 数组）。
+- 请求参数：
+  - `action`：必填，固定为 `listJson`
+- 响应示例：
+```json
+[
+  {
+    "id": 1,
+    "customerName": "客户A",
+    "farmName": "农场1",
+    "fruitName": "苹果",      
+    "startTime": "2024-11-01 08:30",
+    "endTime": "2024-11-01 12:45",
+    "weight": 12.5,
+    "count": 320,
+    "status": "已完成"
+  }
+]
+```
+- 字段说明：
+  - `fruitName`：展示/筛选使用该字段，内部与 `productType` 对齐
+  - `status`：`已完成` | `进行中` | `待开始`
+
+2) 插入加工记录（简易联调用）
+
+- URL：`GET /api/processing?action=insert`
+- 描述：向数据库插入一条测试记录，用于压测/快速验证。
+- 请求参数（QueryString）：
+  - `action`：必填，固定为 `insert`
+  - `startTime`：必填，开始时间，如 `2024-11-01 08:30`
+  - `endTime`：可选，结束时间，如 `2024-11-01 12:45`（不填代表进行中）
+  - `customerName`：可选，客户名称
+  - `farmName`：可选，农场名称
+  - `fruitName`：可选，水果品种（与 `productType` 同步）
+  - `weight`：可选，批重量(吨)，数值
+  - `count`：可选，批个数，整数
+- 响应：
+  - 成功：`{"success": true}`
+  - 失败：`{"success": false, "message": "错误信息"}`
+- 示例：
+```
+GET http://127.0.0.1:9999/api/processing?action=insert&startTime=2024-11-01%2008:30&endTime=2024-11-01%2012:45&customerName=客户A&farmName=农场1&fruitName=苹果&weight=12.5&count=320
+```
+
+### 6.2 接口定位与限制
+- 仅用于本地联调/演示：无鉴权、无分页、数据直接读写应用内本地库，不对公网暴露
+- 访问方式：设备运行应用 → `hdc fport add tcp:9999 tcp:9999` → 通过 `http://127.0.0.1:9999` 访问
+- 生产建议：切换为后端服务（鉴权/分页/审计），前端仅调用受控 API
+
+### 6.3 常见问题
+- 访问超时：检查应用是否已运行、端口映射是否建立（`hdc fport ls`）
+- 端口被占用：改用其他端口并同步更新 `HttpServer` 监听端口与映射
+- 数据不更新：确认未被旧缓存覆盖；如为前端表格，请确保使用稳定 key（已使用 `id`）
+
 ## 7. 功能验证清单
 - 首页
   - 波浪动画流畅显示
@@ -74,7 +133,7 @@ hdc fport rm tcp:9999             # 删除映射
   - `listJson` 返回 JSON
   - `insert` 写入后可在 `listJson` 中看到
 
-## 8. 压力测试（可选）
+## 8. 压力测试
 - 脚本：`playwright-tests/k6-load-test-extreme.js`
 - 默认配置：5 分钟、最大并发 10、70% 查询 / 30% 插入、每次迭代 `sleep(1)`
 - 运行：

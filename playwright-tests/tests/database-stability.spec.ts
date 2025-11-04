@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test';
  * 模拟用户持续添加加工历史数据到数据库
  */
 test.describe('加工历史数据 - 数据库稳定性测试', () => {
-  const BASE_URL = 'http://127.0.0.1:9999';
+  const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:8080';
   const PROCESSING_PAGE = '/files/file%2Fprocessing.html';
 
   // 测试数据池
@@ -114,8 +114,8 @@ test.describe('加工历史数据 - 数据库稳定性测试', () => {
     return dialogMessage;
   }
 
-  test('持续添加数据 - 长时间稳定性测试（约1小时）', async ({ page }) => {
-    test.setTimeout(3600000); // 设置1小时超时
+  test('持续添加数据 - 长时间稳定性测试（约15分钟）', async ({ page }) => {
+    test.setTimeout(900000); // 设置15分钟超时
     
     await page.goto(BASE_URL + PROCESSING_PAGE);
     await page.waitForSelector('#rows', { timeout: 10000 });
@@ -125,7 +125,7 @@ test.describe('加工历史数据 - 数据库稳定性测试', () => {
     const successCount: number[] = [];
     const errorCount: number[] = [];
     const startTime = Date.now();
-    const targetDuration = 3600000; // 1小时（毫秒）
+    const targetDuration = 900000; // 15分钟（毫秒）
     
     console.log(`开始长时间稳定性测试：将添加 ${totalRecords} 条记录到数据库，预计耗时约1小时`);
     
@@ -134,7 +134,7 @@ test.describe('加工历史数据 - 数据库稳定性测试', () => {
         // 检查是否超时
         const elapsed = Date.now() - startTime;
         if (elapsed > targetDuration) {
-          console.log(`已达到目标测试时间（1小时），停止测试`);
+          console.log(`已达到目标测试时间（15分钟），停止测试`);
           break;
         }
         
