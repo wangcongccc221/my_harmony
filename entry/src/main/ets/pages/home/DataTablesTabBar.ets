@@ -28,7 +28,7 @@ import { DraggableGridTable, DragData } from '../../components/layout/DraggableG
 import { BaseComponentHelper } from '../../components/common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
-import { drawLineChart, measureChartWidth, LineChartOptions } from '../../utils/lineChart'
+import { drawLineChart, measureChartWidth, LineChartOptions } from  '../../utils/lineChart'
 import { ChartComponent, ChartComponentParams, ChartData } from '../../components/ChartComponent'
 import { OmniTabBar, TabConfig, TabBarDirection } from '../../components/ui/OmniTabBar'
 
@@ -150,7 +150,7 @@ export struct DataTablesTabBar {
       }, 1000) as number
     }
 
-    // 启动批量刷新（每50ms合并入固定窗口并重绘）
+    // 启动批量刷新（每200ms合并入固定窗口并重绘，降低刷新频率提升性能）
     if (!this.lcFlushTimerId) {
       this.lcFlushTimerId = setInterval(() => {
         if (this.lcPendingData.length === 0) { return }
@@ -177,7 +177,7 @@ export struct DataTablesTabBar {
           pointRadiusPx: 5
         }
         drawLineChart(this.lineCtx, opts)
-      }, 50) as number
+      }, 200) as number
     }
   }
 

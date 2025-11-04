@@ -16,6 +16,10 @@ export struct HistoryDataTable {
   
   // 选中状态管理
   @State private selectedIds: number[] = []
+  // 表格数据状态
+  @State private tableData: HistoryTableData[] = []
+  // 外部传入的筛选数据（使用空数组作为默认值，避免可选参数）
+  @Prop filteredData: HistoryTableData[] = []
 
   // 事件回调
   onRowClick?: (rowData: HistoryTableData) => void
@@ -95,17 +99,83 @@ export struct HistoryDataTable {
    * 获取当前表格数据
    */
   getCurrentData(): HistoryTableData[] {
-    return this.tableManager.getData();
+    return this.tableData;
   }
 
   /**
-   * 组件挂载时通知数据变化
+   * 从数据库加载数据
+   */
+  private async loadData(): Promise<void> {
+    try {
+      console.log('HistoryDataTable loadData: 开始从数据库加载数据')
+      const data = await this.tableManager.getData()
+      console.log('HistoryDataTable loadData: 获取到数据', data.length, '条')
+      // 更新 @State tableData，这会触发UI重新渲染
+      this.tableData = data
+      console.log('HistoryDataTable loadData: tableData已更新，长度:', this.tableData.length)
+      // 通知父组件数据变化
+      if (this.onDataChange) {
+        this.onDataChange(this.tableData)
+      }
+    } catch (error) {
+      console.error('HistoryDataTable loadData: 加载数据失败', error)
+      this.tableData = []
+    }
+  }
+
+  /**
+   * 获取要显示的数据（优先使用筛选数据）
+   */
+  private getDisplayData(): HistoryTableData[] {
+    // 返回拷贝，避免框架复用导致的渲染错位
+    if (this.filteredData && this.filteredData.length > 0) {
+      return [...this.filteredData]
+    }
+    return [...this.tableData]
+  }
+
+  /**
+   * 公开的刷新方法（供外部调用）
+   */
+  public async refreshData(): Promise<void> {
+    await this.loadData()
+  }
+
+  /**
+   * 组件挂载时从数据库加载数据
    */
   aboutToAppear() {
-    // 通知父组件当前数据
-    if (this.onDataChange) {
-      this.onDataChange(this.getCurrentData());
+    console.log('HistoryDataTable aboutToAppear: 组件已挂载')
+    // 若父组件已传入筛选数据，则直接显示，避免重新加载覆盖筛选结果
+    if (this.filteredData && this.filteredData.length > 0) {
+      return
     }
+    // 否则加载全部数据
+    this.loadData().then(() => {
+      console.log('HistoryDataTable aboutToAppear: 数据加载完成')
+    }).catch((error: Error) => {
+      console.error('HistoryDataTable aboutToAppear: 数据加载失败', error)
+    })
+  }
+
+  /**
+   * 组件更新时检查筛选数据和数据变化
+   */
+  aboutToUpdate() {
+    // 如果外部传入了筛选数据，直接作为显示数据来源
+    if (this.filteredData && this.filteredData.length > 0) {
+      this.tableData = this.filteredData
+      if (this.onDataChange) {
+        // 告知父组件当前显示的数据（父组件在筛选态会忽略该回调，避免循环）
+        this.onDataChange(this.filteredData)
+      }
+      return
+    }
+    // 否则加载全部数据（用于“重置”等场景）
+    this.loadData()
+    
+    // 清空选中状态（当数据更新时，避免选中已删除的数据）
+    this.selectedIds = []
   }
 
   build() {
@@ -213,7 +283,7 @@ export struct HistoryDataTable {
 
         // 可滚动数据区域（List + ListItem）
         List() {
-          ForEach(this.tableManager.getData(), (item: HistoryTableData, rowIdx?: number) => {
+          ForEach(this.getDisplayData(), (item: HistoryTableData, rowIdx?: number) => {
             ListItem() {
               Row() {
                 // 复选框列
@@ -225,7 +295,7 @@ export struct HistoryDataTable {
                   .layoutWeight(6)
                   .height(20)
 
-                Text(item.id.toString())
+                Text((rowIdx !== undefined ? (rowIdx + 1) : 1).toString())
                   .fontSize(14)
                   .fontColor(this.getCurrentTheme().textColor)
                   .textAlign(TextAlign.Center)
@@ -288,7 +358,7 @@ export struct HistoryDataTable {
               this.handleRowClick(item)
             })
             .border({ width: { bottom: 0.5 }, color: this.getCurrentTheme().borderColor })
-          }, (item: HistoryTableData, idx?: number) => `${idx}`)
+          }, (item: HistoryTableData, idx?: number) => `${item.id}`)
         }
         .width('100%')
         .layoutWeight(1)

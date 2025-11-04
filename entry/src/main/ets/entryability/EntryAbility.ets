@@ -6,6 +6,7 @@ import { startHttpServer, stopHttpServer, isHttpServerRunning } from '../utils/n
 import { ArkDataDemoService } from '../db/ArkDataDemo';
 import { HttpServerHandler } from '../utils/network/HttpServerHandler';
 import { copyRawDirectoryAuto } from '../utils/FileUtils';
+import { AppCleanup } from '../utils/AppCleanup';
 
 const DOMAIN = 0x0000;
 
@@ -68,6 +69,9 @@ export default class EntryAbility extends UIAbility {
       this.httpServerInitialized = false; // 重置标记
       hilog.info(DOMAIN, 'EntryAbility', 'HTTP服务器已停止');
     }
+
+    // 统一清理（兜底）
+    AppCleanup.shutdownAll();
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
@@ -105,6 +109,14 @@ export default class EntryAbility extends UIAbility {
   onBackground(): void {
     // Ability has back to background
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onBackground');
+  }
+
+  onStop(): void {
+    // Ability 停止前做统一清理（网络/定时器/连接）
+    hilog.info(DOMAIN, 'EntryAbility', 'onStop: 执行全局清理');
+    // 同步触发清理（无需 await，避免阻塞生命周期）
+    // 如需严格确保完成，可改为 async 并 await。
+    AppCleanup.shutdownAll();
   }
 
    // 初始化网络优化器

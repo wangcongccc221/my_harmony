@@ -2,7 +2,7 @@ import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/Omni
 import { OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { TOP_PRODUCTION_TON_H, TOP_SUM_WEIGHT_TON, TOP_SUM_COUNTS, TOP_AVG_G, TOP_STATUS_TEXT, TOP_ALERT_HIDE, TCP_CONNECTION_STATUS } from '../../constants/TopBarKeys'
 import { CompactFsmToggle } from './CompactFsmToggle'
-import { IBestAvatar } from '@ibestservices/ibest-ui'
+import { IBestAvatar, IBestButton } from '@ibestservices/ibest-ui'
 // 已移除自定义对话框
 import common from '@ohos.app.ability.common'
 
@@ -21,6 +21,10 @@ export struct TopStatusBar {
   @StorageLink(TCP_CONNECTION_STATUS) tcpConnected: boolean = false
   @StorageLink(OMNI_THEME_VERSION_KEY) private themeVersion: number = 0
   @StorageLink('TOP_USER_LABEL') private userLabel: string = '姓名'
+  // 客户信息（可由其他页面写入 AppStorage，不改动业务含义）
+  @StorageLink('CUSTOMER_LOGO_URL') private customerLogoUrl: string = ''
+  @StorageLink('FARM_NAME') private farmName: string = ''
+  @StorageLink('FRUIT_TYPE') private fruitType: string = ''
   
   // FSM状态
   @Prop selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
@@ -150,10 +154,10 @@ export struct TopStatusBar {
       // 左侧 LOGO
       Row() {
         Image($r('app.media.logo'))
-          .width(200)
+          .width('8%')
           .height('100%')
           .objectFit(ImageFit.Contain)
-          .margin({ left: 5, right: 20 })
+          .margin({ left: '0.5%', right: '1%' })
       }
       .alignItems(VerticalAlign.Center)
 
@@ -180,10 +184,10 @@ export struct TopStatusBar {
         .margin({ right: 12 })
 
         Row() {}
-          .width(1)
-          .height(26)
+          .width('0.2%')
+          .height('60%')
           .backgroundColor(this.getCurrentTheme().borderColor)
-          .margin({ left: 12, right: 12 })
+          .margin({ left: '1%', right: '1%' })
 
         Column() {
           Row() {
@@ -206,10 +210,10 @@ export struct TopStatusBar {
         .margin({ right: 12 })
 
         Row() {}
-          .width(1)
-          .height(26)
+          .width('0.2%')
+          .height('60%')
           .backgroundColor(this.getCurrentTheme().borderColor)
-          .margin({ left: 12, right: 12 })
+          .margin({ left: '1%', right: '1%' })
 
         Column() {
           Row() {
@@ -232,10 +236,10 @@ export struct TopStatusBar {
         .margin({ right: 12 })
 
         Row() {}
-          .width(1)
-          .height(26)
+          .width('0.2%')
+          .height('60%')
           .backgroundColor(this.getCurrentTheme().borderColor)
-          .margin({ left: 12, right: 12 })
+          .margin({ left: '1%', right: '1%' })
 
         Column() {
           Row() {
@@ -257,7 +261,7 @@ export struct TopStatusBar {
         .alignItems(HorizontalAlign.Start)
       }
       .alignItems(VerticalAlign.Center)
-      .margin({ right: 15 })
+      .margin({ right: '1.5%' })
 
       // 状态文本与告警提示
       Row() {
@@ -280,8 +284,36 @@ export struct TopStatusBar {
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
-      .height(24)
-      .margin({ right: 12 })
+      .height('40%')
+      .margin({ right: '1%' })
+
+      // 客户公司 LOGO + 农场名称 + 分选种类（放在状态区与FSM切换之间）
+      Row() {
+        Image(this.customerLogoUrl && this.customerLogoUrl.length > 0 ? this.customerLogoUrl : $r('app.media.default_avatar'))
+          .width('4%')
+          .height('70%')
+          .objectFit(ImageFit.Cover)
+          .borderRadius(6)
+          .margin({ right: '0.6%' })
+
+        Column() {
+          Text(this.farmName && this.farmName.length > 0 ? this.farmName : '— 农场 —')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.getCurrentTheme().textColor)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+          Text(this.fruitType && this.fruitType.length > 0 ? this.fruitType : '— 分选种类 —')
+            .fontSize(14)
+            .fontColor(this.getCurrentTheme().subTextColor)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+        .alignItems(HorizontalAlign.Start)
+      }
+      .alignItems(VerticalAlign.Center)
+      .width('auto')
+      .margin({ right: '1%' })
 
       Blank().layoutWeight(1)
 
@@ -296,7 +328,7 @@ export struct TopStatusBar {
             }
           }
         })
-        .margin({ right: 24 })
+        .margin({ right: '2%' })
 
         // 头像和用户信息
         Row() {
@@ -320,7 +352,7 @@ export struct TopStatusBar {
               .fontWeight(FontWeight.Medium)
               .fontColor(this.getCurrentTheme().textColor)
           }
-          .margin({ left: 8 })
+          .margin({ left: '1%' })
           .alignItems(HorizontalAlign.Start)
           .onClick(() => {
             AppStorage.setOrCreate('TEMP_USER_LABEL', this.userLabel)
@@ -330,47 +362,34 @@ export struct TopStatusBar {
         .alignItems(VerticalAlign.Center)
       }
       .alignItems(VerticalAlign.Center)
-      .margin({ right: 8 })
+      .margin({ right: '1%' })
 
       Text(this.currentTime)
         .fontSize(16)  // 调大到16px
         .fontColor(this.getCurrentTheme().subTextColor)
 
-      // 右上角窗口控制
+      // 右上角窗口控制（使用 iBest 方形按钮包裹 'X'）
       Row() {
-        // 最小化按钮：-
-        Text('-')
-          .fontSize(20)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().textColor)
-          .margin({ left: 12, right: 8 })
-          .borderRadius(4)
-          .padding({ left: 8, right: 8, top: 2, bottom: 2 })
-          .backgroundColor(Color.Transparent)
-          .onClick(() => {
-            this.minimizeApp()
-          })
+        IBestButton({
+          text: '—',
+          type: 'default',
+          onBtnClick: () => { this.minimizeApp() }
+        })
+          .margin({ right: '0.6%' })
 
-        // 关闭按钮：×
-        Text('×')
-          .fontSize(20)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().textColor)
-          .margin({ left: 8 })
-          .borderRadius(4)
-          .padding({ left: 8, right: 8, top: 2, bottom: 2 })
-          .backgroundColor(Color.Transparent)
-          .onClick(() => {
-            this.closeApp()
-          })
+        IBestButton({
+          text: 'X',
+          type: 'default',
+          onBtnClick: () => { this.closeApp() }
+        })
       }
-      .margin({ left: 8 })
+      .margin({ left: '1%' })
 
       // （对话框改为系统级 CustomDialogController 实现）
     }
     .width('100%')
-    .height(56)
-    .padding({ left: 5, right: 10 })
+    .height('8%')
+    .padding({ left: '0.5%', right: '1%' })
     .backgroundColor(this.getCurrentTheme().surfaceColor)
     .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
   }

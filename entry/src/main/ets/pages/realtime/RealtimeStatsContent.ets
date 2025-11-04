@@ -52,13 +52,11 @@ export struct RealtimeStatsContent {
 
   // 初始化所有图表数据
   private initializeAllData() {
-    console.log('🚀 初始化所有图表数据...')
+    // 移除日志输出，减少性能开销
     
     // 启动饼图数据更新（每5秒更新一次）
     if (!this.pieTimerId) {
       this.pieTimerId = setInterval(() => {
-        console.log('🔄 更新饼图数据...')
-        
         // 更新饼图数据（模拟数据变化）
         const newPieData = [...this.pieData]
         for (let i = 0; i < newPieData.length; i++) {
@@ -66,15 +64,12 @@ export struct RealtimeStatsContent {
           newPieData[i] = new PieData(Math.max(5, Math.min(50, newPieData[i].getValue() + variation)))
         }
         this.pieData = newPieData
-        console.log('📊 饼图数据更新:', this.pieData.map(d => d.getValue()))
       }, 5000) as number
     }
     
     // 启动品质统计数据更新（每3秒更新一次）
     if (!this.qualityTimerId) {
       this.qualityTimerId = setInterval(() => {
-        console.log('🔄 更新品质统计数据...')
-        
         // 更新品质统计数据
         const newQualityData = [...this.qualityData]
         for (let i = 0; i < newQualityData.length; i++) {
@@ -82,7 +77,6 @@ export struct RealtimeStatsContent {
           newQualityData[i] = Math.max(50, Math.min(300, newQualityData[i] + variation))
         }
         this.qualityData = newQualityData
-        console.log('📊 品质统计数据更新:', this.qualityData)
       }, 3000) as number
     }
     
@@ -90,8 +84,6 @@ export struct RealtimeStatsContent {
     // 启动出口产量数据更新（每4秒更新一次）
     if (!this.outletTimerId) {
       this.outletTimerId = setInterval(() => {
-        console.log('🔄 更新出口产量数据...')
-        
         // 更新出口产量数据
         const newOutletData = [...this.outletData]
         for (let i = 0; i < newOutletData.length; i++) {
@@ -99,7 +91,6 @@ export struct RealtimeStatsContent {
           newOutletData[i] = Math.max(50, Math.min(250, newOutletData[i] + variation))
         }
         this.outletData = newOutletData
-        console.log('📊 出口产量数据更新:', this.outletData)
       }, 4000) as number
     }
   }

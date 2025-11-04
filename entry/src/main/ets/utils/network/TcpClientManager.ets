@@ -173,7 +173,11 @@ export class TcpClientManager {
   async cleanup(): Promise<void> {
     hilog.info(DOMAIN, 'TcpClientManager', '清理所有客户端');
     
-    for (const [name, client] of this.clients) {
+    for (const name of this.clients.keys()) {
+      const client = this.clients.get(name);
+      if (!client) {
+        continue;
+      }
       try {
         await client.disconnect();
         hilog.info(DOMAIN, 'TcpClientManager', `已断开客户端: ${name}`);

@@ -1,7 +1,10 @@
 /**
  * 历史表格数据管理器
  * 负责表格数据的增删改查操作
+ * 已改为从数据库读取数据
  */
+
+import { ArkDataDemoService, ProcessingRow, ProcessingInsertParams } from '../../../db/ArkDataDemo'
 
 // 表格数据接口定义
 export interface HistoryTableData {
@@ -40,16 +43,27 @@ export interface UpdateDataParams {
   count?: number
 }
 
+// 筛选参数接口
+export interface FilterParams {
+  startDate?: string
+  endDate?: string
+  customerName?: string
+  farmName?: string
+  fruitName?: string
+  status?: '已完成' | '进行中' | '待开始'
+}
+
 /**
  * 历史表格数据管理器
+ * 从数据库读取数据
  */
 export class HistoryTableManager {
   private static instance: HistoryTableManager
   private tableData: HistoryTableData[] = []
+  private dataLoaded: boolean = false
 
   private constructor() {
-    // 初始化数据
-    this.initDefaultData()
+    // 不再初始化默认数据，改为从数据库加载
   }
 
   public static getInstance(): HistoryTableManager {
@@ -60,372 +74,149 @@ export class HistoryTableManager {
   }
 
   /**
-   * 初始化默认数据
+   * 从数据库加载数据
    */
-  private initDefaultData(): void {
-    this.addData({
-      customerName: '客户A',
-      farmName: '农场A',
-      fruitName: '苹果',
-      status: '已完成',
-      startTime: '2025-09-15 08:30',
-      endTime: '2025-09-15 16:45',
-      weight: 2.5,
-      count: 150
-    })
-
-    this.addData({
-      customerName: '客户B',
-      farmName: '农场B',
-      fruitName: '橙子',
-      status: '进行中',
-      startTime: '2025-09-18 09:15',
-      endTime: '-',
-      weight: 1.8,
-      count: 120
-    })
-
-    this.addData({
-      customerName: '客户C',
-      farmName: '农场C',
-      fruitName: '香蕉',
-      status: '已完成',
-      startTime: '2025-09-20 07:45',
-      endTime: '2025-09-20 14:20',
-      weight: 3.2,
-      count: 200
-    })
-
-    this.addData({
-      customerName: '客户A',
-      farmName: '农场A',
-      fruitName: '葡萄',
-      status: '待开始',
-      startTime: '2025-09-22 10:00',
-      endTime: '-',
-      weight: 1.5,
-      count: 90
-    })
-
-    // 添加更多模拟数据
-    this.addData({
-      customerName: '客户D',
-      farmName: '农场D',
-      fruitName: '草莓',
-      status: '已完成',
-      startTime: '2025-09-16 06:30',
-      endTime: '2025-09-16 12:15',
-      weight: 0.8,
-      count: 60
-    })
-
-    this.addData({
-      customerName: '客户E',
-      farmName: '农场E',
-      fruitName: '桃子',
-      status: '进行中',
-      startTime: '2025-09-19 08:00',
-      endTime: '-',
-      weight: 2.8,
-      count: 180
-    })
-
-    this.addData({
-      customerName: '客户B',
-      farmName: '农场B',
-      fruitName: '梨子',
-      status: '已完成',
-      startTime: '2025-09-17 07:20',
-      endTime: '2025-09-17 15:30',
-      weight: 3.5,
-      count: 220
-    })
-
-    this.addData({
-      customerName: '客户F',
-      farmName: '农场F',
-      fruitName: '樱桃',
-      status: '待开始',
-      startTime: '2025-09-23 09:30',
-      endTime: '-',
-      weight: 0.6,
-      count: 45
-    })
-
-    this.addData({
-      customerName: '客户C',
-      farmName: '农场C',
-      fruitName: '柠檬',
-      status: '已完成',
-      startTime: '2025-09-21 10:15',
-      endTime: '2025-09-21 17:45',
-      weight: 1.2,
-      count: 80
-    })
-
-    this.addData({
-      customerName: '客户G',
-      farmName: '农场G',
-      fruitName: '芒果',
-      status: '进行中',
-      startTime: '2025-09-20 11:00',
-      endTime: '-',
-      weight: 4.2,
-      count: 280
-    })
-
-    this.addData({
-      customerName: '客户A',
-      farmName: '农场A',
-      fruitName: '西瓜',
-      status: '已完成',
-      startTime: '2025-09-18 05:45',
-      endTime: '2025-09-18 13:20',
-      weight: 8.5,
-      count: 120
-    })
-
-    this.addData({
-      customerName: '客户H',
-      farmName: '农场H',
-      fruitName: '蓝莓',
-      status: '待开始',
-      startTime: '2025-09-24 08:45',
-      endTime: '-',
-      weight: 0.4,
-      count: 35
-    })
-
-    this.addData({
-      customerName: '客户D',
-      farmName: '农场D',
-      fruitName: '猕猴桃',
-      status: '已完成',
-      startTime: '2025-09-19 09:30',
-      endTime: '2025-09-19 16:00',
-      weight: 2.1,
-      count: 140
-    })
-
-    this.addData({
-      customerName: '客户I',
-      farmName: '农场I',
-      fruitName: '火龙果',
-      status: '进行中',
-      startTime: '2025-09-21 14:00',
-      endTime: '-',
-      weight: 1.8,
-      count: 95
-    })
-
-    this.addData({
-      customerName: '客户E',
-      farmName: '农场E',
-      fruitName: '石榴',
-      status: '已完成',
-      startTime: '2025-09-17 08:15',
-      endTime: '2025-09-17 14:30',
-      weight: 1.6,
-      count: 110
-    })
-
-    this.addData({
-      customerName: '客户J',
-      farmName: '农场J',
-      fruitName: '椰子',
-      status: '待开始',
-      startTime: '2025-09-25 07:00',
-      endTime: '-',
-      weight: 5.2,
-      count: 85
-    })
-
-    this.addData({
-      customerName: '客户K',
-      farmName: '农场K',
-      fruitName: '菠萝',
-      status: '已完成',
-      startTime: '2025-09-16 14:30',
-      endTime: '2025-09-16 20:15',
-      weight: 2.3,
-      count: 160
-    })
-
-    this.addData({
-      customerName: '客户L',
-      farmName: '农场L',
-      fruitName: '荔枝',
-      status: '进行中',
-      startTime: '2025-09-22 09:45',
-      endTime: '-',
-      weight: 1.1,
-      count: 75
-    })
-
-    this.addData({
-      customerName: '客户M',
-      farmName: '农场M',
-      fruitName: '龙眼',
-      status: '已完成',
-      startTime: '2025-09-19 11:20',
-      endTime: '2025-09-19 18:30',
-      weight: 0.9,
-      count: 65
-    })
-
-    this.addData({
-      customerName: '客户N',
-      farmName: '农场N',
-      fruitName: '山竹',
-      status: '待开始',
-      startTime: '2025-09-26 08:30',
-      endTime: '-',
-      weight: 1.7,
-      count: 110
-    })
-
-    this.addData({
-      customerName: '客户O',
-      farmName: '农场O',
-      fruitName: '榴莲',
-      status: '已完成',
-      startTime: '2025-09-18 16:00',
-      endTime: '2025-09-18 22:45',
-      weight: 6.8,
-      count: 45
-    })
-
-    this.addData({
-      customerName: '客户P',
-      farmName: '农场P',
-      fruitName: '百香果',
-      status: '进行中',
-      startTime: '2025-09-23 13:15',
-      endTime: '-',
-      weight: 0.5,
-      count: 40
-    })
-
-    this.addData({
-      customerName: '客户Q',
-      farmName: '农场Q',
-      fruitName: '番石榴',
-      status: '已完成',
-      startTime: '2025-09-17 10:30',
-      endTime: '2025-09-17 16:20',
-      weight: 1.4,
-      count: 95
-    })
-
-    this.addData({
-      customerName: '客户R',
-      farmName: '农场R',
-      fruitName: '莲雾',
-      status: '待开始',
-      startTime: '2025-09-27 07:45',
-      endTime: '-',
-      weight: 0.8,
-      count: 55
-    })
-
-    this.addData({
-      customerName: '客户S',
-      farmName: '农场S',
-      fruitName: '释迦',
-      status: '已完成',
-      startTime: '2025-09-20 12:00',
-      endTime: '2025-09-20 17:30',
-      weight: 2.6,
-      count: 130
-    })
-
-    this.addData({
-      customerName: '客户T',
-      farmName: '农场T',
-      fruitName: '红毛丹',
-      status: '进行中',
-      startTime: '2025-09-24 15:20',
-      endTime: '-',
-      weight: 1.3,
-      count: 85
-    })
-  }
-
-  /**
-   * 添加数据
-   */
-  addData(data: AddDataParams): void {
-    const newId = this.getNextId()
-    const newData: HistoryTableData = {
-      id: newId,
-      customerName: data.customerName,
-      farmName: data.farmName,
-      fruitName: data.fruitName,
-      status: data.status,
-      startTime: data.startTime,
-      endTime: data.endTime,
-      weight: data.weight,
-      count: data.count
+  public async loadDataFromDatabase(): Promise<void> {
+    try {
+      const rows = await ArkDataDemoService.queryAllProcessing()
+      // 转换数据库数据为HistoryTableData格式
+      this.tableData = rows.map((row: ProcessingRow): HistoryTableData => {
+        // 处理状态：如果数据库中没有status，根据endTime判断
+        let status: '已完成' | '进行中' | '待开始' = '已完成'
+        if (row.status) {
+          if (row.status === '已完成' || row.status === '进行中' || row.status === '待开始') {
+            status = row.status
+          }
+        } else {
+          // 根据endTime判断：如果是'-'或空，则为进行中或待开始
+          if (!row.endTime || row.endTime === '-' || row.endTime.trim() === '') {
+            status = '进行中'
+          } else {
+            status = '已完成'
+          }
+        }
+        
+        return {
+          id: row.id,
+          customerName: row.customerName || '',
+          farmName: row.farmName || '',
+          // 以数据库中的 productType 为准展示与筛选，避免 fruitName/别名不一致导致显示混乱
+          fruitName: row.productType || row.fruitName || '',
+          status: status,
+          startTime: row.startTime || '',
+          endTime: row.endTime || '-',
+          weight: row.weight || row.totalWeight || 0,
+          count: row.count || 0
+        }
+      })
+      this.dataLoaded = true
+      console.log('从数据库加载数据成功，共', this.tableData.length, '条')
+    } catch (error) {
+      console.error('从数据库加载数据失败:', error)
+      this.tableData = []
+      this.dataLoaded = false
     }
-    
-    this.tableData.push(newData)
-    console.log('添加数据成功:', newData)
   }
 
+
   /**
-   * 删除数据
+   * 添加数据（保存到数据库）
    */
-  deleteData(id: number): void {
-    const index = this.tableData.findIndex(item => item.id === id)
-    if (index !== -1) {
-      const deletedData = this.tableData.splice(index, 1)[0]
-      console.log('删除数据成功:', deletedData)
-    } else {
-      console.log('未找到要删除的数据，ID:', id)
+  async addData(data: AddDataParams): Promise<void> {
+    try {
+      const insertParams: ProcessingInsertParams = {
+        startTime: data.startTime,
+        endTime: data.endTime,
+        productType: data.fruitName, // 使用fruitName作为productType
+        totalWeight: data.weight,
+        customerName: data.customerName,
+        farmName: data.farmName,
+        fruitName: data.fruitName,
+        status: data.status,
+        count: data.count,
+        weight: data.weight
+      }
+      
+      await ArkDataDemoService.insertProcessingFull(insertParams)
+      // 重新加载数据
+      await this.loadDataFromDatabase()
+      console.log('添加数据到数据库成功')
+    } catch (error) {
+      console.error('添加数据到数据库失败:', error)
+      const err = error as object
+      throw new Error(JSON.stringify(err))
     }
   }
 
   /**
-   * 更新数据
+   * 删除数据（从数据库删除）
    */
-  updateData(id: number, newData: UpdateDataParams): void {
-    const index = this.tableData.findIndex(item => item.id === id)
-    if (index !== -1) {
-      if (newData.customerName !== undefined) {
-        this.tableData[index].customerName = newData.customerName
-      }
-      if (newData.farmName !== undefined) {
-        this.tableData[index].farmName = newData.farmName
-      }
-      if (newData.fruitName !== undefined) {
-        this.tableData[index].fruitName = newData.fruitName
-      }
-      if (newData.status !== undefined) {
-        this.tableData[index].status = newData.status
-      }
-      if (newData.startTime !== undefined) {
-        this.tableData[index].startTime = newData.startTime
-      }
-      if (newData.endTime !== undefined) {
-        this.tableData[index].endTime = newData.endTime
-      }
-      if (newData.weight !== undefined) {
-        this.tableData[index].weight = newData.weight
-      }
-      if (newData.count !== undefined) {
-        this.tableData[index].count = newData.count
-      }
-      console.log('更新数据成功:', this.tableData[index])
-    } else {
-      console.log('未找到要更新的数据，ID:', id)
+  async deleteData(id: number): Promise<void> {
+    try {
+      await ArkDataDemoService.deleteProcessingById(id)
+      // 重新加载数据
+      await this.loadDataFromDatabase()
+      console.log('从数据库删除数据成功，ID:', id)
+    } catch (error) {
+      console.error('从数据库删除数据失败:', error)
+      const err = error as object
+      throw new Error(JSON.stringify(err))
     }
   }
 
   /**
-   * 获取所有数据
+   * 更新数据（保存到数据库）
    */
-  getData(): HistoryTableData[] {
-    console.log('history:mycum', this.tableData.length)
+  async updateData(id: number, newData: UpdateDataParams): Promise<void> {
+    try {
+      // 先获取当前数据
+      const currentData = this.tableData.find(item => item.id === id)
+      if (!currentData) {
+        throw new Error(`未找到要更新的数据，ID: ${id}`)
+      }
+      
+      // 合并更新数据
+      const updateParams: ProcessingInsertParams = {
+        startTime: newData.startTime !== undefined ? newData.startTime : currentData.startTime,
+        endTime: newData.endTime !== undefined ? newData.endTime : currentData.endTime,
+        productType: newData.fruitName !== undefined ? newData.fruitName : currentData.fruitName,
+        totalWeight: newData.weight !== undefined ? newData.weight : currentData.weight,
+        customerName: newData.customerName !== undefined ? newData.customerName : currentData.customerName,
+        farmName: newData.farmName !== undefined ? newData.farmName : currentData.farmName,
+        fruitName: newData.fruitName !== undefined ? newData.fruitName : currentData.fruitName,
+        status: newData.status !== undefined ? newData.status : currentData.status,
+        count: newData.count !== undefined ? newData.count : currentData.count,
+        weight: newData.weight !== undefined ? newData.weight : currentData.weight
+      }
+      
+      // 使用insertProcessingFull来更新（因为updateProcessingById不支持扩展字段）
+      // 先删除旧数据，再插入新数据（简单实现）
+      await ArkDataDemoService.deleteProcessingById(id)
+      await ArkDataDemoService.insertProcessingFull(updateParams)
+      // 重新加载数据
+      await this.loadDataFromDatabase()
+      console.log('更新数据库数据成功，ID:', id)
+    } catch (error) {
+      console.error('更新数据库数据失败:', error)
+      const err = error as object
+      throw new Error(JSON.stringify(err))
+    }
+  }
+
+  /**
+   * 获取所有数据（如果未加载则先加载）
+   */
+  async getData(): Promise<HistoryTableData[]> {
+    if (!this.dataLoaded) {
+      await this.loadDataFromDatabase()
+    }
+    return [...this.tableData]
+  }
+  
+  /**
+   * 同步获取所有数据（不触发加载，返回当前缓存）
+   */
+  getDataSync(): HistoryTableData[] {
     return [...this.tableData]
   }
 
@@ -459,6 +250,153 @@ export class HistoryTableManager {
   }
 
   /**
+   * 根据多个条件筛选数据
+   */
+  filterData(filters: FilterParams): HistoryTableData[] {
+    let filteredData = [...this.tableData]
+    
+    // 日期范围筛选：要求记录的开始与结束都落在区间内（严格区间）
+    if (filters.startDate || filters.endDate) {
+      filteredData = filteredData.filter(item => {
+        if (!item.startTime) return false
+        
+        // 提取日期部分（兼容多种格式：YYYY-MM-DD 或 YYYY-MM-DDTHH:mm:ss）
+        // 数据库可能存储：
+        // - YYYY-MM-DD（从DatePickerHelper来的）
+        // - YYYY-MM-DDTHH:mm（从HTML datetime-local来的）
+        // - YYYY-MM-DDTHH:mm:ss（完整格式）
+        let itemStartDate = item.startTime.trim()
+        // 如果包含时间部分，只取日期部分（前10个字符）
+        if (itemStartDate.length > 10) {
+          itemStartDate = itemStartDate.substring(0, 10)
+        }
+        // 验证日期格式（YYYY-MM-DD）
+        if (itemStartDate.length !== 10 || !itemStartDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          console.warn('无效的开始日期格式:', item.startTime)
+          return false
+        }
+        
+        // 处理结束日期：如果 endTime 存在且不是 '-'，则使用 endTime
+        // 如果 endTime 是 '-' 或空，说明记录还在进行中，使用一个很大的日期
+        let itemEndDate = itemStartDate
+        if (item.endTime && item.endTime !== '-' && item.endTime.trim() !== '') {
+          let endDateStr = item.endTime.trim()
+          // 如果包含时间部分，只取日期部分
+          if (endDateStr.length > 10) {
+            endDateStr = endDateStr.substring(0, 10)
+          }
+          // 验证日期格式
+          if (endDateStr.length === 10 && endDateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            itemEndDate = endDateStr
+          } else {
+            console.warn('无效的结束日期格式:', item.endTime)
+            // 如果结束日期格式无效，使用开始日期
+            itemEndDate = itemStartDate
+          }
+        } else {
+          // 如果 endTime 是 '-'，表示还在进行中，使用一个很大的日期确保包含所有未来日期
+          itemEndDate = '9999-12-31'
+        }
+        
+        // 查询区间（DatePickerHelper返回的是 YYYY-MM-DD 格式）
+        let queryStartDate = '1970-01-01'
+        if (filters.startDate) {
+          queryStartDate = filters.startDate.trim()
+          // 如果查询日期包含时间部分，只取日期部分
+          if (queryStartDate.length > 10) {
+            queryStartDate = queryStartDate.substring(0, 10)
+          }
+          // 验证格式
+          if (queryStartDate.length !== 10 || !queryStartDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            console.warn('无效的查询开始日期格式:', filters.startDate)
+            queryStartDate = '1970-01-01'
+          }
+        }
+        
+        let queryEndDate = '9999-12-31'
+        if (filters.endDate) {
+          queryEndDate = filters.endDate.trim()
+          // 如果查询日期包含时间部分，只取日期部分
+          if (queryEndDate.length > 10) {
+            queryEndDate = queryEndDate.substring(0, 10)
+          }
+          // 验证格式
+          if (queryEndDate.length !== 10 || !queryEndDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            console.warn('无效的查询结束日期格式:', filters.endDate)
+            queryEndDate = '9999-12-31'
+          }
+        }
+        
+        // 严格区间规则：
+        // - 当 start 和 end 都提供时：要求 itemStart 与 itemEnd 都在 [queryStartDate, queryEndDate] 内
+        // - 仅提供 start 时：要求 itemStart 与 itemEnd 都 >= queryStartDate
+        // - 仅提供 end 时：要求 itemStart 与 itemEnd 都 <= queryEndDate
+        const startInRange = itemStartDate >= queryStartDate && itemStartDate <= queryEndDate
+        const endInRange = itemEndDate >= queryStartDate && itemEndDate <= queryEndDate
+
+        let shouldShow = false
+        const hasQueryStart = !!filters.startDate
+        const hasQueryEnd = !!filters.endDate
+        if (hasQueryStart && hasQueryEnd) {
+          shouldShow = startInRange && endInRange
+        } else if (hasQueryStart) {
+          shouldShow = itemStartDate >= queryStartDate && itemEndDate >= queryStartDate
+        } else if (hasQueryEnd) {
+          shouldShow = itemStartDate <= queryEndDate && itemEndDate <= queryEndDate
+        }
+
+        if (shouldShow) {
+          console.log(`日期匹配(严格区间): 记录[${itemStartDate} ~ ${itemEndDate}]`)
+        }
+        return shouldShow
+      })
+    }
+    
+    // 客户名称筛选（精确匹配，去除前后空格，大小写敏感按原样。若需忽略大小写，可改为 toLowerCase 比较）
+    if (filters.customerName && filters.customerName.trim().length > 0) {
+      const target = filters.customerName.trim()
+      filteredData = filteredData.filter(item => (item.customerName || '').trim() === target)
+    }
+    
+    // 农场名称筛选（精确匹配）
+    if (filters.farmName && filters.farmName.trim().length > 0) {
+      const target = filters.farmName.trim()
+      filteredData = filteredData.filter(item => (item.farmName || '').trim() === target)
+    }
+    
+    // 水果名称筛选（精确匹配）
+    if (filters.fruitName && filters.fruitName.trim().length > 0) {
+      const target = filters.fruitName.trim()
+      filteredData = filteredData.filter(item => (item.fruitName || '').trim() === target)
+    }
+    
+    // 状态筛选
+    if (filters.status) {
+      filteredData = filteredData.filter(item => item.status === filters.status)
+    }
+    
+    return filteredData
+  }
+
+  /**
+   * 批量删除数据（根据ID数组）
+   */
+  async deleteBatchData(ids: number[]): Promise<void> {
+    try {
+      for (const id of ids) {
+        await ArkDataDemoService.deleteProcessingById(id)
+      }
+      // 重新加载数据
+      await this.loadDataFromDatabase()
+      console.log('批量删除数据成功，共删除', ids.length, '条')
+    } catch (error) {
+      console.error('批量删除数据失败:', error)
+      const err = error as object
+      throw new Error(JSON.stringify(err))
+    }
+  }
+
+  /**
    * 获取下一个ID
    */
   private getNextId(): number {
@@ -476,11 +414,55 @@ export class HistoryTableManager {
   }
 
   /**
-   * 重置为初始数据
+   * 重置为初始数据（已废弃，保留用于兼容）
    */
   resetToDefault(): void {
     this.clearData()
-    this.initDefaultData()
-    console.log('重置为初始数据')
+  }
+  
+  /**
+   * 刷新数据（从数据库重新加载）
+   */
+  async refreshData(): Promise<void> {
+    await this.loadDataFromDatabase()
+  }
+
+  /**
+   * 获取所有唯一的客户名称列表
+   */
+  getUniqueCustomerNames(): string[] {
+    const names = new Set<string>()
+    this.tableData.forEach(item => {
+      if (item.customerName && item.customerName.trim() !== '') {
+        names.add(item.customerName)
+      }
+    })
+    return Array.from(names).sort()
+  }
+
+  /**
+   * 获取所有唯一的农场名称列表
+   */
+  getUniqueFarmNames(): string[] {
+    const names = new Set<string>()
+    this.tableData.forEach(item => {
+      if (item.farmName && item.farmName.trim() !== '') {
+        names.add(item.farmName)
+      }
+    })
+    return Array.from(names).sort()
+  }
+
+  /**
+   * 获取所有唯一的水果名称列表
+   */
+  getUniqueFruitNames(): string[] {
+    const names = new Set<string>()
+    this.tableData.forEach(item => {
+      if (item.fruitName && item.fruitName.trim() !== '') {
+        names.add(item.fruitName)
+      }
+    })
+    return Array.from(names).sort()
   }
 }

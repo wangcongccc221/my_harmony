@@ -29,14 +29,14 @@ import { HistoryTableData } from './core/HistoryTableManager'
  * - endDate: 结束日期
  * - selectedStartDate: 选中的开始日期
  * - selectedEndDate: 选中的结束日期
- * - customerIndex: 客户选择索引
- * - farmIndex: 农场选择索引
- * - fruitIndex: 水果选择索引
+ * - customerName: 客户名称输入值
+ * - farmName: 农场名称输入值
+ * - fruitName: 水果品种输入值
  * - onStartDateChange: 开始日期变化回调
  * - onEndDateChange: 结束日期变化回调
- * - onCustomerChange: 客户选择变化回调
- * - onFarmChange: 农场选择变化回调
- * - onFruitChange: 水果选择变化回调
+ * - onCustomerChange: 客户名称输入变化回调
+ * - onFarmChange: 农场名称输入变化回调
+ * - onFruitChange: 水果品种输入变化回调
  * - onQueryClick: 查询按钮点击回调
  * - onMergeExportClick: 合并导出按钮点击回调
  * - onReportClick: 报告按钮点击回调
@@ -62,24 +62,24 @@ export struct HistoryQueryPanel {
   @Prop selectedEndDate: Date = new Date()
   
   // ==================== 选择相关属性 ====================
-  /** 客户选择索引 */
-  @Prop customerIndex: number = 0
-  /** 农场选择索引 */
-  @Prop farmIndex: number = 0
-  /** 水果选择索引 */
-  @Prop fruitIndex: number = 0
+  /** 客户名称输入值 */
+  @Prop customerName: string = ''
+  /** 农场名称输入值 */
+  @Prop farmName: string = ''
+  /** 水果品种输入值 */
+  @Prop fruitName: string = ''
 
   // ==================== 事件回调函数 ====================
   /** 开始日期变化回调函数 */
   onStartDateChange?: (date: string) => void
   /** 结束日期变化回调函数 */
   onEndDateChange?: (date: string) => void
-  /** 客户选择变化回调函数 */
-  onCustomerChange?: (index: number) => void
-  /** 农场选择变化回调函数 */
-  onFarmChange?: (index: number) => void
-  /** 水果选择变化回调函数 */
-  onFruitChange?: (index: number) => void
+  /** 客户名称输入变化回调函数 */
+  onCustomerChange?: (value: string) => void
+  /** 农场名称输入变化回调函数 */
+  onFarmChange?: (value: string) => void
+  /** 水果品种输入变化回调函数 */
+  onFruitChange?: (value: string) => void
   /** 查询按钮点击回调函数 */
   onQueryClick?: () => void
   /** 合并导出按钮点击回调函数 */
@@ -173,22 +173,22 @@ export struct HistoryQueryPanel {
 
       // ==================== 客户信息查询卡片 ====================
       CustomerQueryCard({
-        customerIndex: this.customerIndex,
-        farmIndex: this.farmIndex,
-        fruitIndex: this.fruitIndex,
-        onCustomerChange: (index: number) => {
+        customerName: this.customerName,
+        farmName: this.farmName,
+        fruitName: this.fruitName,
+        onCustomerChange: (value: string) => {
           if (this.onCustomerChange) {
-            this.onCustomerChange(index)
+            this.onCustomerChange(value)
           }
         },
-        onFarmChange: (index: number) => {
+        onFarmChange: (value: string) => {
           if (this.onFarmChange) {
-            this.onFarmChange(index)
+            this.onFarmChange(value)
           }
         },
-        onFruitChange: (index: number) => {
+        onFruitChange: (value: string) => {
           if (this.onFruitChange) {
-            this.onFruitChange(index)
+            this.onFruitChange(value)
           }
         }
       })

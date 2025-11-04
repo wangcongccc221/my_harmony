@@ -116,7 +116,7 @@ export struct ChartComponent {
     }, 1000) as number;
   }
 
-  // 启动批量合并刷新（节流，一帧/50ms）
+  // 启动批量合并刷新（节流，每200ms刷新一次，降低刷新频率提升性能）
   private startFlushTimer(): void {
     if (this.flushTimerId) return;
     this.flushTimerId = setInterval(() => {
@@ -133,7 +133,7 @@ export struct ChartComponent {
         const x = this.chartData.length * (this.barWidth + this.barSpacing)
         this.scroller.scrollTo({ xOffset: x, yOffset: 0 })
       }
-    }, 50) as number
+    }, 200) as number
   }
 
   // 停止实时数据更新

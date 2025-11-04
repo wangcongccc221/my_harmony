@@ -21,11 +21,13 @@ import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../u
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { HistoryQueryPanel } from './HistoryQueryPanel'
 import { HistoryDataTable } from './HistoryDataTable'
-import { HistoryTableData } from './core/HistoryTableManager'
+import { HistoryTableData, HistoryTableManager, FilterParams } from './core/HistoryTableManager'
 import { DateErrorDialog } from '../../components/dialogs/DateErrorDialog'
 import { ExportSuccessDialog } from '../../components/dialogs/ExportSuccessDialog'
+import { ToastDialog } from '../../components/dialogs/ToastDialog'
 import fs from '@ohos.file.fs'
 import common from '@ohos.app.ability.common'
+import { util } from '@kit.ArkTS'
 
 /**
  * 历史加工内容组件结构体
@@ -35,9 +37,9 @@ import common from '@ohos.app.ability.common'
  * - endDate: 结束日期字符串
  * - selectedStartDate: 选中的开始日期对象
  * - selectedEndDate: 选中的结束日期对象
- * - customerIndex: 客户选择索引
- * - farmIndex: 农场选择索引
- * - fruitIndex: 水果选择索引
+ * - customerName: 客户名称输入值
+ * - farmName: 农场名称输入值
+ * - fruitName: 水果品种输入值
  * 
  * 方法说明：
  * - getCurrentTheme(): 获取当前主题配置
@@ -56,12 +58,12 @@ export struct HistoryContent {
   @State selectedEndDate: Date = new Date()
   
   // ==================== 选择相关状态 ====================
-  /** 客户选择索引 */
-  @State customerIndex: number = 0
-  /** 农场选择索引 */
-  @State farmIndex: number = 0
-  /** 水果选择索引 */
-  @State fruitIndex: number = 0
+  /** 客户名称输入值 */
+  @State customerName: string = ''
+  /** 农场名称输入值 */
+  @State farmName: string = ''
+  /** 水果品种输入值 */
+  @State fruitName: string = ''
   
   // ==================== 主题相关属性 ====================
   /** 当前主题样式 */
@@ -82,10 +84,19 @@ export struct HistoryContent {
   @State private exportFilePath: string = ''
   /** 导出数据条数 */
   @State private exportCount: number = 0
+  /** 提示对话框显示状态 */
+  @State private showToastDialog: boolean = false
+  /** 提示对话框类型 */
+  @State private toastType: 'success' | 'error' = 'success'
+  /** 提示对话框消息 */
+  @State private toastMessage: string = ''
   
   // ==================== 表格数据状态 ====================
   @State private currentTableData: HistoryTableData[] = []
   @State private selectedTableData: HistoryTableData[] = []
+  @State private tableRefreshKey: number = 0 // 用于触发表格刷新
+  @State private filteredTableData: HistoryTableData[] = [] // 筛选后的数据
+  @State private isFiltered: boolean = false // 是否处于筛选状态
 
   // ==================== 文件命名对话框状态 ====================
   /** 显示文件命名对话框 */
@@ -147,16 +158,221 @@ export struct HistoryContent {
    * 处理表格数据变化
    */
   private handleTableDataChange(data: HistoryTableData[]): void {
+    // 当处于筛选态时，不要因为子表加载原始数据而触发再次筛选，避免循环
+    if (this.isFiltered) {
+      console.log(`表格数据回调（已在筛选态），忽略原始 ${data.length} 条，以当前筛选结果为准`)
+      return
+    }
     this.currentTableData = data
+    this.filteredTableData = data
     console.log(`表格数据已更新，共 ${data.length} 条记录`)
+  }
+
+  /**
+   * 处理查询操作
+   */
+  private async handleQuery(): Promise<void> {
+    console.log('执行查询操作')
+    
+    // 新规则：只要五个条件里任意一个填写即可查询
+    const hasAnyCondition = !!(this.startDate || this.endDate || this.customerName.trim() || this.farmName.trim() || this.fruitName.trim())
+    if (!hasAnyCondition) {
+      this.showToast('error', '请至少填写一个查询条件')
+      return
+    }
+
+    // 日期仅在“同时填写开始与结束”时校验先后
+    if (this.startDate && this.endDate) {
+      const startDateObj = new Date(this.startDate)
+      const endDateObj = new Date(this.endDate)
+      if (startDateObj > endDateObj) {
+        this.showToast('error', '查询失败：开始日期不能晚于结束日期')
+        return
+      }
+    }
+    
+    // 查询前刷新一次数据库缓存，确保映射后的 fruitName 最新
+    try {
+      const tableManager = HistoryTableManager.getInstance()
+      await tableManager.refreshData()
+    } catch (_) {}
+
+    // 应用筛选
+    const filteredCount = this.applyFilter()
+    
+    // 查询后清空左侧条件（客户/农场/水果）与日期输入
+    this.customerName = ''
+    this.farmName = ''
+    this.fruitName = ''
+    this.startDate = ''
+    this.endDate = ''
+    
+    // 显示查询成功弹窗
+    this.showToast('success', `查询成功，共找到 ${filteredCount} 条记录`)
+  }
+
+  /**
+   * 应用筛选条件
+   * @returns 筛选后的数据数量
+   */
+  private applyFilter(): number {
+    const tableManager = HistoryTableManager.getInstance()
+    
+    // 使用输入框的值进行筛选
+    // 如果输入框为空，则不进行该字段的筛选
+    const filterParams: FilterParams = {
+      startDate: this.startDate || undefined,
+      endDate: this.endDate || undefined,
+      customerName: this.customerName.trim() || undefined,
+      farmName: this.farmName.trim() || undefined,
+      fruitName: this.fruitName.trim() || undefined
+    }
+    const filtered = tableManager.filterData(filterParams)
+    
+    this.filteredTableData = filtered
+    this.isFiltered = true
+    this.currentTableData = filtered
+    console.log(`查询完成，筛选出 ${filtered.length} 条记录`)
+    console.log(`筛选条件：客户=${this.customerName || '无'}, 农场=${this.farmName || '无'}, 水果=${this.fruitName || '无'}, 日期=${this.startDate || '无'} ~ ${this.endDate || '无'}`)
+    
+    // 不再强制重建，由 filteredData 触发子表格刷新
+    
+    return filtered.length
+  }
+
+  /**
+   * 显示提示对话框
+   */
+  private showToast(type: 'success' | 'error', message: string): void {
+    this.toastType = type
+    this.toastMessage = message
+    this.showToastDialog = true
+    
+    // 1.5秒后自动关闭
+    setTimeout(() => {
+      this.showToastDialog = false
+    }, 1500)
+  }
+
+  /**
+   * 处理删除操作（删除选中的数据）
+   */
+  private async handleDelete(): Promise<void> {
+    console.log('执行删除操作，当前选中数据:', this.selectedTableData.length, '条')
+    
+    if (this.selectedTableData.length === 0) {
+      this.showToast('error', '请先选择要删除的数据')
+      return
+    }
+    
+    try {
+      const tableManager = HistoryTableManager.getInstance()
+      const ids = this.selectedTableData.map(item => item.id)
+      console.log('准备删除的ID列表:', ids)
+      
+      // 执行删除操作
+      await tableManager.deleteBatchData(ids)
+      
+      // 清空选中数据
+      this.selectedTableData = []
+      
+      // 重新加载数据并刷新表格
+      await tableManager.refreshData()
+      
+      // 重新加载全部数据
+      const allData = await tableManager.getData()
+      this.currentTableData = allData
+      
+      // 如果处于筛选状态，重新应用筛选
+      if (this.isFiltered) {
+        // 重新应用筛选条件
+        this.applyFilter()
+        // applyFilter 内部已经触发了 tableRefreshKey++
+      } else {
+        // 不在筛选状态，清空筛选数据，显示全部数据
+        this.filteredTableData = []
+        // 更新当前表格数据
+        this.currentTableData = allData
+        
+        // 强制刷新表格：先设置为负数销毁组件，然后立即设置为正数重新创建
+        // 这样可以确保组件完全重新创建，重新执行 aboutToAppear 并加载最新数据
+        const oldKey = this.tableRefreshKey
+        this.tableRefreshKey = -1
+        
+        // 使用 setTimeout 确保在下一个事件循环中重新创建组件
+        // 这样可以让组件先销毁，然后重新创建并加载最新数据
+        setTimeout(() => {
+          // 使用时间戳确保每次都是新的key值
+          this.tableRefreshKey = Math.abs(Date.now())
+          console.log('表格组件已重新创建，key:', this.tableRefreshKey)
+        }, 50)
+      }
+      
+      // 显示删除成功弹窗
+      this.showToast('success', `成功删除 ${ids.length} 条数据`)
+      console.log(`成功删除 ${ids.length} 条数据，表格已刷新`)
+    } catch (error) {
+      console.error('删除数据失败:', error)
+      this.showToast('error', '删除失败，请重试')
+    }
+  }
+
+  /**
+   * 处理重置操作（重置查询条件，显示所有数据）
+   */
+  private async handleReset(): Promise<void> {
+    console.log('执行重置操作')
+    
+    // 重置查询条件
+    this.startDate = ''
+    this.endDate = ''
+    this.selectedStartDate = new Date()
+    this.selectedEndDate = new Date()
+    this.customerName = ''
+    this.farmName = ''
+    this.fruitName = ''
+    
+    // 重置筛选状态
+    this.isFiltered = false
+    this.filteredTableData = []
+    
+    // 重新加载所有数据
+    try {
+      const tableManager = HistoryTableManager.getInstance()
+      await tableManager.refreshData()
+      const allData = await tableManager.getData()
+      
+      // 更新表格数据
+      this.currentTableData = allData
+      this.filteredTableData = []
+      
+      // 强制刷新表格：先设置为负数销毁组件，然后立即设置为正数重新创建
+      // 这样可以确保组件完全重新创建，重新执行 aboutToAppear 并加载最新数据
+      this.tableRefreshKey = -1
+      // 使用 setTimeout 确保在下一个事件循环中重新创建组件
+      setTimeout(() => {
+        // 使用时间戳确保每次都是新的key值
+        this.tableRefreshKey = Math.abs(Date.now())
+        console.log('重置后表格组件已重新创建，key:', this.tableRefreshKey)
+      }, 50)
+      
+      // 显示重置成功提示
+      this.showToast('success', `重置完成，共显示 ${allData.length} 条数据`)
+      console.log('重置完成，已加载所有数据，共', allData.length, '条')
+    } catch (error) {
+      console.error('重置数据失败:', error)
+      this.showToast('error', '重置失败，请重试')
+    }
   }
 
   /**
    * 处理选中数据变化
    */
   private handleSelectionChange(selectedIds: number[]): void {
-    this.selectedTableData = this.currentTableData.filter(item => selectedIds.includes(item.id))
-    console.log(`选中数据已更新，共 ${this.selectedTableData.length} 条记录`)
+    // 根据选中的ID，从当前显示的数据中筛选出选中的数据
+    const displayData = this.isFiltered ? this.filteredTableData : this.currentTableData
+    this.selectedTableData = displayData.filter(item => selectedIds.includes(item.id))
+    console.log(`选中数据已更新，共 ${this.selectedTableData.length} 条记录，选中的ID:`, selectedIds)
   }
 
   /**
@@ -233,7 +449,10 @@ export struct HistoryContent {
       }
       
       const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
-      fs.writeSync(file.fd, fileContent);
+      // 将字符串编码为 Uint8Array
+      const textEncoder = new util.TextEncoder();
+      const encodedContent = textEncoder.encode(fileContent);
+      fs.writeSync(file.fd, encodedContent);
       fs.closeSync(file);
       console.log(`合并导出${this.selectedFormat.toUpperCase()}文件创建成功:`, filePath);
       
@@ -275,7 +494,10 @@ export struct HistoryContent {
       }
       
       const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
-      fs.writeSync(file.fd, fileContent);
+      // 将字符串编码为 Uint8Array
+      const textEncoder = new util.TextEncoder();
+      const encodedContent = textEncoder.encode(fileContent);
+      fs.writeSync(file.fd, encodedContent);
       fs.closeSync(file);
       console.log(`批量导出${this.selectedFormat.toUpperCase()}文件创建成功:`, filePath);
       await this.saveToPublicDirectory(filePath, finalFileName, fileContent);
@@ -452,26 +674,26 @@ export struct HistoryContent {
           endDate: this.endDate,
           selectedStartDate: this.selectedStartDate,
           selectedEndDate: this.selectedEndDate,
-          customerIndex: this.customerIndex,
-          farmIndex: this.farmIndex,
-          fruitIndex: this.fruitIndex,
+          customerName: this.customerName,
+          farmName: this.farmName,
+          fruitName: this.fruitName,
           onStartDateChange: (date: string) => {
             this.startDate = date
           },
           onEndDateChange: (date: string) => {
             this.endDate = date
           },
-          onCustomerChange: (index: number) => {
-                this.customerIndex = index
+          onCustomerChange: (value: string) => {
+            this.customerName = value
           },
-          onFarmChange: (index: number) => {
-                this.farmIndex = index
+          onFarmChange: (value: string) => {
+            this.farmName = value
           },
-          onFruitChange: (index: number) => {
-                this.fruitIndex = index
+          onFruitChange: (value: string) => {
+            this.fruitName = value
           },
           onQueryClick: () => {
-            console.log('查询按钮被点击')
+            this.handleQuery()
           },
           onMergeExportClick: () => {
             console.log('合并导出按钮被点击')
@@ -480,10 +702,10 @@ export struct HistoryContent {
             console.log('报告按钮被点击')
           },
           onDeleteClick: () => {
-            console.log('删除按钮被点击')
+            this.handleDelete()
           },
           onResetClick: () => {
-            console.log('重置按钮被点击')
+            this.handleReset()
           },
           onBatchExportClick: () => {
             console.log('批量导出按钮被点击')
@@ -518,23 +740,53 @@ export struct HistoryContent {
                   .margin({ top: 8, bottom: 8, left: 16, right: 16 })
 
         // ==================== 数据表格区域 ====================
-        HistoryDataTable({
-          onRowClick: (rowData: HistoryTableData) => {
-            console.log('点击行数据:', rowData)
-          },
-          onEditClick: (rowData: HistoryTableData) => {
-            console.log('编辑行数据:', rowData)
-          },
-          onDeleteClick: (rowData: HistoryTableData) => {
-            console.log('删除行数据:', rowData)
-          },
-          onDataChange: (data: HistoryTableData[]) => {
-            this.handleTableDataChange(data)
-          },
-          onSelectionChange: (selectedIds: number[]) => {
-            this.handleSelectionChange(selectedIds)
-          }
-        })
+        // 使用条件渲染来强制刷新表格组件（当tableRefreshKey变化时重新创建组件）
+        if (this.tableRefreshKey >= 0) {
+          HistoryDataTable({
+            filteredData: this.isFiltered && this.filteredTableData.length > 0 ? this.filteredTableData : [],
+            onRowClick: (rowData: HistoryTableData) => {
+              console.log('点击行数据:', rowData)
+            },
+            onEditClick: (rowData: HistoryTableData) => {
+              console.log('编辑行数据:', rowData)
+            },
+            onDeleteClick: async (rowData: HistoryTableData) => {
+              console.log('删除行数据:', rowData)
+              // 删除后刷新表格
+              try {
+                const tableManager = HistoryTableManager.getInstance()
+                await tableManager.deleteData(rowData.id)
+                
+                // 重新加载数据
+                await tableManager.refreshData()
+                
+                // 如果处于筛选状态，重新应用筛选
+                if (this.isFiltered) {
+                  this.applyFilter()
+                } else {
+                  // 重新加载全部数据
+                  const allData = await tableManager.getData()
+                  this.currentTableData = allData
+                  this.filteredTableData = []
+                  // 触发表格刷新
+                  this.tableRefreshKey++
+                }
+                
+                // 显示删除成功弹窗
+                this.showToast('success', '删除成功')
+              } catch (error) {
+                console.error('删除数据失败:', error)
+                this.showToast('error', '删除失败，请重试')
+              }
+            },
+            onDataChange: (data: HistoryTableData[]) => {
+              this.handleTableDataChange(data)
+            },
+            onSelectionChange: (selectedIds: number[]) => {
+              this.handleSelectionChange(selectedIds)
+            }
+          })
+        }
 
       }
       .width('100%')
@@ -552,6 +804,13 @@ export struct HistoryContent {
         onCancel: () => {
           this.closeDateErrorDialog()
         }
+      })
+
+      // ==================== 提示对话框 ====================
+      ToastDialog({
+        isVisible: this.showToastDialog,
+        type: this.toastType,
+        message: this.toastMessage
       })
 
       // ==================== 导出成功对话框 ====================

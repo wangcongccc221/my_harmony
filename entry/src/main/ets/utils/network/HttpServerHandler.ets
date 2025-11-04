@@ -55,7 +55,8 @@ export class HttpServerHandler {
     try {
       const list = HttpServerHandler.processingCache || [];
       const txt = JSON.stringify(list);
-      const arr = HttpServerHandler.textEncoder.encodeInto(txt);
+      // 使用 encode 而不是 encodeInto，因为 encodeInto 返回的是对象而不是 Uint8Array
+      const arr = HttpServerHandler.textEncoder.encode(txt);
       const fp = HttpServerHandler.getProcessingCacheFile();
       const f = fs.openSync(fp, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
       fs.writeSync(f.fd, arr);

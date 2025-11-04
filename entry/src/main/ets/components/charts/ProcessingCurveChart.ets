@@ -216,12 +216,10 @@ export struct ProcessingCurveChart {
       this.dataPoints.push({ time: `${hh}:${mm}:${ss}`, value: this.currentProgress })
       this.dataCount++
       
-      // 控制台输出当前数据条数
-      console.log(`📊 第${this.dataCount}条数据 - 时间: ${hh}:${mm}:${ss} - 进度: ${this.currentProgress}%`)
+      // 移除日志输出，减少性能开销
       
       // 当数据达到1024个时，清空所有数据重新开始
       if (this.dataCount >= this.maxPoints) {
-        console.log(`🔄 数据达到${this.maxPoints}个，开始清空数据... (第${this.clearCount + 1}次清空)`)
         this.dataPoints = []
         this.dataCount = 0
         this.clearCount++
@@ -231,8 +229,6 @@ export struct ProcessingCurveChart {
         this.dataPoints = [...this.defaultData]
         this.dataCount = this.dataPoints.length
         this.currentProgress = this.dataPoints[this.dataPoints.length - 1]?.value ?? 0
-        
-        console.log(`✅ 数据已清空，重新开始追踪 (清空次数: ${this.clearCount})`)
       }
       
       // 使用 Options.setVal 增量更新（官方推荐）
