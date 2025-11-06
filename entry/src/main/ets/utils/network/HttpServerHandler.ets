@@ -842,6 +842,28 @@ export class HttpServerHandler {
         shouldDisplay = false;
       }
 
+      // 专门处理 CSV 和 XLSX（实际是 CSV 内容）：按 UTF-8 文本下载，避免乱码
+      if (fileExt === 'csv' || fileExt === 'xlsx') {
+        try {
+          const uint8ArrayFile = new Uint8Array(buffer);
+          const textContentFile = HttpServerHandler.textDecoder.decode(uint8ArrayFile);
+          const contentBufFile = HttpServerHandler.textEncoder.encodeInto(textContentFile);
+          const fileNameFile = encodeURIComponent(relativePath.split('/').pop() || (fileExt === 'csv' ? 'data.csv' : 'data.xlsx'));
+          // xlsx 文件虽然扩展名是 .xlsx，但内容实际是 CSV 文本（带 UTF-8 BOM）
+          // 使用 CSV 的 Content-Type 确保浏览器按文本方式处理，避免乱码
+          // Excel 打开 .xlsx 扩展名的 CSV 文件也能正确识别
+          const contentType = 'text/csv; charset=utf-8';
+          return `HTTP/1.1 200 OK\r\n`
+            + `Content-Type: ${contentType}\r\n`
+            + `Content-Disposition: attachment; filename="${fileNameFile}"\r\n`
+            + `Content-Length: ${contentBufFile.length}\r\n`
+            + `\r\n`
+            + textContentFile;
+        } catch (_) {
+          // 回退为二进制下载
+        }
+      }
+
       // 转换为字符串（文本文件）
       if (shouldDisplay && (contentType.startsWith('text/') || contentType.includes('json') || contentType.includes('javascript'))) {
         // 文本预览大小限制（避免一次性渲染超大文本造成卡顿）

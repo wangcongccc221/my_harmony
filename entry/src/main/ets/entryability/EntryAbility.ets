@@ -10,6 +10,8 @@ import { AppCleanup } from '../utils/AppCleanup';
 
 const DOMAIN = 0x0000;
 
+// HTTP 服务器端口配置
+const HTTP_SERVER_PORT: number = 8080;
 
 export default class EntryAbility extends UIAbility {
   private networkOptimizer: NetworkOptimizer = NetworkOptimizer.getInstance();
@@ -89,7 +91,6 @@ export default class EntryAbility extends UIAbility {
         // 全屏布局，隐藏系统标题栏
         await mainWindow.setWindowLayoutFullScreen(true);
         await mainWindow.setFullScreen(true);
-        //（如需进一步隐藏状态/导航栏，可在确认 SDK API 后再开启）
       } catch (e) {
         hilog.error(DOMAIN, 'testTag', `set non-fullscreen failed: ${JSON.stringify(e)}`);
       }
@@ -161,12 +162,12 @@ export default class EntryAbility extends UIAbility {
       // const handler = HttpServerHandler.createHandler(); // 简单处理器
       const handler = HttpServerHandler.createRouterHandler(); // 带路由功能的处理器
       
-      // 启动HTTP服务器，监听8080端口
-      await startHttpServer(8080, handler);
+      // 启动HTTP服务器
+      await startHttpServer(HTTP_SERVER_PORT, handler);
       
       // 标记为已初始化
       this.httpServerInitialized = true;
-      hilog.info(DOMAIN, 'EntryAbility', 'HTTP服务器启动成功，监听端口: 8080');
+      hilog.info(DOMAIN, 'EntryAbility', `HTTP服务器启动成功，监听端口: ${HTTP_SERVER_PORT}`);
     } catch (error) {
       hilog.error(DOMAIN, 'EntryAbility', `HTTP服务器启动失败: ${error.message}`);
       // 启动失败时重置标记，允许下次重试

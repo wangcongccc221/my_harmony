@@ -2,7 +2,6 @@
 
 本文档说明如何在本项目中使用已封装的数据库服务 `ArkDataDemoService`（基于 `@ohos.data.relationalStore`）。
 
-参考：HarmonyOS ArkData/RDB 实战与最佳实践（含 CRUD 示例）[华为开发者博客](https://developer.huawei.com/consumer/cn/blog/topic/03176721032796068)
 
 ---
 

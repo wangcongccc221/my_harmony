@@ -42,7 +42,7 @@ export const options = {
   },
 };
 
-const BASE_URL = 'http://127.0.0.1:9999';
+const BASE_URL = 'http://127.0.0.1:8080';
 const API_BASE = `${BASE_URL}/api/processing`;
 
 // 生成测试数据

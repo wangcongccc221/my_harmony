@@ -5,6 +5,7 @@ import { CompactFsmToggle } from './CompactFsmToggle'
 import { IBestAvatar, IBestButton } from '@ibestservices/ibest-ui'
 // 已移除自定义对话框
 import common from '@ohos.app.ability.common'
+import { MinimizeAppUtil } from '../../utils/window/MinimizeAppUtil'
 
 /**
  * 顶部状态栏组件（精简版，无个人信息/头像/对话框）
@@ -39,13 +40,22 @@ export struct TopStatusBar {
 
   private async minimizeApp() {
     try {
-      interface MoveMinimize { moveMissionToBackground?: () => Promise<void> }
       const ctx = getContext(this) as common.UIAbilityContext
-      const maybe = ctx as MoveMinimize
-      if (typeof maybe.moveMissionToBackground === 'function') {
-        await maybe.moveMissionToBackground()
-      } else {
-        console.warn('[TopStatusBar] 当前SDK不支持 moveMissionToBackground，已跳过最小化')
+      const ok = await MinimizeAppUtil.getInstance(ctx, {
+        maxRetries: 3,
+        retryDelay: 800,
+        enableLogging: true,
+        onError: (_) => {}
+      }).minimize()
+      if (!ok) {
+        // 兜底：退到后台
+        interface MoveMinimize { moveMissionToBackground?: () => Promise<void> }
+        const maybe = ctx as MoveMinimize
+        if (typeof maybe.moveMissionToBackground === 'function') {
+          await maybe.moveMissionToBackground()
+        } else {
+          console.warn('[TopStatusBar] 不支持最小化且无退后台接口，已跳过')
+        }
       }
     } catch (e) {
       console.error('[TopStatusBar] 最小化失败:', JSON.stringify(e))

@@ -27,18 +27,24 @@
    - 输入客户/农场/水果条件，点击查询
    - 点击导出按钮生成文件（CSV/Excel）
 4) （可选）接口联调：
-   - 端口映射：`hdc fport add tcp:9999 tcp:9999`
-   - 查询：`GET http://127.0.0.1:9999/api/processing?action=listJson`
-   - 插入：`GET http://127.0.0.1:9999/api/processing?action=insert&startTime=...&endTime=...&customerName=...&farmName=...&fruitName=...`
+   - 端口映射：`hdc fport tcp:8080 tcp:8080`
+   - 查询：`GET http://127.0.0.1:8080/api/processing?action=listJson`
+   - 插入：`GET http://127.0.0.1:8080/api/processing?action=insert&startTime=...&endTime=...&customerName=...&farmName=...&fruitName=...`
 
 ## 四、性能结论（简要）
 - 小数据量下（≤数十条），平均响应 < 50ms，UI 流畅
 - 大数据量全表查询会增压，建议生产改为分页接口（技术 README 已给出建议）
 
 ## 五、已知事项
-- 第三方 UI 组件有少量“deprecated”警告，不影响演示与使用
+- 第三方 UI 组件有少量"deprecated"警告，不影响演示与使用
 - 导出 Excel 目前为 CSV 内容写入 `.xlsx`
 
+## 六、端口映射说明
+- HTTP 服务器端口：8080（用于 RESTful API）
+- TCP 服务器端口：8081（用于 TCP 通信）
+- 端口映射命令：`hdc fport tcp:8080 tcp:8080`（将设备 8080 端口映射到本机 8080）
+- 查看映射：`hdc fport ls`
+- 删除映射：`hdc fport rm tcp:8080`
 
 
 

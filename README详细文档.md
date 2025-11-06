@@ -76,37 +76,17 @@ C:.
 2) 菜单 Build > Generate App Package(s)。
 3) 产物：
    - HAP：`entry/build/default/outputs/default/entry-default-signed.hap`
-   - APP（多模块打包）：`build/default/outputs/app/*.app`
 
-### 4.2 命令行（Windows 示例）
+## 5. 端口映射（如需在主机访问设备内 HTTP 服务）
+应用内置 HTTP 服务默认 8080 端口：
 ```bat
-"E:\huawei\DevEco Studio\tools\node\node.exe" "E:\huawei\DevEco Studio\tools\hvigor\bin\hvigorw.js" --mode module -p module=entry@default -p product=default -p requiredDeviceType=2in1 assembleHap --parallel --incremental --daemon
-```
-
-> 若 PowerShell 引号转义报错，可用：
-```bat
-cmd /c "\"E:\\huawei\\DevEco Studio\\tools\\node\\node.exe\" \"E:\\huawei\\DevEco Studio\\tools\\hvigor\\bin\\hvigorw.js\" --mode module -p module=entry@default -p product=default -p requiredDeviceType=2in1 assembleHap --parallel --incremental --daemon"
-```
-
-## 5. 安装与启动
-```bat
-hdc list targets                     # 确认设备
-hdc install entry\build\default\outputs\default\entry-default-signed.hap
-
-# 启动（可选）
-hdc shell aa start -a com.nutpi.My_Project.EntryAbility -b com.nutpi.My_Project
-```
-
-## 6. 端口映射（如需在主机访问设备内 HTTP 服务）
-应用内置 HTTP 服务默认 9999 端口：
-```bat
-hdc fport add tcp:9999 tcp:9999   # 添加映射
+hdc fport tcp:8080 tcp:8080       # 添加映射（将设备 8080 端口映射到本机 8080）
 hdc fport ls                      # 查看映射
-hdc fport rm tcp:9999             # 删除映射
+hdc fport rm tcp:8080             # 删除映射
 ```
 接口示例：
-- 查询：`GET http://127.0.0.1:9999/api/processing?action=listJson`
-- 插入：`GET http://127.0.0.1:9999/api/processing?action=insert&startTime=...&endTime=...&customerName=...&farmName=...&fruitName=...`
+- 查询：`GET http://127.0.0.1:8080/api/processing?action=listJson`
+- 插入：`GET http://127.0.0.1:8080/api/processing?action=insert&startTime=...&endTime=...&customerName=...&farmName=...&fruitName=...`
 
 ### 6.1 HTTP 接口参数表
 
@@ -154,12 +134,12 @@ hdc fport rm tcp:9999             # 删除映射
   - 失败：`{"success": false, "message": "错误信息"}`
 - 示例：
 ```
-GET http://127.0.0.1:9999/api/processing?action=insert&startTime=2024-11-01%2008:30&endTime=2024-11-01%2012:45&customerName=客户A&farmName=农场1&fruitName=苹果&weight=12.5&count=320
+GET http://127.0.0.1:8080/api/processing?action=insert&startTime=2024-11-01%2008:30&endTime=2024-11-01%2012:45&customerName=客户A&farmName=农场1&fruitName=苹果&weight=12.5&count=320
 ```
 
 ### 6.2 接口定位与限制
 - 仅用于本地联调/演示：无鉴权、无分页、数据直接读写应用内本地库，不对公网暴露
-- 访问方式：设备运行应用 → `hdc fport add tcp:9999 tcp:9999` → 通过 `http://127.0.0.1:9999` 访问
+- 访问方式：设备运行应用 → `hdc fport tcp:8080 tcp:8080` → 通过 `http://127.0.0.1:8080` 访问
 - 生产建议：切换为后端服务（鉴权/分页/审计），前端仅调用受控 API
 
 ### 6.3 常见问题

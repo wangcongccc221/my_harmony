@@ -13,6 +13,11 @@ import { TcpClient, createTcpClient } from './TcpClient';
 
 const DOMAIN = 0x0000;
 
+// TCP 网络配置
+const TCP_SERVER_IP: string = '192.168.0.15';      // TCP 服务器监听地址
+const TCP_CLIENT_REMOTE_IP: string = '192.168.0.16'; // TCP 客户端连接的目标地址
+const TCP_SERVER_PORT: number = 8081;               // TCP 服务器端口（避免与 HTTP 服务器 8080 冲突）
+
 /**
  * 网络优化器
  */
@@ -93,9 +98,9 @@ export class NetworkOptimizer {
       });
       
       // 启动服务器
-      const success = await this.tcpServer.start('192.168.0.15', 8080);
+      const success = await this.tcpServer.start(TCP_SERVER_IP, TCP_SERVER_PORT);
       if (success) {
-        hilog.info(DOMAIN, 'NetworkOptimizer', `TCP服务器启动成功 - 192.168.0.15:8080`);
+        hilog.info(DOMAIN, 'NetworkOptimizer', `TCP服务器启动成功 - ${TCP_SERVER_IP}:${TCP_SERVER_PORT}`);
       } else {
         hilog.error(DOMAIN, 'NetworkOptimizer', 'TCP服务器启动失败');
         return;
@@ -130,9 +135,9 @@ export class NetworkOptimizer {
       this.tcpClient.setReconnectConfig(10, 5000); // 最多重连10次，间隔5秒  后期修改一下 可以无限自动重连
       
       // 连接到服务器
-      const connected = await this.tcpClient.connect('192.168.0.16', 8080);
+      const connected = await this.tcpClient.connect(TCP_CLIENT_REMOTE_IP, TCP_SERVER_PORT);
       if (connected) {
-        hilog.info(DOMAIN, 'NetworkOptimizer', `TCP客户端连接成功 - 192.168.0.16:8080`);
+        hilog.info(DOMAIN, 'NetworkOptimizer', `TCP客户端连接成功 - ${TCP_CLIENT_REMOTE_IP}:${TCP_SERVER_PORT}`);
       } else {
         hilog.warn(DOMAIN, 'NetworkOptimizer', `TCP客户端连接失败，将自动重连`);
       }

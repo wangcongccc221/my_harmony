@@ -27,7 +27,7 @@ import { ExportSuccessDialog } from '../../components/dialogs/ExportSuccessDialo
 import { ToastDialog } from '../../components/dialogs/ToastDialog'
 import fs from '@ohos.file.fs'
 import common from '@ohos.app.ability.common'
-import { util } from '@kit.ArkTS'
+import { util, buffer } from '@kit.ArkTS'
 
 /**
  * 历史加工内容组件结构体
@@ -426,15 +426,16 @@ export struct HistoryContent {
    * 执行合并导出
    */
   private async performMergeExport(fileName: string): Promise<void> {
+    // 在 try 块外定义变量，确保 catch 块可以访问
+    const context = getContext(this) as common.UIAbilityContext;
+    const filesDir = context.filesDir;
+    const fileExtension = this.selectedFormat === 'excel' ? '.xlsx' : '.csv';
+    const finalFileName = fileName.endsWith(fileExtension) ? fileName : `${fileName}${fileExtension}`;
+    const filePath = `${filesDir}/${finalFileName}`;
+    
     try {
       console.log('开始执行合并导出，文件名:', fileName, '格式:', this.selectedFormat)
-      const context = getContext(this) as common.UIAbilityContext;
-      const filesDir = context.filesDir;
       console.log('应用文件目录:', filesDir)
-      
-      const fileExtension = this.selectedFormat === 'excel' ? '.xlsx' : '.csv';
-      const finalFileName = fileName.endsWith(fileExtension) ? fileName : `${fileName}${fileExtension}`;
-      const filePath = `${filesDir}/${finalFileName}`;
       console.log('目标文件路径:', filePath)
       
       let fileContent: string;
@@ -448,13 +449,37 @@ export struct HistoryContent {
         console.log('CSV内容生成完成，长度:', fileContent.length)
       }
       
-      const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
-      // 将字符串编码为 Uint8Array
+      // 检查文件内容是否为空
+      if (!fileContent || fileContent.length === 0) {
+        console.error('文件内容为空，无法导出');
+        this.showToast('error', '导出失败：数据为空');
+        return;
+      }
+      
+      console.log('文件内容长度:', fileContent.length, '前100个字符:', fileContent.substring(0, 100));
+      
+      // 使用 UTF-8 编码并添加 BOM（Excel 需要 BOM 才能正确识别 UTF-8）
       const textEncoder = new util.TextEncoder();
+      const utf8BOM = new Uint8Array([0xEF, 0xBB, 0xBF]); // UTF-8 BOM
       const encodedContent = textEncoder.encode(fileContent);
-      fs.writeSync(file.fd, encodedContent);
+      
+      // 合并 BOM 和编码后的内容
+      const finalContent = new Uint8Array(utf8BOM.length + encodedContent.length);
+      finalContent.set(utf8BOM, 0);
+      finalContent.set(encodedContent, utf8BOM.length);
+      
+      // 转换为 ArrayBuffer（fs.writeSync 需要 ArrayBuffer）
+      // 创建一个新的 ArrayBuffer，只包含实际需要的字节，避免包含多余的缓冲区
+      const arrayBuffer = finalContent.buffer.slice(0, finalContent.length);
+      
+      // 创建并写入文件（使用 UTF-8 编码）
+      const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
+      fs.writeSync(file.fd, arrayBuffer);
       fs.closeSync(file);
-      console.log(`合并导出${this.selectedFormat.toUpperCase()}文件创建成功:`, filePath);
+      console.log(`合并导出${this.selectedFormat.toUpperCase()}文件创建成功:`, filePath, '文件大小:', finalContent.length, '字节');
+      
+      // 计算导出条数
+      const exportCount = this.currentTableData.length > 0 ? this.currentTableData.length : 3;
       
       console.log('开始保存到公共目录...')
       await this.saveToPublicDirectory(filePath, finalFileName, fileContent);
@@ -469,6 +494,13 @@ export struct HistoryContent {
    * 执行批量导出
    */
   private async performBatchExport(fileName: string): Promise<void> {
+    // 在 try 块外定义变量，确保 catch 块可以访问
+    const context = getContext(this) as common.UIAbilityContext;
+    const filesDir = context.filesDir;
+    const fileExtension = this.selectedFormat === 'excel' ? '.xlsx' : '.csv';
+    const finalFileName = fileName.endsWith(fileExtension) ? fileName : `${fileName}${fileExtension}`;
+    const filePath = `${filesDir}/${finalFileName}`;
+    
     try {
       if (this.selectedTableData.length === 0) {
         console.log('没有选中任何数据')
@@ -476,12 +508,6 @@ export struct HistoryContent {
       }
       
       console.log(`准备导出 ${this.selectedTableData.length} 条选中的数据，格式:`, this.selectedFormat)
-      
-      const context = getContext(this) as common.UIAbilityContext;
-      const filesDir = context.filesDir;
-      const fileExtension = this.selectedFormat === 'excel' ? '.xlsx' : '.csv';
-      const finalFileName = fileName.endsWith(fileExtension) ? fileName : `${fileName}${fileExtension}`;
-      const filePath = `${filesDir}/${finalFileName}`;
 
       let fileContent: string;
       if (this.selectedFormat === 'excel') {
@@ -493,13 +519,35 @@ export struct HistoryContent {
         console.log('CSV内容生成完成，长度:', fileContent.length)
       }
       
-      const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
-      // 将字符串编码为 Uint8Array
+      // 检查文件内容是否为空
+      if (!fileContent || fileContent.length === 0) {
+        console.error('文件内容为空，无法导出');
+        this.showToast('error', '导出失败：数据为空');
+        return;
+      }
+      
+      console.log('文件内容长度:', fileContent.length, '前100个字符:', fileContent.substring(0, 100));
+      
+      // 使用 UTF-8 编码并添加 BOM（Excel 需要 BOM 才能正确识别 UTF-8）
       const textEncoder = new util.TextEncoder();
+      const utf8BOM = new Uint8Array([0xEF, 0xBB, 0xBF]); // UTF-8 BOM
       const encodedContent = textEncoder.encode(fileContent);
-      fs.writeSync(file.fd, encodedContent);
+      
+      // 合并 BOM 和编码后的内容
+      const finalContent = new Uint8Array(utf8BOM.length + encodedContent.length);
+      finalContent.set(utf8BOM, 0);
+      finalContent.set(encodedContent, utf8BOM.length);
+      
+      // 转换为 ArrayBuffer（fs.writeSync 需要 ArrayBuffer）
+      // 创建一个新的 ArrayBuffer，只包含实际需要的字节，避免包含多余的缓冲区
+      const arrayBuffer = finalContent.buffer.slice(0, finalContent.length);
+      
+      // 创建并写入文件（使用 UTF-8 编码）
+      const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
+      fs.writeSync(file.fd, arrayBuffer);
       fs.closeSync(file);
-      console.log(`批量导出${this.selectedFormat.toUpperCase()}文件创建成功:`, filePath);
+      console.log(`批量导出${this.selectedFormat.toUpperCase()}文件创建成功:`, filePath, '文件大小:', finalContent.length, '字节');
+      
       await this.saveToPublicDirectory(filePath, finalFileName, fileContent);
     } catch (error) {
       console.error('批量导出失败:', error);
@@ -587,7 +635,7 @@ export struct HistoryContent {
       let successPaths: string[] = [];
       console.log('成功计数器和路径数组初始化完成')
       
-      // 读取原文件内容
+      // 读取原文件内容（使用旧版本的方式：从文件读取）
       console.log('开始读取原文件内容...')
       const file = fs.openSync(filePath, fs.OpenMode.READ_ONLY);
       const stat = fs.statSync(filePath);
@@ -697,6 +745,7 @@ export struct HistoryContent {
           },
           onMergeExportClick: () => {
             console.log('合并导出按钮被点击')
+            this.handleShowFileNameDialog('merge')
           },
           onReportClick: () => {
             console.log('报告按钮被点击')
@@ -709,6 +758,7 @@ export struct HistoryContent {
           },
           onBatchExportClick: () => {
             console.log('批量导出按钮被点击')
+            this.handleShowFileNameDialog('batch')
           },
           onLevelMergeExportClick: () => {
             console.log('等级合并导出按钮被点击')
