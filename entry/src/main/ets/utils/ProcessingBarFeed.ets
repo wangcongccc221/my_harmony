@@ -14,7 +14,11 @@ export class ProcessingBarFeed {
   }
 
   private readonly MAX_POINTS: number = 60
-  private data: BarData[] = []
+  // 固定长度环形缓冲区（避免数组增长和切片复制）
+  private valueBuf: number[] = new Array(this.MAX_POINTS).fill(0)
+  private labelBuf: string[] = new Array(this.MAX_POINTS).fill('')
+  private writeIndex: number = 0
+  private validCount: number = 0
   private timerId?: number
   private started: boolean = false
   private currentValue: number = 50
@@ -23,7 +27,7 @@ export class ProcessingBarFeed {
   start(): void {
     if (this.started) { return }
     this.started = true
-    if (this.data.length === 0) {
+    if (this.validCount === 0) {
       // 播种10个点（9:00开始，每分钟一个）
       for (let i = 0; i < 10; i++) { this.pushNext() }
     }
@@ -46,12 +50,24 @@ export class ProcessingBarFeed {
     const label = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`
     const step = (Math.random() * 10) - 5
     this.currentValue = Math.max(10, Math.min(100, Math.round(this.currentValue + step)))
-    this.data.push({ time: label, value: this.currentValue })
-    if (this.data.length > this.MAX_POINTS) { this.data = this.data.slice(this.data.length - this.MAX_POINTS) }
+    // 写入环形缓冲区
+    this.valueBuf[this.writeIndex] = this.currentValue
+    this.labelBuf[this.writeIndex] = label
+    this.writeIndex = (this.writeIndex + 1) % this.MAX_POINTS
+    this.validCount = Math.min(this.validCount + 1, this.MAX_POINTS)
     this.timeIndex++
   }
 
-  getSnapshot(): BarData[] { return this.data.slice() }
+  getSnapshot(): BarData[] {
+    // 导出线性窗口
+    const len = this.validCount
+    const out: BarData[] = new Array(len)
+    for (let i = 0; i < len; i++) {
+      const idx = (this.writeIndex - len + i + this.MAX_POINTS) % this.MAX_POINTS
+      out[i] = { time: this.labelBuf[idx], value: this.valueBuf[idx] }
+    }
+    return out
+  }
 }
 
 
