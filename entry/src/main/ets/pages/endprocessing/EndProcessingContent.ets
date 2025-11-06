@@ -24,16 +24,40 @@ export struct EndProcessingContent {
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
   private baseComponentHelper = new BaseComponentHelper()
   private dataManager = ProcessingDataManager.getInstance()
+  @State private processingRecords: ProcessingRecord[] = []
+  @State private dataRefreshKey: number = 0
 
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
   }
 
   /**
+   * 页面加载时从数据库加载数据
+   */
+  aboutToAppear(): void {
+    this.loadDataFromDatabase()
+  }
+
+  /**
+   * 从数据库加载数据
+   */
+  private async loadDataFromDatabase(): Promise<void> {
+    try {
+      await this.dataManager.loadDataFromDatabase()
+      this.processingRecords = this.dataManager.getData()
+      this.dataRefreshKey++
+      console.log('✅ 结束加工页面：数据加载完成，共', this.processingRecords.length, '条记录')
+    } catch (error) {
+      console.error('❌ 结束加工页面：数据加载失败', error)
+      this.processingRecords = []
+    }
+  }
+
+  /**
    * 获取加工记录数据
    */
   private getProcessingData(): ProcessingRecord[] {
-    return this.dataManager.getData()
+    return this.processingRecords
   }
 
   /**

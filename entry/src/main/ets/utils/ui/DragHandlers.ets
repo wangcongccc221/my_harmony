@@ -4,7 +4,7 @@
  * 用途：提供标准化的拖拽事件处理函数
  */
 
-import { DragManager, DragData, MultiSelectDragData, DragResult } from './DragManager'
+import { DragManager, DragData, MultiSelectDragData, MultiSelectCell, DragResult } from './DragManager'
 
 /**
  * 拖拽处理器类
@@ -135,7 +135,7 @@ export class DragHandlers {
    * @param data 拖拽数据
    */
   public handleBlankAreaDrop(data: DragData | MultiSelectDragData): void {
-    if (data.type === 'multi_select') {
+    if (this.isMultiSelectData(data)) {
       const multiData = data as MultiSelectDragData
       console.log('🟡 移动非卡片区域 移动内容:', `多选${multiData.count}项`)
     } else {
@@ -144,6 +144,14 @@ export class DragHandlers {
     }
     
     this.dragManager.handleDrop('blank', false)
+  }
+
+  /**
+   * 检查是否为多选数据
+   * @param data 拖拽数据
+   */
+  private isMultiSelectData(data: DragData | MultiSelectDragData): boolean {
+    return (data as MultiSelectDragData).type === 'multi_select'
   }
 
   /**
@@ -180,12 +188,7 @@ export class DragHandlers {
    * 创建多选拖拽数据
    * @param cells 单元格数组
    */
-  public createMultiSelectDragData(cells: Array<{
-    rowIndex: number
-    colIndex: number
-    value: string
-    sourceTable: string
-  }>): MultiSelectDragData {
+  public createMultiSelectDragData(cells: MultiSelectCell[]): MultiSelectDragData {
     return {
       type: 'multi_select',
       cells,
@@ -222,3 +225,4 @@ export class DragHandlers {
     return sourceTable === '等级表' || sourceTable === 'card_third_layer'
   }
 }
+

@@ -1,25 +1,5 @@
 /**
  * 数据表格TabBar组件
- * 
- * 功能说明：
- * - 替换原有的FunctionButtons和DataTablesCard
- * - 提供6个Tab页面的切换功能
- * - 集成表格内容显示
- * - 支持主题配置和样式定制
- * 
- * Tab页面列表：
- * - 等级表：显示等级相关数据
- * - 等级统计表：显示统计相关数据
- * - 加工曲线：显示加工曲线图表
- * - 加工柱状图：显示加工柱状图
- * - 动态装箱：显示装箱相关数据
- * - 成品：显示成品相关数据
- * 
- * 组件特点：
- * - 统一TabBar设计：与项目中其他TabBar保持一致
- * - 集成内容显示：TabBar下方直接显示对应内容
- * - 主题支持：使用主题管理器的样式配置
- * - 响应式设计：支持不同屏幕尺寸
  */
 
 import { LevelTable, TableRow } from '../../components/layout/LevelTable'
@@ -28,29 +8,52 @@ import { DraggableGridTable, DragData } from '../../components/layout/DraggableG
 import { BaseComponentHelper } from '../../components/common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
-import { drawLineChart, measureChartWidth, LineChartOptions } from  '../../utils/lineChart'
 import { ChartComponent, ChartComponentParams, ChartData } from '../../components/ChartComponent'
 import { OmniTabBar, TabConfig, TabBarDirection } from '../../components/ui/OmniTabBar'
+import { drawLineChart, measureChartWidth, LineChartOptions } from  '../../utils/lineChart'
+import { ProcessingCurveFeed } from '../../utils/ProcessingCurveFeed'
+
+// 图表颜色配置接口
+interface ChartColors {
+  background: string
+  axis: string
+  grid: string
+  line: string
+  pointFill: string
+  pointStroke: string
+  axisText: string
+  labelText: string
+}
 
 @Component
 export struct DataTablesTabBar {
   private baseComponentHelper = new BaseComponentHelper()
   private lineCtx: CanvasRenderingContext2D = new CanvasRenderingContext2D()
-  // 折线图参数与数据
+  // 折线图参数与数据（使用环形缓冲区避免内存增长）
   private readonly lcChartHeight: number = 340
-  private readonly lcCanvasPadding: number = 40
-  private readonly lcXStep: number = 80
+  private readonly LC_MAX_POINTS: number = 60
+  // 固定长度环形缓冲区（避免 concat/slice 创建新数组）
+  private lcDataBuffer: number[] = new Array(this.LC_MAX_POINTS).fill(0)
+  private lcLabelsBuffer: string[] = new Array(this.LC_MAX_POINTS).fill('')
+  // 写入索引（0-59循环）
+  private lcWriteIndex: number = 0
+  // 有效数据点数量（0-60）
+  private lcValidCount: number = 0
+  // 用于UI显示的数据（只读，从缓冲区提取）
   @State lcData: number[] = []
   @State lcLabels: string[] = []
+  // 不再在组件内生成数据，改为全局数据源；仅保留重绘定时器
   private lcTimerId?: number
   private lcFlushTimerId?: number
   private lcCurrentValue: number = 50
   private lcTimeIndex: number = 0
   private lcRealtimeEnabled: boolean = false
-  private readonly LC_MAX_POINTS: number = 60
-  private lcPendingData: number[] = []
-  private lcPendingLabels: string[] = []
+  // 缓存的颜色配置对象（避免每次重绘新建）
+  private cachedColors: ChartColors | null = null
   
+  // McLineChart 配置
+  // Removed McCharts Options state after reverting to Canvas implementation
+
   // 主题相关
   @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
   @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
@@ -105,93 +108,259 @@ export struct DataTablesTabBar {
     }
   }
 
+  // 更新折线图配置（初始化或主题变化时调用）
+  // Removed: updateLineChartOptions() – no longer needed for Canvas implementation
 
-  aboutToAppear() {
-    // 生成折线图模拟数据（10点，09:00开始，每分钟一个）
-    const count = 10
+
+  // 从环形缓冲区提取数据（用于UI显示）
+  // 注意：虽然会创建新数组，但频率已从"每次数据更新"降至"每200ms一次"，且数组大小固定（最多60），不会无限增长
+  private extractDataFromBuffer(): void {
+    if (this.lcValidCount === 0) {
+      this.lcData = []
+      this.lcLabels = []
+      return
+    }
+    // 从写入位置向前读取 lcValidCount 个元素（循环读取）
+    const result: number[] = new Array(this.lcValidCount)
+    const labels: string[] = new Array(this.lcValidCount)
+    for (let i = 0; i < this.lcValidCount; i++) {
+      const idx = (this.lcWriteIndex - this.lcValidCount + i + this.LC_MAX_POINTS) % this.LC_MAX_POINTS
+      result[i] = this.lcDataBuffer[idx]
+      labels[i] = this.lcLabelsBuffer[idx]
+    }
+    this.lcData = result
+    this.lcLabels = labels
+  }
+
+  // 获取或创建缓存的颜色配置（避免每次重绘新建对象）
+  private getCachedColors(): ChartColors {
+    if (!this.cachedColors) {
+      const theme = this.getCurrentTheme()
+      this.cachedColors = {
+        background: (theme.chartBg ?? theme.surfaceColor) as string,
+        axis: theme.borderColor as string,
+        grid: (theme.borderColor as string) + '40',
+        line: (theme.chartLineColor ?? theme.primary) as string,
+        pointFill: (theme.chartLineColor ?? theme.primary) as string,
+        pointStroke: theme.surfaceColor as string,
+        axisText: theme.textColor as string,
+        labelText: theme.textColor as string
+      }
+    }
+    return this.cachedColors
+  }
+
+  // 刷新颜色缓存（主题变化时调用）
+  private refreshColorCache(): void {
+    this.cachedColors = null
+  }
+
+  // ========== 外部数据传入接口 ==========
+  
+  /**
+   * 追加单个数据点到折线图
+   * @param value 数据值
+   * @param label 时间标签（如 "09:30"）
+   */
+  appendLineChartData(value: number, label: string): void {
+    // 直接写入环形缓冲区（覆盖旧数据）
+    this.lcDataBuffer[this.lcWriteIndex] = value
+    this.lcLabelsBuffer[this.lcWriteIndex] = label
+    this.lcWriteIndex = (this.lcWriteIndex + 1) % this.LC_MAX_POINTS
+    this.lcValidCount = Math.min(this.lcValidCount + 1, this.LC_MAX_POINTS)
+    // 立即更新显示（可选，如果希望立即看到效果）
+    this.extractDataFromBuffer()
+    this.redrawChart()
+  }
+
+  /**
+   * 批量追加数据点到折线图
+   * @param data 数据值数组
+   * @param labels 时间标签数组（长度需与data相同）
+   */
+  appendLineChartDataBatch(data: number[], labels: string[]): void {
+    if (data.length !== labels.length) {
+      console.error('appendLineChartDataBatch: data和labels长度不匹配')
+      return
+    }
+    for (let i = 0; i < data.length; i++) {
+      this.lcDataBuffer[this.lcWriteIndex] = data[i]
+      this.lcLabelsBuffer[this.lcWriteIndex] = labels[i]
+      this.lcWriteIndex = (this.lcWriteIndex + 1) % this.LC_MAX_POINTS
+      this.lcValidCount = Math.min(this.lcValidCount + 1, this.LC_MAX_POINTS)
+    }
+    // 批量更新后统一刷新显示
+    this.extractDataFromBuffer()
+    this.redrawChart()
+  }
+
+  /**
+   * 设置折线图的完整数据（覆盖模式，清空旧数据）
+   * @param data 数据值数组（最多60个，超出部分会被截断）
+   * @param labels 时间标签数组（长度需与data相同）
+   */
+  setLineChartData(data: number[], labels: string[]): void {
+    if (data.length !== labels.length) {
+      console.error('setLineChartData: data和labels长度不匹配')
+      return
+    }
+    // 清空缓冲区
+    this.lcWriteIndex = 0
+    this.lcValidCount = 0
+    // 写入新数据（最多60个）
+    const count = Math.min(data.length, this.LC_MAX_POINTS)
+    for (let i = 0; i < count; i++) {
+      this.lcDataBuffer[i] = data[i]
+      this.lcLabelsBuffer[i] = labels[i]
+      this.lcValidCount++
+    }
+    this.lcWriteIndex = this.lcValidCount % this.LC_MAX_POINTS
+    // 更新显示
+    this.extractDataFromBuffer()
+    this.redrawChart()
+  }
+
+  /**
+   * 清空折线图数据
+   */
+  clearLineChartData(): void {
+    this.lcWriteIndex = 0
+    this.lcValidCount = 0
+    this.lcData = []
+    this.lcLabels = []
+    this.redrawChart()
+  }
+
+  /**
+   * 启用/禁用自动数据生成（模拟数据）
+   * @param enabled true=启用自动生成，false=禁用
+   */
+  setAutoDataGeneration(enabled: boolean): void {
+    this.lcRealtimeEnabled = enabled
+    if (enabled && !this.lcTimerId) {
+      // 启动自动生成（见aboutToAppear中的逻辑）
+      this.startAutoDataGeneration()
+    } else if (!enabled && this.lcTimerId) {
+      // 停止自动生成
+      clearInterval(this.lcTimerId)
+      this.lcTimerId = undefined
+    }
+  }
+
+  /**
+   * 重绘图表（私有方法，供内部调用）
+   */
+  private redrawChart(): void {
+    const opts: LineChartOptions = {
+      chartHeight: this.lcChartHeight,
+      canvasPadding: 40,
+      xStep: 80,
+      data: this.lcData,
+      labels: this.lcLabels,
+      yMax: 100,
+      axisFontSizePx: 18,
+      labelFontSizePx: 18,
+      axisFontBold: true,
+      labelFontBold: true,
+      lineWidthPx: 3,
+      pointRadiusPx: 5,
+      colors: this.getCachedColors()
+    }
+    drawLineChart(this.lineCtx, opts)
+  }
+
+  /**
+   * 启动自动数据生成（私有方法）
+   */
+  private startAutoDataGeneration(): void {
     const startHour = 9
     const startMinute = 0
-    const series: number[] = []
-    let cur = 50
-    for (let i = 0; i < count; i++) {
-      const change = (Math.random() - 0.5) * 20
-      cur = Math.max(10, Math.min(90, cur + change))
-      series.push(Math.round(cur))
+    if (this.lcTimerId) {
+      clearInterval(this.lcTimerId)
     }
-    const lbs: string[] = []
-    for (let i = 0; i < count; i++) {
-      const h = startHour + Math.floor((startMinute + i) / 60)
-      const m = (startMinute + i) % 60
-      lbs.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`)
+    this.lcTimerId = setInterval(() => {
+      const totalMin = startMinute + this.lcTimeIndex
+      const h = startHour + Math.floor(totalMin / 60)
+      const m = totalMin % 60
+      const hh = h.toString().padStart(2, '0')
+      const mm = m.toString().padStart(2, '0')
+      const newLabel = `${hh}:${mm}`
+
+      // 随机游走
+      const step = (Math.random() - 0.5) * 20
+      this.lcCurrentValue = Math.max(10, Math.min(90, Math.round(this.lcCurrentValue + step)))
+
+      // 直接写入环形缓冲区（覆盖旧数据）
+      this.lcDataBuffer[this.lcWriteIndex] = this.lcCurrentValue
+      this.lcLabelsBuffer[this.lcWriteIndex] = newLabel
+      this.lcWriteIndex = (this.lcWriteIndex + 1) % this.LC_MAX_POINTS
+      this.lcValidCount = Math.min(this.lcValidCount + 1, this.LC_MAX_POINTS)
+      this.lcTimeIndex++
+    }, 1000) as number
+  }
+
+  aboutToAppear() {
+    // 仅在无数据时播种初始点；若已有数据则不重置
+    if (this.lcValidCount === 0) {
+      const count = 10
+      const startHour = 9
+      const startMinute = 0
+      let cur = 50
+      for (let i = 0; i < count; i++) {
+        const change = (Math.random() - 0.5) * 20
+        cur = Math.max(10, Math.min(90, cur + change))
+        const h = startHour + Math.floor((startMinute + i) / 60)
+        const m = (startMinute + i) % 60
+        const label = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
+        this.lcDataBuffer[this.lcWriteIndex] = Math.round(cur)
+        this.lcLabelsBuffer[this.lcWriteIndex] = label
+        this.lcWriteIndex = (this.lcWriteIndex + 1) % this.LC_MAX_POINTS
+        this.lcValidCount = Math.min(this.lcValidCount + 1, this.LC_MAX_POINTS)
+      }
+      this.lcTimeIndex = count
+      this.lcCurrentValue = cur
+      this.lcRealtimeEnabled = true
     }
-    this.lcData = series
-    this.lcLabels = lbs
-    this.lcTimeIndex = count
-    this.lcRealtimeEnabled = true
+    // 刷新显示与颜色缓存
+    this.extractDataFromBuffer()
+    this.refreshColorCache()
 
-    // 启动持续追加数据（每秒1个点）- 启用自动添加数据功能（仅入队，不直接重绘）
-    if (this.lcRealtimeEnabled && !this.lcTimerId) {
-      this.lcTimerId = setInterval(() => {
-        const totalMin = startMinute + this.lcTimeIndex
-        const h = startHour + Math.floor(totalMin / 60)
-        const m = totalMin % 60
-        const hh = h.toString().padStart(2, '0')
-        const mm = m.toString().padStart(2, '0')
-        const newLabel = `${hh}:${mm}`
+    // 启动持续追加数据（每秒1个点）- 使用统一的方法
+    // 确保全局数据源在后台运行
+    ProcessingCurveFeed.getInstance().start()
 
-        // 随机游走
-        const step = (Math.random() - 0.5) * 20
-        this.lcCurrentValue = Math.max(10, Math.min(90, Math.round(this.lcCurrentValue + step)))
-
-        // 入队，等待批量刷新
-        this.lcPendingLabels.push(newLabel)
-        this.lcPendingData.push(this.lcCurrentValue)
-        this.lcTimeIndex++
-      }, 1000) as number
-    }
-
-    // 启动批量刷新（每200ms合并入固定窗口并重绘，降低刷新频率提升性能）
+    // 启动批量刷新（每200ms重绘，使用环形缓冲区数据）
     if (!this.lcFlushTimerId) {
       this.lcFlushTimerId = setInterval(() => {
-        if (this.lcPendingData.length === 0) { return }
-        const mergedData = this.lcData.concat(this.lcPendingData)
-        const mergedLabels = this.lcLabels.concat(this.lcPendingLabels)
-        const needSlice = mergedData.length > this.LC_MAX_POINTS
-        this.lcData = needSlice ? mergedData.slice(mergedData.length - this.LC_MAX_POINTS) : mergedData
-        this.lcLabels = needSlice ? mergedLabels.slice(mergedLabels.length - this.LC_MAX_POINTS) : mergedLabels
-        this.lcPendingData = []
-        this.lcPendingLabels = []
-
-        const opts: LineChartOptions = {
-          chartHeight: this.lcChartHeight,
-          canvasPadding: this.lcCanvasPadding,
-          xStep: this.lcXStep,
-          data: this.lcData,
-          labels: this.lcLabels,
-          yMax: 100,
-          axisFontSizePx: 18,
-          labelFontSizePx: 18,
-          axisFontBold: true,
-          labelFontBold: true,
-          lineWidthPx: 3,
-          pointRadiusPx: 5
+        // 从全局数据源同步
+        const snap = ProcessingCurveFeed.getInstance().getSnapshot()
+        // 写入本地缓冲区并提取显示
+        this.lcValidCount = Math.min(this.LC_MAX_POINTS, snap.validCount)
+        this.lcWriteIndex = snap.writeIndex % this.LC_MAX_POINTS
+        for (let i = 0; i < this.lcValidCount; i++) {
+          // 线性数组转回环形索引区（用于 measure 宽度等一致性）
+          const idx = (this.lcWriteIndex - this.lcValidCount + i + this.LC_MAX_POINTS) % this.LC_MAX_POINTS
+          this.lcDataBuffer[idx] = snap.data[i]
+          this.lcLabelsBuffer[idx] = snap.labels[i]
         }
-        drawLineChart(this.lineCtx, opts)
+        this.extractDataFromBuffer()
+        // 重绘图表
+        this.redrawChart()
       }, 200) as number
     }
   }
 
+  aboutToUpdate() {
+    // 主题变化时刷新颜色缓存
+    this.refreshColorCache()
+  }
+
   aboutToDisappear() {
-    if (this.lcTimerId) {
-      clearInterval(this.lcTimerId)
-      this.lcTimerId = undefined
-    }
+    // 保留后台数据源运行，仅停止重绘定时器
     if (this.lcFlushTimerId) {
       clearInterval(this.lcFlushTimerId)
       this.lcFlushTimerId = undefined
     }
-    this.lcPendingData = []
-    this.lcPendingLabels = []
   }
 
   // Tab配置
@@ -273,13 +442,13 @@ export struct DataTablesTabBar {
         // 使用自定义 Canvas 折线图工具（可横向滚动）
         Scroll() {
           Canvas(this.lineCtx)
-            .width(measureChartWidth({ canvasPadding: this.lcCanvasPadding, xStep: this.lcXStep, data: this.lcData }))
+            .width(measureChartWidth({ canvasPadding: 40, xStep: 80, data: this.lcData }))
             .height(this.lcChartHeight)
             .onReady(() => {
               const opts: LineChartOptions = {
                 chartHeight: this.lcChartHeight,
-                canvasPadding: this.lcCanvasPadding,
-                xStep: this.lcXStep,
+                canvasPadding: 40,
+                xStep: 80,
                 data: this.lcData,
                 labels: this.lcLabels,
                 yMax: 100,
@@ -311,19 +480,21 @@ export struct DataTablesTabBar {
         .borderRadius(4)
         .backgroundColor(this.getCurrentTheme().chartBg ?? this.getCurrentTheme().surfaceColor)
       } else if (this.selectedTab === '加工柱状图') {
+        // 启用外部单例数据源，行为与折线图一致（后台持续追加，页面只负责渲染）
         ChartComponent({
           params: {
-            dataCount: 10, // 主页只显示10条数据
+            dataCount: 10,
             startHour: 9,
             startMinute: 0,
-            chartHeight: 280, // 降低高度，让x轴标签可见
-            barWidth: 25, // 主页柱子宽度改为25px
-            barSpacing: 40, // 加工柱状图使用较紧密的间距
-            showScrollBar: false, // 隐藏滚动条
+            chartHeight: 280,
+            barWidth: 25,
+            barSpacing: 40,
+            showScrollBar: false,
             axisFontSizePx: 18,
             labelFontSizePx: 18,
             axisFontBold: true,
             labelFontBold: true,
+            useExternalFeed: true,
             onDataClick: (data: ChartData, event: ClickEvent) => {
               console.log(`点击了加工数据: ${data.time} - ${data.value}`);
             }

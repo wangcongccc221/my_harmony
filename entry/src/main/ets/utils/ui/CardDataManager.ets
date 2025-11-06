@@ -228,3 +228,4 @@ export class CardDataManager {
     return newList
   }
 }
+

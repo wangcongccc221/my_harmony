@@ -4,7 +4,7 @@
  * 已改为从数据库读取数据
  */
 
-import { ArkDataDemoService, ProcessingRow, ProcessingInsertParams } from '../../../db/ArkDataDemo'
+import { RdbService, ProcessingRow, ProcessingInsertParams } from '../../../db/RdbService'
 
 // 表格数据接口定义
 export interface HistoryTableData {
@@ -78,7 +78,7 @@ export class HistoryTableManager {
    */
   public async loadDataFromDatabase(): Promise<void> {
     try {
-      const rows = await ArkDataDemoService.queryAllProcessing()
+      const rows = await RdbService.queryAllProcessing()
       // 转换数据库数据为HistoryTableData格式
       this.tableData = rows.map((row: ProcessingRow): HistoryTableData => {
         // 处理状态：如果数据库中没有status，根据endTime判断
@@ -137,7 +137,7 @@ export class HistoryTableManager {
         weight: data.weight
       }
       
-      await ArkDataDemoService.insertProcessingFull(insertParams)
+      await RdbService.insertProcessingFull(insertParams)
       // 重新加载数据
       await this.loadDataFromDatabase()
       console.log('添加数据到数据库成功')
@@ -153,7 +153,7 @@ export class HistoryTableManager {
    */
   async deleteData(id: number): Promise<void> {
     try {
-      await ArkDataDemoService.deleteProcessingById(id)
+      await RdbService.deleteProcessingById(id)
       // 重新加载数据
       await this.loadDataFromDatabase()
       console.log('从数据库删除数据成功，ID:', id)
@@ -191,8 +191,8 @@ export class HistoryTableManager {
       
       // 使用insertProcessingFull来更新（因为updateProcessingById不支持扩展字段）
       // 先删除旧数据，再插入新数据（简单实现）
-      await ArkDataDemoService.deleteProcessingById(id)
-      await ArkDataDemoService.insertProcessingFull(updateParams)
+      await RdbService.deleteProcessingById(id)
+      await RdbService.insertProcessingFull(updateParams)
       // 重新加载数据
       await this.loadDataFromDatabase()
       console.log('更新数据库数据成功，ID:', id)
@@ -384,7 +384,7 @@ export class HistoryTableManager {
   async deleteBatchData(ids: number[]): Promise<void> {
     try {
       for (const id of ids) {
-        await ArkDataDemoService.deleteProcessingById(id)
+        await RdbService.deleteProcessingById(id)
       }
       // 重新加载数据
       await this.loadDataFromDatabase()

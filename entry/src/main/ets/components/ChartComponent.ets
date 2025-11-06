@@ -1,6 +1,7 @@
 // 数据接口定义
 import { BaseComponentHelper } from './common/BaseComponent'
 import { ExtendedOmniThemeStyle } from '../utils/theme/OmniThemeManager'
+import { ProcessingBarFeed } from '../utils/ProcessingBarFeed'
 export interface ChartData {
   time: string;
   value: number;
@@ -20,6 +21,8 @@ export interface ChartComponentParams {
   labelFontSizePx?: number; // X轴标签字体大小
   axisFontBold?: boolean; // Y轴文字加粗
   labelFontBold?: boolean; // X轴文字加粗
+  // 使用外部数据源（单例feed），启用后本组件不再自发生成数据
+  useExternalFeed?: boolean;
 }
 
 @Component
@@ -107,7 +110,11 @@ export struct ChartComponent {
   // 启动实时数据生成（只入队，不直接重绘）
   private startRealTimeUpdate(): void {
     if (this.timerId) return;
-    
+    if (this.params.useExternalFeed) {
+      // 使用外部feed，不启动内部生成，仅确保外部feed运行
+      ProcessingBarFeed.getInstance().start()
+      return
+    }
     this.timerId = setInterval(() => {
       const newTime = this.generateNewTimeLabel();
       const newValue = this.generateNewValue();
@@ -120,13 +127,21 @@ export struct ChartComponent {
   private startFlushTimer(): void {
     if (this.flushTimerId) return;
     this.flushTimerId = setInterval(() => {
-      if (this.pendingQueue.length === 0) { return }
-      // 合并入现有数据并裁剪为固定窗口
-      const merged = this.chartData.concat(this.pendingQueue)
-      const needSlice = merged.length > this.MAX_POINTS
-      const next = needSlice ? merged.slice(merged.length - this.MAX_POINTS) : merged
-      this.chartData = next
-      this.pendingQueue = []
+      if (this.params.useExternalFeed) {
+        // 从外部feed同步
+        const snap = ProcessingBarFeed.getInstance().getSnapshot()
+        // 裁剪窗口
+        const needSlice = snap.length > this.MAX_POINTS
+        const next = needSlice ? snap.slice(snap.length - this.MAX_POINTS) : snap
+        this.chartData = next
+      } else {
+        if (this.pendingQueue.length === 0) { return }
+        const merged = this.chartData.concat(this.pendingQueue)
+        const needSlice = merged.length > this.MAX_POINTS
+        const next = needSlice ? merged.slice(merged.length - this.MAX_POINTS) : merged
+        this.chartData = next
+        this.pendingQueue = []
+      }
 
       // 仅在跟随最新时，自动滚动到末尾（与绘制同节奏）
       if (this.followLatest) {
@@ -187,8 +202,10 @@ export struct ChartComponent {
     // 初始化时间索引（从初始数据量开始）
     this.currentTimeIndex = this.dataCount;
     
-    // 初始化数据
-    this.generateData();
+    // 初始化数据（外部feed则不生成）
+    if (!this.params.useExternalFeed) {
+      this.generateData();
+    }
     
     // 启动实时数据更新与批量刷新
     this.startRealTimeUpdate();

@@ -1,7 +1,10 @@
 /**
  * 加工数据管理器
  * 功能：管理加工记录数据，提供增删改查功能
+ * 已改为从数据库读取数据
  */
+
+import { RdbService, ProcessingRow } from '../../../db/RdbService'
 
 // 加工记录数据接口
 export interface ProcessingRecord {
@@ -37,14 +40,15 @@ export interface ProcessingStatistics {
 
 /**
  * 加工数据管理器 (Singleton Pattern)
+ * 从数据库读取数据
  */
 export class ProcessingDataManager {
   private static instance: ProcessingDataManager | null = null
   processingRecords: ProcessingRecord[] = []
-  private nextId: number = 1
+  private dataLoaded: boolean = false
 
   private constructor() {
-    this.initDefaultData()
+    // 不再初始化默认数据，改为从数据库加载
   }
 
   static getInstance(): ProcessingDataManager {
@@ -54,100 +58,168 @@ export class ProcessingDataManager {
     return ProcessingDataManager.instance
   }
 
-  private getNextId(): number {
-    return this.nextId++
-  }
-
   /**
-   * 初始化默认数据
+   * 从数据库加载数据
    */
-  private initDefaultData(): void {
-    this.addData({
-      startTime: '2025-09-03 08:30',
-      endTime: '2025-09-03 12:45',
-      productType: '苹果',
-      totalWeight: 2.5
-    })
-
-    this.addData({
-      startTime: '2025-09-05 14:20',
-      endTime: '2025-09-05 18:10',
-      productType: '橙子',
-      totalWeight: 1.8
-    })
-
-    this.addData({
-      startTime: '2025-09-08 09:15',
-      endTime: '2025-09-08 13:30',
-      productType: '香蕉',
-      totalWeight: 3.2
-    })
-
-    this.addData({
-      startTime: '2025-09-12 15:45',
-      endTime: '2025-09-12 19:20',
-      productType: '葡萄',
-      totalWeight: 1.5
-    })
-  }
-
-  /**
-   * 添加加工记录
-   */
-  addData(data: AddProcessingRecordParams): void {
-    const newId = this.getNextId()
-    const newRecord: ProcessingRecord = {
-      id: newId,
-      startTime: data.startTime,
-      endTime: data.endTime,
-      productType: data.productType,
-      totalWeight: data.totalWeight
-    }
-    this.processingRecords.push(newRecord)
-    console.log('添加加工记录成功:', newRecord)
-  }
-
-  /**
-   * 删除加工记录
-   */
-  deleteData(id: number): void {
-    const initialLength = this.processingRecords.length
-    this.processingRecords = this.processingRecords.filter(item => item.id !== id)
-    if (this.processingRecords.length < initialLength) {
-      console.log('删除加工记录成功，ID:', id)
-    } else {
-      console.log('未找到要删除的加工记录，ID:', id)
+  public async loadDataFromDatabase(): Promise<void> {
+    try {
+      const rows = await RdbService.queryAllProcessing()
+      // 转换数据库数据为ProcessingRecord格式
+      this.processingRecords = rows.map((row: ProcessingRow): ProcessingRecord => {
+        // 计算总重量：总重量 = 批重量 × 批个数
+        // weight: 批重量(kg), count: 批个数(个)
+        // totalWeight: 总重量(吨)
+        let calculatedWeight = 0
+        
+        // 优先使用 weight 和 count 计算：总重量(吨) = 批重量(kg) × 批个数(个) / 1000
+        if (row.weight && row.count && row.weight > 0 && row.count > 0) {
+          const rawWeight = (row.weight * row.count) / 1000  // 转换为吨
+          calculatedWeight = Math.round(rawWeight * 10) / 10  // 四舍五入到一位小数
+          console.log(`计算总重量: 批重量=${row.weight}kg × 批个数=${row.count}个 = ${rawWeight}吨 -> ${calculatedWeight}吨(四舍五入)`)
+        } 
+        // 如果数据库中的totalWeight有值且大于0，使用它（可能已经计算过）
+        else if (row.totalWeight && row.totalWeight > 0) {
+          calculatedWeight = Math.round(row.totalWeight * 10) / 10  // 四舍五入到一位小数
+        } 
+        // 如果只有批重量，使用批重量（假设批个数为1）
+        else if (row.weight && row.weight > 0) {
+          const rawWeight = row.weight / 1000  // 转换为吨
+          calculatedWeight = Math.round(rawWeight * 10) / 10  // 四舍五入到一位小数
+        } 
+        // 其他情况设为0
+        else {
+          calculatedWeight = 0
+          console.warn(`⚠️ 记录ID=${row.id} 无法计算总重量: weight=${row.weight}, count=${row.count}, totalWeight=${row.totalWeight}`)
+        }
+        
+        return {
+          id: row.id,
+          startTime: row.startTime || '-',
+          endTime: row.endTime || '-',
+          productType: row.productType || row.fruitName || '未知',
+          totalWeight: calculatedWeight
+        }
+      })
+      this.dataLoaded = true
+      console.log(`✅ 从数据库加载加工记录成功，共 ${this.processingRecords.length} 条`)
+    } catch (error) {
+      console.error('❌ 从数据库加载加工记录失败:', error)
+      this.dataLoaded = false
+      // 如果加载失败，使用空数组
+      this.processingRecords = []
     }
   }
 
   /**
-   * 更新加工记录
+   * 确保数据已加载（懒加载）
    */
-  updateData(id: number, newData: UpdateProcessingRecordParams): void {
-    const index = this.processingRecords.findIndex(item => item.id === id)
-    if (index !== -1) {
-      if (newData.startTime !== undefined) {
-        this.processingRecords[index].startTime = newData.startTime
-      }
-      if (newData.endTime !== undefined) {
-        this.processingRecords[index].endTime = newData.endTime
-      }
-      if (newData.productType !== undefined) {
-        this.processingRecords[index].productType = newData.productType
-      }
-      if (newData.totalWeight !== undefined) {
-        this.processingRecords[index].totalWeight = newData.totalWeight
-      }
-      console.log('更新加工记录成功:', this.processingRecords[index])
-    } else {
-      console.log('未找到要更新的加工记录，ID:', id)
+  private async ensureDataLoaded(): Promise<void> {
+    if (!this.dataLoaded) {
+      await this.loadDataFromDatabase()
     }
   }
 
   /**
-   * 获取所有加工记录
+   * 添加加工记录（保存到数据库）
+   */
+  async addData(data: AddProcessingRecordParams): Promise<void> {
+    try {
+      // 保存到数据库
+      await RdbService.insertProcessing(
+        data.startTime,
+        data.endTime,
+        data.productType,
+        data.totalWeight
+      )
+      // 重新加载数据以获取数据库生成的ID
+      await this.loadDataFromDatabase()
+      console.log('✅ 添加加工记录成功，已保存到数据库')
+    } catch (error) {
+      console.error('❌ 添加加工记录失败:', error)
+      const err = error as object
+      throw new Error(`添加加工记录失败: ${JSON.stringify(err)}`)
+    }
+  }
+
+  /**
+   * 删除加工记录（同步到数据库）
+   */
+  async deleteData(id: number): Promise<void> {
+    try {
+      // 从数据库删除
+      await RdbService.deleteProcessingById(id)
+      // 从内存中删除
+      const initialLength = this.processingRecords.length
+      this.processingRecords = this.processingRecords.filter(item => item.id !== id)
+      if (this.processingRecords.length < initialLength) {
+        console.log('✅ 删除加工记录成功，ID:', id)
+      } else {
+        console.log('⚠️ 未找到要删除的加工记录，ID:', id)
+      }
+    } catch (error) {
+      console.error('❌ 删除加工记录失败，ID:', id, error)
+      const err = error as object
+      throw new Error(`删除加工记录失败: ${JSON.stringify(err)}`)
+    }
+  }
+
+  /**
+   * 更新加工记录（同步到数据库）
+   */
+  async updateData(id: number, newData: UpdateProcessingRecordParams): Promise<void> {
+    try {
+      const record = this.processingRecords.find(item => item.id === id)
+      if (!record) {
+        console.log('⚠️ 未找到要更新的加工记录，ID:', id)
+        return
+      }
+
+      // 更新数据库
+      await RdbService.updateProcessingById(
+        id,
+        newData.startTime ?? record.startTime,
+        newData.endTime ?? record.endTime,
+        newData.productType ?? record.productType,
+        newData.totalWeight ?? record.totalWeight
+      )
+
+      // 更新内存中的数据
+      const index = this.processingRecords.findIndex(item => item.id === id)
+      if (index !== -1) {
+        if (newData.startTime !== undefined) {
+          this.processingRecords[index].startTime = newData.startTime
+        }
+        if (newData.endTime !== undefined) {
+          this.processingRecords[index].endTime = newData.endTime
+        }
+        if (newData.productType !== undefined) {
+          this.processingRecords[index].productType = newData.productType
+        }
+        if (newData.totalWeight !== undefined) {
+          this.processingRecords[index].totalWeight = newData.totalWeight
+        }
+        console.log('✅ 更新加工记录成功:', this.processingRecords[index])
+      }
+    } catch (error) {
+      console.error('❌ 更新加工记录失败，ID:', id, error)
+      const err = error as object
+      throw new Error(`更新加工记录失败: ${JSON.stringify(err)}`)
+    }
+  }
+
+  /**
+   * 获取所有加工记录（同步方法，返回已加载的数据）
    */
   getData(): ProcessingRecord[] {
+    // 如果数据未加载，返回空数组（调用者需要先调用loadDataFromDatabase）
+    return this.processingRecords
+  }
+
+  /**
+   * 异步获取所有加工记录（自动加载）
+   */
+  async getDataAsync(): Promise<ProcessingRecord[]> {
+    await this.ensureDataLoaded()
     return this.processingRecords
   }
 

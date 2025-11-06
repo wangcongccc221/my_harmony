@@ -14,7 +14,7 @@ import { TcpClient, createTcpClient } from './TcpClient';
 const DOMAIN = 0x0000;
 
 // TCP 网络配置
-const TCP_SERVER_IP: string = '192.168.0.15';      // TCP 服务器监听地址
+const TCP_SERVER_IP: string = '0.0.0.0';      // TCP 服务器监听地址（0.0.0.0表示监听所有网络接口，可从局域网访问）
 const TCP_CLIENT_REMOTE_IP: string = '192.168.0.16'; // TCP 客户端连接的目标地址
 const TCP_SERVER_PORT: number = 8081;               // TCP 服务器端口（避免与 HTTP 服务器 8080 冲突）
 

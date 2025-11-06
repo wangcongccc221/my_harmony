@@ -3,7 +3,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { NetworkOptimizer } from '../utils/network/NetworkOptimizer';
 import { startHttpServer, stopHttpServer, isHttpServerRunning } from '../utils/network/HttpServer';
-import { ArkDataDemoService } from '../db/ArkDataDemo';
+import { RdbService } from '../db/RdbService';
 import { HttpServerHandler } from '../utils/network/HttpServerHandler';
 import { copyRawDirectoryAuto } from '../utils/FileUtils';
 import { AppCleanup } from '../utils/AppCleanup';
@@ -29,19 +29,19 @@ export default class EntryAbility extends UIAbility {
     
     // 初始化数据库（RDB）
     try {
-      ArkDataDemoService.init(this.context);
+      RdbService.init(this.context);
       // 可选：预建演示表
-      ArkDataDemoService.createUsersTable().then(() => {
+      RdbService.createUsersTable().then(() => {
         hilog.info(DOMAIN, 'EntryAbility', 'RDB users table ready');
       }, (e: object) => {
         hilog.error(DOMAIN, 'EntryAbility', `RDB users table error: ${JSON.stringify(e)}`);
       });
       // 预建加工历史表并预热缓存
-      ArkDataDemoService.createProcessingHistoryTable().then(() => {
+      RdbService.createProcessingHistoryTable().then(() => {
         hilog.info(DOMAIN, 'EntryAbility', 'RDB processing table ready');
         // 触发一次缓存预热
         try {
-          ArkDataDemoService.queryAllProcessing().then((rows) => {
+          RdbService.queryAllProcessing().then((rows) => {
             // 调用 Handler 的静态属性进行预热
             // 这里无法直接写入私有属性，交给 Handler 自己在首次访问时加载
             hilog.info(DOMAIN, 'EntryAbility', `processing preload size=${rows.length}`);
@@ -49,6 +49,12 @@ export default class EntryAbility extends UIAbility {
         } catch (_) {}
       }, (e: object) => {
         hilog.error(DOMAIN, 'EntryAbility', `RDB processing table error: ${JSON.stringify(e)}`);
+      });
+      // 创建水果信息表
+      RdbService.createFruitInfoTable().then(() => {
+        hilog.info(DOMAIN, 'EntryAbility', 'RDB fruit_info table created');
+      }, (e: object) => {
+        hilog.error(DOMAIN, 'EntryAbility', `RDB fruit_info table error: ${JSON.stringify(e)}`);
       });
     } catch (error) {
       const err = error as object;

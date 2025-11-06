@@ -89,8 +89,8 @@ export struct ProcessingDataTable {
                 .textAlign(TextAlign.Center)
                 .width('25%')
 
-              // 总重量(吨)
-              Text(`${record.totalWeight}`)
+              // 总重量(吨) - 保留一位小数
+              Text(`${record.totalWeight.toFixed(1)}`)
                 .fontSize(16)
                 .fontColor(this.getCurrentTheme().textColor)
                 .textAlign(TextAlign.Center)

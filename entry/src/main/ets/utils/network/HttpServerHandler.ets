@@ -2,9 +2,10 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { util } from '@kit.ArkTS';
 import { fileIo as fs } from '@kit.CoreFileKit';
 import { Context } from '@kit.AbilityKit';
+import { BusinessError } from '@kit.BasicServicesKit';
 import { HttpRequestHandler } from './HttpServer';
 import { listFilesInDirectory, getDefaultStoragePath } from '../FileUtils';
-import { ArkDataDemoService, ProcessingRow, ProcessingInsertParams } from '../../db/ArkDataDemo';
+import { RdbService, ProcessingRow, ProcessingInsertParams, FruitInfoInsertParams } from '../../db/RdbService';
 
 const DOMAIN = 0x0000;
 
@@ -15,6 +16,16 @@ interface FileItem {
   name: string;
   isDir: boolean;
   path: string;
+}
+
+/**
+ * JSON响应接口
+ */
+interface JsonResponse {
+  success: boolean;
+  message?: string;
+  id?: number;
+  data?: object;
 }
 
 /**
@@ -161,7 +172,7 @@ export class HttpServerHandler {
    * 可以扩展这个方法来实现路由功能
    */
   static createRouterHandler(): HttpRequestHandler {
-    return (rawRequest: string): string => {
+    return async (rawRequest: string): Promise<string> => {
       try {
         // 安全地截取请求内容用于日志
         const requestPreview = rawRequest && rawRequest.length > 0 
@@ -211,7 +222,7 @@ export class HttpServerHandler {
       
       // 根据路径返回不同内容
       if (path === '/' || path === '/index') {
-          return HttpServerHandler.getFileBrowserResponse(params);
+          return await HttpServerHandler.getFileBrowserResponse(params);
       } else if (path === '/api/status') {
         return HttpServerHandler.getStatusResponse();
         } else if (path.startsWith('/files/') || path.startsWith('/file/')) {
@@ -220,14 +231,17 @@ export class HttpServerHandler {
           const filePath = decodedPath.replace(/^\/files?\//, '');
           if (filePath === '') {
             // 显示文件列表
-            return HttpServerHandler.getFileBrowserResponse(params);
+            return await HttpServerHandler.getFileBrowserResponse(params);
           } else {
             // 显示或下载文件
-            return HttpServerHandler.getFileResponse(filePath);
+            return await HttpServerHandler.getFileResponse(filePath);
           }
+      } else if (path === '/api/fruit-info') {
+          // 处理水果信息API（POST请求）
+          return await HttpServerHandler.handleFruitInfoApi(rawRequest);
       } else if (path.startsWith('/api/')) {
           // 注意：这里需要包含查询串，否则 getApiResponse 无法解析 action 等参数
-          return HttpServerHandler.getApiResponse(rawPath);
+          return await HttpServerHandler.getApiResponse(rawPath);
       } else {
         return HttpServerHandler.getNotFoundResponse();
         }
@@ -263,9 +277,9 @@ export class HttpServerHandler {
   }
 
   /**
-   * API响应处理
+   * API响应处理（异步）
    */
-  static getApiResponse(path: string): string {
+  static async getApiResponse(path: string): Promise<string> {
     // /api/processing?action=listJson|insert|update|delete
     if (path.indexOf('/api/processing') === 0) {
       try {
@@ -286,13 +300,14 @@ export class HttpServerHandler {
         // 首次访问时加载缓存
         if (!HttpServerHandler.processingCacheLoaded) {
           try {
-            ArkDataDemoService.createProcessingHistoryTable().then(() => {
-              ArkDataDemoService.queryAllProcessing().then((rows) => {
-                HttpServerHandler.processingCache = rows;
-                HttpServerHandler.processingCacheLoaded = true;
-              }, () => {});
-            }, () => {});
-          } catch (_) {}
+            await RdbService.createProcessingHistoryTable();
+            const rows = await RdbService.queryAllProcessing();
+            HttpServerHandler.processingCache = rows;
+            HttpServerHandler.processingCacheLoaded = true;
+          } catch (_) {
+            // 如果加载失败，尝试从磁盘加载
+            HttpServerHandler.loadProcessingCacheFromDisk();
+          }
         }
 
         if (action === 'listJson') {
@@ -370,27 +385,28 @@ export class HttpServerHandler {
             HttpServerHandler.processingCache.unshift(tmpRow);
             HttpServerHandler.processingCacheLoaded = true;
           } catch (_) {}
-          try {
-            const payload: ProcessingInsertParams = {
-              startTime: startTime,
-              endTime: endTime,
-              productType: productType,
-              totalWeight: totalWeight,
-              customerName: customerName,
-              farmName: farmName,
-              fruitName: fruitName,
-              status: status,
-              count: count,
-              weight: weight
-            };
-            ArkDataDemoService.insertProcessingFull(payload).then(() => {
-              ArkDataDemoService.queryAllProcessing().then((rows) => {
-                HttpServerHandler.processingCache = rows;
-                HttpServerHandler.processingCacheLoaded = true;
-                HttpServerHandler.saveProcessingCacheToDisk();
-              }, () => {});
+          
+          // 异步保存到数据库，但不等待完成
+          const payload: ProcessingInsertParams = {
+            startTime: startTime,
+            endTime: endTime,
+            productType: productType,
+            totalWeight: totalWeight,
+            customerName: customerName,
+            farmName: farmName,
+            fruitName: fruitName,
+            status: status,
+            count: count,
+            weight: weight
+          };
+          RdbService.insertProcessingFull(payload).then(() => {
+            RdbService.queryAllProcessing().then((rows: ProcessingRow[]) => {
+              HttpServerHandler.processingCache = rows;
+              HttpServerHandler.processingCacheLoaded = true;
+              HttpServerHandler.saveProcessingCacheToDisk();
             }, () => {});
-          } catch (_) {}
+          }, () => {});
+          
           // 立即把当前内存列表返回，便于前端无需等待缓存刷新
           HttpServerHandler.saveProcessingCacheToDisk();
           const json = JSON.stringify({ ok: true, data: HttpServerHandler.processingCache || [] });
@@ -398,37 +414,109 @@ export class HttpServerHandler {
           return `HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${buf.length}\r\n\r\n${json}`;
         } else if (action === 'update') {
           const id = Number(params['id'] || '0');
-          const startTime = params['startTime'] || '';
-          const endTime = params['endTime'] || '';
-          const productType = params['productType'] || '';
-          const totalWeight = Number(params['totalWeight'] || '0');
-          // 先更新内存缓存
+          // ID验证
+          if (!id || id <= 0) {
+            const errJson = JSON.stringify({ ok: false, message: 'ID无效或未提供' });
+            const errBuf = HttpServerHandler.textEncoder.encodeInto(errJson);
+            return `HTTP/1.1 400 Bad Request\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${errBuf.length}\r\n\r\n${errJson}`;
+          }
+          
+          // 先检查缓存中是否存在
+          const existingRecord = HttpServerHandler.processingCache.find(r => r.id === id);
+          if (!existingRecord) {
+            // 缓存中没有，异步检查数据库（但先返回处理中响应）
+            RdbService.checkProcessingExists(id).then((exists) => {
+              if (!exists) {
+                hilog.warn(DOMAIN, 'HttpServerHandler', `记录ID ${id} 不存在`);
+              }
+            }, () => {});
+            // 即使缓存中没有，也尝试更新（可能是缓存未加载）
+            hilog.info(DOMAIN, 'HttpServerHandler', `记录ID ${id} 在缓存中未找到，尝试更新`);
+          }
+
+          // 获取现有记录数据（如果字段未提供，则使用原值）
+          const updateParams: ProcessingInsertParams = {
+            startTime: params['startTime'] || existingRecord?.startTime || '',
+            endTime: params['endTime'] || existingRecord?.endTime || '',
+            productType: params['productType'] || existingRecord?.productType || '',
+            totalWeight: params['totalWeight'] ? Number(params['totalWeight']) : (existingRecord?.totalWeight || 0),
+            customerName: params['customerName'] !== undefined ? params['customerName'] : (existingRecord?.customerName || ''),
+            farmName: params['farmName'] !== undefined ? params['farmName'] : (existingRecord?.farmName || ''),
+            fruitName: params['fruitName'] !== undefined ? params['fruitName'] : (existingRecord?.fruitName || existingRecord?.productType || ''),
+            status: params['status'] !== undefined ? params['status'] : (existingRecord?.status || ''),
+            count: params['count'] !== undefined ? Number(params['count']) : (existingRecord?.count || 0),
+            weight: params['weight'] !== undefined ? Number(params['weight']) : (existingRecord?.weight || existingRecord?.totalWeight || 0)
+          };
+
+          // 更新内存缓存（完整更新）
           try {
             const list = HttpServerHandler.processingCache || [];
             for (let i = 0; i < list.length; i++) {
               if (list[i].id === id) {
-                list[i] = { id, startTime, endTime, productType, totalWeight };
+                list[i] = {
+                  id: id,
+                  startTime: updateParams.startTime,
+                  endTime: updateParams.endTime,
+                  productType: updateParams.productType,
+                  totalWeight: updateParams.totalWeight,
+                  customerName: updateParams.customerName,
+                  farmName: updateParams.farmName,
+                  fruitName: updateParams.fruitName,
+                  status: updateParams.status,
+                  count: updateParams.count,
+                  weight: updateParams.weight
+                };
                 break;
               }
             }
             HttpServerHandler.processingCache = list;
             HttpServerHandler.processingCacheLoaded = true;
-          } catch (_) {}
-          try {
-            ArkDataDemoService.updateProcessingById(id, startTime, endTime, productType, totalWeight).then(() => {
-              ArkDataDemoService.queryAllProcessing().then((rows) => {
-                HttpServerHandler.processingCache = rows;
-                HttpServerHandler.processingCacheLoaded = true;
-                HttpServerHandler.saveProcessingCacheToDisk();
-              }, () => {});
-            }, () => {});
-          } catch (_) {}
+          } catch (e) {
+            hilog.error(DOMAIN, 'HttpServerHandler', `更新缓存失败: ${JSON.stringify(e)}`);
+          }
+
+          // 异步更新数据库
+          RdbService.updateProcessingFull(id, updateParams).then(() => {
+            // 重新查询确保数据同步
+            RdbService.queryAllProcessing().then((rows: ProcessingRow[]) => {
+              HttpServerHandler.processingCache = rows;
+              HttpServerHandler.processingCacheLoaded = true;
+              HttpServerHandler.saveProcessingCacheToDisk();
+            }, (e: Error | BusinessError | object) => {
+              hilog.error(DOMAIN, 'HttpServerHandler', `重新查询失败: ${JSON.stringify(e)}`);
+            });
+          }, (e: Error | BusinessError | object) => {
+            const err = e as object;
+            hilog.error(DOMAIN, 'HttpServerHandler', `更新数据库失败: ${JSON.stringify(err)}`);
+            // 异步操作失败，无法返回错误响应，只能记录日志
+          });
+
           HttpServerHandler.saveProcessingCacheToDisk();
-          const json = JSON.stringify({ ok: true, data: HttpServerHandler.processingCache || [] });
+          const json = JSON.stringify({ ok: true, message: '更新成功', data: HttpServerHandler.processingCache || [] });
           const buf = HttpServerHandler.textEncoder.encodeInto(json);
           return `HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${buf.length}\r\n\r\n${json}`;
         } else if (action === 'delete') {
           const id = Number(params['id'] || '0');
+          // ID验证
+          if (!id || id <= 0) {
+            const errJson = JSON.stringify({ ok: false, message: 'ID无效或未提供' });
+            const errBuf = HttpServerHandler.textEncoder.encodeInto(errJson);
+            return `HTTP/1.1 400 Bad Request\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${errBuf.length}\r\n\r\n${errJson}`;
+          }
+
+          // 先检查缓存中是否存在
+          const existingRecord = HttpServerHandler.processingCache.find(r => r.id === id);
+          if (!existingRecord) {
+            // 缓存中没有，异步检查数据库（但先返回处理中响应）
+            RdbService.checkProcessingExists(id).then((exists) => {
+              if (!exists) {
+                hilog.warn(DOMAIN, 'HttpServerHandler', `记录ID ${id} 不存在`);
+              }
+            }, () => {});
+            // 即使缓存中没有，也尝试删除（可能是缓存未加载）
+            hilog.info(DOMAIN, 'HttpServerHandler', `记录ID ${id} 在缓存中未找到，尝试删除`);
+          }
+
           // 先更新内存缓存
           try {
             const list = HttpServerHandler.processingCache || [];
@@ -438,18 +526,28 @@ export class HttpServerHandler {
             }
             HttpServerHandler.processingCache = next;
             HttpServerHandler.processingCacheLoaded = true;
-          } catch (_) {}
-          try {
-            ArkDataDemoService.deleteProcessingById(id).then(() => {
-              ArkDataDemoService.queryAllProcessing().then((rows) => {
-                HttpServerHandler.processingCache = rows;
-                HttpServerHandler.processingCacheLoaded = true;
-                HttpServerHandler.saveProcessingCacheToDisk();
-              }, () => {});
-            }, () => {});
-          } catch (_) {}
+          } catch (e) {
+            hilog.error(DOMAIN, 'HttpServerHandler', `更新缓存失败: ${JSON.stringify(e)}`);
+          }
+
+          // 异步删除数据库记录
+          RdbService.deleteProcessingById(id).then(() => {
+            // 重新查询确保数据同步
+            RdbService.queryAllProcessing().then((rows: ProcessingRow[]) => {
+              HttpServerHandler.processingCache = rows;
+              HttpServerHandler.processingCacheLoaded = true;
+              HttpServerHandler.saveProcessingCacheToDisk();
+            }, (e: Error | BusinessError | object) => {
+              hilog.error(DOMAIN, 'HttpServerHandler', `重新查询失败: ${JSON.stringify(e)}`);
+            });
+          }, (e: Error | BusinessError | object) => {
+            const err = e as object;
+            hilog.error(DOMAIN, 'HttpServerHandler', `删除数据库失败: ${JSON.stringify(err)}`);
+            // 异步操作失败，无法返回错误响应，只能记录日志
+          });
+
           HttpServerHandler.saveProcessingCacheToDisk();
-          const json = JSON.stringify({ ok: true, data: HttpServerHandler.processingCache || [] });
+          const json = JSON.stringify({ ok: true, message: '删除成功', data: HttpServerHandler.processingCache || [] });
           const buf = HttpServerHandler.textEncoder.encodeInto(json);
           return `HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${buf.length}\r\n\r\n${json}`;
         }
@@ -476,7 +574,7 @@ export class HttpServerHandler {
   /**
    * 文件浏览器响应（显示文件列表，类似 Jupyter Notebook）
    */
-  static getFileBrowserResponse(params?: Record<string, string>): string {
+  static async getFileBrowserResponse(params?: Record<string, string>): Promise<string> {
     if (!HttpServerHandler.fileBasePath) {
       return HttpServerHandler.getNotFoundResponse();
     }
@@ -704,7 +802,7 @@ export class HttpServerHandler {
    * 文件响应（显示或下载文件内容）
    * 注意：文件大小限制为 5MB，避免阻塞主线程
    */
-  static getFileResponse(relativePath: string): string {
+  static async getFileResponse(relativePath: string): Promise<string> {
     if (!HttpServerHandler.fileBasePath) {
       return HttpServerHandler.getNotFoundResponse();
     }
@@ -1024,6 +1122,122 @@ export class HttpServerHandler {
            `Content-Length: ${htmlContent.length}\r\n` +
            `\r\n` +
            htmlContent;
+  }
+
+  /**
+   * 处理水果信息API（POST请求）
+   */
+  static handleFruitInfoApi(rawRequest: string): Promise<string> {
+    try {
+      // 解析请求方法
+      const requestLines = rawRequest.split('\r\n');
+      const requestLine = requestLines[0] || '';
+      const method = requestLine.split(' ')[0] || '';
+      
+      if (method !== 'POST') {
+        const errorResp: JsonResponse = { success: false, message: '只支持POST请求' };
+        return Promise.resolve(HttpServerHandler.getJsonResponse(errorResp, 405));
+      }
+      
+      // 解析请求体（JSON数据）
+      const bodyIndex = rawRequest.indexOf('\r\n\r\n');
+      if (bodyIndex < 0) {
+        const errorResp: JsonResponse = { success: false, message: '请求体为空' };
+        return Promise.resolve(HttpServerHandler.getJsonResponse(errorResp, 400));
+      }
+      
+      const bodyStr = rawRequest.substring(bodyIndex + 4);
+      let data: Record<string, string | number | undefined>;
+      try {
+        const parsed: object = JSON.parse(bodyStr) as object;
+        data = parsed as Record<string, string | number | undefined>;
+            } catch (e) {
+              const errorMsg = e instanceof Error ? e.message : String(e);
+              const errorResp: JsonResponse = { success: false, message: 'JSON解析失败: ' + errorMsg };
+              return Promise.resolve(HttpServerHandler.getJsonResponse(errorResp, 400));
+            }
+      
+      // 生成检测时间
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const detectionTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      
+      // 构建数据库插入参数
+      const insertParams: FruitInfoInsertParams = {
+        lane: (typeof data.lane === 'string' ? data.lane : String(data.lane || 'lane-1')),
+        level: (typeof data.level === 'string' ? data.level : String(data.level || '')),
+        diameterMm: typeof data.diameterMm === 'number' ? data.diameterMm : (parseFloat(String(data.diameterMm)) || 0),
+        weightG: typeof data.weightG === 'number' ? data.weightG : (parseFloat(String(data.weightG)) || 0),
+        projectionAreaMm2: typeof data.projectionAreaMm2 === 'number' ? data.projectionAreaMm2 : (parseFloat(String(data.projectionAreaMm2)) || 0),
+        densityKgPerM3: typeof data.densityKgPerM3 === 'number' ? data.densityKgPerM3 : (parseFloat(String(data.densityKgPerM3)) || 0),
+        volumeMm3: typeof data.volumeMm3 === 'number' ? data.volumeMm3 : (parseFloat(String(data.volumeMm3)) || 0),
+        brix: typeof data.brix === 'number' ? data.brix : (parseFloat(String(data.brix)) || 0),
+        color1Pct: typeof data.color1Pct === 'number' ? data.color1Pct : (parseFloat(String(data.color1Pct)) || 0),
+        acidity: typeof data.acidity === 'number' ? data.acidity : (parseFloat(String(data.acidity)) || 0),
+        color2Pct: typeof data.color2Pct === 'number' ? data.color2Pct : (parseFloat(String(data.color2Pct)) || 0),
+        drynessPct: typeof data.drynessPct === 'number' ? data.drynessPct : (parseFloat(String(data.drynessPct)) || 0),
+        color3Pct: typeof data.color3Pct === 'number' ? data.color3Pct : (parseFloat(String(data.color3Pct)) || 0),
+        maturityPct: typeof data.maturityPct === 'number' ? data.maturityPct : (parseFloat(String(data.maturityPct)) || 0),
+        defectAreaMm2: typeof data.defectAreaMm2 === 'number' ? data.defectAreaMm2 : (parseFloat(String(data.defectAreaMm2)) || 0),
+        pulpColorPct: typeof data.pulpColorPct === 'number' ? data.pulpColorPct : (parseFloat(String(data.pulpColorPct)) || 0),
+        defectCount: typeof data.defectCount === 'number' ? data.defectCount : (parseInt(String(data.defectCount || 0)) || 0),
+        outlet: (typeof data.outlet === 'string' ? data.outlet : String(data.outlet || '')),
+        verticalAxis: typeof data.verticalAxis === 'number' ? data.verticalAxis : (parseFloat(String(data.verticalAxis)) || 0),
+        horizontalRatio: typeof data.horizontalRatio === 'number' ? data.horizontalRatio : (parseFloat(String(data.horizontalRatio)) || 0),
+        flatEllipticalRatioMm: typeof data.flatEllipticalRatioMm === 'number' ? data.flatEllipticalRatioMm : (parseFloat(String(data.flatEllipticalRatioMm)) || 0),
+        detectionTime: detectionTime
+      };
+      
+      // 异步保存到数据库（使用upsert：存在则更新，不存在则插入）
+      RdbService.upsertFruitInfo(insertParams).then((id: number) => {
+        hilog.info(DOMAIN, 'HttpServerHandler', `水果信息保存成功，ID: ${id}, 通道: ${insertParams.lane}`);
+      }, (error: object) => {
+        hilog.error(DOMAIN, 'HttpServerHandler', `水果信息保存失败: ${JSON.stringify(error)}`);
+      });
+      
+      // 立即返回成功响应（异步保存）
+      const successResp: JsonResponse = { 
+        success: true, 
+        message: `水果信息已提交，正在保存到${insertParams.lane}...`,
+        data: insertParams
+      };
+      return Promise.resolve(HttpServerHandler.getJsonResponse(successResp, 200));
+      
+    } catch (error) {
+      hilog.error(DOMAIN, 'HttpServerHandler', `处理水果信息API失败: ${JSON.stringify(error)}`);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+            const errorResp: JsonResponse = {
+              success: false,
+              message: '服务器内部错误: ' + errorMsg
+            };
+            return Promise.resolve(HttpServerHandler.getJsonResponse(errorResp, 500));
+    }
+  }
+
+  /**
+   * 返回JSON响应
+   */
+  static getJsonResponse(data: JsonResponse, statusCode: number = 200): string {
+    const jsonContent = JSON.stringify(data);
+    const jsonBuf = HttpServerHandler.textEncoder.encodeInto(jsonContent);
+    const statusText = statusCode === 200 ? 'OK' : 
+                       statusCode === 400 ? 'Bad Request' :
+                       statusCode === 405 ? 'Method Not Allowed' :
+                       statusCode === 500 ? 'Internal Server Error' : 'Error';
+    
+    return `HTTP/1.1 ${statusCode} ${statusText}\r\n` +
+           `Content-Type: application/json; charset=utf-8\r\n` +
+           `Content-Length: ${jsonBuf.length}\r\n` +
+           `Access-Control-Allow-Origin: *\r\n` +
+           `Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n` +
+           `Access-Control-Allow-Headers: Content-Type\r\n` +
+           `\r\n` +
+           jsonContent;
   }
 }
 

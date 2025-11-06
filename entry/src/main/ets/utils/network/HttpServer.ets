@@ -3,7 +3,7 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { util } from '@kit.ArkTS';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 
-export type HttpRequestHandler = (requestRaw: string) => string;
+export type HttpRequestHandler = (requestRaw: string) => Promise<string> | string;
 
 // 内部接口和类，不导出
 interface IHttpServer {
@@ -45,9 +45,11 @@ class HttpServer implements IHttpServer {
         // 异步处理请求，避免阻塞主线程
         const request = buf2String(msgInfo.message);
         // 使用 Promise 的微任务将处理延迟到下一个事件循环，确保不阻塞主线程
-        const promise: Promise<void> = Promise.resolve().then(() => {
+        const promise: Promise<void> = Promise.resolve().then(async () => {
           try {
-            const response = (this.handler as HttpRequestHandler)(request);
+            const handlerResult = (this.handler as HttpRequestHandler)(request);
+            // 处理同步或异步返回
+            const response = handlerResult instanceof Promise ? await handlerResult : handlerResult;
             // 检查 socket 是否仍然有效
             if (this.running && clientSocket) {
               clientSocket.send({ data: response });

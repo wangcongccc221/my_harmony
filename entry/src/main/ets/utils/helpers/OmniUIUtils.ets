@@ -4,11 +4,10 @@
  * 用途：简化 Omni-UI 组件的使用
  */
 
-import { OmniToast, ToastOptions, OmniLoading } from '@wuba58/omni-ui'
+import { OmniToast, ToastOptions } from '@wuba58/omni-ui'
 
 export class OmniUIUtils {
   private static instance: OmniUIUtils
-  private omniLoading?: OmniLoading
 
   // 单例模式
   static getInstance(): OmniUIUtils {

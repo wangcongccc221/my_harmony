@@ -24,7 +24,8 @@
 import { getCurrentCellDragData, CellDragData, CELL_DRAG_ACTIVE_KEY, CELL_DRAG_STORAGE_KEY, MULTI_SELECT_CELLS_KEY, MULTI_SELECT_ACTIVE_KEY, CLEAR_ALL_HIGHLIGHTS_KEY } from '../ui/SimpleDraggableCell'
 import { DragData as GridDragData, GRID_DRAG_DATA_KEY, GRID_DRAG_ACTIVE_KEY } from '../layout/DraggableGridTable'
 // 导入模块化的拖拽管理器
-import { DragManager, DragHandlers, DragData as ModuleDragData } from '../../utils/drag/DragManager'
+import { DragManager, DragData as ModuleDragData } from '../../utils/ui/DragManager'
+import { DragHandlers } from '../../utils/ui/DragHandlers'
 import { GlobalCardDataManager } from '../../utils/GlobalCardDataManager'
 
 import { WaveCard } from '../charts/WaveCard'

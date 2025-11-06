@@ -5,10 +5,11 @@
 
 import { ThreeLayerCardData } from './types'
 import { WaveCard } from '../charts/WaveCard'
-import { DragHandlers, DragData } from '../../utils/drag/DragManager'
+import { DragData } from '../../utils/ui/DragManager'
+import { DragHandlers } from '../../utils/ui/DragHandlers'
 import { CardColorConfig } from '../../utils/theme/CardColors'
 import { UseDragHandlers } from './hooks/useDragHandlers'
-import { WaveConfigManager } from '../../utils/animation/WaveConfig'
+import { WaveConfigManager } from '../../utils/ui/WaveConfig'
 
 // 运行期日志开关（仅用于屏蔽非关键调试日志）
 const DEBUG_LOGS: boolean = false
@@ -35,7 +36,7 @@ export struct ThirdLayer {
   deleteItemFromThirdLayer: () => void = () => {}
 
   // 拖拽处理器
-  private dragHandlers = new DragHandlers()
+  private dragHandlers: DragHandlers = new DragHandlers()
   
   // 滚动控制器，确保新数据从顶部开始显示
   private scroller: Scroller = new Scroller()

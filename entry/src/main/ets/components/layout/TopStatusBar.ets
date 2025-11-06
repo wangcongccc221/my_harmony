@@ -299,10 +299,10 @@ export struct TopStatusBar {
 
       // 客户公司 LOGO + 农场名称 + 分选种类（放在状态区与FSM切换之间）
       Row() {
-        Image(this.customerLogoUrl && this.customerLogoUrl.length > 0 ? this.customerLogoUrl : $r('app.media.default_avatar'))
+        Image(this.customerLogoUrl && this.customerLogoUrl.length > 0 ? this.customerLogoUrl : $r('app.media.customer_logo'))
           .width('4%')
           .height('70%')
-          .objectFit(ImageFit.Cover)
+          .objectFit(ImageFit.Contain)
           .borderRadius(6)
           .margin({ right: '0.6%' })
 

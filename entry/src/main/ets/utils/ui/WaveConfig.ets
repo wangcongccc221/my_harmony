@@ -94,7 +94,6 @@ export class WaveConfigManager {
   private getFrequency(cardIndex: number): number {
     // 所有卡片统一频率0.03
     return 0.03
-    return 0.03
   }
 
   /**
@@ -207,3 +206,4 @@ export class WaveConfigManager {
     return new Map(this.configs)
   }
 }
+

@@ -7,6 +7,7 @@
 import { BaseComponentHelper } from '../common/BaseComponent'
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { DialogButtons } from '../ui/DialogButtons'
+import { RdbService, FruitInfoInsertParams, FruitInfoRow } from '../../db/RdbService'
 
 // 水果信息接口
 interface FruitInfo {
@@ -83,10 +84,71 @@ export struct FruitInfoDialog {
     return num
   }
 
-  // 确认按钮点击
-  private handleConfirm() {
-    if (this.onConfirm) {
-      this.onConfirm(this.fruitInfo)
+  // 格式化数字显示（用于TextInput的text属性）
+  private formatNumberForDisplay(value: number): string {
+    if (value === 0 || value === undefined || isNaN(value)) {
+      return ''
+    }
+    return String(value)
+  }
+
+  // 确认按钮点击 - 保存到数据库
+  private async handleConfirm() {
+    try {
+      // 生成检测时间（格式：YYYY-MM-DD HH:mm:ss）
+      const now = new Date()
+      const year = now.getFullYear()
+      const month = String(now.getMonth() + 1).padStart(2, '0')
+      const day = String(now.getDate()).padStart(2, '0')
+      const hours = String(now.getHours()).padStart(2, '0')
+      const minutes = String(now.getMinutes()).padStart(2, '0')
+      const seconds = String(now.getSeconds()).padStart(2, '0')
+      const detectionTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+      
+      // 构建通道字符串（lane-1, lane-2等）
+      const lane = `lane-${this.selectedLaneIndex + 1}`
+      
+      // 构建数据库插入参数
+      const insertParams: FruitInfoInsertParams = {
+        lane: lane,
+        level: this.levelText || '',
+        diameterMm: this.diameterMm,
+        weightG: this.weightG,
+        projectionAreaMm2: this.projectionAreaMm2,
+        densityKgPerM3: this.densityKgPerM3,
+        volumeMm3: this.volumeMm3,
+        brix: this.brix,
+        color1Pct: this.color1Pct,
+        acidity: this.acidity,
+        color2Pct: this.color2Pct,
+        drynessPct: this.drynessPct,
+        color3Pct: this.color3Pct,
+        maturityPct: this.maturityPct,
+        defectAreaMm2: this.defectAreaMm2,
+        pulpColorPct: this.pulpColorPct,
+        defectCount: this.defectCount,
+        outlet: this.outletText || '',
+        verticalAxis: this.verticalAxis,
+        horizontalRatio: this.horizontalRatio,
+        flatEllipticalRatioMm: this.flatEllipticalRatioMm,
+        detectionTime: detectionTime
+        // processingId 可选，如果需要关联加工批次，可以在这里设置
+      }
+      
+      // 保存到数据库（使用upsert：存在则更新，不存在则插入）
+      const id = await RdbService.upsertFruitInfo(insertParams)
+      console.log('水果信息已保存到数据库，ID:', id, '通道:', lane)
+      
+      // 调用回调
+      if (this.onConfirm) {
+        this.onConfirm(this.fruitInfo)
+      }
+    } catch (error) {
+      console.error('保存水果信息失败:', error)
+      // 即使保存失败，也调用回调（保持原有行为）
+      if (this.onConfirm) {
+        this.onConfirm(this.fruitInfo)
+      }
     }
   }
 
@@ -97,9 +159,73 @@ export struct FruitInfoDialog {
     }
   }
 
-  // 显示对话框时重置通道为 lane-1（index = 0）
+  // 显示对话框时重置通道为 lane-1（index = 0），不自动加载数据
   aboutToAppear() {
     this.selectedLaneIndex = 0
+    // 不清空数据，也不自动加载，等用户选择通道后再加载
+  }
+
+  // 加载指定通道的数据并填充表单
+  private async loadLaneData(lane: string): Promise<void> {
+    try {
+      const data = await RdbService.queryFruitInfoByLane(lane)
+      if (data) {
+        // 如果该通道有数据，填充到表单
+        this.levelText = data.level || ''
+        this.diameterMm = data.diameterMm || 0
+        this.weightG = data.weightG || 0
+        this.projectionAreaMm2 = data.projectionAreaMm2 || 0
+        this.densityKgPerM3 = data.densityKgPerM3 || 0
+        this.volumeMm3 = data.volumeMm3 || 0
+        this.brix = data.brix || 0
+        this.color1Pct = data.color1Pct || 0
+        this.acidity = data.acidity || 0
+        this.color2Pct = data.color2Pct || 0
+        this.drynessPct = data.drynessPct || 0
+        this.color3Pct = data.color3Pct || 0
+        this.maturityPct = data.maturityPct || 0
+        this.defectAreaMm2 = data.defectAreaMm2 || 0
+        this.pulpColorPct = data.pulpColorPct || 0
+        this.defectCount = data.defectCount || 0
+        this.outletText = data.outlet || ''
+        this.verticalAxis = data.verticalAxis || 0
+        this.horizontalRatio = data.horizontalRatio || 0
+        this.flatEllipticalRatioMm = data.flatEllipticalRatioMm || 0
+        console.log(`已加载通道 ${lane} 的数据`)
+      } else {
+        // 如果该通道没有数据，清空表单
+        this.clearFormData()
+        console.log(`通道 ${lane} 没有数据，表单已清空`)
+      }
+    } catch (error) {
+      console.error(`加载通道 ${lane} 数据失败:`, error)
+      // 发生错误时也清空表单
+      this.clearFormData()
+    }
+  }
+
+  // 清空表单数据
+  private clearFormData(): void {
+    this.levelText = ''
+    this.diameterMm = 0
+    this.weightG = 0
+    this.projectionAreaMm2 = 0
+    this.densityKgPerM3 = 0
+    this.volumeMm3 = 0
+    this.brix = 0
+    this.color1Pct = 0
+    this.acidity = 0
+    this.color2Pct = 0
+    this.drynessPct = 0
+    this.color3Pct = 0
+    this.maturityPct = 0
+    this.defectAreaMm2 = 0
+    this.pulpColorPct = 0
+    this.defectCount = 0
+    this.outletText = ''
+    this.verticalAxis = 0
+    this.horizontalRatio = 0
+    this.flatEllipticalRatioMm = 0
   }
 
   build() {
@@ -159,12 +285,16 @@ export struct FruitInfoDialog {
                     .fontColor(this.getCurrentTheme().textColor)
                     .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
                     .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                    .borderRadius(8)
-                    .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+                    .borderRadius(2)  // 使用等级页面的圆角样式
+                    .padding({ left: 8, right: 25, top: 3, bottom: 3 })  // 增加右侧padding，让箭头靠右
+                    .layoutWeight(1)  // 添加layoutWeight，让箭头自动靠右
                     .constraintSize({ minWidth: 120, maxWidth: 220 })
-                    .height(34)
+                    .height(34)  // 保持水果信息页面的高度
                     .onSelect((index: number) => {
                       this.selectedLaneIndex = index
+                      // 当通道改变时，自动加载该通道的数据
+                      const lane = `lane-${index + 1}`
+                      this.loadLaneData(lane)
                     })
 
                   Blank().layoutWeight(1)
@@ -174,7 +304,7 @@ export struct FruitInfoDialog {
                     .fontColor(this.getCurrentTheme().textColor)
                     .margin({ right: 8 })
 
-                  TextInput({})
+                  TextInput({ text: this.levelText })
                     .fontSize(18)  // 等级输入框字体调大到18px
                     .fontColor(this.getCurrentTheme().textColor)
                     .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
@@ -217,7 +347,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.diameterMm > 0 ? String(this.diameterMm) : '' })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
@@ -247,7 +377,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.formatNumberForDisplay(this.weightG) })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
@@ -281,7 +411,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.formatNumberForDisplay(this.projectionAreaMm2) })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
@@ -309,7 +439,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.formatNumberForDisplay(this.densityKgPerM3) })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
@@ -342,7 +472,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.formatNumberForDisplay(this.volumeMm3) })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
@@ -370,7 +500,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.formatNumberForDisplay(this.brix) })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
@@ -403,7 +533,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.formatNumberForDisplay(this.color1Pct) })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
@@ -431,7 +561,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.formatNumberForDisplay(this.acidity) })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
@@ -464,7 +594,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.formatNumberForDisplay(this.color2Pct) })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
@@ -492,7 +622,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.formatNumberForDisplay(this.drynessPct) })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
@@ -525,7 +655,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.formatNumberForDisplay(this.color3Pct) })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
@@ -553,7 +683,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.formatNumberForDisplay(this.maturityPct) })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
@@ -586,7 +716,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.formatNumberForDisplay(this.defectAreaMm2) })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
@@ -614,7 +744,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.formatNumberForDisplay(this.pulpColorPct) })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
@@ -647,7 +777,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.formatNumberForDisplay(this.defectCount) })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
@@ -675,7 +805,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.outletText })
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
                         .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
@@ -704,7 +834,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.formatNumberForDisplay(this.verticalAxis) })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
@@ -728,7 +858,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.formatNumberForDisplay(this.horizontalRatio) })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)
@@ -758,7 +888,7 @@ export struct FruitInfoDialog {
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
-                      TextInput({})
+                      TextInput({ text: this.formatNumberForDisplay(this.flatEllipticalRatioMm) })
                         .type(InputType.Number)
                         .fontSize(18)  // 标签字体调大到18px
                         .fontColor(this.getCurrentTheme().textColor)

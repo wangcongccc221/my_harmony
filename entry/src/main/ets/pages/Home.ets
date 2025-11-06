@@ -21,7 +21,6 @@ import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../util
 import { useOmniTheme, OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../utils/theme/useOmniTheme'
 import { OmniUIInit } from '../utils/helpers/OmniUIInit'
 import { OmniUIUtils } from '../utils/helpers/OmniUIUtils'
-import { OmniBottomTabBar, OmniBottomBarItem } from '@wuba58/omni-ui'
 // 导入 IBest-UI 组件
 import { IBestButton, IBestIcon, IBestTag, IBestInit, IBestAvatar, IBestAvatarGroup } from '@ibestservices/ibest-ui'
 import { window } from '@kit.ArkUI'

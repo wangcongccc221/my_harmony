@@ -10,13 +10,16 @@ export struct WaveCard {
   @Prop gradientRight: string = 'rgba(52, 152, 219, 0.7)'
   @Prop cardBackground: string | Color = Color.Transparent
 
-  @State private phase: number = 0
+  @State private phase: number = 0  // 原来的实现：使用 @State，会触发UI重建
   @State private canvasWidth: number = 0
   @State private canvasHeight: number = 0
 
   private animationId: number = 0
   private settings: RenderingContextSettings = new RenderingContextSettings(true)
   private context: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
+
+  // 优化版本（已注释）：
+  // private phase: number = 0  // 不使用 @State，避免触发UI重建
 
   aboutToAppear() {
     this.startAnimation()
@@ -33,10 +36,19 @@ export struct WaveCard {
     if (this.animationId) {
       clearInterval(this.animationId)
     }
+    // 原来的实现：60fps（16ms间隔）
     this.animationId = setInterval(() => {
       this.phase += this.speed
       this.drawWave()
-    }, 16)
+    }, 16)  // 原来的实现：60fps
+    
+    // 优化版本（已注释）：
+    // // 优化：降低更新频率从16ms（60fps）到33ms（30fps），减少CPU占用
+    // // 30fps对于波浪动画已经足够流畅，同时能显著减少卡顿
+    // this.animationId = setInterval(() => {
+    //   this.phase += this.speed
+    //   this.drawWave()
+    // }, 33)  // 从16ms改为33ms，降低到30fps
   }
 
   build() {
@@ -80,6 +92,7 @@ export struct WaveCard {
     this.context.beginPath()
     this.context.moveTo(0, centerY)
 
+    // 原来的实现：每像素画一次（性能较低）
     for (let x = 0; x <= width; x += 1) {
       const y = centerY + Math.sin(x * this.frequency + this.phase) * this.amplitude
       this.context.lineTo(x, y)
@@ -89,5 +102,27 @@ export struct WaveCard {
     this.context.lineTo(0, height)
     this.context.closePath()
     this.context.fill()
+    
+    // 优化版本（已注释）：
+    // // 如果画布尺寸无效，不绘制
+    // if (width <= 0 || height <= 0) {
+    //   return
+    // }
+    // 
+    // // 性能优化：减少绘制点数量
+    // // 原来每像素画一次，现在每2-3像素画一次，减少计算量
+    // // 对于120px宽的卡片，从120次计算减少到40-60次，性能提升约50%
+    // const step = width > 200 ? 3 : (width > 100 ? 2 : 1)  // 大卡片步长更大
+    // 
+    // for (let x = 0; x <= width; x += step) {
+    //   const y = centerY + Math.sin(x * this.frequency + this.phase) * this.amplitude
+    //   this.context.lineTo(x, y)
+    // }
+    //
+    // // 确保最后一点连接到右边界
+    // if (width % step !== 0) {
+    //   const y = centerY + Math.sin(width * this.frequency + this.phase) * this.amplitude
+    //   this.context.lineTo(width, y)
+    // }
   }
 }

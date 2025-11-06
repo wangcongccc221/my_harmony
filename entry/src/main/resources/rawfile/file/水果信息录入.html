@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>水果信息录入</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: "Microsoft YaHei", Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+    
+    .header h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+    
+    .header p {
+      opacity: 0.9;
+      font-size: 14px;
+    }
+    
+    .form-container {
+      padding: 30px;
+    }
+    
+    .form-section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+    
+    .form-section h3 {
+      color: #333;
+      margin-bottom: 20px;
+      font-size: 18px;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+    
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .form-group label {
+      color: #555;
+      font-size: 14px;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    
+    .form-group input {
+      padding: 10px 12px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: all 0.3s;
+    }
+    
+    .form-group input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .form-group .unit {
+      color: #888;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 30px;
+    }
+    
+    .btn {
+      padding: 12px 30px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 500;
+    }
+    
+    .btn-submit {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-reset {
+      background: #6c757d;
+      color: white;
+    }
+    
+    .btn-reset:hover {
+      background: #5a6268;
+      transform: translateY(-2px);
+    }
+    
+    .message {
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    
+    .message.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    
+    .message.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🍎 水果信息录入系统</h1>
+      <p>填写水果检测数据，系统将自动保存到数据库</p>
+    </div>
+    
+    <div class="form-container">
+      <div id="message" class="message"></div>
+      
+      <form id="fruitInfoForm">
+        <!-- 基础信息 -->
+        <div class="form-section">
+          <h3>📋 基础信息</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="lane">通道 *</label>
+              <select id="lane" name="lane" required style="padding: 10px 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;">
+                <option value="lane-1">通道 1</option>
+                <option value="lane-2">通道 2</option>
+                <option value="lane-3">通道 3</option>
+                <option value="lane-4">通道 4</option>
+                <option value="lane-5">通道 5</option>
+                <option value="lane-6">通道 6</option>
+                <option value="lane-7">通道 7</option>
+                <option value="lane-8">通道 8</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="level">等级</label>
+              <input type="text" id="level" name="level" placeholder="如: A级、B级等">
+            </div>
+          </div>
+        </div>
+        
+        <!-- 物理属性 -->
+        <div class="form-section">
+          <h3>📏 物理属性</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="diameterMm">直径</label>
+              <input type="number" id="diameterMm" name="diameterMm" step="0.1" min="0" max="1000" placeholder="0">
+              <span class="unit">单位: mm</span>
+            </div>
+            
+            <div class="form-group">
+              <label for="weightG">重量</label>
+              <input type="number" id="weightG" name="weightG" step="0.1" min="0" max="100000" placeholder="0">
+              <span class="unit">单位: g</span>
+            </div>
+            
+            <div class="form-group">
+              <label for="projectionAreaMm2">投影面积</label>
+              <input type="number" id="projectionAreaMm2" name="projectionAreaMm2" step="0.1" min="0" placeholder="0">
+              <span class="unit">单位: mm²</span>
+            </div>
+            
+            <div class="form-group">
+              <label for="densityKgPerM3">密度</label>
+              <input type="number" id="densityKgPerM3" name="densityKgPerM3" step="0.1" min="0" max="5000" placeholder="0">
+              <span class="unit">单位: kg/m³</span>
+            </div>
+            
+            <div class="form-group">
+              <label for="volumeMm3">体积</label>
+              <input type="number" id="volumeMm3" name="volumeMm3" step="0.1" min="0" placeholder="0">
+              <span class="unit">单位: mm³</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 品质指标 -->
+        <div class="form-section">
+          <h3>🔬 品质指标</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="brix">糖度</label>
+              <input type="number" id="brix" name="brix" step="0.1" min="0" max="100" placeholder="0">
+              <span class="unit">单位: Brix</span>
+            </div>
+            
+            <div class="form-group">
+              <label for="acidity">酸度</label>
+              <input type="number" id="acidity" name="acidity" step="0.1" min="0" placeholder="0">
+            </div>
+            
+            <div class="form-group">
+              <label for="color1Pct">颜色1比例</label>
+              <input type="number" id="color1Pct" name="color1Pct" step="0.1" min="0" max="100" placeholder="0">
+              <span class="unit">单位: %</span>
+            </div>
+            
+            <div class="form-group">
+              <label for="color2Pct">颜色2比例</label>
+              <input type="number" id="color2Pct" name="color2Pct" step="0.1" min="0" max="100" placeholder="0">
+              <span class="unit">单位: %</span>
+            </div>
+            
+            <div class="form-group">
+              <label for="color3Pct">颜色3比例</label>
+              <input type="number" id="color3Pct" name="color3Pct" step="0.1" min="0" max="100" placeholder="0">
+              <span class="unit">单位: %</span>
+            </div>
+            
+            <div class="form-group">
+              <label for="maturityPct">成熟度</label>
+              <input type="number" id="maturityPct" name="maturityPct" step="0.1" min="0" max="100" placeholder="0">
+              <span class="unit">单位: %</span>
+            </div>
+            
+            <div class="form-group">
+              <label for="drynessPct">干燥度</label>
+              <input type="number" id="drynessPct" name="drynessPct" step="0.1" min="0" max="100" placeholder="0">
+              <span class="unit">单位: %</span>
+            </div>
+            
+            <div class="form-group">
+              <label for="pulpColorPct">果肉颜色比例</label>
+              <input type="number" id="pulpColorPct" name="pulpColorPct" step="0.1" min="0" max="100" placeholder="0">
+              <span class="unit">单位: %</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 瑕疵信息 -->
+        <div class="form-section">
+          <h3>⚠️ 瑕疵信息</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="defectAreaMm2">瑕疵面积</label>
+              <input type="number" id="defectAreaMm2" name="defectAreaMm2" step="0.1" min="0" placeholder="0">
+              <span class="unit">单位: mm²</span>
+            </div>
+            
+            <div class="form-group">
+              <label for="defectCount">瑕疵数量</label>
+              <input type="number" id="defectCount" name="defectCount" step="1" min="0" placeholder="0">
+              <span class="unit">单位: 个</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 其他信息 -->
+        <div class="form-section">
+          <h3>📊 其他信息</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="outlet">出口</label>
+              <input type="text" id="outlet" name="outlet" placeholder="如: 出口1、出口2等">
+            </div>
+            
+            <div class="form-group">
+              <label for="verticalAxis">垂直轴</label>
+              <input type="number" id="verticalAxis" name="verticalAxis" step="0.1" placeholder="0">
+            </div>
+            
+            <div class="form-group">
+              <label for="horizontalRatio">水平比例</label>
+              <input type="number" id="horizontalRatio" name="horizontalRatio" step="0.1" placeholder="0">
+            </div>
+            
+            <div class="form-group">
+              <label for="flatEllipticalRatioMm">扁平椭圆比例</label>
+              <input type="number" id="flatEllipticalRatioMm" name="flatEllipticalRatioMm" step="0.1" min="0" placeholder="0">
+              <span class="unit">单位: mm</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="button-group">
+          <button type="submit" class="btn btn-submit">💾 保存数据</button>
+          <button type="button" class="btn btn-reset" onclick="resetForm()">🔄 重置表单</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <script>
+    function showMessage(text, type) {
+      const messageEl = document.getElementById('message');
+      messageEl.textContent = text;
+      messageEl.className = 'message ' + type + ' show';
+      setTimeout(() => {
+        messageEl.classList.remove('show');
+      }, 5000);
+    }
+    
+    function resetForm() {
+      document.getElementById('fruitInfoForm').reset();
+      showMessage('表单已重置', 'success');
+    }
+    
+    document.getElementById('fruitInfoForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const formData = new FormData(e.target);
+      const data = {};
+      
+      // 收集表单数据
+      for (let [key, value] of formData.entries()) {
+        if (value !== '') {
+          // 数字字段转换为数字类型
+          if (['diameterMm', 'weightG', 'projectionAreaMm2', 'densityKgPerM3', 'volumeMm3', 
+               'brix', 'acidity', 'color1Pct', 'color2Pct', 'color3Pct', 'maturityPct', 
+               'drynessPct', 'defectAreaMm2', 'pulpColorPct', 'defectCount', 
+               'verticalAxis', 'horizontalRatio', 'flatEllipticalRatioMm'].includes(key)) {
+            data[key] = parseFloat(value) || 0;
+          } else {
+            data[key] = value;
+          }
+        }
+      }
+      
+      try {
+        const response = await fetch('/api/fruit-info', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showMessage('✅ 水果信息保存成功！ID: ' + result.id, 'success');
+          // 可选：3秒后重置表单
+          setTimeout(() => {
+            resetForm();
+          }, 3000);
+        } else {
+          showMessage('❌ 保存失败: ' + (result.message || '未知错误'), 'error');
+        }
+      } catch (error) {
+        showMessage('❌ 网络错误: ' + error.message, 'error');
+        console.error('提交错误:', error);
+      }
+    });
+  </script>
+</body>
+</html>
+

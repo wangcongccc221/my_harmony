@@ -27,6 +27,14 @@ import { DEFAULT_TOP_BAR_DATA, DEFAULT_SORTING_INFO, DEFAULT_SETTINGS, DEFAULT_S
 const LOG_TIME_ENABLED: boolean = false
 const LOG_SORT_ENABLED: boolean = false
 
+// FSM设置状态接口
+interface FSMSettings {
+  setting1: boolean
+  setting2: boolean
+  setting3: boolean
+  setting4: boolean
+}
+
 // 相关全局键的初始化已前移到 aboutToAppear，避免模块级 IIFE 造成不必要的开销
 
 // [TODO 提醒 - 重要]
@@ -110,7 +118,21 @@ export struct HomeContent {
   @State private statsVersion: number = 0
   @State private tablesRefreshKey: number = 0
   
-
+  // FSM设置状态存储（每个FSM独立保存设置状态）
+  @State private fsm1Settings: FSMSettings = {
+    setting1: false,
+    setting2: false,
+    setting3: false,
+    setting4: false
+  }
+  @State private fsm2Settings: FSMSettings = {
+    setting1: false,
+    setting2: false,
+    setting3: false,
+    setting4: false
+  }
+  // 记录上一个FSM状态，用于保存设置状态
+  private previousFSM: 'FSM1' | 'FSM2' = 'FSM1'
 
   // 生成从 start 开始、长度为 count 的数字序列（类型安全）
   private buildNumberRange(start: number, count: number): number[] {
@@ -186,7 +208,71 @@ export struct HomeContent {
    * 监听FSM状态变化
    */
   onFSMChange(): void {
-    console.log(`HomeContent: FSM状态变化到 ${this.selectedFSM}`)
+    console.log(`HomeContent: FSM状态变化: ${this.previousFSM} -> ${this.selectedFSM}`)
+    
+    // 保存上一个FSM的设置状态（在恢复新FSM之前）
+    const currentSettings: FSMSettings = {
+      setting1: this.setting1Enabled,
+      setting2: this.setting2Enabled,
+      setting3: this.setting3Enabled,
+      setting4: this.setting4Enabled
+    }
+    
+    // 保存上一个FSM的设置状态
+    if (this.previousFSM === 'FSM1') {
+      this.fsm1Settings = currentSettings
+      console.log(`💾 保存FSM1的设置状态:`, currentSettings)
+    } else {
+      this.fsm2Settings = currentSettings
+      console.log(`💾 保存FSM2的设置状态:`, currentSettings)
+    }
+    
+    // 恢复目标FSM的设置状态
+    let targetSettings = this.selectedFSM === 'FSM1' ? this.fsm1Settings : this.fsm2Settings
+    console.log(`🔍 恢复${this.selectedFSM}的设置状态:`, targetSettings)
+    
+    // 检查目标FSM是否已经初始化过（如果所有设置都是false，说明未初始化）
+    const isUninitialized = !targetSettings.setting1 && !targetSettings.setting2 && 
+                           !targetSettings.setting3 && !targetSettings.setting4
+    
+    // 如果未初始化，根据FSM设置默认值：FSM1默认"设置1"，FSM2默认"设置3"
+    if (isUninitialized) {
+      if (this.selectedFSM === 'FSM1') {
+        targetSettings = {
+          setting1: true,
+          setting2: false,
+          setting3: false,
+          setting4: false
+        }
+        this.fsm1Settings = targetSettings
+        console.log(`🎯 ${this.selectedFSM}未初始化，默认开启设置1`)
+      } else {
+        targetSettings = {
+          setting1: false,
+          setting2: false,
+          setting3: true,
+          setting4: false
+        }
+        this.fsm2Settings = targetSettings
+        console.log(`🎯 ${this.selectedFSM}未初始化，默认开启设置3`)
+      }
+    }
+    
+    // 应用目标FSM的设置状态
+    this.setting1Enabled = targetSettings.setting1
+    this.setting2Enabled = targetSettings.setting2
+    this.setting3Enabled = targetSettings.setting3
+    this.setting4Enabled = targetSettings.setting4
+    
+    // 同步到状态管理器
+    this.stateManager.updateSetting1Enabled(targetSettings.setting1)
+    this.stateManager.updateSetting2Enabled(targetSettings.setting2)
+    this.stateManager.updateSetting3Enabled(targetSettings.setting3)
+    this.stateManager.updateSetting4Enabled(targetSettings.setting4)
+    
+    // 更新previousFSM为当前FSM，为下次切换做准备
+    this.previousFSM = this.selectedFSM
+    
     // 更新数据管理器的FSM状态
     this.dataManager.setFSM(this.selectedFSM)
     // 更新顶部状态栏
@@ -578,6 +664,49 @@ export struct HomeContent {
   }
 
   aboutToAppear() {
+    // 初始化previousFSM为当前FSM
+    this.previousFSM = this.selectedFSM
+    
+    // 检查当前FSM是否已经初始化，如果没有则默认开启"设置1"
+    const currentFSMSettings = this.selectedFSM === 'FSM1' ? this.fsm1Settings : this.fsm2Settings
+    const isUninitialized = !currentFSMSettings.setting1 && !currentFSMSettings.setting2 && 
+                           !currentFSMSettings.setting3 && !currentFSMSettings.setting4
+    
+    if (isUninitialized) {
+      let defaultSettings: FSMSettings
+      if (this.selectedFSM === 'FSM1') {
+        // FSM1默认开启"设置1"
+        defaultSettings = {
+          setting1: true,
+          setting2: false,
+          setting3: false,
+          setting4: false
+        }
+        this.fsm1Settings = defaultSettings
+        console.log(`🎯 首次加载${this.selectedFSM}，默认开启设置1`)
+      } else {
+        // FSM2默认开启"设置3"
+        defaultSettings = {
+          setting1: false,
+          setting2: false,
+          setting3: true,
+          setting4: false
+        }
+        this.fsm2Settings = defaultSettings
+        console.log(`🎯 首次加载${this.selectedFSM}，默认开启设置3`)
+      }
+      // 应用默认设置
+      this.setting1Enabled = defaultSettings.setting1
+      this.setting2Enabled = defaultSettings.setting2
+      this.setting3Enabled = defaultSettings.setting3
+      this.setting4Enabled = defaultSettings.setting4
+      // 同步到状态管理器
+      this.stateManager.updateSetting1Enabled(defaultSettings.setting1)
+      this.stateManager.updateSetting2Enabled(defaultSettings.setting2)
+      this.stateManager.updateSetting3Enabled(defaultSettings.setting3)
+      this.stateManager.updateSetting4Enabled(defaultSettings.setting4)
+    }
+    
     // 根据FSM状态初始化顶部状态栏四项指标
     this.updateTopBarForFSM()
     // 初始化用户与状态
