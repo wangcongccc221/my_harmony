@@ -5,6 +5,7 @@
  */
 
 import { RdbService, ProcessingRow, ProcessingInsertParams } from '../../../db/RdbService'
+import { DateValidationUtils } from '../../../utils/helpers/DateValidationUtils'
 
 // 表格数据接口定义
 export interface HistoryTableData {
@@ -260,18 +261,9 @@ export class HistoryTableManager {
       filteredData = filteredData.filter(item => {
         if (!item.startTime) return false
         
-        // 提取日期部分（兼容多种格式：YYYY-MM-DD 或 YYYY-MM-DDTHH:mm:ss）
-        // 数据库可能存储：
-        // - YYYY-MM-DD（从DatePickerHelper来的）
-        // - YYYY-MM-DDTHH:mm（从HTML datetime-local来的）
-        // - YYYY-MM-DDTHH:mm:ss（完整格式）
-        let itemStartDate = item.startTime.trim()
-        // 如果包含时间部分，只取日期部分（前10个字符）
-        if (itemStartDate.length > 10) {
-          itemStartDate = itemStartDate.substring(0, 10)
-        }
-        // 验证日期格式（YYYY-MM-DD）
-        if (itemStartDate.length !== 10 || !itemStartDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        // 使用工具类提取和验证日期部分
+        const itemStartDate = DateValidationUtils.extractDatePart(item.startTime)
+        if (!DateValidationUtils.isValidDateFormat(itemStartDate)) {
           console.warn('无效的开始日期格式:', item.startTime)
           return false
         }
@@ -280,13 +272,8 @@ export class HistoryTableManager {
         // 如果 endTime 是 '-' 或空，说明记录还在进行中，使用一个很大的日期
         let itemEndDate = itemStartDate
         if (item.endTime && item.endTime !== '-' && item.endTime.trim() !== '') {
-          let endDateStr = item.endTime.trim()
-          // 如果包含时间部分，只取日期部分
-          if (endDateStr.length > 10) {
-            endDateStr = endDateStr.substring(0, 10)
-          }
-          // 验证日期格式
-          if (endDateStr.length === 10 && endDateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          const endDateStr = DateValidationUtils.extractDatePart(item.endTime)
+          if (DateValidationUtils.isValidDateFormat(endDateStr)) {
             itemEndDate = endDateStr
           } else {
             console.warn('无效的结束日期格式:', item.endTime)
@@ -301,13 +288,10 @@ export class HistoryTableManager {
         // 查询区间（DatePickerHelper返回的是 YYYY-MM-DD 格式）
         let queryStartDate = '1970-01-01'
         if (filters.startDate) {
-          queryStartDate = filters.startDate.trim()
-          // 如果查询日期包含时间部分，只取日期部分
-          if (queryStartDate.length > 10) {
-            queryStartDate = queryStartDate.substring(0, 10)
-          }
-          // 验证格式
-          if (queryStartDate.length !== 10 || !queryStartDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          const extracted = DateValidationUtils.extractDatePart(filters.startDate)
+          if (DateValidationUtils.isValidDateFormat(extracted)) {
+            queryStartDate = extracted
+          } else {
             console.warn('无效的查询开始日期格式:', filters.startDate)
             queryStartDate = '1970-01-01'
           }
@@ -315,13 +299,10 @@ export class HistoryTableManager {
         
         let queryEndDate = '9999-12-31'
         if (filters.endDate) {
-          queryEndDate = filters.endDate.trim()
-          // 如果查询日期包含时间部分，只取日期部分
-          if (queryEndDate.length > 10) {
-            queryEndDate = queryEndDate.substring(0, 10)
-          }
-          // 验证格式
-          if (queryEndDate.length !== 10 || !queryEndDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          const extracted = DateValidationUtils.extractDatePart(filters.endDate)
+          if (DateValidationUtils.isValidDateFormat(extracted)) {
+            queryEndDate = extracted
+          } else {
             console.warn('无效的查询结束日期格式:', filters.endDate)
             queryEndDate = '9999-12-31'
           }

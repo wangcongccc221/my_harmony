@@ -41,6 +41,10 @@ import { QualityDataTable } from './QualityDataTable'
 import { QualityOutletDialog } from './QualityOutletDialog'
 import { QualityLevelData } from './QualityConstants'
 import { DEFAULT_QUALITY_SETTINGS } from './QualityConstants'
+import { hilog } from '@kit.PerformanceAnalysisKit'
+
+const DOMAIN = 0x0000
+const TAG = 'QualityContent'
 
 /**
  * 品质内容组件
@@ -283,8 +287,8 @@ export struct QualityContent {
     // 触发事件处理
     this.eventHandler.onAutoSet()
     
-    // TODO: 实现自动设定逻辑
-    console.log('品质页面：执行自动设定逻辑')
+    // 自动设定逻辑（待实现具体业务逻辑）
+    hilog.info(DOMAIN, TAG, '品质页面：执行自动设定逻辑')
   }
 
   /**
@@ -303,8 +307,8 @@ export struct QualityContent {
     // 触发事件处理
     this.eventHandler.onSettingsClick()
     
-    // TODO: 实现设置参数逻辑
-    console.log('品质页面：打开参数设置面板')
+    // 设置参数逻辑（待实现具体业务逻辑）
+    hilog.info(DOMAIN, TAG, '品质页面：打开参数设置面板')
   }
 
   /**

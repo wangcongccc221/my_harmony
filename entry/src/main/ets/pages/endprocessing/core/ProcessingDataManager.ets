@@ -5,6 +5,7 @@
  */
 
 import { RdbService, ProcessingRow } from '../../../db/RdbService'
+import { NumberUtils } from '../../../utils/helpers/NumberUtils'
 
 // 加工记录数据接口
 export interface ProcessingRecord {
@@ -73,18 +74,16 @@ export class ProcessingDataManager {
         
         // 优先使用 weight 和 count 计算：总重量(吨) = 批重量(kg) × 批个数(个) / 1000
         if (row.weight && row.count && row.weight > 0 && row.count > 0) {
-          const rawWeight = (row.weight * row.count) / 1000  // 转换为吨
-          calculatedWeight = Math.round(rawWeight * 10) / 10  // 四舍五入到一位小数
-          console.log(`计算总重量: 批重量=${row.weight}kg × 批个数=${row.count}个 = ${rawWeight}吨 -> ${calculatedWeight}吨(四舍五入)`)
+          calculatedWeight = NumberUtils.calculateTotalWeight(row.weight, row.count)
+          console.log(`计算总重量: 批重量=${row.weight}kg × 批个数=${row.count}个 = ${calculatedWeight}吨(四舍五入)`)
         } 
         // 如果数据库中的totalWeight有值且大于0，使用它（可能已经计算过）
         else if (row.totalWeight && row.totalWeight > 0) {
-          calculatedWeight = Math.round(row.totalWeight * 10) / 10  // 四舍五入到一位小数
+          calculatedWeight = NumberUtils.roundToDecimal(row.totalWeight, 1)
         } 
         // 如果只有批重量，使用批重量（假设批个数为1）
         else if (row.weight && row.weight > 0) {
-          const rawWeight = row.weight / 1000  // 转换为吨
-          calculatedWeight = Math.round(rawWeight * 10) / 10  // 四舍五入到一位小数
+          calculatedWeight = NumberUtils.calculateTotalWeight(row.weight, 1)
         } 
         // 其他情况设为0
         else {

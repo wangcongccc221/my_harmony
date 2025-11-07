@@ -211,6 +211,24 @@ export struct LevelDataTable {
   @State private levelCountIndex: number = 0
 
   /**
+   * 动态生成等级数量选择器选项
+   * 
+   * 功能说明：
+   * - 根据当前数据行数和最大支持值动态生成选项
+   * - 确保选项数量至少覆盖当前数据行数
+   * - 最大支持20个等级
+   */
+  private getLevelCountOptions(): SelectOption[] {
+    const currentRowCount = this.levelTableData.length
+    const maxCount = Math.max(20, currentRowCount) // 至少支持20个，如果数据超过20则支持到当前行数
+    const options: SelectOption[] = []
+    for (let i = 0; i <= maxCount; i++) {
+      options.push({ value: i.toString() })
+    }
+    return options
+  }
+
+  /**
    * 等级表格数据
    * 
    * 功能说明：
@@ -440,7 +458,7 @@ export struct LevelDataTable {
       this.levelNameInputs[i] = newLevelName
     }
     
-    // 更新等级数量选择器 - 直接使用行数作为索引
+    // 更新等级数量选择器 - 直接使用行数作为索引（动态支持任意数量）
     this.levelCountIndex = this.levelTableData.length
     
     // 强制刷新UI - 重新创建数组引用以触发UI更新
@@ -506,7 +524,7 @@ export struct LevelDataTable {
       this.levelNameInputs[i] = newLevelName
     }
     
-    // 更新等级数量选择器
+    // 更新等级数量选择器 - 直接使用行数作为索引（动态支持任意数量）
     this.levelCountIndex = this.levelTableData.length
     
     // 保持按钮显示状态，让用户可以继续操作
@@ -1005,11 +1023,9 @@ export struct LevelDataTable {
               .fontColor(this.getCurrentTheme().textColor)
               .margin({ right: 8 })
 
-            // 等级数量选择器
-            Select([
-              { value: '0' }, { value: '1' }, { value: '2' }, { value: '3' }, { value: '4' },
-              { value: '5' }, { value: '6' }, { value: '7' }, { value: '8' }, { value: '9' }, { value: '10' }
-            ])
+            // 等级数量选择器（动态生成选项，支持到当前数据行数）
+            Select(this.getLevelCountOptions())
+              .key(`levelCountSelect-${this.levelCountIndex}-${this.levelTableData.length}-${this.forceRefresh}`)
               .selected(this.levelCountIndex)
               .value(this.levelCountIndex.toString())
               .font({ size: 22 })
@@ -1039,9 +1055,12 @@ export struct LevelDataTable {
                     const currentCount = this.levelCountIndex
                     let newCount = currentCount
                     
+                    // 获取当前最大支持的数量（当前数据行数和选项最大值中的较大者）
+                    const maxCount = Math.max(this.levelTableData.length, this.getLevelCountOptions().length - 1)
+                    
                     if (verticalValue > 0) {
                       // 向上滚动，等级数量 +1（增加）
-                      newCount = Math.min(currentCount + 1, 10)
+                      newCount = Math.min(currentCount + 1, maxCount)
                       console.log(`⬆️ 等级页面向上滚动，从 ${currentCount} 到 ${newCount}`)
                     } else if (verticalValue < 0) {
                       // 向下滚动，等级数量 -1（减少）

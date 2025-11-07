@@ -6,8 +6,30 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { HttpRequestHandler } from './HttpServer';
 import { listFilesInDirectory, getDefaultStoragePath } from '../FileUtils';
 import { RdbService, ProcessingRow, ProcessingInsertParams, FruitInfoInsertParams } from '../../db/RdbService';
+import { HttpResponseUtils } from '../helpers/HttpResponseUtils';
+import { QueryStringUtils } from '../helpers/QueryStringUtils';
+import { DateValidationUtils } from '../helpers/DateValidationUtils';
+import { NumberUtils } from '../helpers/NumberUtils';
 
 const DOMAIN = 0x0000;
+
+/**
+ * 状态响应数据接口
+ */
+interface StatusResponseData {
+  status: string;
+  timestamp: string;
+  server: string;
+}
+
+/**
+ * 默认API响应数据接口
+ */
+interface DefaultApiResponseData {
+  path: string;
+  message: string;
+  data: null;
+}
 
 /**
  * 文件项接口
@@ -121,12 +143,7 @@ export class HttpServerHandler {
     return (rawRequest: string): string => {
       hilog.info(DOMAIN, 'HttpServerHandler', `收到HTTP请求: ${rawRequest.substring(0, 200)}...`);
       
-      // TODO: 在这里添加你的请求处理逻辑
-      // 例如：解析URL、请求方法、参数等
-      // 例如：根据不同路径返回不同内容
-      // 例如：调用业务逻辑处理数据
-      
-      // 默认响应
+      // 默认响应（已由 createRouterHandler 处理路由逻辑）
       return HttpServerHandler.getDefaultResponse();
     };
   }
@@ -171,13 +188,7 @@ export class HttpServerHandler {
       </html>
     `;
 
-    const contentBuf = HttpServerHandler.textEncoder.encodeInto(htmlContent);
-
-    return `HTTP/1.1 200 OK\r\n` +
-           `Content-Type: text/html; charset=utf-8\r\n` +
-           `Content-Length: ${contentBuf.length}\r\n` +
-           `\r\n` +
-           htmlContent;
+    return HttpResponseUtils.buildHtmlResponse(htmlContent);
   }
 
   /**
@@ -209,20 +220,11 @@ export class HttpServerHandler {
       const requestLine = requestLines[0] || '';
         const pathParts = requestLine.split(' ');
         const rawPath = pathParts.length > 1 ? pathParts[1] : '/';
-        // 拆分路径与查询参数（避免解构声明）
-        const qIndex = rawPath.indexOf('?');
-        const path = qIndex >= 0 ? rawPath.substring(0, qIndex) : rawPath;
-        const queryString = qIndex >= 0 ? rawPath.substring(qIndex + 1) : '';
-        const params: Record<string, string> = {};
-        if (queryString && queryString.length > 0) {
-          const pairs = queryString.split('&');
-          for (let i = 0; i < pairs.length; i++) {
-            const kv = pairs[i].split('=');
-            const k = decodeURIComponent(kv[0] || '');
-            const v = decodeURIComponent(kv[1] || '');
-            if (k) { params[k] = v; }
-          }
-        }
+        
+        // 使用工具类解析路径和查询参数
+        const pathAndQuery = QueryStringUtils.parsePathAndQuery(rawPath);
+        const path = pathAndQuery.path;
+        const params = pathAndQuery.params;
         
         // 解析路径参数（处理 URL 编码）
         let decodedPath = path;
@@ -276,17 +278,12 @@ export class HttpServerHandler {
    * 状态API响应
    */
   static getStatusResponse(): string {
-    const jsonContent = JSON.stringify({
+    const statusData: StatusResponseData = {
       status: 'ok',
       timestamp: new Date().toISOString(),
       server: 'HarmonyOS HTTP Server'
-    });
-    const jsonBuf = HttpServerHandler.textEncoder.encodeInto(jsonContent);
-    return `HTTP/1.1 200 OK\r\n` +
-           `Content-Type: application/json; charset=utf-8\r\n` +
-           `Content-Length: ${jsonBuf.length}\r\n` +
-           `\r\n` +
-           jsonContent;
+    };
+    return HttpResponseUtils.buildSuccessResponse(statusData);
   }
 
   /**
@@ -296,18 +293,10 @@ export class HttpServerHandler {
     // /api/processing?action=listJson|insert|update|delete
     if (path.indexOf('/api/processing') === 0) {
       try {
-        const idx = path.indexOf('?');
-        const queryString = idx >= 0 ? path.substring(idx + 1) : '';
-        const params: Record<string, string> = {};
-        if (queryString) {
-          const pairs = queryString.split('&');
-          for (let i = 0; i < pairs.length; i++) {
-            const kv = pairs[i].split('=');
-            const k = decodeURIComponent(kv[0] || '');
-            const v = decodeURIComponent(kv[1] || '');
-            if (k) { params[k] = v; }
-          }
-        }
+        // 使用工具类解析查询参数
+        const pathAndQuery = QueryStringUtils.parsePathAndQuery(path);
+        const cleanPath = pathAndQuery.path;
+        const params = pathAndQuery.params;
 
         const action = params['action'] || 'listJson';
         // 首次访问时加载缓存
@@ -316,7 +305,7 @@ export class HttpServerHandler {
             await RdbService.createProcessingHistoryTable();
             const rows = await RdbService.queryAllProcessing();
             HttpServerHandler.processingCache = HttpServerHandler.limitCacheSize(rows);
-            HttpServerHandler.processingCacheLoaded = true;
+                HttpServerHandler.processingCacheLoaded = true;
           } catch (_) {
             // 如果加载失败，尝试从磁盘加载
             HttpServerHandler.loadProcessingCacheFromDisk();
@@ -347,9 +336,8 @@ export class HttpServerHandler {
             };
             data.push(norm);
           }
-          const json = JSON.stringify({ ok: true, data });
-          const buf = HttpServerHandler.textEncoder.encodeInto(json);
-          return `HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${buf.length}\r\n\r\n${json}`;
+          // 使用工具类构建JSON响应
+          return HttpResponseUtils.buildSuccessResponse(data);
         } else if (action === 'insert') {
           const startTime = params['startTime'] || '';
           const endTime = params['endTime'] || '';
@@ -362,25 +350,15 @@ export class HttpServerHandler {
           const status = params['status'] || '';
           const count = Number(params['count'] || '0');
           const weight = Number(params['weight'] || totalWeight || '0');
-          // 参数校验：非空与时间先后
+          // 参数校验：非空
           if (!startTime || !endTime || !fruitName || !(params['totalWeight'] || params['weight'] || '').toString().length) {
-            const errJson = JSON.stringify({ ok: false, message: '参数不能为空' });
-            const errBuf = HttpServerHandler.textEncoder.encodeInto(errJson);
-            return `HTTP/1.1 400 Bad Request\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${errBuf.length}\r\n\r\n${errJson}`;
+            return HttpResponseUtils.buildErrorResponse('参数不能为空', 400);
           }
-          // 尝试比较时间
-          let invalidOrder = false;
-          try {
-            const sNum = Date.parse(startTime);
-            const eNum = Date.parse(endTime);
-            if (!isNaN(sNum) && !isNaN(eNum) && sNum > eNum) {
-              invalidOrder = true;
-            }
-          } catch (_) {}
-          if (invalidOrder) {
-            const errJson = JSON.stringify({ ok: false, message: '开始时间不能晚于结束时间' });
-            const errBuf = HttpServerHandler.textEncoder.encodeInto(errJson);
-            return `HTTP/1.1 400 Bad Request\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${errBuf.length}\r\n\r\n${errJson}`;
+          
+          // 使用工具类验证日期范围
+          const dateValidation = DateValidationUtils.validateDateRange(startTime, endTime);
+          if (!dateValidation.isValid) {
+            return HttpResponseUtils.buildErrorResponse(dateValidation.error || '日期验证失败', 400);
           }
           // 先更新内存缓存，保证前端立即可见
           try {
@@ -396,42 +374,40 @@ export class HttpServerHandler {
             const tmpRow: ProcessingRow = { id: nextId, startTime, endTime, productType, totalWeight, customerName, farmName, fruitName, status, count, weight };
             if (!HttpServerHandler.processingCache) { HttpServerHandler.processingCache = []; }
             HttpServerHandler.processingCache.unshift(tmpRow);
+            // 立即限制缓存大小，防止内存泄漏
+            HttpServerHandler.processingCache = HttpServerHandler.limitCacheSize(HttpServerHandler.processingCache);
             HttpServerHandler.processingCacheLoaded = true;
           } catch (_) {}
           
           // 异步保存到数据库，但不等待完成
-          const payload: ProcessingInsertParams = {
-            startTime: startTime,
-            endTime: endTime,
-            productType: productType,
-            totalWeight: totalWeight,
-            customerName: customerName,
-            farmName: farmName,
-            fruitName: fruitName,
-            status: status,
-            count: count,
-            weight: weight
-          };
+            const payload: ProcessingInsertParams = {
+              startTime: startTime,
+              endTime: endTime,
+              productType: productType,
+              totalWeight: totalWeight,
+              customerName: customerName,
+              farmName: farmName,
+              fruitName: fruitName,
+              status: status,
+              count: count,
+              weight: weight
+            };
           RdbService.insertProcessingFull(payload).then(() => {
             RdbService.queryAllProcessing().then((rows: ProcessingRow[]) => {
               HttpServerHandler.processingCache = HttpServerHandler.limitCacheSize(rows);
-              HttpServerHandler.processingCacheLoaded = true;
-              HttpServerHandler.saveProcessingCacheToDisk();
+                HttpServerHandler.processingCacheLoaded = true;
+                HttpServerHandler.saveProcessingCacheToDisk();
+              }, () => {});
             }, () => {});
-          }, () => {});
           
           // 立即把当前内存列表返回，便于前端无需等待缓存刷新
           HttpServerHandler.saveProcessingCacheToDisk();
-          const json = JSON.stringify({ ok: true, data: HttpServerHandler.processingCache || [] });
-          const buf = HttpServerHandler.textEncoder.encodeInto(json);
-          return `HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${buf.length}\r\n\r\n${json}`;
+          return HttpResponseUtils.buildSuccessResponse(HttpServerHandler.processingCache || []);
         } else if (action === 'update') {
           const id = Number(params['id'] || '0');
           // ID验证
           if (!id || id <= 0) {
-            const errJson = JSON.stringify({ ok: false, message: 'ID无效或未提供' });
-            const errBuf = HttpServerHandler.textEncoder.encodeInto(errJson);
-            return `HTTP/1.1 400 Bad Request\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${errBuf.length}\r\n\r\n${errJson}`;
+            return HttpResponseUtils.buildErrorResponse('ID无效或未提供', 400);
           }
           
           // 先检查缓存中是否存在
@@ -493,8 +469,8 @@ export class HttpServerHandler {
             // 重新查询确保数据同步
             RdbService.queryAllProcessing().then((rows: ProcessingRow[]) => {
               HttpServerHandler.processingCache = HttpServerHandler.limitCacheSize(rows);
-              HttpServerHandler.processingCacheLoaded = true;
-              HttpServerHandler.saveProcessingCacheToDisk();
+                HttpServerHandler.processingCacheLoaded = true;
+                HttpServerHandler.saveProcessingCacheToDisk();
             }, (e: Error | BusinessError | object) => {
               hilog.error(DOMAIN, 'HttpServerHandler', `重新查询失败: ${JSON.stringify(e)}`);
             });
@@ -505,16 +481,12 @@ export class HttpServerHandler {
           });
 
           HttpServerHandler.saveProcessingCacheToDisk();
-          const json = JSON.stringify({ ok: true, message: '更新成功', data: HttpServerHandler.processingCache || [] });
-          const buf = HttpServerHandler.textEncoder.encodeInto(json);
-          return `HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${buf.length}\r\n\r\n${json}`;
+          return HttpResponseUtils.buildSuccessResponse(HttpServerHandler.processingCache || [], '更新成功');
         } else if (action === 'delete') {
           const id = Number(params['id'] || '0');
           // ID验证
           if (!id || id <= 0) {
-            const errJson = JSON.stringify({ ok: false, message: 'ID无效或未提供' });
-            const errBuf = HttpServerHandler.textEncoder.encodeInto(errJson);
-            return `HTTP/1.1 400 Bad Request\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${errBuf.length}\r\n\r\n${errJson}`;
+            return HttpResponseUtils.buildErrorResponse('ID无效或未提供', 400);
           }
 
           // 先检查缓存中是否存在
@@ -548,8 +520,8 @@ export class HttpServerHandler {
             // 重新查询确保数据同步
             RdbService.queryAllProcessing().then((rows: ProcessingRow[]) => {
               HttpServerHandler.processingCache = HttpServerHandler.limitCacheSize(rows);
-              HttpServerHandler.processingCacheLoaded = true;
-              HttpServerHandler.saveProcessingCacheToDisk();
+                HttpServerHandler.processingCacheLoaded = true;
+                HttpServerHandler.saveProcessingCacheToDisk();
             }, (e: Error | BusinessError | object) => {
               hilog.error(DOMAIN, 'HttpServerHandler', `重新查询失败: ${JSON.stringify(e)}`);
             });
@@ -560,28 +532,19 @@ export class HttpServerHandler {
           });
 
           HttpServerHandler.saveProcessingCacheToDisk();
-          const json = JSON.stringify({ ok: true, message: '删除成功', data: HttpServerHandler.processingCache || [] });
-          const buf = HttpServerHandler.textEncoder.encodeInto(json);
-          return `HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${buf.length}\r\n\r\n${json}`;
+          return HttpResponseUtils.buildSuccessResponse(HttpServerHandler.processingCache || [], '删除成功');
         }
       } catch (e) {
-        const json = JSON.stringify({ ok: false });
-        const buf = HttpServerHandler.textEncoder.encodeInto(json);
-        return `HTTP/1.1 500 Internal Server Error\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${buf.length}\r\n\r\n${json}`;
+        return HttpResponseUtils.buildErrorResponse('服务器内部错误', 500);
       }
     }
     // 默认占位
-    const jsonContent2 = JSON.stringify({
+    const defaultResponseData: DefaultApiResponseData = {
       path: path,
       message: 'API endpoint',
       data: null
-    });
-    const jsonBuf2 = HttpServerHandler.textEncoder.encodeInto(jsonContent2);
-    return `HTTP/1.1 200 OK\r\n` +
-           `Content-Type: application/json; charset=utf-8\r\n` +
-           `Content-Length: ${jsonBuf2.length}\r\n` +
-           `\r\n` +
-           jsonContent2;
+    };
+    return HttpResponseUtils.buildSuccessResponse(defaultResponseData);
   }
 
   /**
@@ -920,8 +883,7 @@ export class HttpServerHandler {
           </html>
         `;
 
-        const contentBuf = HttpServerHandler.textEncoder.encodeInto(htmlContent);
-        return `HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${contentBuf.length}\r\n\r\n${htmlContent}`;
+        return HttpResponseUtils.buildHtmlResponse(htmlContent);
       }
 
       // 读取文件内容
@@ -964,12 +926,12 @@ export class HttpServerHandler {
           // 使用 CSV 的 Content-Type 确保浏览器按文本方式处理，避免乱码
           // Excel 打开 .xlsx 扩展名的 CSV 文件也能正确识别
           const contentType = 'text/csv; charset=utf-8';
-          return `HTTP/1.1 200 OK\r\n`
-            + `Content-Type: ${contentType}\r\n`
-            + `Content-Disposition: attachment; filename="${fileNameFile}"\r\n`
-            + `Content-Length: ${contentBufFile.length}\r\n`
-            + `\r\n`
-            + textContentFile;
+          return HttpResponseUtils.buildFileDownloadResponse(
+            textContentFile,
+            contentType,
+            fileNameFile,
+            contentBufFile.length
+          );
         } catch (_) {
           // 回退为二进制下载
         }
@@ -986,7 +948,12 @@ export class HttpServerHandler {
           for (let i = 0; i < uint8ArrayAll.length; i++) {
             binaryStringAll += String.fromCharCode(uint8ArrayAll[i]);
           }
-          return `HTTP/1.1 200 OK\r\nContent-Type: ${contentType}; charset=utf-8\r\nContent-Disposition: attachment; filename="${encodeURIComponent(relativePath.split('/').pop() || 'text')}"\r\nContent-Length: ${fileSize}\r\n\r\n${binaryStringAll}`;
+          return HttpResponseUtils.buildFileDownloadResponse(
+            binaryStringAll,
+            contentType,
+            relativePath.split('/').pop() || 'text',
+            fileSize
+          );
         }
         const uint8Array = new Uint8Array(buffer);
         const textContent = HttpServerHandler.textDecoder.decode(uint8Array);
@@ -1022,8 +989,7 @@ export class HttpServerHandler {
           </html>
         `;
 
-        const contentBuf = HttpServerHandler.textEncoder.encodeInto(htmlContent);
-        return `HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${contentBuf.length}\r\n\r\n${htmlContent}`;
+        return HttpResponseUtils.buildHtmlResponse(htmlContent);
       } else {
         // 二进制文件或图片
         const uint8Array = new Uint8Array(buffer);
@@ -1036,7 +1002,12 @@ export class HttpServerHandler {
             for (let i = 0; i < uint8Array.length; i++) {
               binaryString += String.fromCharCode(uint8Array[i]);
             }
-            return `HTTP/1.1 200 OK\r\nContent-Type: ${contentType}\r\nContent-Disposition: attachment; filename="${encodeURIComponent(relativePath.split('/').pop() || 'image')}"\r\nContent-Length: ${fileSize}\r\n\r\n${binaryString}`;
+            return HttpResponseUtils.buildFileDownloadResponse(
+              binaryString,
+              contentType,
+              relativePath.split('/').pop() || 'image',
+              fileSize
+            );
           }
           const dataUrl = `data:${contentType};base64,${HttpServerHandler.toBase64(uint8Array)}`;
           const htmlContent = `
@@ -1065,7 +1036,12 @@ export class HttpServerHandler {
           for (let i = 0; i < uint8Array.length; i++) {
             binaryString += String.fromCharCode(uint8Array[i]);
           }
-          return `HTTP/1.1 200 OK\r\nContent-Type: ${contentType}\r\nContent-Disposition: attachment; filename="${encodeURIComponent(relativePath.split('/').pop() || 'file')}"\r\nContent-Length: ${fileSize}\r\n\r\n${binaryString}`;
+          return HttpResponseUtils.buildFileDownloadResponse(
+            binaryString,
+            contentType,
+            relativePath.split('/').pop() || 'file',
+            fileSize
+          );
         }
       }
     } catch (error) {
@@ -1130,11 +1106,7 @@ export class HttpServerHandler {
       </html>
     `;
 
-    return `HTTP/1.1 404 Not Found\r\n` +
-           `Content-Type: text/html; charset=utf-8\r\n` +
-           `Content-Length: ${htmlContent.length}\r\n` +
-           `\r\n` +
-           htmlContent;
+    return HttpResponseUtils.buildHtmlResponse(htmlContent, 404);
   }
 
   /**
@@ -1236,21 +1208,8 @@ export class HttpServerHandler {
    * 返回JSON响应
    */
   static getJsonResponse(data: JsonResponse, statusCode: number = 200): string {
-    const jsonContent = JSON.stringify(data);
-    const jsonBuf = HttpServerHandler.textEncoder.encodeInto(jsonContent);
-    const statusText = statusCode === 200 ? 'OK' : 
-                       statusCode === 400 ? 'Bad Request' :
-                       statusCode === 405 ? 'Method Not Allowed' :
-                       statusCode === 500 ? 'Internal Server Error' : 'Error';
-    
-    return `HTTP/1.1 ${statusCode} ${statusText}\r\n` +
-           `Content-Type: application/json; charset=utf-8\r\n` +
-           `Content-Length: ${jsonBuf.length}\r\n` +
-           `Access-Control-Allow-Origin: *\r\n` +
-           `Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n` +
-           `Access-Control-Allow-Headers: Content-Type\r\n` +
-           `\r\n` +
-           jsonContent;
+    // 使用工具类构建JSON响应，包含CORS头
+    return HttpResponseUtils.buildJsonResponse(data, statusCode, true);
   }
 }
 

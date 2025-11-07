@@ -1,0 +1,15 @@
+{
+  "module": {
+    "name": "ui_dialog",
+    "type": "har",
+    "description": "通用对话框组件HAR模块",
+    "mainElement": "",
+    "deviceTypes": [
+      "phone",
+      "tablet",
+      "2in1"
+    ],
+    "requestPermissions": []
+  }
+}
+

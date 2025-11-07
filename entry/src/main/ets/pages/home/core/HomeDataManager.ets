@@ -60,6 +60,11 @@ export class HomeDataManager {
    * 当前FSM状态
    */
   private currentFSM: 'FSM1' | 'FSM2' = 'FSM1'
+  
+  /**
+   * 每个表格的最大数据条数（防止内存泄漏）
+   */
+  private static readonly MAX_TABLE_ROWS: number = 1000
 
   /**
    * 私有构造函数，防止外部直接实例化
@@ -83,7 +88,7 @@ export class HomeDataManager {
    * 功能说明：
    * - 将新数据追加到指定表格的现有数据中
    * - 如果表格不存在，会先创建空的表格数据
-   * - 使用扩展运算符确保数据的不变性
+   * - 限制表格最大行数，防止内存泄漏
    * 
    * @param tableName 表格名称（如：'等级表', '容器表'等）
    * @param data 要添加的数据（TableRow数组）
@@ -99,9 +104,27 @@ export class HomeDataManager {
     if (!this.allTableData[tableName]) {
       this.allTableData[tableName] = []
     }
-    // 使用扩展运算符将新数据追加到现有数据中
-    this.allTableData[tableName] = [...this.allTableData[tableName], ...data]
-    console.log(`添加数据到${tableName}:`, data)
+    
+    // 获取现有数据
+    const existingData = this.allTableData[tableName]
+    const newLength = existingData.length + data.length
+    
+    // 如果超过最大限制，只保留最新的数据
+    if (newLength > HomeDataManager.MAX_TABLE_ROWS) {
+      const keepCount = HomeDataManager.MAX_TABLE_ROWS - data.length
+      if (keepCount > 0) {
+        // 保留最新的 keepCount 条数据，然后追加新数据
+        this.allTableData[tableName] = existingData.slice(-keepCount).concat(data)
+      } else {
+        // 如果新数据本身就超过限制，只保留最新的数据
+        this.allTableData[tableName] = data.slice(-HomeDataManager.MAX_TABLE_ROWS)
+      }
+    } else {
+      // 未超过限制，直接追加
+      this.allTableData[tableName] = existingData.concat(data)
+    }
+    
+    console.log(`添加数据到${tableName}:`, data.length, '条，当前总数:', this.allTableData[tableName].length)
   }
 
   /**

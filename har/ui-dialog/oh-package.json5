@@ -1,0 +1,12 @@
+{
+  "name": "ui_dialog",
+  "version": "1.0.0",
+  "description": "通用对话框组件HAR模块",
+  "main": "index.ets",
+  "author": "",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@wuba58/omni-ui": "^1.0.1"
+  }
+}
+
