@@ -37,9 +37,22 @@ export class HttpServerHandler {
   private static fileBasePath: string = ''; // 存储文件基础路径
   private static textEncoder: util.TextEncoder = new util.TextEncoder();
   private static textDecoder: util.TextDecoder = util.TextDecoder.create('utf-8');
-  // 加工历史缓存
+  // 加工历史缓存（限制最大1000条，避免内存无限增长）
+  private static readonly MAX_CACHE_SIZE: number = 1000;
   private static processingCacheLoaded: boolean = false;
   private static processingCache: ProcessingRow[] = [];
+  
+  /**
+   * 限制缓存大小，只保留最新的 MAX_CACHE_SIZE 条记录
+   */
+  private static limitCacheSize(rows: ProcessingRow[]): ProcessingRow[] {
+    if (rows.length <= HttpServerHandler.MAX_CACHE_SIZE) {
+      return rows;
+    }
+    // 只保留最新的 MAX_CACHE_SIZE 条（假设按ID或时间排序，最新的在后面）
+    return rows.slice(-HttpServerHandler.MAX_CACHE_SIZE);
+  }
+  
   private static getProcessingCacheFile(): string {
     return `${HttpServerHandler.fileBasePath}/processing_cache.json`;
   }
@@ -56,7 +69,7 @@ export class HttpServerHandler {
         const txt = HttpServerHandler.textDecoder.decode(arr);
         const data = JSON.parse(txt) as ProcessingRow[];
         if (data && data instanceof Array) {
-          HttpServerHandler.processingCache = data;
+          HttpServerHandler.processingCache = HttpServerHandler.limitCacheSize(data);
           HttpServerHandler.processingCacheLoaded = true;
         }
       }
@@ -302,7 +315,7 @@ export class HttpServerHandler {
           try {
             await RdbService.createProcessingHistoryTable();
             const rows = await RdbService.queryAllProcessing();
-            HttpServerHandler.processingCache = rows;
+            HttpServerHandler.processingCache = HttpServerHandler.limitCacheSize(rows);
             HttpServerHandler.processingCacheLoaded = true;
           } catch (_) {
             // 如果加载失败，尝试从磁盘加载
@@ -401,7 +414,7 @@ export class HttpServerHandler {
           };
           RdbService.insertProcessingFull(payload).then(() => {
             RdbService.queryAllProcessing().then((rows: ProcessingRow[]) => {
-              HttpServerHandler.processingCache = rows;
+              HttpServerHandler.processingCache = HttpServerHandler.limitCacheSize(rows);
               HttpServerHandler.processingCacheLoaded = true;
               HttpServerHandler.saveProcessingCacheToDisk();
             }, () => {});
@@ -479,7 +492,7 @@ export class HttpServerHandler {
           RdbService.updateProcessingFull(id, updateParams).then(() => {
             // 重新查询确保数据同步
             RdbService.queryAllProcessing().then((rows: ProcessingRow[]) => {
-              HttpServerHandler.processingCache = rows;
+              HttpServerHandler.processingCache = HttpServerHandler.limitCacheSize(rows);
               HttpServerHandler.processingCacheLoaded = true;
               HttpServerHandler.saveProcessingCacheToDisk();
             }, (e: Error | BusinessError | object) => {
@@ -534,7 +547,7 @@ export class HttpServerHandler {
           RdbService.deleteProcessingById(id).then(() => {
             // 重新查询确保数据同步
             RdbService.queryAllProcessing().then((rows: ProcessingRow[]) => {
-              HttpServerHandler.processingCache = rows;
+              HttpServerHandler.processingCache = HttpServerHandler.limitCacheSize(rows);
               HttpServerHandler.processingCacheLoaded = true;
               HttpServerHandler.saveProcessingCacheToDisk();
             }, (e: Error | BusinessError | object) => {

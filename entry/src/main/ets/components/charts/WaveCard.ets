@@ -1,3 +1,5 @@
+import { WavePhaseManager } from '../../utils/ui/WavePhaseManager'
+
 @Component
 export struct WaveCard {
   @Prop amplitude: number = 10
@@ -10,45 +12,40 @@ export struct WaveCard {
   @Prop gradientRight: string = 'rgba(52, 152, 219, 0.7)'
   @Prop cardBackground: string | Color = Color.Transparent
 
-  @State private phase: number = 0  // 原来的实现：使用 @State，会触发UI重建
+  // 使用全局相位管理器，所有卡片共享同一个相位（确保同步）
+  private phaseManager: WavePhaseManager = WavePhaseManager.getInstance()
+  private phaseUpdateCallback: () => void = () => {}
   @State private canvasWidth: number = 0
   @State private canvasHeight: number = 0
 
-  private animationId: number = 0
   private settings: RenderingContextSettings = new RenderingContextSettings(true)
   private context: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
-
-  // 优化版本（已注释）：
-  // private phase: number = 0  // 不使用 @State，避免触发UI重建
+  private cachedGradient: CanvasGradient | null = null
+  private areaDebounceId: number = 0
+  private isVisible: boolean = true
 
   aboutToAppear() {
-    this.startAnimation()
+    // 注册到全局相位管理器，接收相位更新通知
+    this.phaseUpdateCallback = () => {
+      if (this.isVisible) {
+        this.drawWave()
+      }
+    }
+    this.phaseManager.addListener(this.phaseUpdateCallback)
+    // 立即绘制一次
+    this.drawWave()
   }
 
   aboutToDisappear() {
-    if (this.animationId) {
-      clearInterval(this.animationId)
-      this.animationId = 0
+    // 移除监听器
+    this.phaseManager.removeListener(this.phaseUpdateCallback)
+    // 清理定时器
+    if (this.areaDebounceId) {
+      clearTimeout(this.areaDebounceId)
+      this.areaDebounceId = 0
     }
-  }
-
-  private startAnimation() {
-    if (this.animationId) {
-      clearInterval(this.animationId)
-    }
-    // 原来的实现：60fps（16ms间隔）
-    this.animationId = setInterval(() => {
-      this.phase += this.speed
-      this.drawWave()
-    }, 16)  // 原来的实现：60fps
-    
-    // 优化版本（已注释）：
-    // // 优化：降低更新频率从16ms（60fps）到33ms（30fps），减少CPU占用
-    // // 30fps对于波浪动画已经足够流畅，同时能显著减少卡顿
-    // this.animationId = setInterval(() => {
-    //   this.phase += this.speed
-    //   this.drawWave()
-    // }, 33)  // 从16ms改为33ms，降低到30fps
+    // 清理渐变缓存（释放Native资源）
+    this.cachedGradient = null
   }
 
   build() {
@@ -65,7 +62,21 @@ export struct WaveCard {
         if (cw !== this.canvasWidth || ch !== this.canvasHeight) {
           this.canvasWidth = cw
           this.canvasHeight = ch
-          this.drawWave()
+          // 尺寸变化去抖，且重建渐变以匹配新尺寸
+          if (this.areaDebounceId) { clearTimeout(this.areaDebounceId) }
+          this.areaDebounceId = setTimeout((): void => {
+            this.cachedGradient = null
+            this.drawWave()
+          }, 150) as number
+        }
+      })
+      .onVisibleAreaChange([0.01], (isExpanding: boolean, ratio: number) => {
+        const nowVisible = ratio > 0
+        if (this.isVisible !== nowVisible) {
+          this.isVisible = nowVisible
+          if (this.isVisible) {
+            this.drawWave()
+          }
         }
       })
   }
@@ -83,19 +94,37 @@ export struct WaveCard {
 
     this.context.clearRect(0, 0, width, height)
 
-    const gradient = this.context.createLinearGradient(0, 0, width, 0)
-    gradient.addColorStop(0, this.gradientLeft)
-    gradient.addColorStop(0.5, this.gradientMid)
-    gradient.addColorStop(1, this.gradientRight)
-
-    this.context.fillStyle = gradient
+    // 缓存渐变对象，避免每帧创建
+    if (!this.cachedGradient) {
+      const gradient = this.context.createLinearGradient(0, 0, width, 0)
+      gradient.addColorStop(0, this.gradientLeft)
+      gradient.addColorStop(0.5, this.gradientMid)
+      gradient.addColorStop(1, this.gradientRight)
+      this.cachedGradient = gradient
+    }
+    this.context.fillStyle = this.cachedGradient as CanvasGradient
     this.context.beginPath()
     this.context.moveTo(0, centerY)
 
-    // 原来的实现：每像素画一次（性能较低）
-    for (let x = 0; x <= width; x += 1) {
-      const y = centerY + Math.sin(x * this.frequency + this.phase) * this.amplitude
+    // 从全局相位管理器获取共享的相位值
+    const phase = this.phaseManager.getPhase()
+    
+    // 性能优化：根据画布宽度动态调整绘制步长
+    // 小画布（<100px）：每像素绘制
+    // 中等画布（100-200px）：每2像素绘制
+    // 大画布（>200px）：每3像素绘制
+    // 这样可以减少计算量和Native Heap压力，同时保持视觉效果
+    const step = width > 200 ? 3 : (width > 100 ? 2 : 1)
+    
+    for (let x = 0; x <= width; x += step) {
+      const y = centerY + Math.sin(x * this.frequency + phase) * this.amplitude
       this.context.lineTo(x, y)
+    }
+    
+    // 确保最后一点连接到右边界（如果步长导致未到达边界）
+    if (width % step !== 0) {
+      const y = centerY + Math.sin(width * this.frequency + phase) * this.amplitude
+      this.context.lineTo(width, y)
     }
 
     this.context.lineTo(width, height)

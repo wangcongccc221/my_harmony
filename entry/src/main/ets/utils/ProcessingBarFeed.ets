@@ -31,7 +31,7 @@ export class ProcessingBarFeed {
       // 播种10个点（9:00开始，每分钟一个）
       for (let i = 0; i < 10; i++) { this.pushNext() }
     }
-    this.timerId = setInterval(() => this.pushNext(), 1000) as number
+    this.timerId = setInterval(() => this.pushNext(), 15000) as number
     hilog.info(DOMAIN, 'ProcessingBarFeed', 'started')
   }
 
@@ -58,15 +58,23 @@ export class ProcessingBarFeed {
     this.timeIndex++
   }
 
+  // 复用数组对象，避免频繁创建新数组
+  private snapshotBuffer: BarData[] = new Array(this.MAX_POINTS)
+
   getSnapshot(): BarData[] {
     // 导出线性窗口
+    // 复用已有数组，避免频繁创建新数组导致内存累积
     const len = this.validCount
-    const out: BarData[] = new Array(len)
+    // 如果数组长度不够，才重新创建（通常不会发生）
+    if (this.snapshotBuffer.length < len) {
+      this.snapshotBuffer = new Array(len)
+    }
     for (let i = 0; i < len; i++) {
       const idx = (this.writeIndex - len + i + this.MAX_POINTS) % this.MAX_POINTS
-      out[i] = { time: this.labelBuf[idx], value: this.valueBuf[idx] }
+      this.snapshotBuffer[i] = { time: this.labelBuf[idx], value: this.valueBuf[idx] }
     }
-    return out
+    // 返回切片引用（只读），避免创建新数组
+    return this.snapshotBuffer.slice(0, len)
   }
 }
 

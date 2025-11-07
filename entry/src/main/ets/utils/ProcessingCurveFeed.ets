@@ -59,7 +59,7 @@ export class ProcessingCurveFeed {
       this.timeIndex = 10
       this.currentValue = cur
     }
-    this.timerId = setInterval(() => this.tick(), 1000) as number
+    this.timerId = setInterval(() => this.tick(), 15000) as number
     hilog.info(DOMAIN, 'ProcessingCurveFeed', 'started')
   }
 
@@ -100,19 +100,28 @@ export class ProcessingCurveFeed {
     this.timeIndex++
   }
 
+  // 复用数组对象，避免频繁创建新数组
+  private snapshotData: number[] = new Array(this.MAX_POINTS)
+  private snapshotLabels: string[] = new Array(this.MAX_POINTS)
+
   getSnapshot(): CurveSnapshot {
     // 导出环形缓冲区为线性序列（最新窗口）
+    // 复用已有数组，避免频繁创建新数组导致内存累积
     const len = this.validCount
-    const data: number[] = new Array(len)
-    const labels: string[] = new Array(len)
+    // 如果数组长度不够，才重新创建（通常不会发生）
+    if (this.snapshotData.length < len) {
+      this.snapshotData = new Array(len)
+      this.snapshotLabels = new Array(len)
+    }
     for (let i = 0; i < len; i++) {
       const idx = (this.writeIndex - len + i + this.MAX_POINTS) % this.MAX_POINTS
-      data[i] = this.dataBuf[idx]
-      labels[i] = this.labelBuf[idx]
+      this.snapshotData[i] = this.dataBuf[idx]
+      this.snapshotLabels[i] = this.labelBuf[idx]
     }
+    // 返回切片引用（只读），避免创建新数组
     return {
-      data,
-      labels,
+      data: this.snapshotData.slice(0, len),
+      labels: this.snapshotLabels.slice(0, len),
       writeIndex: this.writeIndex,
       validCount: this.validCount,
       timeIndex: this.timeIndex,

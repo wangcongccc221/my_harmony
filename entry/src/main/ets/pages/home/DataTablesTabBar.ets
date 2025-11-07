@@ -155,6 +155,32 @@ export struct DataTablesTabBar {
     this.cachedColors = null
   }
 
+  // 仅控制UI重绘的定时器（数据源持续运行）
+  private startFlushTimer(): void {
+    if (this.lcFlushTimerId) { return }
+    this.lcFlushTimerId = setInterval(() => {
+      const snap = ProcessingCurveFeed.getInstance().getSnapshot()
+      this.lcValidCount = Math.min(this.LC_MAX_POINTS, snap.validCount)
+      this.lcWriteIndex = snap.writeIndex % this.LC_MAX_POINTS
+      // 直接使用快照数据，避免重复复制（快照数据已经是复用数组）
+      // 但需要复制到本地缓冲区，因为快照数据可能被下次调用覆盖
+      for (let i = 0; i < this.lcValidCount; i++) {
+        const idx = (this.lcWriteIndex - this.lcValidCount + i + this.LC_MAX_POINTS) % this.LC_MAX_POINTS
+        this.lcDataBuffer[idx] = snap.data[i]
+        this.lcLabelsBuffer[idx] = snap.labels[i]
+      }
+      this.extractDataFromBuffer()
+      this.redrawChart()
+    }, 15000) as number
+  }
+
+  private stopFlushTimer(): void {
+    if (this.lcFlushTimerId) {
+      clearInterval(this.lcFlushTimerId)
+      this.lcFlushTimerId = undefined
+    }
+  }
+
   // ========== 外部数据传入接口 ==========
   
   /**
@@ -300,54 +326,52 @@ export struct DataTablesTabBar {
   }
 
   aboutToAppear() {
-    // 仅在无数据时播种初始点；若已有数据则不重置
-    if (this.lcValidCount === 0) {
-      const count = 10
-      const startHour = 9
-      const startMinute = 0
-      let cur = 50
-      for (let i = 0; i < count; i++) {
-        const change = (Math.random() - 0.5) * 20
-        cur = Math.max(10, Math.min(90, cur + change))
-        const h = startHour + Math.floor((startMinute + i) / 60)
-        const m = (startMinute + i) % 60
-        const label = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
-        this.lcDataBuffer[this.lcWriteIndex] = Math.round(cur)
-        this.lcLabelsBuffer[this.lcWriteIndex] = label
-        this.lcWriteIndex = (this.lcWriteIndex + 1) % this.LC_MAX_POINTS
-        this.lcValidCount = Math.min(this.lcValidCount + 1, this.LC_MAX_POINTS)
-      }
-      this.lcTimeIndex = count
-      this.lcCurrentValue = cur
-      this.lcRealtimeEnabled = true
-    }
-    // 刷新显示与颜色缓存
-    this.extractDataFromBuffer()
-    this.refreshColorCache()
-
-    // 启动持续追加数据（每秒1个点）- 使用统一的方法
     // 确保全局数据源在后台运行
     ProcessingCurveFeed.getInstance().start()
-
-    // 启动批量刷新（每200ms重绘，使用环形缓冲区数据）
-    if (!this.lcFlushTimerId) {
-      this.lcFlushTimerId = setInterval(() => {
-        // 从全局数据源同步
-        const snap = ProcessingCurveFeed.getInstance().getSnapshot()
-        // 写入本地缓冲区并提取显示
-        this.lcValidCount = Math.min(this.LC_MAX_POINTS, snap.validCount)
-        this.lcWriteIndex = snap.writeIndex % this.LC_MAX_POINTS
-        for (let i = 0; i < this.lcValidCount; i++) {
-          // 线性数组转回环形索引区（用于 measure 宽度等一致性）
-          const idx = (this.lcWriteIndex - this.lcValidCount + i + this.LC_MAX_POINTS) % this.LC_MAX_POINTS
-          this.lcDataBuffer[idx] = snap.data[i]
-          this.lcLabelsBuffer[idx] = snap.labels[i]
+    
+    // 如果当前Tab是"加工曲线"，立即从全局数据源同步数据
+    if (this.selectedTab === '加工曲线') {
+      // 立即同步全局数据源到本地缓冲区，避免切换页面后显示空白或旧数据
+      const snap = ProcessingCurveFeed.getInstance().getSnapshot()
+      this.lcValidCount = Math.min(this.LC_MAX_POINTS, snap.validCount)
+      this.lcWriteIndex = snap.writeIndex % this.LC_MAX_POINTS
+      for (let i = 0; i < this.lcValidCount; i++) {
+        const idx = (this.lcWriteIndex - this.lcValidCount + i + this.LC_MAX_POINTS) % this.LC_MAX_POINTS
+        this.lcDataBuffer[idx] = snap.data[i]
+        this.lcLabelsBuffer[idx] = snap.labels[i]
+      }
+      // 立即提取并显示数据
+      this.extractDataFromBuffer()
+      this.redrawChart()
+      // 启动重绘定时器
+      this.startFlushTimer()
+    } else {
+      // 其他Tab：仅在无数据时播种初始点（用于其他可能使用折线图的场景）
+      if (this.lcValidCount === 0) {
+        const count = 10
+        const startHour = 9
+        const startMinute = 0
+        let cur = 50
+        for (let i = 0; i < count; i++) {
+          const change = (Math.random() - 0.5) * 20
+          cur = Math.max(10, Math.min(90, cur + change))
+          const h = startHour + Math.floor((startMinute + i) / 60)
+          const m = (startMinute + i) % 60
+          const label = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
+          this.lcDataBuffer[this.lcWriteIndex] = Math.round(cur)
+          this.lcLabelsBuffer[this.lcWriteIndex] = label
+          this.lcWriteIndex = (this.lcWriteIndex + 1) % this.LC_MAX_POINTS
+          this.lcValidCount = Math.min(this.lcValidCount + 1, this.LC_MAX_POINTS)
         }
+        this.lcTimeIndex = count
+        this.lcCurrentValue = cur
+        this.lcRealtimeEnabled = true
         this.extractDataFromBuffer()
-        // 重绘图表
-        this.redrawChart()
-      }, 200) as number
+      }
     }
+    
+    // 刷新颜色缓存
+    this.refreshColorCache()
   }
 
   aboutToUpdate() {
@@ -357,9 +381,11 @@ export struct DataTablesTabBar {
 
   aboutToDisappear() {
     // 保留后台数据源运行，仅停止重绘定时器
-    if (this.lcFlushTimerId) {
-      clearInterval(this.lcFlushTimerId)
-      this.lcFlushTimerId = undefined
+    this.stopFlushTimer()
+    // 清理自动数据生成定时器（如果存在）
+    if (this.lcTimerId) {
+      clearInterval(this.lcTimerId)
+      this.lcTimerId = undefined
     }
   }
 
@@ -376,6 +402,24 @@ export struct DataTablesTabBar {
   // 处理Tab切换
   private handleTabChange(tabKey: string) {
     this.selectedTab = tabKey
+    if (tabKey === '加工曲线') {
+      // 切换到"加工曲线"Tab时，立即从全局数据源同步数据
+      const snap = ProcessingCurveFeed.getInstance().getSnapshot()
+      this.lcValidCount = Math.min(this.LC_MAX_POINTS, snap.validCount)
+      this.lcWriteIndex = snap.writeIndex % this.LC_MAX_POINTS
+      for (let i = 0; i < this.lcValidCount; i++) {
+        const idx = (this.lcWriteIndex - this.lcValidCount + i + this.LC_MAX_POINTS) % this.LC_MAX_POINTS
+        this.lcDataBuffer[idx] = snap.data[i]
+        this.lcLabelsBuffer[idx] = snap.labels[i]
+      }
+      // 立即提取并显示数据
+      this.extractDataFromBuffer()
+      this.redrawChart()
+      // 启动重绘定时器
+      this.startFlushTimer()
+    } else {
+      this.stopFlushTimer()
+    }
   }
 
   // 构建内容区域

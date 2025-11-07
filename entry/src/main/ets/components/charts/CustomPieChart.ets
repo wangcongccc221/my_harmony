@@ -39,22 +39,38 @@ export struct CustomPieChart {
   @Watch('animateDraw') @Prop options: PieChartsOptions
   private settings: RenderingContextSettings = new RenderingContextSettings(true)
   private context: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
+  private animationIntervalId: number = 0  // 存储动画定时器ID，用于清理
 
   animateDraw() {
     console.log(`animateDraw`)
+    // 清理之前的动画定时器（如果存在）
+    if (this.animationIntervalId) {
+      clearInterval(this.animationIntervalId)
+      this.animationIntervalId = 0
+    }
+    
     if (!this.options.animate) {
       this.draw(1)
       return
     }
 
     let count = 0
-    let interval = setInterval(() => {
+    this.animationIntervalId = setInterval(() => {
       count++
       if (count == 60) {
-        clearInterval(interval)
+        clearInterval(this.animationIntervalId)
+        this.animationIntervalId = 0
       }
       this.draw(count / 60)
-    }, this.options.duration / 60)
+    }, this.options.duration / 60) as number
+  }
+
+  aboutToDisappear() {
+    // 组件销毁时清理定时器，防止内存泄漏
+    if (this.animationIntervalId) {
+      clearInterval(this.animationIntervalId)
+      this.animationIntervalId = 0
+    }
   }
 
   draw(progress: number) {

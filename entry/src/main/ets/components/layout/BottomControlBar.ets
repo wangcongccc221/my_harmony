@@ -7,7 +7,6 @@
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { FruitCupButton } from '../ui/FruitCupButton'
-import { PerformanceMonitor } from '../monitor/PerformanceMonitor'
 
 @Component
 export struct BottomControlBar {
@@ -120,10 +119,6 @@ export struct BottomControlBar {
 
       // 中间空白区域，用于分隔左右两部分
       Blank()
-
-      // 右侧性能监控区域
-      PerformanceMonitor()
-        .margin({ right: 20 })
     }
     .width('100%')
     .justifyContent(FlexAlign.SpaceBetween)
