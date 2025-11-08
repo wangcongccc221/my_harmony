@@ -9,6 +9,7 @@ import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../u
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { ChartComponent, ChartComponentParams, ChartData } from '../../components/ChartComponent'
+import { BarChart } from '../../components/charts/BarChart'
 import { OmniTabBar, TabConfig, TabBarDirection } from '../../components/ui/layout/OmniTabBar'
 import { drawLineChart, measureChartWidth, LineChartOptions } from  '../../utils/lineChart'
 import { ProcessingCurveFeed } from '../../utils/ProcessingCurveFeed'
@@ -523,25 +524,10 @@ export struct DataTablesTabBar {
         .borderRadius(4)
         .backgroundColor(this.getCurrentTheme().chartBg ?? this.getCurrentTheme().surfaceColor)
       } else if (this.selectedTab === '加工柱状图') {
-        // 启用外部单例数据源，行为与折线图一致（后台持续追加，页面只负责渲染）
-        ChartComponent({
-          params: {
-            dataCount: 10,
-            startHour: 9,
-            startMinute: 0,
-            chartHeight: 280,
-            barWidth: 25,
-            barSpacing: 40,
-            showScrollBar: false,
-            axisFontSizePx: 18,
-            labelFontSizePx: 18,
-            axisFontBold: true,
-            labelFontBold: true,
-            useExternalFeed: true,
-            onDataClick: (data: ChartData, event: ClickEvent) => {
-              console.log(`点击了加工数据: ${data.time} - ${data.value}`);
-            }
-          }
+        // 使用新的 Canvas 并列柱状图组件
+        BarChart({
+          title: '加工柱状图',
+          chartHeight: 380
         })
       } else if (this.selectedTab === '动态装箱') {
         // 使用Grid组件显示动态装箱表格（带卡片包裹）

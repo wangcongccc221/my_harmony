@@ -19,6 +19,9 @@ export struct HistoryDataTable {
   @State private tableData: HistoryTableData[] = []
   // 外部传入的筛选数据（使用空数组作为默认值，避免可选参数）
   @Prop filteredData: HistoryTableData[] = []
+  // 防重复加载标志，避免aboutToUpdate循环触发
+  private isLoading: boolean = false
+  private lastUpdateKey: number = 0
 
   // 事件回调
   onRowClick?: (rowData: HistoryTableData) => void
@@ -170,11 +173,28 @@ export struct HistoryDataTable {
       }
       return
     }
-    // 否则加载全部数据（用于“重置”等场景）
-    this.loadData()
-    
-    // 清空选中状态（当数据更新时，避免选中已删除的数据）
-    this.selectedIds = []
+    // 否则加载全部数据（用于"重置"等场景）
+    // 添加防重复加载机制，避免循环触发
+    if (!this.isLoading) {
+      this.isLoading = true
+      const currentKey = Date.now()
+      this.lastUpdateKey = currentKey
+      // 使用异步延迟，避免在更新过程中同步加载导致循环
+      Promise.resolve().then(() => {
+        // 检查是否仍然是最新的更新请求
+        if (this.lastUpdateKey === currentKey) {
+          this.loadData().then(() => {
+            this.isLoading = false
+            // 清空选中状态（当数据更新时，避免选中已删除的数据）
+            this.selectedIds = []
+          }).catch(() => {
+            this.isLoading = false
+          })
+        } else {
+          this.isLoading = false
+        }
+      })
+    }
   }
 
   build() {

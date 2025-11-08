@@ -244,13 +244,43 @@ export struct ThreeLayerCard {
           if (Array.isArray(levelNames) && levelNames.length === cells.length) {
             const cardId = String(this.cardData.id || '')
             const mapRaw = AppStorage.get('CARD_ITEM_LEVEL_MAP') as Record<string, Record<string, string>> | null
-            const mapObj: Record<string, Record<string, string>> = mapRaw ? mapRaw : {}
+            let mapObj: Record<string, Record<string, string>> = mapRaw ? mapRaw : {}
+            
+            // 限制映射大小，防止内存泄漏
+            const MAX_MAPPINGS_PER_CARD = 1000
+            const MAX_CARDS = 50
+            const cardIds = Object.keys(mapObj)
+            if (cardIds.length > MAX_CARDS) {
+              const limited: Record<string, Record<string, string>> = {}
+              cardIds.slice(-MAX_CARDS).forEach(cid => {
+                limited[cid] = mapObj[cid]
+              })
+              mapObj = limited
+            }
+            
             if (!mapObj[cardId]) { mapObj[cardId] = {} }
+            const cardKeys = Object.keys(mapObj[cardId])
             for (let i = 0; i < cells.length; i++) {
               const valStr = String(cells[i]?.value ?? '')
               const ln = String(levelNames[i] ?? '')
               if (valStr && ln) {
+                // 如果超过限制，移除最旧的映射（使用重新创建对象的方式，避免使用 delete）
+                if (cardKeys.length >= MAX_MAPPINGS_PER_CARD && !mapObj[cardId][valStr]) {
+                  const oldestKey = cardKeys[0]
+                  // 重新创建对象，排除要删除的键
+                  const newCardMap: Record<string, string> = {}
+                  Object.keys(mapObj[cardId]).forEach(key => {
+                    if (key !== oldestKey) {
+                      newCardMap[key] = mapObj[cardId][key]
+                    }
+                  })
+                  mapObj[cardId] = newCardMap
+                  cardKeys.shift()
+                }
                 mapObj[cardId][valStr] = ln
+                if (!cardKeys.includes(valStr)) {
+                  cardKeys.push(valStr)
+                }
               }
             }
             AppStorage.setOrCreate('CARD_ITEM_LEVEL_MAP', mapObj)

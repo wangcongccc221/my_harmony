@@ -277,6 +277,9 @@ export struct QualityControlPanel {
     console.log(`✅ 等级数量选择器已从外部更新为: ${dataCount}个等级`)
   }
 
+  // 保存监听器回调引用，用于清理
+  private levelCountChangeCallback?: (newCount: number, newIndex: number) => void
+
   /**
    * 初始化全局等级数量管理器
    * 
@@ -289,8 +292,8 @@ export struct QualityControlPanel {
     // 设置全局管理器的初始索引
     this.globalLevelCountManager.setIndex(this.levelCountIndex)
     
-    // 添加状态变化监听器
-    this.globalLevelCountManager.addChangeListener((newCount: number, newIndex: number) => {
+    // 创建监听器回调并保存引用
+    this.levelCountChangeCallback = (newCount: number, newIndex: number) => {
       console.log(`🔄 全局等级数量变化: ${newCount} (索引: ${newIndex})`)
       
       // 更新内部状态，触发UI更新
@@ -305,9 +308,24 @@ export struct QualityControlPanel {
       if (this.onLevelCountChange) {
         this.onLevelCountChange(newIndex)
       }
-    })
+    }
+    
+    // 添加状态变化监听器
+    this.globalLevelCountManager.addChangeListener(this.levelCountChangeCallback)
     
     console.log(`🎯 全局等级数量管理器初始化完成，当前索引: ${this.levelCountIndex}`)
+  }
+
+  /**
+   * 组件销毁时清理监听器
+   */
+  aboutToDisappear(): void {
+    // 移除监听器，避免内存泄漏和监听器累积
+    if (this.levelCountChangeCallback) {
+      this.globalLevelCountManager.removeChangeListener(this.levelCountChangeCallback)
+      this.levelCountChangeCallback = undefined
+      console.log(`🗑️ QualityControlPanel: 已移除等级数量变化监听器`)
+    }
   }
 
   /**

@@ -94,17 +94,67 @@ export class UseDragHandlers {
     } catch (_e) {}
   }
 
+  // 限制每个卡片的最大映射数量，防止内存泄漏
+  private static readonly MAX_MAPPINGS_PER_CARD: number = 1000
+  // 限制总卡片数量，防止内存泄漏
+  private static readonly MAX_CARDS: number = 50
+
   /**
-   * 为当前卡片建立 值->等级 的映射，并上报“新增出口”事件
+   * 限制映射对象大小，防止内存泄漏
+   */
+  private static limitMapSize(mapObj: Record<string, Record<string, string>>): Record<string, Record<string, string>> {
+    const cardIds = Object.keys(mapObj)
+    
+    // 如果卡片数量超过限制，只保留最新的卡片
+    if (cardIds.length > UseDragHandlers.MAX_CARDS) {
+      const limited: Record<string, Record<string, string>> = {}
+      // 保留最后 MAX_CARDS 个卡片
+      const keepCards = cardIds.slice(-UseDragHandlers.MAX_CARDS)
+      keepCards.forEach(cardId => {
+        limited[cardId] = mapObj[cardId]
+      })
+      console.warn(`⚠️ CARD_ITEM_LEVEL_MAP 卡片数量超过限制，已清理旧数据: ${cardIds.length} -> ${keepCards.length}`)
+      return limited
+    }
+    
+    // 限制每个卡片的映射数量
+    const limited: Record<string, Record<string, string>> = {}
+    cardIds.forEach(cardId => {
+      const cardMap = mapObj[cardId]
+      const keys = Object.keys(cardMap)
+      if (keys.length > UseDragHandlers.MAX_MAPPINGS_PER_CARD) {
+        // 只保留最新的映射
+        const keepKeys = keys.slice(-UseDragHandlers.MAX_MAPPINGS_PER_CARD)
+        limited[cardId] = {}
+        keepKeys.forEach(key => {
+          limited[cardId][key] = cardMap[key]
+        })
+        console.warn(`⚠️ 卡片 ${cardId} 映射数量超过限制，已清理旧数据: ${keys.length} -> ${keepKeys.length}`)
+      } else {
+        limited[cardId] = cardMap
+      }
+    })
+    
+    return limited
+  }
+
+  /**
+   * 为当前卡片建立 值->等级 的映射，并上报"新增出口"事件
    */
   static mapValueToLevel(cardId: string, originalValue: string, levelName: string, exitNum: number): void {
     try {
       console.log(`🔄 mapValueToLevel 被调用: cardId=${cardId}, originalValue=${originalValue}, levelName=${levelName}, exitNum=${exitNum}`)
       const mapRaw = AppStorage.get('CARD_ITEM_LEVEL_MAP') as Record<string, Record<string, string>> | null
-      const mapObj: Record<string, Record<string, string>> = mapRaw ? mapRaw : {}
+      let mapObj: Record<string, Record<string, string>> = mapRaw ? mapRaw : {}
+      
+      // 限制映射大小，防止内存泄漏
+      mapObj = UseDragHandlers.limitMapSize(mapObj)
+      
       if (!mapObj[cardId]) { mapObj[cardId] = {} }
       if (originalValue) {
         mapObj[cardId][originalValue] = levelName
+        // 再次限制大小（添加后可能超过限制）
+        mapObj = UseDragHandlers.limitMapSize(mapObj)
         AppStorage.setOrCreate('CARD_ITEM_LEVEL_MAP', mapObj)
       }
       if (levelName && exitNum > 0) {
@@ -123,7 +173,11 @@ export class UseDragHandlers {
   static appendMappingToCard(fromCardId: string, valStr: string, toCardId: string, toExit: number): void {
     try {
       const mapRaw = AppStorage.get('CARD_ITEM_LEVEL_MAP') as Record<string, Record<string, string>> | null
-      const mapObj: Record<string, Record<string, string>> = mapRaw ? mapRaw : {}
+      let mapObj: Record<string, Record<string, string>> = mapRaw ? mapRaw : {}
+      
+      // 限制映射大小，防止内存泄漏
+      mapObj = UseDragHandlers.limitMapSize(mapObj)
+      
       const levelName = (mapObj[fromCardId] && mapObj[fromCardId][valStr]) ? mapObj[fromCardId][valStr] : ''
       if (!levelName) { return }
       
@@ -136,6 +190,8 @@ export class UseDragHandlers {
       // 更新映射关系
       if (!mapObj[toCardId]) { mapObj[toCardId] = {} }
       mapObj[toCardId][valStr] = levelName
+      // 再次限制大小（添加后可能超过限制）
+      mapObj = UseDragHandlers.limitMapSize(mapObj)
       AppStorage.setOrCreate('CARD_ITEM_LEVEL_MAP', mapObj)
       
       console.log(`➕ 映射追加: 等级=${levelName}, 出口=${toExit}, key=${valStr}`)

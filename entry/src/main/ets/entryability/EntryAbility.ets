@@ -7,6 +7,10 @@ import { RdbService } from '../db/RdbService';
 import { HttpServerHandler } from '../utils/network/HttpServerHandler';
 import { copyRawDirectoryAuto } from '../utils/FileUtils';
 import { AppCleanup } from '../utils/AppCleanup';
+import { ProcessingCurveFeed } from '../utils/ProcessingCurveFeed';
+import { ProcessingBarFeed } from '../utils/ProcessingBarFeed';
+import { MultiSeriesBarFeed } from '../utils/MultiSeriesBarFeed';
+import { WavePhaseManager } from '../utils/ui/WavePhaseManager';
 
 const DOMAIN = 0x0000;
 
@@ -116,6 +120,23 @@ export default class EntryAbility extends UIAbility {
   onBackground(): void {
     // Ability has back to background
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onBackground');
+    
+    // 进入后台时立即停止所有定时器和动画，避免阻塞系统操作
+    // 使用异步执行，避免阻塞 onBackground 回调（系统在 onBackground 中会执行帧率设置等操作）
+    // 注意：必须在下一个事件循环中执行，不能在 onBackground 中同步执行，否则会阻塞系统操作
+    Promise.resolve().then(() => {
+      try {
+        // 停止全局数据源的定时器
+        ProcessingCurveFeed.getInstance().stop();
+        ProcessingBarFeed.getInstance().stop();
+        MultiSeriesBarFeed.getInstance().stop();
+        WavePhaseManager.getInstance().stop();
+        
+        hilog.info(DOMAIN, 'EntryAbility', '后台清理：已停止所有全局定时器');
+      } catch (e) {
+        hilog.error(DOMAIN, 'EntryAbility', `后台清理失败: ${JSON.stringify(e)}`);
+      }
+    });
   }
 
   onStop(): void {

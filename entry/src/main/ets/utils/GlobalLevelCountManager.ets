@@ -134,8 +134,13 @@ export class GlobalLevelCountManager {
    * @param callback 回调函数
    */
   public addChangeListener(callback: LevelCountChangeCallback): void {
-    this.callbacks.push(callback)
-    console.log(`📝 添加等级数量变化监听器，当前监听器数量: ${this.callbacks.length}`)
+    // 防止重复添加相同的监听器，避免内存泄漏
+    if (this.callbacks.indexOf(callback) === -1) {
+      this.callbacks.push(callback)
+      console.log(`📝 添加等级数量变化监听器，当前监听器数量: ${this.callbacks.length}`)
+    } else {
+      console.warn(`⚠️ 监听器已存在，跳过重复添加，避免内存泄漏`)
+    }
   }
 
   /**

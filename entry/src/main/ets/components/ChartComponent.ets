@@ -57,6 +57,7 @@ export struct ChartComponent {
   @State private lastScrollX: number = 0; // 最近一次滚动位置
   private currentTimeIndex: number = 0; // 当前时间索引
   private readonly MAX_POINTS: number = 60; // 固定窗口上限
+  private readonly MAX_PENDING_QUEUE: number = 100; // 待处理队列最大长度，防止内存泄漏
   private pendingQueue: ChartData[] = []; // 待批量合并的数据队列
 
   // 生成时间标签
@@ -117,6 +118,11 @@ export struct ChartComponent {
     this.timerId = setInterval(() => {
       const newTime = this.generateNewTimeLabel();
       const newValue = this.generateNewValue();
+      // 限制队列长度，防止内存泄漏
+      if (this.pendingQueue.length >= this.MAX_PENDING_QUEUE) {
+        // 队列已满，移除最旧的数据
+        this.pendingQueue.shift();
+      }
       this.pendingQueue.push({ time: newTime, value: newValue });
       
     }, 1000) as number;

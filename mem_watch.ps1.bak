@@ -129,18 +129,14 @@ while ($true) {
   if ($prevPss -ne $null -and $pssMB -ne "") {
     $delta = [math]::Round(($pssMB - $prevPss), 2)
     if ($delta -ge 10) {
-      $msg = "[$ts] PSS increased $delta MB (current $pssMB MB)"
-      Write-Warning $msg
+      Write-Warning "[$ts] PSS 上涨 $delta MB（当前 $pssMB MB）"
     } elseif ($delta -le -10) {
-      $msg = "[$ts] PSS decreased $delta MB (current $pssMB MB)"
-      Write-Host $msg -ForegroundColor Green
+      Write-Host   "[$ts] PSS 下降 $delta MB（当前 $pssMB MB）" -ForegroundColor Green
     } else {
-      $msg = "[$ts] PSS=$pssMB MB, native=$natMB MB, brk=$brkMB MB, arkts=$arkMB MB"
-      Write-Host $msg
+      Write-Host   "[$ts] PSS=$pssMB MB, native=$natMB MB, brk=$brkMB MB, arkts=$arkMB MB"
     }
   } else {
-    $msg = "[$ts] PSS=$pssMB MB, native=$natMB MB, brk=$brkMB MB, arkts=$arkMB MB"
-    Write-Host $msg
+    Write-Host     "[$ts] PSS=$pssMB MB, native=$natMB MB, brk=$brkMB MB, arkts=$arkMB MB"
   }
   if ($pssMB -ne "") { $prevPss = $pssMB }
 

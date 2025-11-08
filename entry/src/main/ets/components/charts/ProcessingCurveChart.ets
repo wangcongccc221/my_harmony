@@ -217,17 +217,11 @@ export struct ProcessingCurveChart {
       
       // 移除日志输出，减少性能开销
       
-      // 当数据达到1024个时，清空所有数据重新开始
-      if (this.dataCount >= this.maxPoints) {
-        this.dataPoints = []
-        this.dataCount = 0
-        this.clearCount++
-        this.currentProgress = 0
-        
-        // 重新初始化数据
-        this.dataPoints = [...this.defaultData]
+      // 使用滑动窗口：当数据超过最大点数时，移除最旧的数据（避免清空导致的内存波动）
+      if (this.dataPoints.length >= this.maxPoints) {
+        // 移除最旧的数据点，保持数组大小稳定
+        this.dataPoints.shift()
         this.dataCount = this.dataPoints.length
-        this.currentProgress = this.dataPoints[this.dataPoints.length - 1]?.value ?? 0
       }
       
       // 使用 Options.setVal 增量更新（官方推荐）

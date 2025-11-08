@@ -227,16 +227,31 @@ export struct LiquidCardsArea {
     console.log(`LiquidCardsArea: 已切换到 ${this.selectedFSM} 的卡片数据，共 ${this.cardDataList.length} 个卡片`)
   }
 
+  // 防重复处理标志，避免aboutToUpdate循环触发
+  private isProcessingRemove: boolean = false
+
   /**
    * 监听强制移除信号
    */
   aboutToUpdate(): void {
-    // 监听强制移除信号
-    if (this.forceRemoveSource && this.forceRemoveSource.sourceCardId && this.forceRemoveSource.sourceValue) {
-      console.log('监听到强制移除信号:', this.forceRemoveSource)
-      this.performRemoveSourceData(this.forceRemoveSource)
-      // 清除信号
+    // 监听强制移除信号（添加防重复处理机制，避免循环触发）
+    if (!this.isProcessingRemove && this.forceRemoveSource && this.forceRemoveSource.sourceCardId && this.forceRemoveSource.sourceValue) {
+      this.isProcessingRemove = true
+      // 显式创建对象，避免使用展开运算符（ArkTS不支持对象展开）
+      const removeData: RemoveSourceData = {
+        sourceCardId: this.forceRemoveSource.sourceCardId,
+        sourceValue: this.forceRemoveSource.sourceValue
+      }
+      // 先清除信号，避免重复触发
       AppStorage.set(StorageKeys.FORCE_REMOVE_SOURCE, null)
+      // 使用异步延迟，避免在更新过程中同步操作导致循环
+      Promise.resolve().then(() => {
+        console.log('监听到强制移除信号:', removeData)
+        this.performRemoveSourceData(removeData)
+        this.isProcessingRemove = false
+      }).catch(() => {
+        this.isProcessingRemove = false
+      })
     }
   }
 

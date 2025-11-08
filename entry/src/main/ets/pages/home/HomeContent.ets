@@ -543,54 +543,71 @@ export struct HomeContent {
       // 主要内容
       this.buildMainContent()
       
-      // 侦听FSM切换事件（优化：减少重复监听）
+      // 侦听FSM切换事件（优化：减少重复监听，使用防抖机制避免循环触发）
       if (this.selectedFSM) {
         Blank()
+          .key(`fsm-${this.selectedFSM}`) // 使用key避免重复触发
           .onAppear(() => {
-            // 静默更新，减少日志输出
-            this.dataManager.setFSM(this.selectedFSM)
-            this.updateTopBarForFSM()
-            this.tablesRefreshKey++
+            // 使用异步延迟，避免在渲染过程中同步更新导致循环
+            Promise.resolve().then(() => {
+              this.dataManager.setFSM(this.selectedFSM)
+              this.updateTopBarForFSM()
+              this.tablesRefreshKey++
+            })
           })
       }
       
-      // 侦听等级统计更新事件（UI语法包裹，逻辑在回调内）
+      // 侦听等级统计更新事件（UI语法包裹，逻辑在回调内，添加防重复触发机制）
       if (this.levelStatUpdate && typeof this.levelStatUpdate['levelName'] === 'string' && typeof this.levelStatUpdate['exit'] !== 'undefined') {
         Blank()
+          .key(`stat-update-${this.levelStatUpdate['levelName']}-${this.levelStatUpdate['exit']}`) // 使用key避免重复触发
           .onAppear(() => {
-            console.log(`🎯 检测到等级统计更新事件:`, this.levelStatUpdate)
+            // 先清除AppStorage，避免重复触发
             const ln = String(this.levelStatUpdate!['levelName'])
             const ex = Number(this.levelStatUpdate!['exit'])
-            console.log(`🎯 解析事件参数: 等级=${ln}, 出口=${ex}`)
             AppStorage.set(StorageKeys.LEVEL_STAT_UPDATE, null)
-            this.applyLevelStatUpdate(ln, ex)
-            this.tablesRefreshKey++
+            // 使用异步延迟，避免在渲染过程中同步更新导致循环
+            Promise.resolve().then(() => {
+              console.log(`🎯 检测到等级统计更新事件:`, { levelName: ln, exit: ex })
+              this.applyLevelStatUpdate(ln, ex)
+              this.tablesRefreshKey++
+            })
           })
       }
       if (this.levelStatUpdateBatch && Array.isArray(this.levelStatUpdateBatch['levelNames']) && typeof this.levelStatUpdateBatch['exit'] !== 'undefined') {
         Blank()
+          .key(`stat-batch-${JSON.stringify(this.levelStatUpdateBatch['levelNames'])}-${this.levelStatUpdateBatch['exit']}`) // 使用key避免重复触发
           .onAppear(() => {
+            // 先清除AppStorage，避免重复触发
             const arrRaw = this.levelStatUpdateBatch!['levelNames']
             const arr: string[] = Array.isArray(arrRaw) ? (arrRaw as string[]) : []
             const ex = Number(this.levelStatUpdateBatch!['exit'])
             AppStorage.set(StorageKeys.LEVEL_STAT_UPDATE_BATCH, null)
-            arr.forEach((ln) => {
-              if (ln && ln.length > 0) {
-                this.applyLevelStatUpdate(ln, ex)
-              }
+            // 使用异步延迟，避免在渲染过程中同步更新导致循环
+            Promise.resolve().then(() => {
+              arr.forEach((ln) => {
+                if (ln && ln.length > 0) {
+                  this.applyLevelStatUpdate(ln, ex)
+                }
+              })
+              this.tablesRefreshKey++
             })
-            this.tablesRefreshKey++
           })
       }
       
       if (this.levelStatRemove && typeof this.levelStatRemove['levelName'] === 'string' && typeof this.levelStatRemove['exit'] !== 'undefined') {
         Blank()
+          .key(`stat-remove-${this.levelStatRemove['levelName']}-${this.levelStatRemove['exit']}`) // 使用key避免重复触发
           .onAppear(() => {
+            // 先清除AppStorage，避免重复触发
             const ln = String(this.levelStatRemove!['levelName'])
             const ex = Number(this.levelStatRemove!['exit'])
             AppStorage.set(StorageKeys.LEVEL_STAT_REMOVE, null)
-            this.applyLevelStatRemove(ln, ex)
-            this.tablesRefreshKey++
+            // 使用异步延迟，避免在渲染过程中同步更新导致循环
+            Promise.resolve().then(() => {
+              this.applyLevelStatRemove(ln, ex)
+              this.tablesRefreshKey++
+            })
           })
       }
       
@@ -633,22 +650,30 @@ export struct HomeContent {
     .onTouch((event?: TouchEvent) => {
       if (!event) { return }
       const t = event.touches && event.touches.length > 0 ? event.touches[0] : undefined
-      // 同步拖拽激活状态
-      const active = (AppStorage.get(CELL_DRAG_ACTIVE_KEY) as boolean) === true
-      if (!active) {
-        // 未处于拖拽激活，强制隐藏并清空浮层文本，避免残留
-        if (this.dragOverlayActive || this.dragOverlayText) {
-          this.dragOverlayActive = false
-          this.dragOverlayText = ''
-        }
-      } else {
-        // 激活时首次显示时同步当前拖拽文本
-        if (!this.dragOverlayActive) {
-          const d = getCurrentCellDragData()
-          this.dragOverlayText = d ? String(d.value ?? '') : ''
-        }
-        this.dragOverlayActive = true
+      
+      // 优化：减少 AppStorage 读取频率，使用缓存或延迟读取
+      // 只在必要时读取 AppStorage，避免每次触摸都读取（长时间运行后可能累积性能问题）
+      if (event.type === TouchType.Down || event.type === TouchType.Move) {
+        // 使用异步延迟读取，避免阻塞触摸事件处理
+        Promise.resolve().then(() => {
+          const active = (AppStorage.get(CELL_DRAG_ACTIVE_KEY) as boolean) === true
+          if (!active) {
+            // 未处于拖拽激活，强制隐藏并清空浮层文本，避免残留
+            if (this.dragOverlayActive || this.dragOverlayText) {
+              this.dragOverlayActive = false
+              this.dragOverlayText = ''
+            }
+          } else {
+            // 激活时首次显示时同步当前拖拽文本
+            if (!this.dragOverlayActive) {
+              const d = getCurrentCellDragData()
+              this.dragOverlayText = d ? String(d.value ?? '') : ''
+            }
+            this.dragOverlayActive = true
+          }
+        })
       }
+      
       // 坐标跟踪（使用屏幕坐标，适配 Stack 顶层）
       if (t) {
         // 使用相对于当前 Stack 的本地坐标，避免屏幕坐标导致的偏移
@@ -752,9 +777,9 @@ export struct HomeContent {
     AppStorage.setOrCreate('FARM_NAME', '小熊生态农场')
     AppStorage.setOrCreate('FRUIT_TYPE', '赣南脐橙')
 
-    // 启动时间更新定时器（每秒更新一次）
+    // 启动时间更新定时器（每5秒更新一次，减少AppStorage更新频率，避免触发大量监听器）
     if (!this.timeUpdateTimerId) {
-      if (LOG_TIME_ENABLED) { console.log('[时间更新] 启动定时器') }
+      if (LOG_TIME_ENABLED) { console.log('[时间更新] 启动定时器 (5s间隔)') }
       this.timeUpdateTimerId = setInterval(() => {
         // 异步更新，避免阻塞主线程
         Promise.resolve().then(() => {
@@ -763,13 +788,17 @@ export struct HomeContent {
           const hh = String(now.getHours()).padStart(2, '0')
           const mm = String(now.getMinutes()).padStart(2, '0')
           const ss = String(now.getSeconds()).padStart(2, '0')
-          this.startTime = `${hh}:${mm}:${ss}`
-          AppStorage.setOrCreate('START_TIME', this.startTime)
-          if (LOG_TIME_ENABLED) { console.log('[时间更新] 当前时间:', this.startTime) }
+          const newTime = `${hh}:${mm}:${ss}`
+          // 只在时间真正变化时才更新AppStorage（减少不必要的更新）
+          if (this.startTime !== newTime) {
+            this.startTime = newTime
+            AppStorage.setOrCreate('START_TIME', this.startTime)
+            if (LOG_TIME_ENABLED) { console.log('[时间更新] 当前时间:', this.startTime) }
+          }
         }).catch(() => {
           // 静默处理错误
         })
-      }, 1000) as number
+      }, 5000) as number // 改为5秒更新一次，减少频率
     }
 
     // 启动模拟实时更新（每60秒刷新一次）
