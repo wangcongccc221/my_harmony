@@ -2,6 +2,8 @@ import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../u
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { HistoryTableManager, HistoryTableData } from './core/HistoryTableManager'
+import { TableHeaderCell } from '../../components/ui/tables/TableHeaderCell'
+import { TableCell } from '../../components/ui/tables/TableCell'
 
 /**
  * 历史数据表格组件
@@ -211,86 +213,18 @@ export struct HistoryDataTable {
       Column() {
         // 固定表头
         Grid() {
-          GridItem() {
-            Text('选择')
-              .fontSize(14)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
-              .textAlign(TextAlign.Center)
-              .padding(4)
-          }
-          GridItem() {
-            Text('序号')
-              .fontSize(14)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
-              .textAlign(TextAlign.Center)
-              .padding(4)
-          }
-          GridItem() {
-            Text('客户名称')
-              .fontSize(14)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
-              .textAlign(TextAlign.Center)
-              .padding(4)
-          }
-          GridItem() {
-            Text('农场名称')
-              .fontSize(14)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
-              .textAlign(TextAlign.Center)
-              .padding(4)
-          }
-          GridItem() {
-            Text('水果名称')
-              .fontSize(14)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
-              .textAlign(TextAlign.Center)
-              .padding(4)
-          }
-          GridItem() {
-            Text('加工状态')
-              .fontSize(14)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
-              .textAlign(TextAlign.Center)
-              .padding(4)
-          }
-          GridItem() {
-            Text('开始时间')
-              .fontSize(14)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
-              .textAlign(TextAlign.Center)
-              .padding(4)
-          }
-          GridItem() {
-            Text('完成时间')
-              .fontSize(14)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
-              .textAlign(TextAlign.Center)
-              .padding(4)
-          }
-          GridItem() {
-            Text('批重量(吨)')
-              .fontSize(14)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
-              .textAlign(TextAlign.Center)
-              .padding(4)
-          }
-          GridItem() {
-            Text('批个数')
-              .fontSize(14)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
-              .textAlign(TextAlign.Center)
-              .padding(4)
-          }
+          ForEach(['选择', '序号', '客户名称', '农场名称', '水果名称', '加工状态', '开始时间', '完成时间', '批重量(吨)', '批个数'], (title: string) => {
+            GridItem() {
+              TableHeaderCell({
+                text: title,
+                fontSize: 14,
+                cellHeight: 36,
+                cellPadding: 4,
+                showRightBorder: false,
+                showBottomBorder: false
+              })
+            }
+          })
         }
         .columnsTemplate('6fr 8fr 12fr 12fr 10fr 10fr 12fr 12fr 12fr 12fr')
         .height(36)

@@ -13,6 +13,10 @@ import { BarChart } from '../../components/charts/BarChart'
 import { OmniTabBar, TabConfig, TabBarDirection } from '../../components/ui/layout/OmniTabBar'
 import { drawLineChart, measureChartWidth, LineChartOptions } from  '../../utils/lineChart'
 import { ProcessingCurveFeed } from '../../utils/ProcessingCurveFeed'
+import { TableHeaderCell } from '../../components/ui/tables/TableHeaderCell'
+import { TableCell } from '../../components/ui/tables/TableCell'
+import { CardContainer } from '../../components/ui/layout/CardContainer'
+import { SectionTitle } from '../../components/ui/layout/SectionTitle'
 
 // 图表颜色配置接口
 interface ChartColors {
@@ -532,12 +536,13 @@ export struct DataTablesTabBar {
       } else if (this.selectedTab === '动态装箱') {
         // 使用Grid组件显示动态装箱表格（带卡片包裹）
         Column() {
-          Text('动态装箱')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.getCurrentTheme().textColor)
-            .alignSelf(ItemAlign.Start)
-            .margin({ bottom: 4 })
+          SectionTitle({
+            title: '动态装箱',
+            titleFontSize: 16,
+            titleFontWeight: FontWeight.Medium,
+            titleMargin: { bottom: 4 },
+            titleAlign: ItemAlign.Start
+          })
 
           // 表格容器（卡片样式）
           Column() {
@@ -545,16 +550,14 @@ export struct DataTablesTabBar {
             // 表头
             ForEach(['出口', '流水码', '装箱规格', '等级', '箱数', '纸箱规格', '纸箱净重', '箱数/分'], (title: string, index: number) => {
               GridItem() {
-                Text(title)
-                  .fontSize(20)
-                  .fontWeight(FontWeight.Bold)
-                  .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
-                  .textAlign(TextAlign.Center)
-                  .width('100%')
-                  .height(50)
-                  .padding(6)
-                  .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                  .border({ width: { right: 1, bottom: 1 }, color: this.getCurrentTheme().borderColor })
+                TableHeaderCell({
+                  text: title,
+                  fontSize: 20,
+                  cellHeight: 50,
+                  cellPadding: 6,
+                  showRightBorder: true,
+                  showBottomBorder: true
+                })
               }
             })
             
@@ -562,15 +565,14 @@ export struct DataTablesTabBar {
             ForEach(this.dynamicPackingTableData, (row: string[], rowIndex: number) => {
               ForEach(row, (cell: string, colIndex: number) => {
                 GridItem() {
-                  Text(cell)
-                    .fontSize(16)
-                    .fontColor(this.getCurrentTheme().textColor)
-                    .textAlign(TextAlign.Center)
-                    .width('100%')
-                    .height(65)
-                    .padding(2)
-                    .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                    .border({ width: { right: 1, bottom: 1 }, color: this.getCurrentTheme().borderColor })
+                  TableCell({
+                    text: cell,
+                    fontSize: 16,
+                    cellHeight: 65,
+                    cellPadding: 2,
+                    showRightBorder: true,
+                    showBottomBorder: true
+                  })
                 }
               })
             })
@@ -597,12 +599,13 @@ export struct DataTablesTabBar {
       } else if (this.selectedTab === '成品') {
         // 使用Grid组件显示成品表格（带卡片包裹）
         Column() {
-          Text('成品')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.getCurrentTheme().textColor)
-            .alignSelf(ItemAlign.Start)
-            .margin({ bottom: 4 })
+          SectionTitle({
+            title: '成品',
+            titleFontSize: 16,
+            titleFontWeight: FontWeight.Medium,
+            titleMargin: { bottom: 4 },
+            titleAlign: ItemAlign.Start
+          })
 
           // 表格容器（卡片样式）
           Column() {
@@ -610,16 +613,14 @@ export struct DataTablesTabBar {
             // 表头
             ForEach(['成品码', '出口', '流水码', '容器名称', '等级', '包装时间', '纸箱规格', '纸箱净重'], (title: string, index: number) => {
               GridItem() {
-                Text(title)
-                  .fontSize(20)
-                  .fontWeight(FontWeight.Bold)
-                  .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
-                  .textAlign(TextAlign.Center)
-                  .width('100%')
-                  .height(50)
-                  .padding(6)
-                  .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                  .border({ width: { right: 1, bottom: 1 }, color: this.getCurrentTheme().borderColor })
+                TableHeaderCell({
+                  text: title,
+                  fontSize: 20,
+                  cellHeight: 50,
+                  cellPadding: 6,
+                  showRightBorder: true,
+                  showBottomBorder: true
+                })
               }
             })
             
@@ -627,15 +628,14 @@ export struct DataTablesTabBar {
             ForEach(this.finishedProductsTableData, (row: string[], rowIndex: number) => {
               ForEach(row, (cell: string, colIndex: number) => {
                 GridItem() {
-                  Text(cell)
-                    .fontSize(16)
-                    .fontColor(this.getCurrentTheme().textColor)
-                    .textAlign(TextAlign.Center)
-                    .width('100%')
-                    .height(65)
-                    .padding(2)
-                    .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                    .border({ width: { right: 1, bottom: 1 }, color: this.getCurrentTheme().borderColor })
+                  TableCell({
+                    text: cell,
+                    fontSize: 16,
+                    cellHeight: 65,
+                    cellPadding: 2,
+                    showRightBorder: true,
+                    showBottomBorder: true
+                  })
                 }
               })
             })
