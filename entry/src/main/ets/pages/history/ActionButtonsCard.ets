@@ -17,8 +17,8 @@
  * ```
  */
 
-import { BaseComponentHelper } from '../../components/common/BaseComponent'
 import { OmniThemeManager, ExtendedOmniThemeStyle, OmniThemeType } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { HistoryTableData } from './core/HistoryTableManager'
 import fs from '@ohos.file.fs'
@@ -87,8 +87,6 @@ export struct ActionButtonsCard {
   @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
   /** 主题版本号 */
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
-  /** 基础组件助手 */
-  private baseComponentHelper = new BaseComponentHelper()
   
 
   /**
@@ -102,7 +100,7 @@ export struct ActionButtonsCard {
    * @returns 当前主题样式配置
    */
   private getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme()
+    return resolveTheme()
   }
 
   /**

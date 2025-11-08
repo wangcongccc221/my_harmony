@@ -3,8 +3,8 @@
  * 功能：以弹窗形式展示实时统计摘要，交互样式与“水果信息”一致（标题/遮罩/按钮布局）
  */
 
-import { BaseComponentHelper } from '../common/BaseComponent'
-import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { DialogButtons } from '../ui/DialogButtons'
 import { RectButton } from '../ui/RectButton'
 import { ProcessingCurveChart } from '../charts/ProcessingCurveChart'
@@ -26,10 +26,9 @@ interface ChartDataItem {
 
 @Component
 export struct RealtimeStatsDialog {
-  private baseComponentHelper = new BaseComponentHelper()
   @Prop isVisible: boolean = false
   // 为子图表提供主题，避免 @Consume 解析失败
-  @Provide providedTheme: ExtendedOmniThemeStyle = this.getCurrentTheme()
+  @Provide providedTheme: ExtendedOmniThemeStyle = getCurrentTheme()
 
   // 简要统计占位（可由外部传入或后续联动替换）
   @State stats: RealtimeStats = {
@@ -115,10 +114,6 @@ export struct RealtimeStatsDialog {
   @State private contentRefreshKey: number = 0
   @State private currentInnerPage: string = '出口统计信息'
 
-  getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme()
-  }
-
   private handleConfirm() {
     if (this.onConfirm) {
       this.onConfirm(this.stats)
@@ -141,13 +136,13 @@ export struct RealtimeStatsDialog {
             Text('实时统计')
               .fontSize(24)  // 标题字体调大到24px
               .fontWeight(FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().textColor)
+              .fontColor(getCurrentTheme().textColor)
               .layoutWeight(1)
 
             Button() {
               Text('×')
                 .fontSize(24)  // 关闭按钮字体调大到24px
-                .fontColor(this.getCurrentTheme().textColor)
+                .fontColor(getCurrentTheme().textColor)
             }
             .width(30)
             .height(30)
@@ -156,7 +151,7 @@ export struct RealtimeStatsDialog {
           }
           .width('100%')
           .padding({ left: 12, right: 12, top: 10, bottom: 10 })
-          .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+          .border({ width: { bottom: 1 }, color: getCurrentTheme().borderColor })
 
           // 清空内容，仅保留标题（去掉与标题的间距，贴紧顶部）
           Blank().height(0)
@@ -234,7 +229,7 @@ export struct RealtimeStatsDialog {
                     top: 10,
                     textStyle: {
                       fontSize: 16,
-                      color: this.getCurrentTheme().textColor
+                      color: getCurrentTheme().textColor
                     }
                   },
                   series: [{
@@ -297,8 +292,8 @@ export struct RealtimeStatsDialog {
           .width('100%')
           .layoutWeight(1)
           .padding(12)
-          .backgroundColor(this.getCurrentTheme().surfaceColor)
-          .border({ width: 1, color: this.getCurrentTheme().borderColor })
+          .backgroundColor(getCurrentTheme().surfaceColor)
+          .border({ width: 1, color: getCurrentTheme().borderColor })
           .borderRadius(10)
           .margin({ top: 0, bottom: 12, left: 8, right: 8 })
           .id(`rt-page-${this.currentInnerPage}-${this.contentRefreshKey}`)
@@ -306,7 +301,7 @@ export struct RealtimeStatsDialog {
         .width('80%')  // 调整宽度为80%
         .padding({ left: 10, right: 10, top: 0, bottom: 12 })
         .height('80%')
-        .backgroundColor(this.getCurrentTheme().surfaceColor)
+        .backgroundColor(getCurrentTheme().surfaceColor)
         .borderRadius(12)
         .shadow({ radius: 20, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 4 })
       }
@@ -322,12 +317,12 @@ export struct RealtimeStatsDialog {
     Row() {
       Text(label)
         .fontSize(18)  // 统计标签字体调大到18px
-        .fontColor(this.getCurrentTheme().textColor)
+        .fontColor(getCurrentTheme().textColor)
         .layoutWeight(1)
         .textOverflow({ overflow: TextOverflow.Clip })
       Text(value)
         .fontSize(18)  // 统计值字体调大到18px
-        .fontColor(this.getCurrentTheme().primary)
+        .fontColor(getCurrentTheme().primary)
         .textAlign(TextAlign.End)
         .constraintSize({ minWidth: 80 })
     }

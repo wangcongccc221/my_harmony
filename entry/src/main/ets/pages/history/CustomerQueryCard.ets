@@ -24,8 +24,8 @@
  * ```
  */
 
-import { BaseComponentHelper } from '../../components/common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 
 /**
@@ -73,8 +73,6 @@ export struct CustomerQueryCard {
   @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
   /** 主题版本号 */
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
-  /** 基础组件助手 */
-  private baseComponentHelper = new BaseComponentHelper()
 
   /**
    * 获取当前主题配置
@@ -87,7 +85,7 @@ export struct CustomerQueryCard {
    * @returns 当前主题的扩展样式对象
    */
   getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+    return resolveTheme(this.consumedTheme)
   }
 
   /**

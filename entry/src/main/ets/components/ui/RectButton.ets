@@ -1,5 +1,5 @@
-import { BaseComponentHelper } from '../common/BaseComponent'
 import { OmniUIUtils } from '../../utils/helpers/OmniUIUtils'
+import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 
 @Component
 export struct RectButton {
@@ -15,7 +15,6 @@ export struct RectButton {
   // 可选：自定义圆角像素。不传则按 min(width,height)/2 自动胶囊化
   borderRadiusPx?: number
 
-  private baseComponentHelper = new BaseComponentHelper()
   @State private isPressed: boolean = false
 
   build() {
@@ -23,7 +22,7 @@ export struct RectButton {
     Column() {
       Text(this.text)
         .fontSize(this.fontSizePx)
-        .fontColor(this.isActive ? Color.White : this.baseComponentHelper.getCurrentTheme().textColor)
+        .fontColor(this.isActive ? Color.White : getCurrentTheme().textColor)
         .textAlign(TextAlign.Center)
         .maxLines(1)
     }
@@ -32,9 +31,9 @@ export struct RectButton {
     .justifyContent(FlexAlign.Center)
     .alignItems(HorizontalAlign.Center)
     .backgroundColor(this.isActive
-      ? this.baseComponentHelper.getCurrentTheme().primary
-      : (this.isPressed ? this.baseComponentHelper.getCurrentTheme().borderColor : this.baseComponentHelper.getCurrentTheme().surfaceColor))
-    .border({ width: 1, color: this.isActive ? this.baseComponentHelper.getCurrentTheme().primary : this.baseComponentHelper.getCurrentTheme().borderColor })
+      ? getCurrentTheme().primary
+      : (this.isPressed ? getCurrentTheme().borderColor : getCurrentTheme().surfaceColor))
+    .border({ width: 1, color: this.isActive ? getCurrentTheme().primary : getCurrentTheme().borderColor })
     .borderRadius(this.borderRadiusPx !== undefined ? this.borderRadiusPx : Math.floor(Math.min(this.widthPx, this.heightPx) / 2))
     .margin({ left: this.marginLeftPx, right: this.marginRightPx })
     .opacity(this.isPressed ? 0.9 : 1)

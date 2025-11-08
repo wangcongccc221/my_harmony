@@ -32,8 +32,8 @@
  * - aboutToDisappear：清理资源和事件
  */
 
-import { BaseComponentHelper } from '../../components/common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { LevelControlPanel } from './LevelControlPanel'
 import { LevelDataTable } from './LevelDataTable'
@@ -105,16 +105,6 @@ export struct LevelContent {
    */
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
   
-  /**
-   * 基础组件助手
-   * 
-   * 功能说明：
-   * - 提供基础组件的通用功能
-   * - 用于主题管理和样式配置
-   * - 实例化BaseComponentHelper
-   */
-  private baseComponentHelper = new BaseComponentHelper()
-
   // ==================== 管理器实例 ====================
   /**
    * 数据管理器
@@ -164,7 +154,7 @@ export struct LevelContent {
    * @returns 当前主题的扩展样式对象
    */
   getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+    return resolveTheme(this.consumedTheme)
   }
 
   // ==================== 数据初始化方法 ====================

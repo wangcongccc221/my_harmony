@@ -4,8 +4,8 @@
  * 用途：在Home页面中作为实时统计页面显示
  */
 
-import { BaseComponentHelper } from '../../components/common/BaseComponent'
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { McBarChart, Options } from '@mcui/mccharts'
 import { ProcessingCurveChart } from '../../components/charts/ProcessingCurveChart'
 import { CustomPieChart, PieChartsOptions, PieChartsData } from '../../components/charts/CustomPieChart'
@@ -21,7 +21,6 @@ class PieData implements PieChartsData {
 @Component
 export struct RealtimeStatsContent {
   @StorageLink('OMNI_THEME_VERSION_KEY') private themeVersion: number = 0
-  private baseComponentHelper = new BaseComponentHelper()
 
   // 饼图数据状态
   @State private pieData: PieData[] = [
@@ -47,7 +46,7 @@ export struct RealtimeStatsContent {
   private outletTimerId: number | null = null
 
   getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme()
+    return resolveTheme()
   }
 
   // 初始化所有图表数据

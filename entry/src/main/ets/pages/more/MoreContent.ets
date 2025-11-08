@@ -4,9 +4,9 @@
  * 用途：在Home页面中作为更多功能页面显示
  */
 
-import { BaseComponentHelper } from '../../components/common/BaseComponent'
 import { MoreTabBar } from './MoreTabBar'
 import { OmniThemeManager, ExtendedOmniThemeStyle, OmniThemeType } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { useOmniTheme } from '../../utils/theme/useOmniTheme'
 import { OmniUIUtils } from '../../utils/helpers/OmniUIUtils'
@@ -25,7 +25,6 @@ export struct MoreContent {
   @StorageLink(OMNI_THEME_KEY) @Watch('onThemeChange') consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
   @StorageLink(OMNI_THEME_TYPE_KEY) @Watch('onThemeChange') consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
   @StorageLink(OMNI_THEME_VERSION_KEY) @Watch('onThemeChange') themeVersion: number = 0
-  private baseComponentHelper = new BaseComponentHelper()
   private omniThemeManager = OmniThemeManager.getInstance()
   private omniUIUtils = OmniUIUtils.getInstance()
   @State showThemeSelector: boolean = false
@@ -48,7 +47,7 @@ export struct MoreContent {
   ]
 
   getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+    return resolveTheme(this.consumedTheme)
   }
 
   // 监听主题变化

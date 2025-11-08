@@ -38,8 +38,8 @@
  * - 右侧面板宽度：75%
  */
 
-import { BaseComponentHelper } from '../../components/common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY, useOmniTheme } from '../../utils/theme/useOmniTheme'
 import { LevelData, StatisticsData, TABLE_COUNT_OPTIONS, DEFAULT_LEVEL_DATA } from './LevelConstants'
 
@@ -786,16 +786,6 @@ export struct LevelDataTable {
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
   
   /**
-   * 基础组件助手
-   * 
-   * 功能说明：
-   * - 提供基础组件的通用功能
-   * - 用于主题管理和样式配置
-   * - 实例化BaseComponentHelper
-   */
-  private baseComponentHelper = new BaseComponentHelper()
-  
-  /**
    * 表头索引数组
    * 
    * 功能说明：
@@ -810,14 +800,14 @@ export struct LevelDataTable {
    * 获取当前主题配置
    * 
    * 功能说明：
-   * - 从基础组件助手获取当前主题样式
+   * - 通过统一的主题工具获取当前主题样式
    * - 用于组件样式配置
    * - 支持主题切换时的样式更新
    * 
    * @returns 当前主题的扩展样式对象
    */
   getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+    return resolveTheme(this.consumedTheme)
   }
 
   /**

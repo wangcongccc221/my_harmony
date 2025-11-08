@@ -4,23 +4,17 @@
  * 用途：当用户输入的结束时间早于开始时间时显示
  */
 
-import { BaseComponentHelper } from '../common/BaseComponent'
-import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { DialogButtons } from '../ui/DialogButtons'
 
 @Component
 export struct DateErrorDialog {
-  private baseComponentHelper = new BaseComponentHelper()
   @Prop isVisible: boolean = false
   
   // 对话框回调
   onConfirm?: () => void
   onCancel?: () => void
-
-  // 获取当前主题配置
-  getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme()
-  }
 
   build() {
     if (this.isVisible) {
@@ -40,13 +34,13 @@ export struct DateErrorDialog {
             Text('输入日期有误')
               .fontSize(20)
               .fontWeight(FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().textColor)
+              .fontColor(getCurrentTheme().textColor)
               .margin({ bottom: 8 })
             
             // 错误描述
             Text('结束时间不能早于开始时间，请重新选择日期')
               .fontSize(14)
-              .fontColor(this.getCurrentTheme().subTextColor)
+              .fontColor(getCurrentTheme().subTextColor)
               .textAlign(TextAlign.Center)
               .lineHeight(20)
           }
@@ -64,7 +58,7 @@ export struct DateErrorDialog {
           })
         }
         .width('400px')
-        .backgroundColor(this.getCurrentTheme().surfaceColor)
+        .backgroundColor(getCurrentTheme().surfaceColor)
         .borderRadius(12)
         .shadow({ radius: 20, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 4 })
       }

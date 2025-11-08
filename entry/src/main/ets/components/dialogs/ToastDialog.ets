@@ -4,8 +4,8 @@
  * 用途：用于查询成功、删除成功、查询失败等场景
  */
 
-import { BaseComponentHelper } from '../common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 
 /**
@@ -28,14 +28,12 @@ export struct ToastDialog {
   @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
   /** 主题版本号 */
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
-  /** 基础组件助手 */
-  private baseComponentHelper = new BaseComponentHelper()
 
   /**
    * 获取当前主题配置
    */
   getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+    return getCurrentTheme(this.consumedTheme)
   }
 
   /**
@@ -89,14 +87,14 @@ export struct ToastDialog {
           Text(this.getTitleText())
             .fontSize(22)
             .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
+            .fontColor(getCurrentTheme(this.consumedTheme).textColor)
             .margin({ bottom: 8 })
 
           // 消息内容
           if (this.message) {
             Text(this.message)
               .fontSize(16)
-              .fontColor(this.getCurrentTheme().subTextColor)
+              .fontColor(getCurrentTheme(this.consumedTheme).subTextColor)
               .textAlign(TextAlign.Center)
               .maxLines(3)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -105,7 +103,7 @@ export struct ToastDialog {
         .width('85%')
         .constraintSize({ maxWidth: 400 })
         .padding({ top: 32, bottom: 32, left: 32, right: 32 })
-        .backgroundColor(this.getCurrentTheme().backgroundColor)
+        .backgroundColor(getCurrentTheme(this.consumedTheme).backgroundColor)
         .borderRadius(24)
         .shadow({ 
           radius: 32, 

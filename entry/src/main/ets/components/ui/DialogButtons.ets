@@ -4,7 +4,8 @@
  * 用途：可复用的对话框按钮控件
  */
 
-import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 
 @Component
 export struct DialogButtons {
@@ -16,10 +17,6 @@ export struct DialogButtons {
   onConfirm?: () => void  // 确认回调
   onCancel?: () => void  // 取消回调
 
-  private getCurrentTheme(): ExtendedOmniThemeStyle {
-    return OmniThemeManager.getInstance().getCurrentTheme()
-  }
-
   build() {
     Row() {
       Blank().layoutWeight(1)
@@ -28,9 +25,9 @@ export struct DialogButtons {
         if (this.showCancel) {
           Button(this.cancelText)
             .fontSize(18)  // 取消按钮字体调大到18px
-            .fontColor(this.getCurrentTheme().textColor)
-            .backgroundColor(this.getCurrentTheme().backgroundColor)
-            .border({ width: 1, color: this.getCurrentTheme().borderColor })
+            .fontColor(getCurrentTheme().textColor)
+            .backgroundColor(getCurrentTheme().backgroundColor)
+            .border({ width: 1, color: getCurrentTheme().borderColor })
             .borderRadius(8)
             .padding({ left: 20, right: 20, top: 10, bottom: 10 })
             .onClick(() => {
@@ -44,8 +41,8 @@ export struct DialogButtons {
           .fontSize(18)  // 确认按钮字体调大到18px
           .fontColor(Color.White)
           .backgroundColor(this.confirmDisabled ? 
-            this.getCurrentTheme().subTextColor : 
-            this.getCurrentTheme().primary)
+            getCurrentTheme().subTextColor : 
+            getCurrentTheme().primary)
           .borderRadius(8)
           .padding({ left: 20, right: 20, top: 10, bottom: 10 })
           .margin({ left: this.showCancel ? 10 : 0 })

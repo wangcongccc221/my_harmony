@@ -61,5 +61,39 @@ export class NumberUtils {
   static clamp(value: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, value));
   }
+
+  /**
+   * 数字解析与边界校验（仅数字、允许小数；可配置最小/最大值）
+   * @param raw 原始字符串
+   * @param minValue 最小值（可选）
+   * @param maxValue 最大值（可选）
+   * @returns 解析后的数字
+   */
+  static parseNumberWithBounds(raw: string, minValue?: number, maxValue?: number): number {
+    const cleaned: string = (raw || '').replace(/[^0-9.\-]/g, '')
+    let num: number = Number(cleaned)
+    if (isNaN(num)) {
+      return 0
+    }
+    if (minValue !== undefined && num < minValue) {
+      num = minValue
+    }
+    if (maxValue !== undefined && num > maxValue) {
+      num = maxValue
+    }
+    return num
+  }
+
+  /**
+   * 格式化数字显示（用于TextInput的text属性）
+   * @param value 数字值
+   * @returns 格式化后的字符串（0或空值返回空字符串）
+   */
+  static formatNumberForDisplay(value: number): string {
+    if (value === 0 || value === undefined || isNaN(value)) {
+      return ''
+    }
+    return String(value)
+  }
 }
 

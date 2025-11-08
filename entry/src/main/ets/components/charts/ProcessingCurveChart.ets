@@ -1,7 +1,7 @@
 import { McLineChart } from '@mcui/mccharts'
 import { Options } from '@mcui/mccharts'
-import { BaseComponentHelper } from '../common/BaseComponent'
 import { OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 
 // 数据接口定义
 interface ChartDataItem {
@@ -25,7 +25,6 @@ export struct ProcessingCurveChart {
   @Prop data: ChartDataItem[] = []
 
   // 基础组件助手
-  private baseComponentHelper = new BaseComponentHelper()
   @Consume providedTheme: ExtendedOmniThemeStyle
 
   // 模拟数据与定时器
@@ -84,10 +83,10 @@ export struct ProcessingCurveChart {
         symbolSize: 6,
         lineStyle: {
           width: 3,
-          color: this.getCurrentTheme().chartLineColor ?? this.getCurrentTheme().primary
+          color: this.resolveTheme().chartLineColor ?? this.resolveTheme().primary
         },
         itemStyle: {
-          color: this.getCurrentTheme().chartLineColor ?? this.getCurrentTheme().primary
+          color: this.resolveTheme().chartLineColor ?? this.resolveTheme().primary
         }
       }
     ],
@@ -96,8 +95,8 @@ export struct ProcessingCurveChart {
     }
   })
 
-  getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.providedTheme)
+  private resolveTheme(): ExtendedOmniThemeStyle {
+    return getCurrentTheme(this.providedTheme)
   }
 
   // 获取时间标签
@@ -130,18 +129,18 @@ export struct ProcessingCurveChart {
         textStyle: {
           fontSize: 24,
           fontWeight: 'bold',
-          color: this.getCurrentTheme().textColor
+          color: this.resolveTheme().textColor
         }
       },
       xAxis: {
         data: this.getTimeLabels(),
         axisLabel: {
           fontSize: 20,
-          color: this.getCurrentTheme().textColor
+          color: this.resolveTheme().textColor
         },
         axisLine: {
           lineStyle: {
-            color: this.getCurrentTheme().borderColor
+            color: this.resolveTheme().borderColor
           }
         }
       },
@@ -151,11 +150,11 @@ export struct ProcessingCurveChart {
         nameGap: 30,
         axisLabel: {
           fontSize: 20,
-          color: this.getCurrentTheme().textColor
+          color: this.resolveTheme().textColor
         },
         axisLine: {
           lineStyle: {
-            color: this.getCurrentTheme().borderColor
+            color: this.resolveTheme().borderColor
           }
         }
       },
@@ -169,19 +168,19 @@ export struct ProcessingCurveChart {
           symbolSize: 6,
           lineStyle: {
             width: 3,
-            color: this.getCurrentTheme().chartLineColor ?? this.getCurrentTheme().primary
+            color: this.resolveTheme().chartLineColor ?? this.resolveTheme().primary
           },
           itemStyle: {
-            color: this.getCurrentTheme().chartLineColor ?? this.getCurrentTheme().primary
+            color: this.resolveTheme().chartLineColor ?? this.resolveTheme().primary
           }
         }
       ],
       tooltip: {
         show: true,
-        backgroundColor: this.getCurrentTheme().chartBg ?? this.getCurrentTheme().surfaceColor,
-        borderColor: this.getCurrentTheme().borderColor,
+        backgroundColor: this.resolveTheme().chartBg ?? this.resolveTheme().surfaceColor,
+        borderColor: this.resolveTheme().borderColor,
         textStyle: {
-          color: this.getCurrentTheme().textColor
+          color: this.resolveTheme().textColor
         }
       },
       // 自动追踪最新数据配置（暂时移除，使用其他方式实现）
@@ -274,23 +273,23 @@ export struct ProcessingCurveChart {
       Row() {
         Text(`数据点: ${this.dataCount}/${this.maxPoints}`)
           .fontSize(14)
-          .fontColor(this.getCurrentTheme().textColor)
+          .fontColor(this.resolveTheme().textColor)
           .margin({ right: 16 })
         
         Text(`清空次数: ${this.clearCount}`)
           .fontSize(14)
-          .fontColor(this.getCurrentTheme().primary)
+          .fontColor(this.resolveTheme().primary)
           .margin({ right: 16 })
         
         Text(`当前进度: ${this.currentProgress}%`)
           .fontSize(14)
-          .fontColor(this.getCurrentTheme().chartLineColor ?? this.getCurrentTheme().primary)
+          .fontColor(this.resolveTheme().chartLineColor ?? this.resolveTheme().primary)
           .margin({ right: 16 })
         
         // 自动追踪开关（暂时注释掉，默认开启）
         // Text(`自动追踪: ${this.followLatest ? '开启' : '关闭'}`)
         //   .fontSize(14)
-        //   .fontColor(this.followLatest ? this.getCurrentTheme().primary : this.getCurrentTheme().subTextColor)
+        //   .fontColor(this.followLatest ? this.resolveTheme().primary : this.resolveTheme().subTextColor)
         //   .onClick(() => {
         //     this.followLatest = !this.followLatest
         //   })
@@ -298,7 +297,7 @@ export struct ProcessingCurveChart {
       .width('100%')
       .justifyContent(FlexAlign.Start)
       .padding({ left: 16, right: 16, top: 8, bottom: 8 })
-      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      .backgroundColor(this.resolveTheme().controlBg ?? this.resolveTheme().surfaceColor)
       .borderRadius(4)
       .margin({ bottom: 8 })
 
@@ -310,6 +309,6 @@ export struct ProcessingCurveChart {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(this.getCurrentTheme().chartBg ?? this.getCurrentTheme().surfaceColor)
+    .backgroundColor(this.resolveTheme().chartBg ?? this.resolveTheme().surfaceColor)
   }
 }

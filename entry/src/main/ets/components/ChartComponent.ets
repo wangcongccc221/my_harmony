@@ -1,6 +1,6 @@
 // 数据接口定义
-import { BaseComponentHelper } from './common/BaseComponent'
 import { ExtendedOmniThemeStyle } from '../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../utils/theme/ThemeUtils'
 import { ProcessingBarFeed } from '../utils/ProcessingBarFeed'
 export interface ChartData {
   time: string;
@@ -28,7 +28,6 @@ export interface ChartComponentParams {
 @Component
 export struct ChartComponent {
   // 主题接入
-  private baseComponentHelper = new BaseComponentHelper()
   @Consume providedTheme: ExtendedOmniThemeStyle
   @State chartData: ChartData[] = [];
   @State dataCount: number = 50;
@@ -218,8 +217,8 @@ export struct ChartComponent {
     this.pendingQueue = [];
   }
 
-  getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.providedTheme)
+  private resolveTheme(): ExtendedOmniThemeStyle {
+    return getCurrentTheme(this.providedTheme)
   }
 
   @Builder
@@ -232,7 +231,7 @@ export struct ChartComponent {
           Text(value.toString())
             .fontSize(this.axisFontSizePx)
             .fontWeight(this.axisFontBold ? FontWeight.Bold : FontWeight.Regular)
-            .fontColor(this.getCurrentTheme().subTextColor)
+            .fontColor(this.resolveTheme().subTextColor)
             .width(40)
             .textAlign(TextAlign.End)
             .margin({ right: 5 })
@@ -242,7 +241,7 @@ export struct ChartComponent {
       .height(this.chartHeight)
       .justifyContent(FlexAlign.SpaceBetween)
       .padding({ top: 10, bottom: 10 })
-      .border({ width: 1, color: this.getCurrentTheme().borderColor })
+      .border({ width: 1, color: this.resolveTheme().borderColor })
 
       // 图表区域（可滚动）
       Scroll(this.scroller) {
@@ -252,7 +251,7 @@ export struct ChartComponent {
               // 数值标签（在柱子顶部）
               Text(data.value.toString())
                 .fontSize(16)
-                .fontColor(this.getCurrentTheme().textColor)
+                .fontColor(this.resolveTheme().textColor)
                 .fontWeight(FontWeight.Bold)
                 .margin({ bottom: 2 })
                 .textAlign(TextAlign.Center)
@@ -261,7 +260,7 @@ export struct ChartComponent {
               Column()
                 .width(this.barWidth)
                 .height(data.value * 2.5)
-                .backgroundColor(this.getCurrentTheme().chartLineColor ?? this.getCurrentTheme().primary)
+                .backgroundColor(this.resolveTheme().chartLineColor ?? this.resolveTheme().primary)
                 .borderRadius({ topLeft: 3, topRight: 3 })
                 .onClick((event: ClickEvent) => {
                   this.handleDataClick(data, event);
@@ -282,7 +281,7 @@ export struct ChartComponent {
               Text(data.time)
                 .fontSize(this.labelFontSizePx)
                 .fontWeight(this.labelFontBold ? FontWeight.Bold : FontWeight.Regular)
-                .fontColor(this.getCurrentTheme().subTextColor)
+                .fontColor(this.resolveTheme().subTextColor)
                 .margin({ top: 5 })
                 .textAlign(TextAlign.Center)
             }
@@ -297,12 +296,12 @@ export struct ChartComponent {
       }
       .scrollable(ScrollDirection.Horizontal)
       .scrollBar(this.showScrollBar ? BarState.Auto : BarState.Off)
-      .scrollBarColor(this.getCurrentTheme().borderColor)
+      .scrollBarColor(this.resolveTheme().borderColor)
       .scrollBarWidth(8)
       .layoutWeight(1)
-      .border({ width: 1, color: this.getCurrentTheme().borderColor })
+      .border({ width: 1, color: this.resolveTheme().borderColor })
       .borderRadius(4)
-      .backgroundColor(this.getCurrentTheme().chartBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      .backgroundColor(this.resolveTheme().chartBg ?? this.resolveTheme().controlBg ?? this.resolveTheme().surfaceColor)
       .onScroll((x: number, y: number) => {
         if (x < this.lastScrollX - 1) {
           this.followLatest = false;
@@ -337,7 +336,7 @@ export struct ChartComponent {
         }
         .width('100%')
         .padding(20)
-        .backgroundColor(this.getCurrentTheme().chartBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+        .backgroundColor(this.resolveTheme().chartBg ?? this.resolveTheme().controlBg ?? this.resolveTheme().surfaceColor)
         .borderRadius(8)
         .shadow({
           radius: 10,
@@ -349,7 +348,7 @@ export struct ChartComponent {
       .width('100%')
       .height('100%')
       .padding(20)
-        .backgroundColor(this.getCurrentTheme().pageBg ?? this.getCurrentTheme().surfaceColor)
+        .backgroundColor(this.resolveTheme().pageBg ?? this.resolveTheme().surfaceColor)
       .justifyContent(FlexAlign.Start)
 
       // 提示框

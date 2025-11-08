@@ -18,8 +18,8 @@
  * ```
  */
 
-import { BaseComponentHelper } from '../common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 
 /**
@@ -56,8 +56,6 @@ export struct FileNameDialog {
   @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
   /** 主题版本号 */
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
-  /** 基础组件助手 */
-  private baseComponentHelper = new BaseComponentHelper()
 
   // ==================== 本地状态 ====================
   /** 用户输入的文件名 */
@@ -75,8 +73,8 @@ export struct FileNameDialog {
    * 
    * @returns 当前主题的扩展样式对象
    */
-  getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+  private resolveTheme(): ExtendedOmniThemeStyle {
+    return getCurrentTheme(this.consumedTheme)
   }
 
   /**
@@ -135,7 +133,7 @@ export struct FileNameDialog {
           Text('请输入文件名')
             .fontSize(20)
             .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
+            .fontColor(this.resolveTheme().textColor)
             .margin({ bottom: 16 })
 
           // 输入框
@@ -144,9 +142,9 @@ export struct FileNameDialog {
             placeholder: '请输入文件名（不含扩展名）' 
           })
             .fontSize(16)
-            .fontColor(this.getCurrentTheme().textColor)
-            .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-            .border({ width: 1, color: this.getCurrentTheme().borderColor })
+            .fontColor(this.resolveTheme().textColor)
+            .backgroundColor(this.resolveTheme().controlBg ?? this.resolveTheme().surfaceColor)
+            .border({ width: 1, color: this.resolveTheme().borderColor })
             .borderRadius(8)
             .padding(12)
             .width('100%')
@@ -159,7 +157,7 @@ export struct FileNameDialog {
           Column() {
             Text('选择导出格式：')
               .fontSize(16)
-              .fontColor(this.getCurrentTheme().textColor)
+              .fontColor(this.resolveTheme().textColor)
               .margin({ bottom: 12 })
               .alignSelf(ItemAlign.Start)
 
@@ -175,7 +173,7 @@ export struct FileNameDialog {
                   })
                 Text('CSV格式')
                   .fontSize(16)
-                  .fontColor(this.getCurrentTheme().textColor)
+                  .fontColor(this.resolveTheme().textColor)
                   .margin({ left: 8 })
               }
               .margin({ right: 24 })
@@ -191,7 +189,7 @@ export struct FileNameDialog {
                   })
                 Text('Excel格式')
                   .fontSize(16)
-                  .fontColor(this.getCurrentTheme().textColor)
+                  .fontColor(this.resolveTheme().textColor)
                   .margin({ left: 8 })
               }
             }
@@ -203,16 +201,16 @@ export struct FileNameDialog {
           // 提示信息
           Text('文件将保存为：' + (this.inputFileName || this.defaultFileName) + '.' + this.selectedFormat)
             .fontSize(14)
-            .fontColor(this.getCurrentTheme().subTextColor)
+            .fontColor(this.resolveTheme().subTextColor)
             .margin({ bottom: 24 })
 
           // 按钮区域
           Row() {
             Button('取消')
               .fontSize(16)
-              .fontColor(this.getCurrentTheme().textColor)
-              .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-              .border({ width: 1, color: this.getCurrentTheme().borderColor })
+              .fontColor(this.resolveTheme().textColor)
+              .backgroundColor(this.resolveTheme().controlBg ?? this.resolveTheme().surfaceColor)
+              .border({ width: 1, color: this.resolveTheme().borderColor })
               .borderRadius(8)
               .width(80)
               .height(40)
@@ -223,7 +221,7 @@ export struct FileNameDialog {
             Button('确定')
               .fontSize(16)
               .fontColor(Color.White)
-              .backgroundColor(this.getCurrentTheme().primary)
+              .backgroundColor(this.resolveTheme().primary)
               .borderRadius(8)
               .width(80)
               .height(40)
@@ -236,7 +234,7 @@ export struct FileNameDialog {
         }
         .width('60%')
         .padding(24)
-        .backgroundColor(this.getCurrentTheme().surfaceColor)
+        .backgroundColor(this.resolveTheme().surfaceColor)
         .borderRadius(12)
         .shadow({ 
           radius: 16, 
@@ -245,7 +243,7 @@ export struct FileNameDialog {
         })
         .border({ 
           width: 1, 
-          color: this.getCurrentTheme().borderColor 
+          color: this.resolveTheme().borderColor 
         })
       }
       .width('100%')

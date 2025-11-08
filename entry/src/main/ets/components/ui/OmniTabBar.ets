@@ -13,8 +13,8 @@
  * - 其他需要TabBar的地方
  */
 
-import { BaseComponentHelper } from '../common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 
 // Tab配置接口
@@ -34,7 +34,6 @@ export enum TabBarDirection {
 
 @Component
 export struct OmniTabBar {
-  private baseComponentHelper = new BaseComponentHelper()
   
   // 主题相关
   @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
@@ -60,8 +59,8 @@ export struct OmniTabBar {
   onTabClick?: (tabKey: string) => void
 
   // 获取当前主题配置
-  private getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+  private resolveTheme(): ExtendedOmniThemeStyle {
+    return getCurrentTheme(this.consumedTheme)
   }
 
   // 构建水平TabBar
@@ -76,14 +75,14 @@ export struct OmniTabBar {
           Column()
             .width(1)
             .height(30)
-            .backgroundColor(this.getCurrentTheme().borderColor)
+            .backgroundColor(this.resolveTheme().borderColor)
             .margin({ left: 8, right: 8 })
         }
       })
     }
     .width('100%')
     .height(50)
-    .backgroundColor(this.getCurrentTheme().surfaceColor)
+    .backgroundColor(this.resolveTheme().surfaceColor)
     .borderRadius(12)
     .margin({ left: 16, right: 16, top: 16, bottom: 8 })
     .padding({ left: 20 })
@@ -103,14 +102,14 @@ export struct OmniTabBar {
           Row()
             .width('80%')
             .height(1)
-            .backgroundColor(this.getCurrentTheme().borderColor)
+            .backgroundColor(this.resolveTheme().borderColor)
             .margin({ top: 8, bottom: 8 })
         }
       })
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(this.getCurrentTheme().surfaceColor)
+    .backgroundColor(this.resolveTheme().surfaceColor)
     .borderRadius(12)
     .margin({ left: 16, right: 16, top: 16, bottom: 16 })
     .justifyContent(FlexAlign.Start)
@@ -127,7 +126,7 @@ export struct OmniTabBar {
           Image(tab.icon)
             .width(this.layoutDirection === TabBarDirection.VERTICAL ? 20 : 16)
             .height(this.layoutDirection === TabBarDirection.VERTICAL ? 20 : 16)
-            .fillColor(this.selectedTab === tab.key ? this.getCurrentTheme().primary : this.getCurrentTheme().textColor)
+            .fillColor(this.selectedTab === tab.key ? this.resolveTheme().primary : this.resolveTheme().textColor)
             .margin({ right: 8 })
         }
         
@@ -135,8 +134,8 @@ export struct OmniTabBar {
         Text(tab.label)
           .fontSize(this.layoutDirection === TabBarDirection.VERTICAL ? 16 : 14)
           .fontWeight(this.selectedTab === tab.key ? FontWeight.Bold : FontWeight.Normal)
-          .fontColor(tab.disabled ? this.getCurrentTheme().textColor + '60' : 
-                    (this.selectedTab === tab.key ? this.getCurrentTheme().primary : this.getCurrentTheme().textColor))
+          .fontColor(tab.disabled ? this.resolveTheme().textColor + '60' : 
+                    (this.selectedTab === tab.key ? this.resolveTheme().primary : this.resolveTheme().textColor))
         
         // 徽章（如果有）
         if (tab.badge) {
@@ -154,13 +153,13 @@ export struct OmniTabBar {
     }
     .width(this.layoutDirection === TabBarDirection.VERTICAL ? '90%' : 'auto')
     .height(this.layoutDirection === TabBarDirection.VERTICAL ? 48 : 36)
-    .backgroundColor(tab.disabled ? this.getCurrentTheme().surfaceColor + '40' :
-                    (this.selectedTab === tab.key ? this.getCurrentTheme().primary + '15' : Color.Transparent))
+    .backgroundColor(tab.disabled ? this.resolveTheme().surfaceColor + '40' :
+                    (this.selectedTab === tab.key ? this.resolveTheme().primary + '15' : Color.Transparent))
     .borderRadius(8)
     .border({ 
       width: 1, 
-      color: tab.disabled ? this.getCurrentTheme().borderColor + '40' :
-             (this.selectedTab === tab.key ? this.getCurrentTheme().primary : this.getCurrentTheme().borderColor)
+      color: tab.disabled ? this.resolveTheme().borderColor + '40' :
+             (this.selectedTab === tab.key ? this.resolveTheme().primary : this.resolveTheme().borderColor)
     })
     .padding({ 
       left: this.layoutDirection === TabBarDirection.VERTICAL ? 12 : 10, 

@@ -16,8 +16,8 @@
  * ```
  */
 
-import { BaseComponentHelper } from '../../components/common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { HistoryQueryPanel } from './HistoryQueryPanel'
 import { HistoryDataTable } from './HistoryDataTable'
@@ -72,8 +72,6 @@ export struct HistoryContent {
   @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
   /** 主题版本号 */
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
-  /** 基础组件助手 */
-  private baseComponentHelper = new BaseComponentHelper()
   
   // ==================== 对话框状态 ====================
   /** 日期错误对话框显示状态 */
@@ -119,7 +117,7 @@ export struct HistoryContent {
    * @returns 当前主题的扩展样式对象
    */
   getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+    return resolveTheme(this.consumedTheme)
   }
 
   /**

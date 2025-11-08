@@ -17,8 +17,8 @@
  * ```
  */
 
-import { BaseComponentHelper } from '../common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 
 /**
@@ -55,22 +55,6 @@ export struct ExportSuccessDialog {
   @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
   /** 主题版本号 */
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
-  /** 基础组件助手 */
-  private baseComponentHelper = new BaseComponentHelper()
-
-  /**
-   * 获取当前主题配置
-   * 
-   * 功能说明：
-   * - 从基础组件助手获取当前主题样式
-   * - 用于组件样式配置
-   * - 支持主题切换时的样式更新
-   * 
-   * @returns 当前主题的扩展样式对象
-   */
-  getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
-  }
 
   /**
    * 组件构建方法
@@ -125,13 +109,13 @@ export struct ExportSuccessDialog {
           Text('导出成功！')
             .fontSize(22)
             .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
+            .fontColor(getCurrentTheme(this.consumedTheme).textColor)
             .margin({ bottom: 8 })
 
           // 导出信息
           Text(`已成功导出 ${this.exportCount} 条数据`)
             .fontSize(16)
-            .fontColor(this.getCurrentTheme().subTextColor)
+            .fontColor(getCurrentTheme(this.consumedTheme).subTextColor)
             .margin({ bottom: 20 })
 
           // 文件路径信息
@@ -144,7 +128,7 @@ export struct ExportSuccessDialog {
                 
                 Text('文件保存位置：')
                   .fontSize(13)
-                  .fontColor(this.getCurrentTheme().textColor)
+                  .fontColor(getCurrentTheme(this.consumedTheme).textColor)
                   .fontWeight(FontWeight.Medium)
               }
               .alignSelf(ItemAlign.Start)
@@ -152,12 +136,12 @@ export struct ExportSuccessDialog {
 
               Text(this.filePath)
                 .fontSize(11)
-                .fontColor(this.getCurrentTheme().subTextColor)
+                .fontColor(getCurrentTheme(this.consumedTheme).subTextColor)
                 .textAlign(TextAlign.Start)
-                .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+                .backgroundColor(getCurrentTheme(this.consumedTheme).controlBg ?? getCurrentTheme(this.consumedTheme).surfaceColor)
                 .padding(8)
                 .borderRadius(6)
-                .border({ width: 1, color: this.getCurrentTheme().borderColor })
+                .border({ width: 1, color: getCurrentTheme(this.consumedTheme).borderColor })
                 .width('100%')
                 .maxLines(2)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -172,7 +156,7 @@ export struct ExportSuccessDialog {
               .fontSize(18)
               .fontWeight(FontWeight.Medium)
               .fontColor(Color.White)
-              .backgroundColor(this.getCurrentTheme().primary)
+              .backgroundColor(getCurrentTheme(this.consumedTheme).primary)
               .borderRadius(16)
               .height(52)
               .layoutWeight(1)
@@ -188,7 +172,7 @@ export struct ExportSuccessDialog {
         .width('90%')
         .constraintSize({ maxWidth: 480 })
         .padding({ top: 32, bottom: 32, left: 32, right: 32 })
-        .backgroundColor(this.getCurrentTheme().backgroundColor)
+        .backgroundColor(getCurrentTheme(this.consumedTheme).backgroundColor)
         .borderRadius(24)
         .shadow({ 
           radius: 32, 

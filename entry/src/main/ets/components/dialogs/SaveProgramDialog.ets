@@ -4,9 +4,12 @@
  * 用途：在点击"保存程序"按钮时弹出
  */
 
-import { BaseComponentHelper } from '../common/BaseComponent'
-import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { DialogButtons } from '../ui/DialogButtons'
+import { DialogHeader, Padding } from '../ui/DialogHeader'
+import { FormTextField } from '../ui/FormTextField'
+import { FormTextArea } from '../ui/FormTextArea'
 
 // 保存用户配置信息接口
 interface SaveProgramInfo {
@@ -17,7 +20,6 @@ interface SaveProgramInfo {
 
 @Component
 export struct SaveProgramDialog {
-  private baseComponentHelper = new BaseComponentHelper()
   @Prop isVisible: boolean = false
   @State programInfo: SaveProgramInfo = {
     name: '',
@@ -30,11 +32,6 @@ export struct SaveProgramDialog {
   // 对话框回调
   onConfirm?: (programInfo: SaveProgramInfo) => void
   onCancel?: () => void
-
-  // 获取当前主题配置
-  getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme()
-  }
 
   // 确认保存程序
   private handleConfirm() {
@@ -71,29 +68,13 @@ export struct SaveProgramDialog {
         // 对话框内容
         Column() {
           // 标题栏
-          Row() {
-            Text('保存用户配置')
-              .fontSize(24)  // 标题字体调大到24px
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().textColor)
-              .layoutWeight(1)
-            
-            // 关闭按钮
-            Button() {
-              Text('×')
-                .fontSize(24)  // 关闭按钮字体调大到24px
-                .fontColor(this.getCurrentTheme().textColor)
-            }
-            .width(30)
-            .height(30)
-            .backgroundColor(Color.Transparent)
-            .onClick(() => {
+          DialogHeader({
+            title: '保存用户配置',
+            customPadding: { left: 20, right: 20, top: 15, bottom: 15 } as Padding,
+            onClose: () => {
               this.handleCancel()
-            })
-          }
-          .width('100%')
-          .padding({ left: 20, right: 20, top: 15, bottom: 15 })
-          .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+            }
+          })
 
           // 用户配置输入内容
           Scroll() {
@@ -101,24 +82,43 @@ export struct SaveProgramDialog {
               // 卡片包裹三项：配置名称、配置描述、标签
               Column() {
                 // 配置名称
-                this.buildInputField('配置名称', this.programInfo.name, (value: string) => {
-                  this.programInfo.name = value
-                }, true)
+                FormTextField({
+                  config: {
+                    label: '配置名称',
+                    value: this.programInfo.name,
+                    required: true
+                  },
+                  onTextChange: (value: string) => {
+                    this.programInfo.name = value
+                  }
+                })
 
                 // 配置描述
-                this.buildTextAreaField('配置描述', this.programInfo.description, (value: string) => {
-                  this.programInfo.description = value
+                FormTextArea({
+                  config: {
+                    label: '配置描述',
+                    value: this.programInfo.description
+                  },
+                  onTextChange: (value: string) => {
+                    this.programInfo.description = value
+                  }
                 })
 
                 // 标签
-                this.buildInputField('标签', this.programInfo.tags, (value: string) => {
-                  this.programInfo.tags = value
+                FormTextField({
+                  config: {
+                    label: '标签',
+                    value: this.programInfo.tags
+                  },
+                  onTextChange: (value: string) => {
+                    this.programInfo.tags = value
+                  }
                 })
               }
               .width('100%')
               .padding(12)
-              .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
-              .border({ width: 1, color: this.getCurrentTheme().borderColor })
+              .backgroundColor(getCurrentTheme().controlBg ?? getCurrentTheme().backgroundColor)
+              .border({ width: 1, color: getCurrentTheme().borderColor })
               .borderRadius(8)
               .alignItems(HorizontalAlign.Start)
               
@@ -148,7 +148,7 @@ export struct SaveProgramDialog {
         }
         .width('55%')  // 调整宽度为55%
         .height('80%')  // 调整高度为80%
-        .backgroundColor(this.getCurrentTheme().surfaceColor)
+        .backgroundColor(getCurrentTheme().surfaceColor)
         .borderRadius(12)
         .shadow({
           radius: 20,
@@ -168,71 +168,6 @@ export struct SaveProgramDialog {
     }
   }
 
-  // 构建输入字段
-  @Builder
-  buildInputField(label: string, value: string, onTextChange: (value: string) => void, required: boolean = false) {
-    Column() {
-      Row() {
-        Text(label)
-          .fontSize(18)  // 标签字体调大到18px
-          .fontColor(this.getCurrentTheme().textColor)
-          .fontWeight(FontWeight.Medium)
-        if (required) {
-          Text('*')
-            .fontSize(18)  // 必填标记字体调大到18px
-            .fontColor('#FF4444')
-            .margin({ left: 2 })
-        }
-      }
-      .width('100%')
-      .margin({ bottom: 8 })
-      
-      TextInput({ placeholder: `请输入${label}` })
-        .width('100%')
-        .height(40)
-        .fontSize(18)  // 输入框字体调大到18px
-        .fontColor(this.getCurrentTheme().textColor)
-        .backgroundColor(this.getCurrentTheme().backgroundColor)
-        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-        .borderRadius(6)
-        .padding({ left: 12, right: 12 })
-        .onChange((value: string) => {
-          onTextChange(value)
-        })
-    }
-    .width('100%')
-    .margin({ bottom: 16 })
-    .alignItems(HorizontalAlign.Start)
-  }
-
-  // 构建文本域字段
-  @Builder
-  buildTextAreaField(label: string, value: string, onTextChange: (value: string) => void) {
-    Column() {
-      Text(label)
-        .fontSize(18)  // 文本域标签字体调大到18px
-        .fontColor(this.getCurrentTheme().textColor)
-        .fontWeight(FontWeight.Medium)
-        .width('100%')
-        .margin({ bottom: 8 })
-      
-      TextArea({ placeholder: `请输入${label}` })
-        .width('100%')
-        .height(80)
-        .fontSize(18)  // 文本域字体调大到18px
-        .fontColor(this.getCurrentTheme().textColor)
-        .backgroundColor(this.getCurrentTheme().backgroundColor)
-        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-        .borderRadius(6)
-        .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-        .onChange((value: string) => {
-          onTextChange(value)
-        })
-    }
-    .width('100%')
-    .margin({ bottom: 16 })
-    .alignItems(HorizontalAlign.Start)
-  }
 
   // 构建选择字段
   @Builder
@@ -240,7 +175,7 @@ export struct SaveProgramDialog {
     Column() {
       Text(label)
         .fontSize(18)  // 选择字段标签字体调大到18px
-        .fontColor(this.getCurrentTheme().textColor)
+        .fontColor(getCurrentTheme().textColor)
         .fontWeight(FontWeight.Medium)
         .width('100%')
         .margin({ bottom: 8 })
@@ -249,9 +184,9 @@ export struct SaveProgramDialog {
         ForEach(options, (option: string, index: number) => {
           Button(option)
             .fontSize(18)  // 按钮字体调大到18px
-            .fontColor(selectedIndex === index ? Color.White : this.getCurrentTheme().textColor)
-            .backgroundColor(selectedIndex === index ? this.getCurrentTheme().primary : this.getCurrentTheme().backgroundColor)
-            .border({ width: 1, color: this.getCurrentTheme().borderColor })
+            .fontColor(selectedIndex === index ? Color.White : getCurrentTheme().textColor)
+            .backgroundColor(selectedIndex === index ? getCurrentTheme().primary : getCurrentTheme().backgroundColor)
+            .border({ width: 1, color: getCurrentTheme().borderColor })
             .borderRadius(6)
             .padding({ left: 12, right: 12, top: 6, bottom: 6 })
             .margin({ right: 8 })
@@ -273,7 +208,7 @@ export struct SaveProgramDialog {
     Column() {
       Text('保存信息预览')
         .fontSize(18)  // 预览标题字体调大到18px
-        .fontColor(this.getCurrentTheme().textColor)
+        .fontColor(getCurrentTheme().textColor)
         .fontWeight(FontWeight.Medium)
         .width('100%')
         .margin({ bottom: 8 })
@@ -285,8 +220,8 @@ export struct SaveProgramDialog {
       }
       .width('100%')
       .padding(12)
-      .backgroundColor(this.getCurrentTheme().backgroundColor)
-      .border({ width: 1, color: this.getCurrentTheme().borderColor })
+      .backgroundColor(getCurrentTheme().backgroundColor)
+      .border({ width: 1, color: getCurrentTheme().borderColor })
       .borderRadius(6)
     }
     .width('100%')
@@ -300,13 +235,13 @@ export struct SaveProgramDialog {
     Row() {
       Text(label + ':')
         .fontSize(16)  // 预览标签字体调大到16px
-        .fontColor(this.getCurrentTheme().subTextColor)
+        .fontColor(getCurrentTheme().subTextColor)
         .width(60)
         .textAlign(TextAlign.Start)
       
       Text(value)
         .fontSize(16)  // 预览值字体调大到16px
-        .fontColor(this.getCurrentTheme().textColor)
+        .fontColor(getCurrentTheme().textColor)
         .layoutWeight(1)
         .textAlign(TextAlign.Start)
     }

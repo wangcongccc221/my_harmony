@@ -46,8 +46,8 @@
  * - 左侧面板宽度：20%
  */
 
-import { BaseComponentHelper } from '../../components/common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY, useOmniTheme } from '../../utils/theme/useOmniTheme'
 import { FRUIT_TYPES, SORTING_STANDARDS, UNIT_OPTIONS } from './LevelConstants'
 
@@ -87,7 +87,6 @@ interface SelectOption {
  * - consumedTheme: 当前主题样式
  * - consumedThemeType: 当前主题类型
  * - themeVersion: 主题版本号
- * - baseComponentHelper: 基础组件助手
  * 
  * 方法说明：
  * - getCurrentTheme(): 获取当前主题配置
@@ -258,27 +257,18 @@ export struct LevelControlPanel {
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
   
   /**
-   * 基础组件助手
-   * 
-   * 功能说明：
-   * - 提供基础组件的通用功能
-   * - 用于主题管理和样式配置
-   * - 实例化BaseComponentHelper
-   */
-  private baseComponentHelper = new BaseComponentHelper()
-
-  /**
    * 获取当前主题配置
    * 
    * 功能说明：
-   * - 从基础组件助手获取当前主题样式
+   * - 通过统一的主题工具获取当前主题样式
    * - 用于组件样式配置
    * - 支持主题切换时的样式更新
    * 
    * @returns 当前主题的扩展样式对象
    */
   getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+    const __version: number = this.themeVersion
+    return resolveTheme(this.consumedTheme)
   }
 
   /**

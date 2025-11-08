@@ -9,13 +9,12 @@
  */
 
 import { OmniTabBar, TabConfig, TabBarDirection } from '../ui/OmniTabBar'
-import { BaseComponentHelper } from '../common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 
 @Component
 export struct LeftNavigationTabBar {
-  private baseComponentHelper = new BaseComponentHelper()
   
   // 主题相关
   @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
@@ -41,8 +40,8 @@ export struct LeftNavigationTabBar {
   onFloatingWindowClose?: () => void
 
   // 获取当前主题配置
-  private getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+  private resolveTheme(): ExtendedOmniThemeStyle {
+    return getCurrentTheme(this.consumedTheme)
   }
 
   // 获取导航Tab配置
@@ -85,18 +84,18 @@ export struct LeftNavigationTabBar {
         Text('打印报告')
           .fontSize(12)
           .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().textColor)
+          .fontColor(this.resolveTheme().textColor)
       }
       .width('85%')
       .height(40)
       .margin({ bottom: 6, left: 16, right: 16 })
       .fontSize(12)
       .fontWeight(FontWeight.Medium)
-      .fontColor(this.getCurrentTheme().textColor)
-      .backgroundColor(this.getCurrentTheme().surfaceColor)
+      .fontColor(this.resolveTheme().textColor)
+      .backgroundColor(this.resolveTheme().surfaceColor)
       .border({ 
         width: 1, 
-        color: this.getCurrentTheme().borderColor 
+        color: this.resolveTheme().borderColor 
       })
       .borderRadius(8)
       .onClick(() => {
@@ -110,18 +109,18 @@ export struct LeftNavigationTabBar {
         Text('打印标签')
           .fontSize(12)
           .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().textColor)
+          .fontColor(this.resolveTheme().textColor)
       }
       .width('85%')
       .height(40)
       .margin({ bottom: 8, left: 16, right: 16 })
       .fontSize(12)
       .fontWeight(FontWeight.Medium)
-      .fontColor(this.getCurrentTheme().textColor)
-      .backgroundColor(this.getCurrentTheme().surfaceColor)
+      .fontColor(this.resolveTheme().textColor)
+      .backgroundColor(this.resolveTheme().surfaceColor)
       .border({ 
         width: 1, 
-        color: this.getCurrentTheme().borderColor 
+        color: this.resolveTheme().borderColor 
       })
       .borderRadius(8)
       .onClick(() => {
@@ -159,6 +158,6 @@ export struct LeftNavigationTabBar {
     .width('100%')
     .height('100%')
     .padding({ top: 20, bottom: 20 })
-    .backgroundColor(this.getCurrentTheme().surfaceColor)
+    .backgroundColor(this.resolveTheme().surfaceColor)
   }
 }

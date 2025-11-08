@@ -10,8 +10,8 @@
  * - ProcessingDataManager: 数据管理器
  */
 
-import { BaseComponentHelper } from '../../components/common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { ProcessingRecordCard } from './ProcessingRecordCard'
 import { ActionButtonsCard, ButtonConfig } from './ActionButtonsCard'
@@ -22,13 +22,12 @@ export struct EndProcessingContent {
   @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
   @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
-  private baseComponentHelper = new BaseComponentHelper()
   private dataManager = ProcessingDataManager.getInstance()
   @State private processingRecords: ProcessingRecord[] = []
   @State private dataRefreshKey: number = 0
 
   getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+    return resolveTheme(this.consumedTheme)
   }
 
   /**

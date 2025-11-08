@@ -4,16 +4,13 @@
  * 用途：在工程设置对话框的"水果信息设置"Tab中使用
  */
 
-import { BaseComponentHelper } from '../../common/BaseComponent'
-import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
+import { ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../../utils/theme/ThemeUtils'
 
 @Component
 export struct FruitInfoPage {
-  private baseComponentHelper = new BaseComponentHelper()
-
-  // 获取当前主题配置
-  getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme()
+  private resolveTheme(): ExtendedOmniThemeStyle {
+    return getCurrentTheme()
   }
 
   build() {
@@ -21,14 +18,14 @@ export struct FruitInfoPage {
       Text('水果信息设置')
         .fontSize(24)  // 标题字体调大到24px
         .fontWeight(FontWeight.Bold)
-        .fontColor(this.getCurrentTheme().textColor)
+        .fontColor(this.resolveTheme().textColor)
         .margin({ bottom: 20 })
 
       // 水果信息设置内容
       Column() {
         Text('这里显示水果信息相关的设置内容')
           .fontSize(18)  // 描述文字字体调大到18px
-          .fontColor(this.getCurrentTheme().subTextColor)
+          .fontColor(this.resolveTheme().subTextColor)
           .textAlign(TextAlign.Center)
           .margin({ bottom: 16 })
 
@@ -36,12 +33,12 @@ export struct FruitInfoPage {
         Row() {
           Text('水果类型:')
             .fontSize(18)  // 标签字体调大到18px
-            .fontColor(this.getCurrentTheme().textColor)
+            .fontColor(this.resolveTheme().textColor)
             .width(80)
           
           Text('苹果')
             .fontSize(18)  // 值字体调大到18px
-            .fontColor(this.getCurrentTheme().primary)
+            .fontColor(this.resolveTheme().primary)
         }
         .width('100%')
         .justifyContent(FlexAlign.SpaceBetween)
@@ -50,12 +47,12 @@ export struct FruitInfoPage {
         Row() {
           Text('检测项目:')
             .fontSize(18)  // 标签字体调大到18px
-            .fontColor(this.getCurrentTheme().textColor)
+            .fontColor(this.resolveTheme().textColor)
             .width(80)
           
           Text('重量、颜色、大小')
             .fontSize(18)  // 值字体调大到18px
-            .fontColor(this.getCurrentTheme().primary)
+            .fontColor(this.resolveTheme().primary)
         }
         .width('100%')
         .justifyContent(FlexAlign.SpaceBetween)
@@ -64,12 +61,12 @@ export struct FruitInfoPage {
         Row() {
           Text('质量标准:')
             .fontSize(18)  // 标签字体调大到18px
-            .fontColor(this.getCurrentTheme().textColor)
+            .fontColor(this.resolveTheme().textColor)
             .width(80)
           
           Text('A级标准')
             .fontSize(18)  // 值字体调大到18px
-            .fontColor(this.getCurrentTheme().primary)
+            .fontColor(this.resolveTheme().primary)
         }
         .width('100%')
         .justifyContent(FlexAlign.SpaceBetween)
@@ -77,9 +74,9 @@ export struct FruitInfoPage {
       }
       .width('100%')
       .padding(16)
-      .backgroundColor(this.getCurrentTheme().surfaceColor)
+      .backgroundColor(this.resolveTheme().surfaceColor)
       .borderRadius(8)
-      .border({ width: 1, color: this.getCurrentTheme().borderColor })
+      .border({ width: 1, color: this.resolveTheme().borderColor })
     }
     .width('100%')
     .padding(20)

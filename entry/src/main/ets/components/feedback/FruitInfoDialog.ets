@@ -4,10 +4,13 @@
  * 用途：在点击"水果信息"按钮时弹出
  */
 
-import { BaseComponentHelper } from '../common/BaseComponent'
-import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { DialogButtons } from '../ui/DialogButtons'
+import { DialogHeader } from '../ui/DialogHeader'
 import { RdbService, FruitInfoInsertParams, FruitInfoRow } from '../../db/RdbService'
+import { NumberUtils } from '../../utils/helpers/NumberUtils'
+import { FormInputField } from '../ui/FormInputField'
 
 // 水果信息接口
 interface FruitInfo {
@@ -23,7 +26,6 @@ interface FruitInfo {
 
 @Component
 export struct FruitInfoDialog {
-  private baseComponentHelper = new BaseComponentHelper()
   @Prop isVisible: boolean = false
   @State fruitInfo: FruitInfo = {
     name: '苹果',
@@ -62,35 +64,6 @@ export struct FruitInfoDialog {
   // 对话框回调
   onConfirm?: (fruitInfo: FruitInfo) => void
   onCancel?: () => void
-
-  // 获取当前主题配置
-  getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme()
-  }
-
-  // 数字解析与边界校验（仅数字、允许小数；可配置最小/最大值）
-  private parseNumberWithBounds(raw: string, minValue?: number, maxValue?: number): number {
-    const cleaned: string = (raw || '').replace(/[^0-9.\-]/g, '')
-    let num: number = Number(cleaned)
-    if (isNaN(num)) {
-      return 0
-    }
-    if (minValue !== undefined && num < minValue) {
-      num = minValue
-    }
-    if (maxValue !== undefined && num > maxValue) {
-      num = maxValue
-    }
-    return num
-  }
-
-  // 格式化数字显示（用于TextInput的text属性）
-  private formatNumberForDisplay(value: number): string {
-    if (value === 0 || value === undefined || isNaN(value)) {
-      return ''
-    }
-    return String(value)
-  }
 
   // 确认按钮点击 - 保存到数据库
   private async handleConfirm() {
@@ -235,29 +208,12 @@ export struct FruitInfoDialog {
         // 对话框内容
         Column() {
           // 标题栏
-          Row() {
-            Text('水果信息')
-              .fontSize(24)  // 标题字体调大到24px
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().textColor)
-              .layoutWeight(1)
-            
-            // 关闭按钮
-            Button() {
-              Text('×')
-                .fontSize(24)  // 关闭按钮字体调大到24px
-                .fontColor(this.getCurrentTheme().textColor)
-            }
-            .width(30)
-            .height(30)
-            .backgroundColor(Color.Transparent)
-            .onClick(() => {
+          DialogHeader({
+            title: '水果信息',
+            onClose: () => {
               this.handleCancel()
-            })
-          }
-          .width('100%')
-          .padding({ left: 12, right: 12, top: 10, bottom: 10 })
-          .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+            }
+          })
 
           // 内容区域（卡片栈）
           Scroll() {
@@ -267,7 +223,7 @@ export struct FruitInfoDialog {
                 Row() {
                   Text('通道')
                     .fontSize(18)  // 标签字体调大到18px
-                    .fontColor(this.getCurrentTheme().textColor)
+                    .fontColor(getCurrentTheme().textColor)
                     .margin({ right: 8 })
 
                   Select([
@@ -282,9 +238,9 @@ export struct FruitInfoDialog {
                   ])
                     .selected(this.selectedLaneIndex)
                     .font({ size: 18 })  // 下拉框字体调大到18px
-                    .fontColor(this.getCurrentTheme().textColor)
-                    .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                    .border({ width: 1, color: this.getCurrentTheme().borderColor })
+                    .fontColor(getCurrentTheme().textColor)
+                    .backgroundColor(getCurrentTheme().controlBg ?? getCurrentTheme().surfaceColor)
+                    .border({ width: 1, color: getCurrentTheme().borderColor })
                     .borderRadius(2)  // 使用等级页面的圆角样式
                     .padding({ left: 8, right: 25, top: 3, bottom: 3 })  // 增加右侧padding，让箭头靠右
                     .layoutWeight(1)  // 添加layoutWeight，让箭头自动靠右
@@ -301,14 +257,14 @@ export struct FruitInfoDialog {
 
                   Text('等级:')
                     .fontSize(18)  // 标签字体调大到18px
-                    .fontColor(this.getCurrentTheme().textColor)
+                    .fontColor(getCurrentTheme().textColor)
                     .margin({ right: 8 })
 
                   TextInput({ text: this.levelText })
                     .fontSize(18)  // 等级输入框字体调大到18px
-                    .fontColor(this.getCurrentTheme().textColor)
-                    .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                    .border({ width: 1, color: this.getCurrentTheme().borderColor })
+                    .fontColor(getCurrentTheme().textColor)
+                    .backgroundColor(getCurrentTheme().controlBg ?? getCurrentTheme().surfaceColor)
+                    .border({ width: 1, color: getCurrentTheme().borderColor })
                     .borderRadius(8)
                     .padding({ left: 10, right: 10, top: 4, bottom: 4 })
                     .constraintSize({ minWidth: 120, maxWidth: 220 })
@@ -323,8 +279,8 @@ export struct FruitInfoDialog {
               }
               .width('100%')
               .padding(12)
-              .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-              .border({ width: 1, color: this.getCurrentTheme().borderColor })
+              .backgroundColor(getCurrentTheme().controlBg ?? getCurrentTheme().surfaceColor)
+              .border({ width: 1, color: getCurrentTheme().borderColor })
               .borderRadius(10)
               .alignItems(HorizontalAlign.Start)
               
@@ -340,482 +296,255 @@ export struct FruitInfoDialog {
                   // 直径(mm) | 重量(g)
                   Row() {
                     // 左列字段
-                    Row() {
-                      Text('直径')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.diameterMm > 0 ? String(this.diameterMm) : '' })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          // 直径(mm) 取值范围示例：0 - 1000
-                          this.diameterMm = this.parseNumberWithBounds(val, 0, 1000)
-                        })
-                      Text('mm')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().subTextColor)
-                        .margin({ left: 8 })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '直径',
+                        value: this.diameterMm,
+                        unit: 'mm',
+                        minValue: 0,
+                        maxValue: 1000
+                      },
+                      onValueChange: (value: number) => {
+                        this.diameterMm = value
+                      }
+                    })
 
                     // 右列字段
-                    Row() {
-                      Text('重量')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.formatNumberForDisplay(this.weightG) })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          // 重量(g) 取值范围示例：0 - 100000
-                          this.weightG = this.parseNumberWithBounds(val, 0, 100000)
-                        })
-                      Text('g')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().subTextColor)
-                        .margin({ left: 8 })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '重量',
+                        value: this.weightG,
+                        unit: 'g',
+                        minValue: 0,
+                        maxValue: 100000
+                      },
+                      onValueChange: (value: number) => {
+                        this.weightG = value
+                      }
+                    })
                   }
                   .width('100%')
                   .margin({ bottom: 10 })
 
                   // 投影面积(mm^2) | 密度(kg/m^3)
                   Row() {
-                    Row() {
-                      Text('投影面积')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.formatNumberForDisplay(this.projectionAreaMm2) })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          this.projectionAreaMm2 = this.parseNumberWithBounds(val, 0, 100000000)
-                        })
-                      Text('mm^2')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().subTextColor)
-                        .margin({ left: 8 })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '投影面积',
+                        value: this.projectionAreaMm2,
+                        unit: 'mm^2',
+                        minValue: 0,
+                        maxValue: 100000000
+                      },
+                      onValueChange: (value: number) => {
+                        this.projectionAreaMm2 = value
+                      }
+                    })
 
-                    Row() {
-                      Text('密度')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.formatNumberForDisplay(this.densityKgPerM3) })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          this.densityKgPerM3 = this.parseNumberWithBounds(val, 0, 5000)
-                        })
-                      Text('kg/m^3')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().subTextColor)
-                        .margin({ left: 8 })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '密度',
+                        value: this.densityKgPerM3,
+                        unit: 'kg/m^3',
+                        minValue: 0,
+                        maxValue: 5000
+                      },
+                      onValueChange: (value: number) => {
+                        this.densityKgPerM3 = value
+                      }
+                    })
                   }
                   .width('100%')
                   .margin({ bottom: 10 })
 
                   // 体积(mm^3) | 糖度(brix)
                   Row() {
-                    Row() {
-                      Text('体积')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.formatNumberForDisplay(this.volumeMm3) })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          this.volumeMm3 = this.parseNumberWithBounds(val, 0, 100000000)
-                        })
-                      Text('mm^3')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().subTextColor)
-                        .margin({ left: 8 })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '体积',
+                        value: this.volumeMm3,
+                        unit: 'mm^3',
+                        minValue: 0,
+                        maxValue: 100000000
+                      },
+                      onValueChange: (value: number) => {
+                        this.volumeMm3 = value
+                      }
+                    })
 
-                    Row() {
-                      Text('糖度')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.formatNumberForDisplay(this.brix) })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          this.brix = this.parseNumberWithBounds(val, 0, 100)
-                        })
-                      Text('brix')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().subTextColor)
-                        .margin({ left: 8 })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '糖度',
+                        value: this.brix,
+                        unit: 'brix',
+                        minValue: 0,
+                        maxValue: 100
+                      },
+                      onValueChange: (value: number) => {
+                        this.brix = value
+                      }
+                    })
                   }
                   .width('100%')
                   .margin({ bottom: 10 })
 
                   // 颜色1比例(%) | 酸度(acid)
                   Row() {
-                    Row() {
-                      Text('颜色1比例')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.formatNumberForDisplay(this.color1Pct) })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          this.color1Pct = this.parseNumberWithBounds(val, 0, 100)
-                        })
-                      Text('%')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().subTextColor)
-                        .margin({ left: 8 })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '颜色1比例',
+                        value: this.color1Pct,
+                        unit: '%',
+                        minValue: 0,
+                        maxValue: 100
+                      },
+                      onValueChange: (value: number) => {
+                        this.color1Pct = value
+                      }
+                    })
 
-                    Row() {
-                      Text('酸度')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.formatNumberForDisplay(this.acidity) })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          this.acidity = this.parseNumberWithBounds(val, 0, 100)
-                        })
-                      Text('acid')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().subTextColor)
-                        .margin({ left: 8 })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '酸度',
+                        value: this.acidity,
+                        unit: 'acid',
+                        minValue: 0,
+                        maxValue: 100
+                      },
+                      onValueChange: (value: number) => {
+                        this.acidity = value
+                      }
+                    })
                   }
                   .width('100%')
                   .margin({ bottom: 10 })
 
                   // 颜色2比例(%) | 枯水(%)
                   Row() {
-                    Row() {
-                      Text('颜色2比例')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.formatNumberForDisplay(this.color2Pct) })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          this.color2Pct = this.parseNumberWithBounds(val, 0, 100)
-                        })
-                      Text('%')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().subTextColor)
-                        .margin({ left: 8 })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '颜色2比例',
+                        value: this.color2Pct,
+                        unit: '%',
+                        minValue: 0,
+                        maxValue: 100
+                      },
+                      onValueChange: (value: number) => {
+                        this.color2Pct = value
+                      }
+                    })
 
-                    Row() {
-                      Text('枯水')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.formatNumberForDisplay(this.drynessPct) })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          this.drynessPct = this.parseNumberWithBounds(val, 0, 100)
-                        })
-                      Text('%')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().subTextColor)
-                        .margin({ left: 8 })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '枯水',
+                        value: this.drynessPct,
+                        unit: '%',
+                        minValue: 0,
+                        maxValue: 100
+                      },
+                      onValueChange: (value: number) => {
+                        this.drynessPct = value
+                      }
+                    })
                   }
                   .width('100%')
                   .margin({ bottom: 10 })
 
                   // 颜色3比例(%) | 成熟度(%)
                   Row() {
-                    Row() {
-                      Text('颜色3比例')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.formatNumberForDisplay(this.color3Pct) })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          this.color3Pct = this.parseNumberWithBounds(val, 0, 100)
-                        })
-                      Text('%')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().subTextColor)
-                        .margin({ left: 8 })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '颜色3比例',
+                        value: this.color3Pct,
+                        unit: '%',
+                        minValue: 0,
+                        maxValue: 100
+                      },
+                      onValueChange: (value: number) => {
+                        this.color3Pct = value
+                      }
+                    })
 
-                    Row() {
-                      Text('成熟度')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.formatNumberForDisplay(this.maturityPct) })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          this.maturityPct = this.parseNumberWithBounds(val, 0, 100)
-                        })
-                      Text('%')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().subTextColor)
-                        .margin({ left: 8 })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '成熟度',
+                        value: this.maturityPct,
+                        unit: '%',
+                        minValue: 0,
+                        maxValue: 100
+                      },
+                      onValueChange: (value: number) => {
+                        this.maturityPct = value
+                      }
+                    })
                   }
                   .width('100%')
                   .margin({ bottom: 10 })
 
                   // 瑕疵面积(mm^2) | 果肉色(%)
                   Row() {
-                    Row() {
-                      Text('瑕疵面积')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.formatNumberForDisplay(this.defectAreaMm2) })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          this.defectAreaMm2 = this.parseNumberWithBounds(val, 0, 100000000)
-                        })
-                      Text('mm^2')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().subTextColor)
-                        .margin({ left: 8 })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '瑕疵面积',
+                        value: this.defectAreaMm2,
+                        unit: 'mm^2',
+                        minValue: 0,
+                        maxValue: 100000000
+                      },
+                      onValueChange: (value: number) => {
+                        this.defectAreaMm2 = value
+                      }
+                    })
 
-                    Row() {
-                      Text('果肉色')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.formatNumberForDisplay(this.pulpColorPct) })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          this.pulpColorPct = this.parseNumberWithBounds(val, 0, 100)
-                        })
-                      Text('%')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().subTextColor)
-                        .margin({ left: 8 })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '果肉色',
+                        value: this.pulpColorPct,
+                        unit: '%',
+                        minValue: 0,
+                        maxValue: 100
+                      },
+                      onValueChange: (value: number) => {
+                        this.pulpColorPct = value
+                      }
+                    })
                   }
                   .width('100%')
                   .margin({ bottom: 10 })
 
                   // 瑕疵个数(个) | 出口
                   Row() {
-                    Row() {
-                      Text('瑕疵个数')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.formatNumberForDisplay(this.defectCount) })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          this.defectCount = this.parseNumberWithBounds(val, 0, 1000000)
-                        })
-                      Text('个')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().subTextColor)
-                        .margin({ left: 8 })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '瑕疵个数',
+                        value: this.defectCount,
+                        unit: '个',
+                        minValue: 0,
+                        maxValue: 1000000
+                      },
+                      onValueChange: (value: number) => {
+                        this.defectCount = value
+                      }
+                    })
 
+                    // 出口是文本输入，不使用 FormInputField
                     Row() {
                       Text('出口')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
+                        .fontSize(18)
+                        .fontColor(getCurrentTheme().textColor)
                         .width(72)
                         .textAlign(TextAlign.End)
                         .margin({ right: 8 })
                       TextInput({ text: this.outletText })
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
+                        .fontSize(18)
+                        .fontColor(getCurrentTheme().textColor)
+                        .backgroundColor(getCurrentTheme().controlBg ?? getCurrentTheme().surfaceColor)
+                        .border({ width: 1, color: getCurrentTheme().borderColor })
                         .borderRadius(8)
                         .padding({ left: 10, right: 10, top: 6, bottom: 6 })
                         .constraintSize({ minWidth: 140, maxWidth: 180 })
                         .height(34)
                         .onChange((val: string) => {
-                          // 出口编号或名称可为文本
                           this.outletText = val
                         })
                     }
@@ -827,87 +556,47 @@ export struct FruitInfoDialog {
 
                   // 垂轴径 | 横径比
                   Row() {
-                    Row() {
-                      Text('垂轴径')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.formatNumberForDisplay(this.verticalAxis) })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          this.verticalAxis = this.parseNumberWithBounds(val, 0, 1000000)
-                        })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '垂轴径',
+                        value: this.verticalAxis,
+                        minValue: 0,
+                        maxValue: 1000000
+                      },
+                      onValueChange: (value: number) => {
+                        this.verticalAxis = value
+                      }
+                    })
 
-                    Row() {
-                      Text('横径比')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.formatNumberForDisplay(this.horizontalRatio) })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          // 比例类一般 0-100 或 0-10，根据实际调整
-                          this.horizontalRatio = this.parseNumberWithBounds(val, 0, 100)
-                        })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '横径比',
+                        value: this.horizontalRatio,
+                        minValue: 0,
+                        maxValue: 100
+                      },
+                      onValueChange: (value: number) => {
+                        this.horizontalRatio = value
+                      }
+                    })
                   }
                   .width('100%')
                   .margin({ bottom: 10 })
 
                   // 扁椭型横径比(mm) | 空列占位（保持网格对齐）
                   Row() {
-                    Row() {
-                      Text('扁椭型横径比')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width(72)
-                        .textAlign(TextAlign.End)
-                        .margin({ right: 8 })
-                      TextInput({ text: this.formatNumberForDisplay(this.flatEllipticalRatioMm) })
-                        .type(InputType.Number)
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                        .borderRadius(8)
-                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-                        .constraintSize({ minWidth: 140, maxWidth: 180 })
-                        .height(34)
-                        .onChange((val: string) => {
-                          this.flatEllipticalRatioMm = this.parseNumberWithBounds(val, 0, 1000000)
-                        })
-                      Text('mm')
-                        .fontSize(18)  // 标签字体调大到18px
-                        .fontColor(this.getCurrentTheme().subTextColor)
-                        .margin({ left: 8 })
-                    }
-                    .layoutWeight(1)
-                    .alignItems(VerticalAlign.Center)
+                    FormInputField({
+                      config: {
+                        label: '扁椭型横径比',
+                        value: this.flatEllipticalRatioMm,
+                        unit: 'mm',
+                        minValue: 0,
+                        maxValue: 1000000
+                      },
+                      onValueChange: (value: number) => {
+                        this.flatEllipticalRatioMm = value
+                      }
+                    })
 
                     Blank().layoutWeight(1)
                   }
@@ -915,14 +604,14 @@ export struct FruitInfoDialog {
                 }
                 .width('100%')
                 .padding(12)
-                .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                .border({ width: 1, color: this.getCurrentTheme().borderColor })
+                .backgroundColor(getCurrentTheme().controlBg ?? getCurrentTheme().surfaceColor)
+                .border({ width: 1, color: getCurrentTheme().borderColor })
                 .borderRadius(8)
               }
               .width('100%')
               .padding(16)
-              .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-              .border({ width: 1, color: this.getCurrentTheme().borderColor })
+              .backgroundColor(getCurrentTheme().controlBg ?? getCurrentTheme().surfaceColor)
+              .border({ width: 1, color: getCurrentTheme().borderColor })
               .borderRadius(12)
               .shadow({ radius: 8, color: 'rgba(0,0,0,0.06)', offsetY: 2 })
             }
@@ -949,7 +638,7 @@ export struct FruitInfoDialog {
         }
         .width('55%')
         .height('80%')
-        .backgroundColor(this.getCurrentTheme().surfaceColor)
+        .backgroundColor(getCurrentTheme().surfaceColor)
         .borderRadius(12)
         .shadow({
           radius: 20,
@@ -975,13 +664,13 @@ export struct FruitInfoDialog {
     Row() {
       Text(label)
                         .fontSize(18)  // 输入框字体调大到18px
-        .fontColor(this.getCurrentTheme().subTextColor)
+        .fontColor(getCurrentTheme().subTextColor)
         .width(80)
         .textAlign(TextAlign.Start)
       
       Text(value)
                         .fontSize(18)  // 输入框字体调大到18px
-        .fontColor(this.getCurrentTheme().textColor)
+        .fontColor(getCurrentTheme().textColor)
         .fontWeight(FontWeight.Medium)
         .layoutWeight(1)
         .textAlign(TextAlign.Start)

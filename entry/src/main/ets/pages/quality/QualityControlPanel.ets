@@ -36,8 +36,8 @@
  * - 布局优化：合理的间距和对齐
  */
 
-import { BaseComponentHelper } from '../../components/common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { LEVEL_COUNT_OPTIONS } from './QualityConstants'
 import { GlobalLevelCountManager } from '../../utils/GlobalLevelCountManager'
@@ -210,20 +210,6 @@ export struct QualityControlPanel {
    */
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
 
-  /**
-   * 基础组件助手
-   * 
-   * 功能说明：
-   * - 提供基础组件的通用功能
-   * - 用于主题获取和样式处理
-   * - 私有属性，不对外暴露
-   * 
-   * 使用场景：
-   * - 获取当前主题时
-   * - 处理组件样式时
-   */
-  private baseComponentHelper = new BaseComponentHelper()
-
   // ==================== 方法定义 ====================
   
   /**
@@ -241,7 +227,7 @@ export struct QualityControlPanel {
    * - 样式适配时调用
    */
   getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+    return resolveTheme(this.consumedTheme)
   }
 
   /**

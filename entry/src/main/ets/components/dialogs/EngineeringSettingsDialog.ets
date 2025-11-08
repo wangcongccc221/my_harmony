@@ -4,10 +4,11 @@
  * 用途：在点击"工程设置"按钮时弹出
  */
 
-import { BaseComponentHelper } from '../common/BaseComponent'
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { DialogButtons } from '../ui/DialogButtons'
+import { DialogHeader } from '../ui/DialogHeader'
 import { SystemStructurePage } from './pages/SystemStructurePage'
 import { ChannelRangePage } from './pages/ChannelRangePage'
 import { ChannelExportPage } from './pages/ChannelExportPage'
@@ -22,7 +23,6 @@ interface TabConfig {
 
 @Component
 export struct EngineeringSettingsDialog {
-  private baseComponentHelper = new BaseComponentHelper()
   @Prop isVisible: boolean = false
   @State selectedTab: string = '系统结构设置'
   @StorageLink(OMNI_THEME_KEY) @Watch('onThemeChange') consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
@@ -43,7 +43,7 @@ export struct EngineeringSettingsDialog {
 
   // 获取当前主题配置
   getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+    return getCurrentTheme(this.consumedTheme)
   }
 
   // 监听主题变化
@@ -76,7 +76,7 @@ export struct EngineeringSettingsDialog {
     }
     .width('100%')
     .height(50)
-    .backgroundColor(this.getCurrentTheme().surfaceColor)
+    .backgroundColor(getCurrentTheme(this.consumedTheme).surfaceColor)
     .borderRadius(8)
     .margin({ left: 16, right: 16, top: 8, bottom: 8 })
     .justifyContent(FlexAlign.SpaceEvenly)
@@ -89,8 +89,8 @@ export struct EngineeringSettingsDialog {
     Button(label)
       .fontSize(18)  // Tab按钮字体调大到18px
       .fontWeight(this.selectedTab === tabKey ? FontWeight.Bold : FontWeight.Normal)
-      .fontColor(this.selectedTab === tabKey ? this.getCurrentTheme().primary : this.getCurrentTheme().textColor)
-      .backgroundColor(this.selectedTab === tabKey ? this.getCurrentTheme().primary + '20' : Color.Transparent)
+      .fontColor(this.selectedTab === tabKey ? getCurrentTheme(this.consumedTheme).primary : getCurrentTheme(this.consumedTheme).textColor)
+      .backgroundColor(this.selectedTab === tabKey ? getCurrentTheme(this.consumedTheme).primary + '20' : Color.Transparent)
       .borderRadius(8)  // 圆角调大
       .padding({ left: 12, right: 12, top: 8, bottom: 8 })  // 内边距调大
       .onClick(() => {
@@ -105,29 +105,12 @@ export struct EngineeringSettingsDialog {
         // 对话框内容
         Column() {
           // 标题栏
-          Row() {
-            Text('工程设置')
-              .fontSize(24)  // 字体调大到24px
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().textColor)
-              .layoutWeight(1)
-            
-            // 关闭按钮
-            Button() {
-              Text('×')
-                .fontSize(24)  // 关闭按钮字体调大到24px
-                .fontColor(this.getCurrentTheme().textColor)
-            }
-            .width(30)
-            .height(30)
-            .backgroundColor(Color.Transparent)
-            .onClick(() => {
+          DialogHeader({
+            title: '工程设置',
+            onClose: () => {
               this.handleCancel()
-            })
-          }
-          .width('100%')
-          .padding({ left: 12, right: 12, top: 10, bottom: 10 })
-          .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+            }
+          })
 
           // Tab导航栏
           this.buildTabBar()
@@ -167,7 +150,7 @@ export struct EngineeringSettingsDialog {
         }
         .width('85%')
         .height('90%')
-        .backgroundColor(this.getCurrentTheme().surfaceColor)
+        .backgroundColor(getCurrentTheme(this.consumedTheme).surfaceColor)
         .borderRadius(12)
         .shadow({
           radius: 20,

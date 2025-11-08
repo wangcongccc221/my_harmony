@@ -30,8 +30,8 @@
  * - 使用模块化组件构建UI
  */
 
-import { BaseComponentHelper } from '../../components/common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { QualityStateManager } from './core/QualityStateManager'
 import { QualityDataManager } from './core/QualityDataManager'
@@ -182,7 +182,7 @@ export struct QualityContent {
    * - 获取当前主题时
    * - 处理组件样式时
    */
-  private baseComponentHelper = new BaseComponentHelper()
+  // private baseComponentHelper = new BaseComponentHelper()
 
   // ==================== 方法定义 ====================
   
@@ -201,7 +201,9 @@ export struct QualityContent {
    * - 样式适配时调用
    */
   getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+    // 引用 themeVersion，确保主题版本变化触发本组件重建
+    const __version: number = this.themeVersion
+    return resolveTheme(this.consumedTheme)
   }
 
   /**

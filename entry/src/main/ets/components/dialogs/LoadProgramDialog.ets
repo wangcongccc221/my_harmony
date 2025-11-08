@@ -4,9 +4,10 @@
  * 用途：在点击"载入程序"按钮时弹出
  */
 
-import { BaseComponentHelper } from '../common/BaseComponent'
-import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { DialogButtons } from '../ui/DialogButtons'
+import { DialogHeader, Padding } from '../ui/DialogHeader'
 
 // 程序信息接口
 interface ProgramInfo {
@@ -20,7 +21,6 @@ interface ProgramInfo {
 
 @Component
 export struct LoadProgramDialog {
-  private baseComponentHelper = new BaseComponentHelper()
   @Prop isVisible: boolean = false
   @State selectedProgram: ProgramInfo | null = null
   @State programList: ProgramInfo[] = [
@@ -62,11 +62,6 @@ export struct LoadProgramDialog {
   onConfirm?: (programInfo: ProgramInfo) => void
   onCancel?: () => void
 
-  // 获取当前主题配置
-  getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme()
-  }
-
   // 选择程序
   private selectProgram(program: ProgramInfo) {
     this.selectedProgram = program
@@ -93,29 +88,13 @@ export struct LoadProgramDialog {
         // 对话框内容
         Column() {
           // 标题栏
-          Row() {
-            Text('加载用户配置')
-              .fontSize(24)  // 标题字体调大到24px
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().textColor)
-              .layoutWeight(1)
-            
-            // 关闭按钮
-            Button() {
-              Text('×')
-                .fontSize(24)  // 关闭按钮字体调大到24px
-                .fontColor(this.getCurrentTheme().textColor)
-            }
-            .width(30)
-            .height(30)
-            .backgroundColor(Color.Transparent)
-            .onClick(() => {
+          DialogHeader({
+            title: '加载用户配置',
+            customPadding: { left: 20, right: 20, top: 15, bottom: 15 } as Padding,
+            onClose: () => {
               this.handleCancel()
-            })
-          }
-          .width('100%')
-          .padding({ left: 20, right: 20, top: 15, bottom: 15 })
-          .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+            }
+          })
 
           // 程序列表内容（卡片包裹）
           Column() {
@@ -132,8 +111,8 @@ export struct LoadProgramDialog {
           }
           .width('100%')
           .padding(20)
-          .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
-          .border({ width: 1, color: this.getCurrentTheme().borderColor })
+          .backgroundColor(getCurrentTheme().controlBg ?? getCurrentTheme().backgroundColor)
+          .border({ width: 1, color: getCurrentTheme().borderColor })
           .borderRadius(8)
           .shadow({ radius: 8, color: 'rgba(0,0,0,0.08)', offsetY: 2 })
 
@@ -155,7 +134,7 @@ export struct LoadProgramDialog {
         }
         .width('55%')  // 调整宽度为55%
         .height('70%')  // 调整高度为70%
-        .backgroundColor(this.getCurrentTheme().surfaceColor)
+        .backgroundColor(getCurrentTheme().surfaceColor)
         .borderRadius(12)
         .shadow({
           radius: 20,
@@ -200,15 +179,15 @@ export struct LoadProgramDialog {
         Row() {
           Text(program.name)
             .fontSize(20)  // 程序名称字体调大到20px
-            .fontColor(this.getCurrentTheme().textColor)
+            .fontColor(getCurrentTheme().textColor)
             .fontWeight(FontWeight.Medium)
             .layoutWeight(1)
           
           Text(program.version)
             .fontSize(16)  // 版本标签字体调大到16px
-            .fontColor(this.getCurrentTheme().subTextColor)
-            .backgroundColor(this.getCurrentTheme().backgroundColor)
-            .border({ width: 1, color: this.getCurrentTheme().borderColor })
+            .fontColor(getCurrentTheme().subTextColor)
+            .backgroundColor(getCurrentTheme().backgroundColor)
+            .border({ width: 1, color: getCurrentTheme().borderColor })
             .borderRadius(4)
             .padding({ left: 8, right: 8, top: 2, bottom: 2 })
         }
@@ -218,7 +197,7 @@ export struct LoadProgramDialog {
         // 程序描述
         Text(program.description)
           .fontSize(16)  // 描述字体调大到16px
-          .fontColor(this.getCurrentTheme().subTextColor)
+          .fontColor(getCurrentTheme().subTextColor)
           .width('100%')
           .textAlign(TextAlign.Start)
           .margin({ bottom: 8 })
@@ -237,13 +216,13 @@ export struct LoadProgramDialog {
     .width('100%')
     .padding({ top: 12, bottom: 12, left: 8, right: 8 })
     .backgroundColor(this.selectedProgram?.id === program.id ? 
-      this.getCurrentTheme().primary + '20' : 
-      this.getCurrentTheme().backgroundColor)
+      getCurrentTheme().primary + '20' : 
+      getCurrentTheme().backgroundColor)
     .border({ 
       width: this.selectedProgram?.id === program.id ? 2 : 1, 
       color: this.selectedProgram?.id === program.id ? 
-        this.getCurrentTheme().primary : 
-        this.getCurrentTheme().borderColor 
+        getCurrentTheme().primary : 
+        getCurrentTheme().borderColor 
     })
     .borderRadius(8)
     .margin({ bottom: 8 })
@@ -258,12 +237,12 @@ export struct LoadProgramDialog {
     Column() {
       Text(label)
         .fontSize(14)  // 信息标签字体调大到14px
-        .fontColor(this.getCurrentTheme().subTextColor)
+        .fontColor(getCurrentTheme().subTextColor)
         .margin({ bottom: 2 })
       
       Text(value)
         .fontSize(15)  // 信息值字体调大到15px
-        .fontColor(this.getCurrentTheme().textColor)
+        .fontColor(getCurrentTheme().textColor)
         .fontWeight(FontWeight.Medium)
     }
     .alignItems(HorizontalAlign.Center)

@@ -4,7 +4,8 @@
  * 用途：可复用的对话框基础组件
  */
 
-import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { DialogButtons } from './DialogButtons'
 
 @Component
@@ -25,10 +26,6 @@ export struct BaseDialog {
 
   // 内容插槽
   @BuilderParam content?: () => void
-
-  private getCurrentTheme(): ExtendedOmniThemeStyle {
-    return OmniThemeManager.getInstance().getCurrentTheme()
-  }
 
   build() {
     if (this.isVisible) {
@@ -52,12 +49,12 @@ export struct BaseDialog {
               Text(this.title)
                 .fontSize(18)
                 .fontWeight(FontWeight.Bold)
-                .fontColor(this.getCurrentTheme().textColor)
+                .fontColor(getCurrentTheme().textColor)
                 .layoutWeight(1)
             }
             .width('100%')
             .padding({ left: 20, right: 20, top: 15, bottom: 15 })
-            .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+            .border({ width: { bottom: 1 }, color: getCurrentTheme().borderColor })
           }
 
           // 内容区域
@@ -77,7 +74,7 @@ export struct BaseDialog {
         }
         .width(this.width)
         .constraintSize({ maxWidth: this.maxWidth, maxHeight: this.maxHeight })
-        .backgroundColor(this.getCurrentTheme().surfaceColor)
+        .backgroundColor(getCurrentTheme().surfaceColor)
         .borderRadius(12)
         .shadow({ radius: 20, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 4 })
         .alignSelf(ItemAlign.Center)

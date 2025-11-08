@@ -5,8 +5,8 @@
 import { LevelTable, TableRow } from '../../components/layout/LevelTable'
 import { GridTable } from '../../components/layout/GridTable'
 import { DraggableGridTable, DragData } from '../../components/layout/DraggableGridTable'
-import { BaseComponentHelper } from '../../components/common/BaseComponent'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { ChartComponent, ChartComponentParams, ChartData } from '../../components/ChartComponent'
 import { OmniTabBar, TabConfig, TabBarDirection } from '../../components/ui/OmniTabBar'
@@ -27,7 +27,6 @@ interface ChartColors {
 
 @Component
 export struct DataTablesTabBar {
-  private baseComponentHelper = new BaseComponentHelper()
   private lineCtx: CanvasRenderingContext2D = new CanvasRenderingContext2D()
   // 折线图参数与数据（使用环形缓冲区避免内存增长）
   private readonly lcChartHeight: number = 340
@@ -89,7 +88,7 @@ export struct DataTablesTabBar {
 
   // 获取当前主题配置
   private getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+    return resolveTheme(this.consumedTheme)
   }
 
   // 处理拖拽开始

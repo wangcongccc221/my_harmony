@@ -15,7 +15,7 @@ import { SaveProgramDialog } from '../components/dialogs/SaveProgramDialog'
 import { SortingStatusDialog } from '../components/dialogs/SortingStatusDialog'
 import { FloatingWindow } from '../components/ui/FloatingWindow'
 import { EngineeringSettingsDialog } from '../components/dialogs/EngineeringSettingsDialog'
-import { BaseComponentHelper } from '../components/common/BaseComponent'
+import { getCurrentTheme as resolveTheme } from '../utils/theme/ThemeUtils'
 import { NavigationUtils } from '../utils/helpers/NavigationUtils'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../utils/theme/OmniThemeManager'
 import { useOmniTheme, OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../utils/theme/useOmniTheme'
@@ -91,7 +91,6 @@ struct Page {
   private omniThemeManager = OmniThemeManager.getInstance()  // Omni-UI 主题管理器实例
   private omniUIInit = OmniUIInit.getInstance()  // Omni-UI 初始化实例
   private omniUIUtils = OmniUIUtils.getInstance()  // Omni-UI 工具实例
-  private baseComponentHelper = new BaseComponentHelper()  // 基础组件助手
   // 通用快捷对话框状态
   @State quickDialogVisible: boolean = false
   @State quickDialogTitle: string = ''
@@ -144,7 +143,7 @@ struct Page {
   getCurrentTheme(): ExtendedOmniThemeStyle {
     // 引用 themeVersion，确保主题版本变化触发本组件重建
     const __version: number = this.themeVersion
-    return this.baseComponentHelper.getCurrentTheme(this.consumedTheme)
+    return resolveTheme(this.consumedTheme)
   }
 
   // 监听主题变化
