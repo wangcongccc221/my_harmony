@@ -6,11 +6,11 @@
 
 import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
-import { DialogButtons } from '../ui/DialogButtons'
-import { DialogHeader } from '../ui/DialogHeader'
+import { DialogButtons } from '../ui/dialogs/DialogButtons'
+import { DialogHeader } from '../ui/dialogs/DialogHeader'
 import { RdbService, FruitInfoInsertParams, FruitInfoRow } from '../../db/RdbService'
 import { NumberUtils } from '../../utils/helpers/NumberUtils'
-import { FormInputField } from '../ui/FormInputField'
+import { FormInputField } from '../ui/forms/FormInputField'
 
 // 水果信息接口
 interface FruitInfo {

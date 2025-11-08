@@ -9,7 +9,7 @@ import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../u
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { ChartComponent, ChartComponentParams, ChartData } from '../../components/ChartComponent'
-import { OmniTabBar, TabConfig, TabBarDirection } from '../../components/ui/OmniTabBar'
+import { OmniTabBar, TabConfig, TabBarDirection } from '../../components/ui/layout/OmniTabBar'
 import { drawLineChart, measureChartWidth, LineChartOptions } from  '../../utils/lineChart'
 import { ProcessingCurveFeed } from '../../utils/ProcessingCurveFeed'
 

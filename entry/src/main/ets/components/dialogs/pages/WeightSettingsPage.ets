@@ -7,7 +7,7 @@
 import { ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../../utils/theme/ThemeUtils'
 import { IBestButton } from '@ibestservices/ibest-ui'
-import { FormInputField } from '../../ui/FormInputField'
+import { FormInputField } from '../../ui/forms/FormInputField'
 
 @Component
 export struct WeightSettingsPage {

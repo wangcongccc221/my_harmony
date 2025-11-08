@@ -40,7 +40,7 @@ import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/Omni
 import { ThreeLayerCard, ThreeLayerCardData } from '../../components/cards/ThreeLayerCard'
 import { StorageKeys } from '../../utils/constants/StorageKeys'
 import { GRID_DRAG_ACTIVE_KEY } from '../../components/layout/DraggableGridTable'
-import { getCurrentCellDragData, CellDragData, CELL_DRAG_ACTIVE_KEY } from '../../components/ui/SimpleDraggableCell'
+import { getCurrentCellDragData, CellDragData, CELL_DRAG_ACTIVE_KEY } from '../../components/ui/tables/SimpleDraggableCell'
 import { GlobalCardDataManager } from '../../utils/GlobalCardDataManager'
 import { CardDataManager } from '../../utils/ui/CardDataManager'
 import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'

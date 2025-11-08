@@ -1,5 +1,5 @@
-import { OmniUIUtils } from '../../utils/helpers/OmniUIUtils'
-import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
+import { OmniUIUtils } from '../../../utils/helpers/OmniUIUtils'
+import { getCurrentTheme } from '../../../utils/theme/ThemeUtils'
 
 @Component
 export struct RectButton {

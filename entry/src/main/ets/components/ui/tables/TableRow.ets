@@ -4,7 +4,7 @@
  * 用途：可复用的表格行控件
  */
 
-import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
 
 @Component
 export struct TableRowComponent {

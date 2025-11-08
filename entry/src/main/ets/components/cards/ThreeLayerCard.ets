@@ -21,7 +21,7 @@
 // - 离屏卡片自动暂停波浪: 通过可见性/滚动监听，非可见时暂停 WaveCard 定时器；可见时恢复
 // - 第三层数据更新节流: 高频拖拽或合并操作时批量合并 setState
 
-import { getCurrentCellDragData, CellDragData, CELL_DRAG_ACTIVE_KEY, CELL_DRAG_STORAGE_KEY, MULTI_SELECT_CELLS_KEY, MULTI_SELECT_ACTIVE_KEY, CLEAR_ALL_HIGHLIGHTS_KEY } from '../ui/SimpleDraggableCell'
+import { getCurrentCellDragData, CellDragData, CELL_DRAG_ACTIVE_KEY, CELL_DRAG_STORAGE_KEY, MULTI_SELECT_CELLS_KEY, MULTI_SELECT_ACTIVE_KEY, CLEAR_ALL_HIGHLIGHTS_KEY } from '../ui/tables/SimpleDraggableCell'
 import { DragData as GridDragData, GRID_DRAG_DATA_KEY, GRID_DRAG_ACTIVE_KEY } from '../layout/DraggableGridTable'
 // 导入模块化的拖拽管理器
 import { DragManager, DragData as ModuleDragData } from '../../utils/ui/DragManager'

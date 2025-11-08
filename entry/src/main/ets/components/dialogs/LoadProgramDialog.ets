@@ -6,8 +6,8 @@
 
 import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
-import { DialogButtons } from '../ui/DialogButtons'
-import { DialogHeader, Padding } from '../ui/DialogHeader'
+import { DialogButtons } from '../ui/dialogs/DialogButtons'
+import { DialogHeader, Padding } from '../ui/dialogs/DialogHeader'
 
 // 程序信息接口
 interface ProgramInfo {

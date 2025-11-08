@@ -4,8 +4,8 @@
  * 用途：可复用的对话框按钮控件
  */
 
-import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
-import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
+import { ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../../utils/theme/ThemeUtils'
 
 @Component
 export struct DialogButtons {

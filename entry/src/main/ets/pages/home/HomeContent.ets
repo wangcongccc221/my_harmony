@@ -6,7 +6,7 @@
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { IBestSwitch } from '@ibestservices/ibest-ui'
-import { SwitchControl } from '../../components/ui/SwitchControl'
+import { SwitchControl } from '../../components/ui/forms/SwitchControl'
 import { TableRow } from '../../components/layout/LevelTable'
 import { DataTablesTabBar } from './DataTablesTabBar'
 import { DragData } from '../../components/layout/DraggableGridTable'
@@ -15,7 +15,7 @@ import { TOP_PRODUCTION_TON_H, TOP_SUM_WEIGHT_TON, TOP_SUM_COUNTS, TOP_AVG_G, TO
 import { SortingInfoCard } from './SortingInfoCard'
 import { LiquidCardsArea } from './LiquidCardsArea'
 import { StorageKeys } from '../../utils/constants/StorageKeys'
-import { getCurrentCellDragData, CELL_DRAG_ACTIVE_KEY } from '../../components/ui/SimpleDraggableCell'
+import { getCurrentCellDragData, CELL_DRAG_ACTIVE_KEY } from '../../components/ui/tables/SimpleDraggableCell'
 import { OutletDialog } from './OutletDialog'
 import { HomeDataManager } from './core/HomeDataManager'
 import { HomeEventHandler } from './core/HomeEventHandler'

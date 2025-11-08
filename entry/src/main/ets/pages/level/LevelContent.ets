@@ -42,7 +42,7 @@ import { LevelDataManager, LevelData, StatisticsData } from './core/LevelDataMan
 import { LevelEventHandler } from './core/LevelEventHandler'
 import { LevelStateManager } from './core/LevelStateManager'
 import { LAYOUT_CONFIG } from './LevelConstants'
-import { ArrowToggleButton } from '../../components/ui/ArrowToggleButton'
+import { ArrowToggleButton } from '../../components/ui/buttons/ArrowToggleButton'
 
 /**
  * 等级页面主内容组件结构体

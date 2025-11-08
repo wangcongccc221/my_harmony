@@ -1,4 +1,4 @@
-import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
 
 export interface CellDragData {
   rowIndex: number

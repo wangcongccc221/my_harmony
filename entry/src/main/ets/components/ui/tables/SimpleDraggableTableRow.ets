@@ -4,7 +4,7 @@
  * 用途：等级表的数据行拖拽功能
  */
 
-import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
 
 // 拖拽数据接口
 export interface DragData {

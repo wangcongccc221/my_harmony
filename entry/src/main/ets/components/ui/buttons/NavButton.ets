@@ -4,7 +4,7 @@
  * 用途：侧边栏导航按钮
  */
 
-import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
 
 @Component
 export struct NavButton {

@@ -9,8 +9,8 @@
  * - 集成主题配置
  */
 
-import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
-import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
+import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../../utils/theme/useOmniTheme'
 
 // 位置接口定义
 interface Position {

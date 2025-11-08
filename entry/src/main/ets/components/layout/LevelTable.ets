@@ -5,9 +5,9 @@
  */
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
-import { TableRowComponent } from '../ui/TableRow'
-import { SimpleDraggableCell } from '../ui/SimpleDraggableCell'
-import { MultiSelectCell, MULTI_SELECT_CELLS_KEY, MULTI_SELECT_ACTIVE_KEY } from '../ui/SimpleDraggableCell'
+import { TableRowComponent } from '../ui/tables/TableRow'
+import { SimpleDraggableCell } from '../ui/tables/SimpleDraggableCell'
+import { MultiSelectCell, MULTI_SELECT_CELLS_KEY, MULTI_SELECT_ACTIVE_KEY } from '../ui/tables/SimpleDraggableCell'
 
 // 通用表格行：每行由若干字符串单元格组成
 export type TableRow = string[]

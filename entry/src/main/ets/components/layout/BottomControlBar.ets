@@ -6,7 +6,7 @@
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
-import { FruitCupButton } from '../ui/FruitCupButton'
+import { FruitCupButton } from '../ui/buttons/FruitCupButton'
 
 @Component
 export struct BottomControlBar {

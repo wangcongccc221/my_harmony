@@ -6,7 +6,7 @@
 
 import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
-import { DialogButtons } from '../ui/DialogButtons'
+import { DialogButtons } from '../ui/dialogs/DialogButtons'
 
 @Component
 export struct DateErrorDialog {

@@ -13,9 +13,9 @@
  * - 其他需要TabBar的地方
  */
 
-import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
-import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
-import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../../utils/theme/ThemeUtils'
+import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../../utils/theme/useOmniTheme'
 
 // Tab配置接口
 export interface TabConfig {

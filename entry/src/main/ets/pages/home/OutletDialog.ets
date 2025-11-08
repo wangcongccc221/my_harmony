@@ -40,7 +40,7 @@
  */
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
-import { DialogButtons } from '../../components/ui/DialogButtons'
+import { DialogButtons } from '../../components/ui/dialogs/DialogButtons'
 
 @Component
 export struct OutletDialog {

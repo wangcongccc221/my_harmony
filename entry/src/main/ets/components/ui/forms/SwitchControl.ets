@@ -4,7 +4,7 @@
  * 用途：可复用的开关控件
  */
 
-import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
 import { IBestSwitch } from '@ibestservices/ibest-ui'
 
 @Component

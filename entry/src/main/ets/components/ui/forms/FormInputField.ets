@@ -4,9 +4,9 @@
  * 用途：减少重复代码，统一输入框样式
  */
 
-import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
-import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
-import { NumberUtils } from '../../utils/helpers/NumberUtils'
+import { ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../../utils/theme/ThemeUtils'
+import { NumberUtils } from '../../../utils/helpers/NumberUtils'
 
 // 输入字段配置接口
 interface FormInputFieldConfig {
@@ -54,7 +54,7 @@ export struct FormInputField {
         })
         .height(this.config.inputHeight ?? 34)
         .onChange((val: string) => {
-          const newValue = NumberUtils.parseNumberWithBounds(
+          const newValue: number = NumberUtils.parseNumberWithBounds(
             val, 
             this.config.minValue, 
             this.config.maxValue

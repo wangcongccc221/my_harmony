@@ -7,7 +7,7 @@
 import { ThreeLayerCardData } from '../types'
 import { UseDataSync } from './useDataSync'
 import { GRID_DRAG_ACTIVE_KEY, GRID_DRAG_DATA_KEY } from '../../layout/DraggableGridTable'
-import { CELL_DRAG_ACTIVE_KEY, CELL_DRAG_STORAGE_KEY, MULTI_SELECT_CELLS_KEY, MULTI_SELECT_ACTIVE_KEY, CLEAR_ALL_HIGHLIGHTS_KEY } from '../../ui/SimpleDraggableCell'
+import { CELL_DRAG_ACTIVE_KEY, CELL_DRAG_STORAGE_KEY, MULTI_SELECT_CELLS_KEY, MULTI_SELECT_ACTIVE_KEY, CLEAR_ALL_HIGHLIGHTS_KEY } from '../../ui/tables/SimpleDraggableCell'
 
 export interface LocalDataState {
   localChartData: number[]

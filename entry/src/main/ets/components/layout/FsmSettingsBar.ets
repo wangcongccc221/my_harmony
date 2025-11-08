@@ -3,7 +3,7 @@
  */
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
-import { SwitchControl } from '../ui/SwitchControl'
+import { SwitchControl } from '../ui/forms/SwitchControl'
 
 @Component
 export default struct FsmSettingsBar {

@@ -4,7 +4,7 @@
  * 用途：减少重复代码，统一对话框标题栏样式
  */
 
-import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
+import { getCurrentTheme } from '../../../utils/theme/ThemeUtils'
 
 // Padding 接口定义
 export interface Padding {

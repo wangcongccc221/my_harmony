@@ -8,7 +8,7 @@
  * - 集成主题配置
  */
 
-import { OmniTabBar, TabConfig, TabBarDirection } from '../ui/OmniTabBar'
+import { OmniTabBar, TabConfig, TabBarDirection } from '../ui/layout/OmniTabBar'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'

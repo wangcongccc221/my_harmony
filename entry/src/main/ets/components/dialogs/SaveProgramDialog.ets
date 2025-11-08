@@ -6,10 +6,10 @@
 
 import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
-import { DialogButtons } from '../ui/DialogButtons'
-import { DialogHeader, Padding } from '../ui/DialogHeader'
-import { FormTextField } from '../ui/FormTextField'
-import { FormTextArea } from '../ui/FormTextArea'
+import { DialogButtons } from '../ui/dialogs/DialogButtons'
+import { DialogHeader, Padding } from '../ui/dialogs/DialogHeader'
+import { FormTextField } from '../ui/forms/FormTextField'
+import { FormTextArea } from '../ui/forms/FormTextArea'
 
 // 保存用户配置信息接口
 interface SaveProgramInfo {

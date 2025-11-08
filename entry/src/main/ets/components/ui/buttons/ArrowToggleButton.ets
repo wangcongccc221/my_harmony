@@ -4,7 +4,7 @@
  * 用途：可复用的箭头切换控件
  */
 
-import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
 
 @Component
 export struct ArrowToggleButton {

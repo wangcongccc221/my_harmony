@@ -5,8 +5,8 @@
 
 import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
-import { DialogButtons } from '../ui/DialogButtons'
-import { RectButton } from '../ui/RectButton'
+import { DialogButtons } from '../ui/dialogs/DialogButtons'
+import { RectButton } from '../ui/buttons/RectButton'
 import { ProcessingCurveChart } from '../charts/ProcessingCurveChart'
 import { ChartComponent, ChartComponentParams, ChartData } from '../ChartComponent'
 import { McPieChart, Options } from '@mcui/mccharts'

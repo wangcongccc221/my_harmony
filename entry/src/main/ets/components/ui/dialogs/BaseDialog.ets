@@ -4,8 +4,8 @@
  * 用途：可复用的对话框基础组件
  */
 
-import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
-import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
+import { ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
+import { getCurrentTheme } from '../../../utils/theme/ThemeUtils'
 import { DialogButtons } from './DialogButtons'
 
 @Component
