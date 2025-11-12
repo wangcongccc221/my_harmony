@@ -1,4 +1,4 @@
-import { HttpResponseUtils } from '../../helpers/HttpResponseUtils';
+import { HttpResponseUtils } from '../../../helpers/HttpResponseUtils';
 
 /**
  * API接口文档生成器
@@ -61,58 +61,77 @@ export class ApiDocumentation {
       如果连接不上，先执行端口映射：<code>hdc fport tcp:8080 tcp:8080</code>
     </div>
 
-    <h2>1️⃣ 获取所有历史加工数据</h2>
+    <h2>1️⃣ 获取历史加工数据列表（RESTful 风格，支持分页）</h2>
     <div class="api-item">
       <span class="method">GET</span>
-      <span class="endpoint">/api/processing?action=listJson</span>
-      <p style="margin-top: 15px; color: #666;">获取所有历史加工记录，返回JSON格式数据</p>
+      <span class="endpoint">/api/processing</span>
+      <p style="margin-top: 15px; color: #666;">获取历史加工记录列表，支持分页查询</p>
+      
+      <h3>查询参数：</h3>
+      <div class="params">
+        <div class="param-item">
+          <span class="param-name">page</span>
+          <span class="param-desc">页码，从1开始（默认：1）</span>
+        </div>
+        <div class="param-item">
+          <span class="param-name">size</span>
+          <span class="param-desc">每页数量，最大100（默认：20）</span>
+        </div>
+      </div>
       
       <h3>请求示例：</h3>
       <div class="example">
-        <strong>浏览器访问：</strong><br>
-        <code>http://localhost:8080/api/processing?action=listJson</code>
-      </div>
-      
-      <div class="example">
-        <strong>JavaScript (fetch)：</strong>
-        <pre>fetch('http://localhost:8080/api/processing?action=listJson')
+        <strong>获取第一页（20条）：</strong>
+        <pre>fetch('http://localhost:8080/api/processing?page=1&size=20')
   .then(res => res.json())
   .then(data => console.log(data));</pre>
       </div>
-
+      
       <div class="example">
         <strong>curl命令：</strong>
-        <pre>curl "http://localhost:8080/api/processing?action=listJson"</pre>
+        <pre>curl "http://localhost:8080/api/processing?page=1&size=20"</pre>
       </div>
 
       <h3>返回数据格式：</h3>
       <pre>{
   "ok": true,
-  "data": [
-    {
-      "id": 1,
-      "customerName": "客户A",
-      "farmName": "农场B",
-      "fruitName": "苹果",
-      "status": "已完成",
-      "startTime": "2025-11-08 11:40",
-      "endTime": "2025-11-11 11:40",
-      "weight": 123,
-      "count": 123,
-      "productType": "苹果",
-      "totalWeight": 123
+  "data": {
+    "data": [
+      {
+        "id": 1,
+        "customerName": "客户A",
+        "farmName": "农场B",
+        "fruitName": "苹果",
+        "status": "已完成",
+        "startTime": "2025-11-08 11:40",
+        "endTime": "2025-11-11 11:40",
+        "weight": 123,
+        "count": 123,
+        "productType": "苹果",
+        "totalWeight": 123
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "size": 20,
+      "total": 100,
+      "totalPages": 5
     }
-  ]
+  }
 }</pre>
     </div>
 
-    <h2>2️⃣ 添加新的加工记录</h2>
+    <div class="note" style="margin-top: 20px;">
+      <strong>💡 兼容旧版本：</strong> 仍支持 <code>GET /api/processing?action=listJson</code> 获取所有数据（无分页）
+    </div>
+
+    <h2>2️⃣ 创建新的加工记录（RESTful 风格）</h2>
     <div class="api-item">
       <span class="method">POST</span>
-      <span class="endpoint">/api/processing?action=insert</span>
-      <p style="margin-top: 15px; color: #666;">添加一条新的历史加工记录</p>
+      <span class="endpoint">/api/processing</span>
+      <p style="margin-top: 15px; color: #666;">创建一条新的历史加工记录，支持 JSON 请求体</p>
       
-      <h3>请求参数：</h3>
+      <h3>请求参数（JSON Body 或 Query String）：</h3>
       <div class="params">
         <div class="param-item">
           <span class="param-name">startTime</span>
@@ -152,73 +171,126 @@ export class ApiDocumentation {
         </div>
       </div>
 
-      <h3>请求示例：</h3>
+      <h3>请求示例（JSON Body，推荐）：</h3>
       <div class="example">
         <strong>JavaScript (fetch)：</strong>
-        <pre>const params = new URLSearchParams({
-  action: 'insert',
-  startTime: '2025-11-08T11:40',
-  endTime: '2025-11-11T11:40',
-  fruitName: '苹果',
-  weight: '123',
-  customerName: '客户A',
-  farmName: '农场B',
-  status: '已完成',
-  count: '123'
-});
-
-fetch('http://localhost:8080/api/processing?' + params, {
-  method: 'POST'
+        <pre>fetch('http://localhost:8080/api/processing', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    startTime: '2025-11-08T11:40',
+    endTime: '2025-11-11T11:40',
+    fruitName: '苹果',
+    weight: 123,
+    customerName: '客户A',
+    farmName: '农场B',
+    status: '已完成',
+    count: 123
+  })
 })
   .then(res => res.json())
   .then(data => console.log('添加成功:', data));</pre>
       </div>
 
       <div class="example">
-        <strong>curl命令：</strong>
-        <pre>curl -X POST "http://localhost:8080/api/processing?action=insert&startTime=2025-11-08T11:40&endTime=2025-11-11T11:40&fruitName=苹果&weight=123&customerName=客户A&farmName=农场B&status=已完成&count=123"</pre>
+        <strong>curl命令（JSON）：</strong>
+        <pre>curl -X POST http://localhost:8080/api/processing \\
+  -H "Content-Type: application/json" \\
+  -d '{"startTime":"2025-11-08T11:40","endTime":"2025-11-11T11:40","fruitName":"苹果","weight":123,"customerName":"客户A","farmName":"农场B","status":"已完成","count":123}'</pre>
       </div>
     </div>
 
-    <h2>3️⃣ 更新加工记录</h2>
+    <div class="note" style="margin-top: 20px;">
+      <strong>💡 兼容旧版本：</strong> 仍支持 <code>POST /api/processing?action=insert&...</code> 通过 Query String 传参
+    </div>
+
+    <h2>3️⃣ 更新加工记录（RESTful 风格）</h2>
     <div class="api-item">
-      <span class="method">POST</span>
-      <span class="endpoint">/api/processing?action=update&id=[记录ID]</span>
+      <span class="method">PUT</span>
+      <span class="endpoint">/api/processing/:id</span>
       <p style="margin-top: 15px; color: #666;">更新指定ID的加工记录（只传要修改的字段）</p>
       
-      <h3>请求参数：</h3>
+      <h3>路径参数：</h3>
       <div class="params">
         <div class="param-item">
           <span class="param-name">id</span>
           <span class="required">必填</span>
-          <span class="param-desc">记录ID（在URL中）</span>
+          <span class="param-desc">记录ID（在URL路径中）</span>
         </div>
+      </div>
+
+      <h3>请求参数（JSON Body，只传要修改的字段）：</h3>
+      <div class="params">
         <div class="param-item">
-          <span class="param-name">其他字段</span>
-          <span class="param-desc">可选，只传要修改的字段（customerName, farmName, fruitName, status, startTime, endTime, weight, count）</span>
+          <span class="param-name">customerName, farmName, fruitName, status, startTime, endTime, weight, count</span>
+          <span class="param-desc">可选，只传要修改的字段</span>
+        </div>
+      </div>
+
+      <h3>请求示例（JSON Body，推荐）：</h3>
+      <div class="example">
+        <strong>JavaScript (fetch)：</strong>
+        <pre>fetch('http://localhost:8080/api/processing/1', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    status: '已完成',
+    weight: 200
+  })
+})
+  .then(res => res.json())
+  .then(data => console.log('更新成功:', data));</pre>
+      </div>
+
+      <div class="example">
+        <strong>curl命令：</strong>
+        <pre>curl -X PUT http://localhost:8080/api/processing/1 \\
+  -H "Content-Type: application/json" \\
+  -d '{"status":"已完成","weight":200}'</pre>
+      </div>
+    </div>
+
+    <div class="note" style="margin-top: 20px;">
+      <strong>💡 兼容旧版本：</strong> 仍支持 <code>POST /api/processing?action=update&id=1&...</code>
+    </div>
+
+    <h2>4️⃣ 删除加工记录（RESTful 风格）</h2>
+    <div class="api-item">
+      <span class="method">DELETE</span>
+      <span class="endpoint">/api/processing/:id</span>
+      <p style="margin-top: 15px; color: #666;">删除指定ID的加工记录</p>
+      
+      <h3>路径参数：</h3>
+      <div class="params">
+        <div class="param-item">
+          <span class="param-name">id</span>
+          <span class="required">必填</span>
+          <span class="param-desc">记录ID（在URL路径中）</span>
         </div>
       </div>
 
       <h3>请求示例：</h3>
-      <pre>fetch('http://localhost:8080/api/processing?action=update&id=1&status=已完成&weight=200', {
-  method: 'POST'
-})
-  .then(res => res.json())
-  .then(data => console.log('更新成功:', data));</pre>
-    </div>
-
-    <h2>4️⃣ 删除加工记录</h2>
-    <div class="api-item">
-      <span class="method">POST</span>
-      <span class="endpoint">/api/processing?action=delete&id=[记录ID]</span>
-      <p style="margin-top: 15px; color: #666;">删除指定ID的加工记录</p>
-      
-      <h3>请求示例：</h3>
-      <pre>fetch('http://localhost:8080/api/processing?action=delete&id=1', {
-  method: 'POST'
+      <div class="example">
+        <strong>JavaScript (fetch)：</strong>
+        <pre>fetch('http://localhost:8080/api/processing/1', {
+  method: 'DELETE'
 })
   .then(res => res.json())
   .then(data => console.log('删除成功:', data));</pre>
+      </div>
+
+      <div class="example">
+        <strong>curl命令：</strong>
+        <pre>curl -X DELETE http://localhost:8080/api/processing/1</pre>
+      </div>
+    </div>
+
+    <div class="note" style="margin-top: 20px;">
+      <strong>💡 兼容旧版本：</strong> 仍支持 <code>POST /api/processing?action=delete&id=1</code>
     </div>
 
     <h2>5️⃣ 检查服务器状态</h2>
@@ -239,6 +311,10 @@ fetch('http://localhost:8080/api/processing?' + params, {
         <li>失败时返回 <code>{"ok": false, "message": "错误信息"}</code></li>
         <li>时间格式支持：<code>2025-11-08T11:40</code> 或 <code>2025-11-08 11:40:00</code></li>
         <li>开始时间不能晚于结束时间</li>
+        <li><strong>RESTful 风格：</strong> 推荐使用 GET/POST/PUT/DELETE 方法，更符合标准</li>
+        <li><strong>分页：</strong> GET /api/processing 支持 page 和 size 参数，默认每页20条，最多100条</li>
+        <li><strong>JSON Body：</strong> POST/PUT 请求支持 JSON 格式的请求体，Content-Type: application/json</li>
+        <li><strong>向后兼容：</strong> 旧版本的 action 参数方式仍然支持</li>
       </ul>
     </div>
   </div>
@@ -248,4 +324,5 @@ fetch('http://localhost:8080/api/processing?' + params, {
     return HttpResponseUtils.buildHtmlResponse(htmlContent);
   }
 }
+
 

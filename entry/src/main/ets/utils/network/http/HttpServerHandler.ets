@@ -2,8 +2,8 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { util } from '@kit.ArkTS';
 import { Context } from '@kit.AbilityKit';
 import { HttpRequestHandler } from './HttpServer';
-import { getDefaultStoragePath } from '../FileUtils';
-import { QueryStringUtils } from '../helpers/QueryStringUtils';
+import { getDefaultStoragePath } from '../../FileUtils';
+import { QueryStringUtils } from '../../helpers/QueryStringUtils';
 import { ApiDocumentation } from './docs/ApiDocumentation';
 import { ResponseHandler } from './handlers/ResponseHandler';
 import { ProcessingApiHandler } from './handlers/ProcessingApiHandler';
@@ -101,8 +101,21 @@ export class HttpServerHandler {
         // API文档页面
         return ApiDocumentation.getApiDocsResponse();
       }
-      if (path.startsWith('/api/')) {
-        return await ProcessingApiHandler.handle(rawPath);
+      if (path.startsWith('/api/processing')) {
+        // 解析 HTTP 方法
+        const method = pathParts[0] || 'GET';
+        
+        // 提取请求体（POST/PUT 请求）
+        let requestBody: string | undefined = undefined;
+        if (method === 'POST' || method === 'PUT') {
+          // 查找空行后的请求体
+          const emptyLineIndex = rawRequest.indexOf('\r\n\r\n');
+          if (emptyLineIndex >= 0) {
+            requestBody = rawRequest.substring(emptyLineIndex + 4);
+          }
+        }
+        
+        return await ProcessingApiHandler.handle(method, rawPath, requestBody);
       }
       return ResponseHandler.getNotFoundResponse();
       } catch (error) {

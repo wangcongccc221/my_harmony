@@ -1,4 +1,4 @@
-import { HttpResponseUtils } from '../../helpers/HttpResponseUtils';
+import { HttpResponseUtils } from '../../../helpers/HttpResponseUtils';
 
 /**
  * 状态响应数据接口

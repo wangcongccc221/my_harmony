@@ -2,7 +2,7 @@ import { socket } from '@kit.NetworkKit';
 import { util } from '@kit.ArkTS';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 // AppStorage 是全局可用的，无需导入
-import { TCP_CONNECTION_STATUS } from '../../constants/TopBarKeys';
+import { TCP_CONNECTION_STATUS } from '../../../constants/TopBarKeys';
 
 const DOMAIN = 0x0000;
 

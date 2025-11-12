@@ -1,8 +1,8 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { Context } from '@kit.AbilityKit';
 import { util } from '@kit.ArkTS';
-import { HttpResponseUtils } from '../../helpers/HttpResponseUtils';
-import { Base64Utils } from '../utils/Base64Utils';
+import { HttpResponseUtils } from '../../../helpers/HttpResponseUtils';
+import { Base64Utils } from '../../utils/Base64Utils';
 
 const DOMAIN = 0x0000;
 

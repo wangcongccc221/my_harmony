@@ -1,10 +1,10 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { QueryStringUtils } from '../../helpers/QueryStringUtils';
-import { DateValidationUtils } from '../../helpers/DateValidationUtils';
-import { HttpResponseUtils } from '../../helpers/HttpResponseUtils';
-import { DatabaseManager } from '../../../database/DatabaseManager';
-import { ProcessingHistory } from '../../../database/models/ProcessingHistory';
-import { ProcessingHistoryData } from '../../../database/types';
+import { QueryStringUtils } from '../../../helpers/QueryStringUtils';
+import { DateValidationUtils } from '../../../helpers/DateValidationUtils';
+import { HttpResponseUtils } from '../../../helpers/HttpResponseUtils';
+import { DatabaseManager } from '../../../../database/DatabaseManager';
+import { ProcessingHistory } from '../../../../database/models/ProcessingHistory';
+import { ProcessingHistoryData } from '../../../../database/types';
 
 const DOMAIN = 0x0000;
 
@@ -37,17 +37,26 @@ class ProcessingRow {
 }
 
 /**
- * 默认API响应数据接口
+ * 分页信息接口
  */
-interface DefaultApiResponseData {
-  path: string;
-  message: string;
-  data: null;
+interface PaginationInfo {
+  page: number;
+  size: number;
+  total: number;
+  totalPages: number;
+}
+
+/**
+ * 分页响应接口
+ */
+interface PaginatedResponse {
+  data: ProcessingRow[];
+  pagination: PaginationInfo;
 }
 
 /**
  * 加工历史API处理器
- * 负责处理 /api/processing 相关的所有请求
+ * 负责处理 /api/processing 相关的所有请求（RESTful 风格）
  */
 export class ProcessingApiHandler {
   /**
@@ -71,7 +80,42 @@ export class ProcessingApiHandler {
   }
 
   /**
-   * 处理列表查询请求
+   * 处理列表查询请求（支持分页）
+   */
+  private static handleList(params: Record<string, string>): string {
+    try {
+      const allRows = ProcessingApiHandler.getAllRecordsAsRows();
+      
+      // 分页参数
+      const page = Math.max(1, Number(params['page'] || '1'));
+      const size = Math.max(1, Math.min(100, Number(params['size'] || '20'))); // 限制每页最多100条
+      
+      const total = allRows.length;
+      const totalPages = Math.ceil(total / size);
+      const startIndex = (page - 1) * size;
+      const endIndex = startIndex + size;
+      const paginatedData = allRows.slice(startIndex, endIndex);
+      
+      const paginationInfo: PaginationInfo = {
+        page: page,
+        size: size,
+        total: total,
+        totalPages: totalPages
+      };
+      const response: PaginatedResponse = {
+        data: paginatedData,
+        pagination: paginationInfo
+      };
+      
+      return HttpResponseUtils.buildSuccessResponse(response);
+    } catch (error) {
+      hilog.error(DOMAIN, 'ProcessingApiHandler', `从数据库查询失败: ${JSON.stringify(error)}`);
+      return HttpResponseUtils.buildErrorResponse('查询数据失败', 500);
+    }
+  }
+
+  /**
+   * 处理列表查询请求（兼容旧版本，无分页）
    */
   private static handleListJson(): string {
     try {
@@ -211,37 +255,154 @@ export class ProcessingApiHandler {
   }
 
   /**
-   * 处理加工历史API请求
-   * @param path 请求路径，如 /api/processing?action=listJson
+   * 从请求体中解析 JSON
    */
-  static async handle(path: string): Promise<string> {
+  private static parseRequestBody(body: string): Record<string, string> {
+    const params: Record<string, string> = {};
+    if (!body || body.trim().length === 0) {
+      return params;
+    }
+    
+    try {
+      const json: Record<string, ESObject> = JSON.parse(body) as Record<string, ESObject>;
+      const keys = Object.keys(json);
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
+        const value: ESObject = json[key];
+        if (value !== null && value !== undefined) {
+          params[key] = String(value);
+        }
+      }
+    } catch (e) {
+      // 如果不是 JSON，尝试解析为表单格式
+      hilog.warn(DOMAIN, 'ProcessingApiHandler', `JSON解析失败，尝试表单格式: ${JSON.stringify(e)}`);
+      const pairs = body.split('&');
+      for (let i = 0; i < pairs.length; i++) {
+        const kv = pairs[i].split('=');
+        const k = decodeURIComponent(kv[0] || '');
+        const v = decodeURIComponent(kv[1] || '');
+        if (k) {
+          params[k] = v;
+        }
+      }
+    }
+    return params;
+  }
+
+  /**
+   * 合并查询参数和请求体参数（请求体优先级更高）
+   */
+  private static mergeParams(queryParams: Record<string, string>, bodyParams: Record<string, string>): Record<string, string> {
+    const merged: Record<string, string> = {};
+    // 先添加查询参数
+    const queryKeys = Object.keys(queryParams);
+    for (let i = 0; i < queryKeys.length; i++) {
+      merged[queryKeys[i]] = queryParams[queryKeys[i]];
+    }
+    // 再添加请求体参数（覆盖查询参数）
+    const bodyKeys = Object.keys(bodyParams);
+    for (let i = 0; i < bodyKeys.length; i++) {
+      merged[bodyKeys[i]] = bodyParams[bodyKeys[i]];
+    }
+    return merged;
+  }
+
+  /**
+   * 从路径中提取 ID（如 /api/processing/123）
+   */
+  private static extractIdFromPath(path: string): number | null {
+    const parts = path.split('/');
+    if (parts.length >= 4 && parts[3]) {
+      const id = Number(parts[3]);
+      if (!isNaN(id) && id > 0) {
+        return id;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * 处理加工历史API请求（RESTful 风格）
+   * @param method HTTP 方法（GET, POST, PUT, DELETE）
+   * @param path 请求路径，如 /api/processing 或 /api/processing/123
+   * @param body 请求体（POST/PUT 请求）
+   */
+  static async handle(method: string, path: string, body?: string): Promise<string> {
     if (path.indexOf('/api/processing') !== 0) {
-      // 不是加工历史API，返回默认响应
-      const defaultResponseData: DefaultApiResponseData = {
-        path: path,
-        message: 'API endpoint',
-        data: null
-      };
-      return HttpResponseUtils.buildSuccessResponse(defaultResponseData);
+      return HttpResponseUtils.buildErrorResponse('无效的API路径', 404);
     }
 
     try {
       const pathAndQuery = QueryStringUtils.parsePathAndQuery(path);
-      const params = pathAndQuery.params;
-      const action = params['action'] || 'listJson';
-
-      switch (action) {
-        case 'listJson':
-          return ProcessingApiHandler.handleListJson();
-        case 'insert':
-          return ProcessingApiHandler.handleInsert(params);
-        case 'update':
-          return ProcessingApiHandler.handleUpdate(params);
-        case 'delete':
-          return ProcessingApiHandler.handleDelete(params);
-        default:
-          return HttpResponseUtils.buildErrorResponse(`未知的action: ${action}`, 400);
+      const queryParams = pathAndQuery.params;
+      const cleanPath = pathAndQuery.path;
+      
+      // 解析请求体（如果有）
+      const emptyBodyParams: Record<string, string> = {};
+      const bodyParams = body ? ProcessingApiHandler.parseRequestBody(body) : emptyBodyParams;
+      const params = ProcessingApiHandler.mergeParams(queryParams, bodyParams);
+      
+      // 从路径中提取 ID（如 /api/processing/123）
+      const pathId = ProcessingApiHandler.extractIdFromPath(cleanPath);
+      if (pathId !== null) {
+        params['id'] = String(pathId);
       }
+
+      // RESTful 风格路由
+      const upperMethod = method.toUpperCase();
+      
+      // GET /api/processing - 获取列表（支持分页）
+      if (upperMethod === 'GET' && cleanPath === '/api/processing') {
+        // 兼容旧版本：如果 action=listJson，使用旧接口
+        if (params['action'] === 'listJson') {
+          return ProcessingApiHandler.handleListJson();
+        }
+        return ProcessingApiHandler.handleList(params);
+      }
+      
+      // GET /api/processing/:id - 获取单条记录（暂不支持，返回404）
+      if (upperMethod === 'GET' && pathId !== null) {
+        return HttpResponseUtils.buildErrorResponse('获取单条记录接口暂未实现', 404);
+      }
+      
+      // POST /api/processing - 创建记录
+      if (upperMethod === 'POST' && cleanPath === '/api/processing') {
+        // 兼容旧版本：如果 action=insert，使用旧接口
+        if (params['action'] === 'insert') {
+          return ProcessingApiHandler.handleInsert(params);
+        }
+        return ProcessingApiHandler.handleInsert(params);
+      }
+      
+      // PUT /api/processing/:id - 更新记录
+      if (upperMethod === 'PUT' && pathId !== null) {
+        return ProcessingApiHandler.handleUpdate(params);
+      }
+      
+      // DELETE /api/processing/:id - 删除记录
+      if (upperMethod === 'DELETE' && pathId !== null) {
+        return ProcessingApiHandler.handleDelete(params);
+      }
+      
+      // 兼容旧版本：通过 action 参数
+      if (params['action']) {
+        const action = params['action'];
+        switch (action) {
+          case 'listJson':
+            return ProcessingApiHandler.handleListJson();
+          case 'insert':
+            return ProcessingApiHandler.handleInsert(params);
+          case 'update':
+            return ProcessingApiHandler.handleUpdate(params);
+          case 'delete':
+            return ProcessingApiHandler.handleDelete(params);
+          default:
+            return HttpResponseUtils.buildErrorResponse(`未知的action: ${action}`, 400);
+        }
+      }
+      
+      // 方法不允许
+      return HttpResponseUtils.buildErrorResponse(`方法 ${method} 不允许在此路径使用`, 405);
     } catch (e) {
       hilog.error(DOMAIN, 'ProcessingApiHandler', `处理API请求失败: ${JSON.stringify(e)}`);
       return HttpResponseUtils.buildErrorResponse('服务器内部错误', 500);

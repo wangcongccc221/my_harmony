@@ -8,8 +8,8 @@
  */
 
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { TCPServer } from './TCPServer';
-import { TcpClient, createTcpClient } from './TcpClient';
+import { TCPServer } from './tcp/TCPServer';
+import { TcpClient, createTcpClient } from './tcp/TcpClient';
 
 const DOMAIN = 0x0000;
 
