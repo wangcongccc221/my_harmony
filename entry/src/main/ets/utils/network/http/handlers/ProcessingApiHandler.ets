@@ -156,10 +156,10 @@ export class ProcessingApiHandler {
       return HttpResponseUtils.buildErrorResponse(dateValidation.error || '日期验证失败', 400);
     }
 
-    // 保存到数据库
+    // 保存到数据库（使用便捷方法）
     try {
       const dbManager = DatabaseManager.getInstance();
-      const historyRecord = new ProcessingHistory(
+      dbManager.addProcessingHistory(
         customerName,
         farmName,
         fruitName,
@@ -169,8 +169,6 @@ export class ProcessingApiHandler {
         weight,
         count
       );
-
-      dbManager.createProcessingHistory(historyRecord);
       const data = ProcessingApiHandler.getAllRecordsAsRows();
       return HttpResponseUtils.buildSuccessResponse(data, '添加成功');
     } catch (error) {

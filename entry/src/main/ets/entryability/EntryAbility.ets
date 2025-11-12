@@ -16,6 +16,7 @@ import { relationalStore } from '@kit.ArkData';
 import { DatabaseManager } from '../database/DatabaseManager';
 import { User, TestModel, ProcessingHistory } from '../database';
 import { UserData, TestData, ProcessingHistoryData } from '../database/types';
+import { runDatabaseDemo } from '../database/examples/DatabaseDemo';
 
 const DOMAIN = 0x0000;
 
@@ -72,7 +73,7 @@ export default class EntryAbility extends UIAbility {
       
       // 初始化数据库表结构
       const dbManager = DatabaseManager.getInstance();
-      await dbManager.initDatabase();
+      await dbManager.initDatabase();//数据库初始化 生命周期
       hilog.info(DOMAIN, 'EntryAbility', '数据库表结构初始化完成');
       console.info('✅ 数据库表结构初始化完成');
       
@@ -237,6 +238,9 @@ export default class EntryAbility extends UIAbility {
       }
       console.info('📋 ========== 历史加工数据测试完成 ==========');
       console.info('📊 ========== 数据库查询测试完成 ==========');
+
+      // 运行数据库演示（包含 CRUD 与事务测试日志）
+      await runDatabaseDemo(); //测试测试
     } catch (e) {
       hilog.error(DOMAIN, 'EntryAbility', `数据库初始化失败: ${JSON.stringify(e)}`);
       console.error('❌ 数据库初始化失败:', e);

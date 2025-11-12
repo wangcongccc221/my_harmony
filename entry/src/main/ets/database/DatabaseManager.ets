@@ -21,7 +21,7 @@ export class DatabaseManager {
   // 单例实例，确保全局只存在一个数据库管理器
   private static instance: DatabaseManager | null = null;
   // ORM 实例（线程安全由底层保证）
-  private db = GetIBestORM();
+  private db = GetIBestORM(); //初始化方式：在EntryAbility.ets中调用IBestORMInit()初始化  
 
   private constructor() {
     // 私有构造函数，实现单例模式
@@ -243,40 +243,72 @@ export class DatabaseManager {
 
   /**
    * 便捷新增：一行创建用户
+   * 封装使用：dbManager.addUser('张三', 25)  用户表
    */
-  public addUser(params: CreateUserParams): User {
-    const name: string = params.name;
-    const age: number = params.age;
+  public addUser(name: string, age: number): User {
     const user = new User(name, age);
     return this.createUser(user);
   }
 
   /**
    * 便捷新增：一行创建测试记录
+   * @example dbManager.addTestRecord('标题', '描述', 10, 1)
    */
-  public addTestRecord(params: CreateTestRecordParams): TestModel {
-    const test = new TestModel(
-      params.title,
-      params.description,
-      params.count,
-      params.isEnabled
-    );
+  public addTestRecord(title: string, description?: string, count?: number, isEnabled?: number): TestModel {
+    const test = new TestModel(title, description, count, isEnabled);
     return this.createTestRecord(test);
   }
 
-  /**
-   * 便捷新增：一行创建历史加工记录
-   */
-  public addProcessingHistory(params: CreateProcessingHistoryParams): ProcessingHistory {
+   /**
+    * 支持直接将已定义好的 ProcessingHistory 实例插入数据库。
+    * 你可以先构造好 ProcessingHistory 对象，然后直接调用 insert 方法插入：
+    * @example
+    * // 方式1：用参数快速新增
+    * dbManager.addProcessingHistory(
+    *   '客户A',
+    *   '农场B',
+    *   '苹果',
+    *   '已完成',
+    *   '2025-11-08 11:40',
+    *   '2025-11-11 11:40',
+    *   123.5,
+    *   100
+    * );
+    *
+    * // 方式2：先定义对象，再传参插入
+    * const history = new ProcessingHistory(
+    *   '客户A',
+    *   '农场B',
+    *   '苹果',
+    *   '已完成',
+    *   '2025-11-08 11:40',
+    *   '2025-11-11 11:40',
+    *   123.5,
+    *   100
+    * );
+    * dbManager.createProcessingHistory(history);
+    *
+    * // 注意：createProcessingHistory(history) 支持传入已定义好的对象，直接插入数据库。
+    */
+  public addProcessingHistory(
+    customerName: string,
+    farmName: string,
+    fruitName: string,
+    status: string,
+    startTime: string,
+    endTime: string | undefined,
+    weight: number,
+    quantity: number
+  ): ProcessingHistory {
     const history = new ProcessingHistory(
-      params.customerName,
-      params.farmName,
-      params.fruitName,
-      params.status,
-      params.startTime,
-      params.endTime,
-      params.weight,
-      params.quantity
+      customerName,
+      farmName,
+      fruitName,
+      status,
+      startTime,
+      endTime,
+      weight,
+      quantity
     );
     return this.createProcessingHistory(history);
   }

@@ -338,7 +338,7 @@ export struct TopStatusBar {
             }
           }
         })
-        .margin({ right: '2%' })
+        .margin({ left: 15, right: 8 })
 
         // 头像和用户信息
         Row() {
@@ -372,11 +372,12 @@ export struct TopStatusBar {
         .alignItems(VerticalAlign.Center)
       }
       .alignItems(VerticalAlign.Center)
-      .margin({ right: '1%' })
+      .margin({ right: 8 })
 
       Text(this.currentTime)
         .fontSize(16)  // 调大到16px
         .fontColor(this.getCurrentTheme().subTextColor)
+        .margin({ right: 8 })
 
       // 右上角窗口控制（使用 iBest 方形按钮包裹 'X'）
       Row() {
@@ -385,7 +386,7 @@ export struct TopStatusBar {
           type: 'default',
           onBtnClick: () => { this.minimizeApp() }
         })
-          .margin({ right: '0.6%' })
+          .margin({ right: 4 })
 
         IBestButton({
           text: 'X',
@@ -393,13 +394,12 @@ export struct TopStatusBar {
           onBtnClick: () => { this.closeApp() }
         })
       }
-      .margin({ left: '1%' })
 
       // （对话框改为系统级 CustomDialogController 实现）
     }
     .width('100%')
     .height('8%')
-    .padding({ left: '0.5%', right: '1%' })
+    .padding({ left: '0.5%', right: 8 })
     .backgroundColor(this.getCurrentTheme().surfaceColor)
     .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
   }
