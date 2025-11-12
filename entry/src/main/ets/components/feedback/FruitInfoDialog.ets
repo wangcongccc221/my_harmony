@@ -8,8 +8,6 @@ import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { DialogButtons } from '../ui/dialogs/DialogButtons'
 import { DialogHeader } from '../ui/dialogs/DialogHeader'
-import { RdbService, FruitInfoInsertParams, FruitInfoRow } from '../../db/RdbService'
-import { NumberUtils } from '../../utils/helpers/NumberUtils'
 import { FormInputField } from '../ui/forms/FormInputField'
 
 // 水果信息接口
@@ -22,6 +20,31 @@ interface FruitInfo {
   origin: string
   harvestDate: string
   quality: string
+}
+
+interface FruitInfoPayload {
+  lane: string;
+  level: string;
+  diameterMm: number;
+  weightG: number;
+  projectionAreaMm2: number;
+  densityKgPerM3: number;
+  volumeMm3: number;
+  brix: number;
+  color1Pct: number;
+  acidity: number;
+  color2Pct: number;
+  drynessPct: number;
+  color3Pct: number;
+  maturityPct: number;
+  defectAreaMm2: number;
+  pulpColorPct: number;
+  defectCount: number;
+  outlet: string;
+  verticalAxis: number;
+  horizontalRatio: number;
+  flatEllipticalRatioMm: number;
+  detectionTime: string;
 }
 
 @Component
@@ -82,7 +105,7 @@ export struct FruitInfoDialog {
       const lane = `lane-${this.selectedLaneIndex + 1}`
       
       // 构建数据库插入参数
-      const insertParams: FruitInfoInsertParams = {
+      const insertParams: FruitInfoPayload = {
         lane: lane,
         level: this.levelText || '',
         diameterMm: this.diameterMm,
@@ -108,9 +131,8 @@ export struct FruitInfoDialog {
         // processingId 可选，如果需要关联加工批次，可以在这里设置
       }
       
-      // 保存到数据库（使用upsert：存在则更新，不存在则插入）
-      const id = await RdbService.upsertFruitInfo(insertParams)
-      console.log('水果信息已保存到数据库，ID:', id, '通道:', lane)
+      // 当前版本不再保存到数据库，直接记录日志
+      console.log('水果信息已提交', JSON.stringify(insertParams))
       
       // 调用回调
       if (this.onConfirm) {
@@ -141,35 +163,9 @@ export struct FruitInfoDialog {
   // 加载指定通道的数据并填充表单
   private async loadLaneData(lane: string): Promise<void> {
     try {
-      const data = await RdbService.queryFruitInfoByLane(lane)
-      if (data) {
-        // 如果该通道有数据，填充到表单
-        this.levelText = data.level || ''
-        this.diameterMm = data.diameterMm || 0
-        this.weightG = data.weightG || 0
-        this.projectionAreaMm2 = data.projectionAreaMm2 || 0
-        this.densityKgPerM3 = data.densityKgPerM3 || 0
-        this.volumeMm3 = data.volumeMm3 || 0
-        this.brix = data.brix || 0
-        this.color1Pct = data.color1Pct || 0
-        this.acidity = data.acidity || 0
-        this.color2Pct = data.color2Pct || 0
-        this.drynessPct = data.drynessPct || 0
-        this.color3Pct = data.color3Pct || 0
-        this.maturityPct = data.maturityPct || 0
-        this.defectAreaMm2 = data.defectAreaMm2 || 0
-        this.pulpColorPct = data.pulpColorPct || 0
-        this.defectCount = data.defectCount || 0
-        this.outletText = data.outlet || ''
-        this.verticalAxis = data.verticalAxis || 0
-        this.horizontalRatio = data.horizontalRatio || 0
-        this.flatEllipticalRatioMm = data.flatEllipticalRatioMm || 0
-        console.log(`已加载通道 ${lane} 的数据`)
-      } else {
-        // 如果该通道没有数据，清空表单
-        this.clearFormData()
-        console.log(`通道 ${lane} 没有数据，表单已清空`)
-      }
+      // 目前不再从数据库加载历史数据，直接清空表单等待输入
+      this.clearFormData()
+      console.log(`通道 ${lane} 无持久化数据，已重置表单`)
     } catch (error) {
       console.error(`加载通道 ${lane} 数据失败:`, error)
       // 发生错误时也清空表单

@@ -26,7 +26,7 @@ import { DragData as GridDragData, GRID_DRAG_DATA_KEY, GRID_DRAG_ACTIVE_KEY } fr
 // 导入模块化的拖拽管理器
 import { DragManager, DragData as ModuleDragData } from '../../utils/ui/DragManager'
 import { DragHandlers } from '../../utils/ui/DragHandlers'
-import { GlobalCardDataManager } from '../../utils/GlobalCardDataManager'
+import { GlobalCardDataManager } from '../../utils/managers/GlobalCardDataManager'
 
 import { WaveCard } from '../charts/WaveCard'
 

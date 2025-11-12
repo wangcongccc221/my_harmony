@@ -2,7 +2,7 @@
  * 全局卡片数据管理器
  * 用于管理所有卡片的数据，避免页面切换时数据丢失
  */
-import { ThreeLayerCardData } from '../components/cards/ThreeLayerCard'
+import { ThreeLayerCardData, FirstLayerData, SecondLayerData, ThirdLayerData } from '../../components/ThreeLayerCard/types'
 
 export class GlobalCardDataManager {
   private static instance: GlobalCardDataManager | null = null
@@ -65,25 +65,29 @@ export class GlobalCardDataManager {
     const newCardDataList: ThreeLayerCardData[] = []
     
     for (let i = 0; i < this.CARD_COUNT; i++) {
-      newCardDataList.push({
+      const firstLayer: FirstLayerData = {
+        iconText: `${String.fromCharCode(65 + i)}`, // A, B, C, D...
+        title: `卡片${i + 1}`,
+        status: '正常'
+      }
+      const secondLayer: SecondLayerData = {
+        serialNumber: i + 1,
+        percent: (i % 2 === 0 ? 60 : 45),
+        value: `${Math.floor(Math.random() * 100)}`,
+        unit: 'kg'
+      }
+      const thirdLayer: ThirdLayerData = {
+        chartType: 'waveform',
+        chartData: [],
+        chartConfig: {} as Record<string, string | number>
+      }
+      const cardData: ThreeLayerCardData = {
         id: `card_${i}`,
-        firstLayer: {
-          iconText: `${String.fromCharCode(65 + i)}`, // A, B, C, D...
-          title: `卡片${i + 1}`,
-          status: '正常'
-        },
-        secondLayer: {
-          serialNumber: i + 1,
-          percent: (i % 2 === 0 ? 60 : 45),
-          value: `${Math.floor(Math.random() * 100)}`,
-          unit: 'kg'
-        },
-        thirdLayer: {
-          chartType: 'waveform',
-          chartData: [],
-          chartConfig: {}
-        }
-      })
+        firstLayer: firstLayer,
+        secondLayer: secondLayer,
+        thirdLayer: thirdLayer
+      }
+      newCardDataList.push(cardData)
     }
     
     // 保存到对应FSM状态的数据中
@@ -129,15 +133,16 @@ export class GlobalCardDataManager {
         currentData.splice(valueIndex, 1)
         
         // 更新卡片数据
+        const updatedThirdLayer: ThirdLayerData = {
+          chartType: card.thirdLayer.chartType,
+          chartData: currentData,
+          chartConfig: card.thirdLayer.chartConfig
+        }
         const updatedCard: ThreeLayerCardData = {
           id: card.id,
           firstLayer: card.firstLayer,
           secondLayer: card.secondLayer,
-          thirdLayer: {
-            chartType: card.thirdLayer.chartType,
-            chartData: currentData,
-            chartConfig: card.thirdLayer.chartConfig
-          }
+          thirdLayer: updatedThirdLayer
         }
         this.cardDataList[cardIndex] = JSON.parse(JSON.stringify(updatedCard))
         console.log(`从卡片${cardIndex + 1}删除值${value}的数据`)
@@ -170,31 +175,35 @@ export class GlobalCardDataManager {
     // 清空FSM1的数据
     for (let i = 0; i < this.fsmCardData['FSM1'].length; i++) {
       const card = this.fsmCardData['FSM1'][i]
-      this.fsmCardData['FSM1'][i] = {
+      const clearedThirdLayer: ThirdLayerData = {
+        chartType: 'waveform',
+        chartData: [],
+        chartConfig: {} as Record<string, string | number>
+      }
+      const clearedCard: ThreeLayerCardData = {
         id: card.id,
         firstLayer: card.firstLayer,
         secondLayer: card.secondLayer,
-        thirdLayer: {
-          chartType: 'waveform',
-          chartData: [],
-          chartConfig: {}
-        }
+        thirdLayer: clearedThirdLayer
       }
+      this.fsmCardData['FSM1'][i] = clearedCard
     }
     
     // 清空FSM2的数据
     for (let i = 0; i < this.fsmCardData['FSM2'].length; i++) {
       const card = this.fsmCardData['FSM2'][i]
-      this.fsmCardData['FSM2'][i] = {
+      const clearedThirdLayer: ThirdLayerData = {
+        chartType: 'waveform',
+        chartData: [],
+        chartConfig: {} as Record<string, string | number>
+      }
+      const clearedCard: ThreeLayerCardData = {
         id: card.id,
         firstLayer: card.firstLayer,
         secondLayer: card.secondLayer,
-        thirdLayer: {
-          chartType: 'waveform',
-          chartData: [],
-          chartConfig: {}
-        }
+        thirdLayer: clearedThirdLayer
       }
+      this.fsmCardData['FSM2'][i] = clearedCard
     }
     
     // 更新当前显示的卡片数据

@@ -35,6 +35,24 @@
       const res = await fetch(fullUrl(path), { cache: 'no-store' });
       return await res.json();
     }
+    // 格式化时间：将 ISO 格式转换为友好的显示格式
+    function formatDateTime(isoStr){
+      if(!isoStr) return '';
+      try{
+        // 处理格式：2025-11-08T11:40 或 2025-11-08T11:40:00
+        // 将 T 替换为空格，然后截取前16个字符（YYYY-MM-DD HH:mm）
+        return isoStr.replace('T', ' ').substring(0, 16);
+      }catch(e){
+        return isoStr;
+      }
+    }
+    // 转义HTML，防止XSS攻击
+    function escapeHtml(text){
+      if(text == null) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
     async function loadList(){
       try{
         const json = await api('/api/processing?action=listJson');
@@ -45,12 +63,12 @@
             const tr = document.createElement('tr');
             tr.innerHTML = `
               <td>${idx + 1}</td>
-              <td>${r.customerName||''}</td>
-              <td>${r.farmName||''}</td>
-              <td>${r.fruitName||r.productType||''}</td>
-              <td>${r.status||''}</td>
-              <td>${r.startTime||''}</td>
-              <td>${r.endTime||''}</td>
+              <td>${escapeHtml(r.customerName||'')}</td>
+              <td>${escapeHtml(r.farmName||'')}</td>
+              <td>${escapeHtml(r.fruitName||r.productType||'')}</td>
+              <td>${escapeHtml(r.status||'')}</td>
+              <td>${formatDateTime(r.startTime)}</td>
+              <td>${formatDateTime(r.endTime)}</td>
               <td>${r.weight!=null?r.weight:(r.totalWeight||'')}</td>
               <td>${r.count!=null?r.count:''}</td>
               <td class="ops"><button onclick="onUpdate(${r.id})">更新</button><button onclick="onDelete(${r.id})">删除</button></td>`;
@@ -68,12 +86,12 @@
                   const tr = document.createElement('tr');
                   tr.innerHTML = `
                     <td>${idx + 1}</td>
-                    <td>${r.customerName||''}</td>
-                    <td>${r.farmName||''}</td>
-                    <td>${r.fruitName||r.productType||''}</td>
-                    <td>${r.status||''}</td>
-                    <td>${r.startTime||''}</td>
-                    <td>${r.endTime||''}</td>
+                    <td>${escapeHtml(r.customerName||'')}</td>
+                    <td>${escapeHtml(r.farmName||'')}</td>
+                    <td>${escapeHtml(r.fruitName||r.productType||'')}</td>
+                    <td>${escapeHtml(r.status||'')}</td>
+                    <td>${formatDateTime(r.startTime)}</td>
+                    <td>${formatDateTime(r.endTime)}</td>
                     <td>${r.weight!=null?r.weight:(r.totalWeight||'')}</td>
                     <td>${r.count!=null?r.count:''}</td>
                     <td class="ops"><button onclick="onUpdate(${r.id})">更新</button><button onclick="onDelete(${r.id})">删除</button></td>`;
@@ -94,12 +112,12 @@
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${idx + 1}</td>
-          <td>${r.customerName||''}</td>
-          <td>${r.farmName||''}</td>
-          <td>${r.fruitName||r.productType||''}</td>
-          <td>${r.status||''}</td>
-          <td>${r.startTime||''}</td>
-          <td>${r.endTime||''}</td>
+          <td>${escapeHtml(r.customerName||'')}</td>
+          <td>${escapeHtml(r.farmName||'')}</td>
+          <td>${escapeHtml(r.fruitName||r.productType||'')}</td>
+          <td>${escapeHtml(r.status||'')}</td>
+          <td>${formatDateTime(r.startTime)}</td>
+          <td>${formatDateTime(r.endTime)}</td>
           <td>${r.weight!=null?r.weight:(r.totalWeight||'')}</td>
           <td>${r.count!=null?r.count:''}</td>
           <td class="ops"><button onclick="onUpdate(${r.id})">更新</button><button onclick="onDelete(${r.id})">删除</button></td>`;

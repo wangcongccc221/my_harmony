@@ -774,7 +774,7 @@ export struct HomeContent {
     // 客户信息展示（顶部状态栏使用）
     // 若无有效网络图片链接，置空以显示默认占位图
     AppStorage.setOrCreate('CUSTOMER_LOGO_URL', '')
-    AppStorage.setOrCreate('FARM_NAME', '小熊生态农场')
+    AppStorage.setOrCreate('FARM_NAME', '一号农场')
     AppStorage.setOrCreate('FRUIT_TYPE', '赣南脐橙')
 
     // 启动时间更新定时器（每5秒更新一次，减少AppStorage更新频率，避免触发大量监听器）

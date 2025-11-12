@@ -1,7 +1,7 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { NetworkOptimizer } from './network/NetworkOptimizer';
-import { isHttpServerRunning, stopHttpServer } from './network/HttpServer';
-import { getTcpClientManager } from './network/TcpClientManager';
+import { NetworkOptimizer } from '../network/NetworkOptimizer';
+import { isHttpServerRunning, stopHttpServer } from '../network/HttpServer';
+import { getTcpClientManager } from '../network/TcpClientManager';
 
 const DOMAIN = 0x0000;
 

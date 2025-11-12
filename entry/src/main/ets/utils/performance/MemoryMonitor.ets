@@ -74,14 +74,7 @@ export class MemoryMonitor {
       
       // 模拟内存使用情况（实际项目中可以使用系统API）
       const memoryInfo = this.getMemoryInfo()
-      
-      console.log(`📊 [${timestamp}] 内存使用情况:`)
-      console.log(`   💾 应用内存: ${memoryInfo.appMemory}MB`)
-      console.log(`   🖥️  系统内存: ${memoryInfo.systemMemory}MB`)
-      console.log(`   📱 可用内存: ${memoryInfo.availableMemory}MB`)
-      console.log(`   📈 内存使用率: ${memoryInfo.usagePercent}%`)
-      console.log(`   ⚡ 性能状态: ${memoryInfo.performanceStatus}`)
-      
+  
       // 使用hilog输出到系统日志
       hilog.info(0x0000, 'MemoryMonitor', `Memory Usage - App: ${memoryInfo.appMemory}MB, System: ${memoryInfo.systemMemory}MB, Available: ${memoryInfo.availableMemory}MB`)
       

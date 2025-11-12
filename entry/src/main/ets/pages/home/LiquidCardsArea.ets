@@ -41,7 +41,7 @@ import { ThreeLayerCard, ThreeLayerCardData } from '../../components/cards/Three
 import { StorageKeys } from '../../utils/constants/StorageKeys'
 import { GRID_DRAG_ACTIVE_KEY } from '../../components/layout/DraggableGridTable'
 import { getCurrentCellDragData, CellDragData, CELL_DRAG_ACTIVE_KEY } from '../../components/ui/tables/SimpleDraggableCell'
-import { GlobalCardDataManager } from '../../utils/GlobalCardDataManager'
+import { GlobalCardDataManager } from '../../utils/managers/GlobalCardDataManager'
 import { CardDataManager } from '../../utils/ui/CardDataManager'
 import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
 import { HomeDataManager } from './core/HomeDataManager'

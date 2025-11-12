@@ -30,7 +30,7 @@ export struct LoadProgramDialog {
       description: '用于苹果自动分选的程序',
       version: 'v1.2.0',
       createDate: '2025-09-03',
-      lastModified: '2024-01-20'
+      lastModified: '2025-11-20'
     },
     {
       id: '2',
@@ -38,7 +38,7 @@ export struct LoadProgramDialog {
       description: '用于橙子自动分选的程序',
       version: 'v1.1.0',
       createDate: '2025-09-11',
-      lastModified: '2024-01-18'
+      lastModified: '2025-11-18'
     },
     {
       id: '3',
@@ -46,7 +46,7 @@ export struct LoadProgramDialog {
       description: '用于葡萄自动分选的程序',
       version: 'v1.0.5',
       createDate: '2025-09-18',
-      lastModified: '2024-01-15'
+      lastModified: '2025-11-15'
     },
     {
       id: '4',
@@ -54,7 +54,7 @@ export struct LoadProgramDialog {
       description: '支持多种水果混合分选的程序',
       version: 'v2.0.0',
       createDate: '2025-09-25',
-      lastModified: '2024-01-28'
+      lastModified: '2025-11-28'
     }
   ]
   

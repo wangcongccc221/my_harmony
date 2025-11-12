@@ -1,7 +1,7 @@
 // 定义接口
 import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
-import { MultiSeriesBarFeed } from '../../utils/MultiSeriesBarFeed'
+import { MultiSeriesBarFeed } from '../../utils/data/MultiSeriesBarFeed'
 
 interface ChartPadding {
   top: number;

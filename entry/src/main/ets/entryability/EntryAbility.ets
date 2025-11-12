@@ -1,16 +1,21 @@
 import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
+import common from '@ohos.app.ability.common';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { NetworkOptimizer } from '../utils/network/NetworkOptimizer';
 import { startHttpServer, stopHttpServer, isHttpServerRunning } from '../utils/network/HttpServer';
-import { RdbService } from '../db/RdbService';
 import { HttpServerHandler } from '../utils/network/HttpServerHandler';
 import { copyRawDirectoryAuto } from '../utils/FileUtils';
-import { AppCleanup } from '../utils/AppCleanup';
-import { ProcessingCurveFeed } from '../utils/ProcessingCurveFeed';
-import { ProcessingBarFeed } from '../utils/ProcessingBarFeed';
-import { MultiSeriesBarFeed } from '../utils/MultiSeriesBarFeed';
+import { AppCleanup } from '../utils/lifecycle/AppCleanup';
+import { ProcessingCurveFeed } from '../utils/data/ProcessingCurveFeed';
+import { ProcessingBarFeed } from '../utils/data/ProcessingBarFeed';
+import { MultiSeriesBarFeed } from '../utils/data/MultiSeriesBarFeed';
 import { WavePhaseManager } from '../utils/ui/WavePhaseManager';
+import { IBestORMInit } from '@ibestservices/ibest-orm';
+import { relationalStore } from '@kit.ArkData';
+import { DatabaseManager } from '../database/DatabaseManager';
+import { User, TestModel, ProcessingHistory } from '../database';
+import { UserData, TestData, ProcessingHistoryData } from '../database/types';
 
 const DOMAIN = 0x0000;
 
@@ -31,40 +36,6 @@ export default class EntryAbility extends UIAbility {
     // 初始化网络优化器
     this.initNetworkOptimizer();
     
-    // 初始化数据库（RDB）
-    try {
-      RdbService.init(this.context);
-      // 可选：预建演示表
-      RdbService.createUsersTable().then(() => {
-        hilog.info(DOMAIN, 'EntryAbility', 'RDB users table ready');
-      }, (e: object) => {
-        hilog.error(DOMAIN, 'EntryAbility', `RDB users table error: ${JSON.stringify(e)}`);
-      });
-      // 预建加工历史表并预热缓存
-      RdbService.createProcessingHistoryTable().then(() => {
-        hilog.info(DOMAIN, 'EntryAbility', 'RDB processing table ready');
-        // 触发一次缓存预热
-        try {
-          RdbService.queryAllProcessing().then((rows) => {
-            // 调用 Handler 的静态属性进行预热
-            // 这里无法直接写入私有属性，交给 Handler 自己在首次访问时加载
-            hilog.info(DOMAIN, 'EntryAbility', `processing preload size=${rows.length}`);
-          }, () => {});
-        } catch (_) {}
-      }, (e: object) => {
-        hilog.error(DOMAIN, 'EntryAbility', `RDB processing table error: ${JSON.stringify(e)}`);
-      });
-      // 创建水果信息表
-      RdbService.createFruitInfoTable().then(() => {
-        hilog.info(DOMAIN, 'EntryAbility', 'RDB fruit_info table created');
-      }, (e: object) => {
-        hilog.error(DOMAIN, 'EntryAbility', `RDB fruit_info table error: ${JSON.stringify(e)}`);
-      });
-    } catch (error) {
-      const err = error as object;
-      hilog.error(DOMAIN, 'EntryAbility', `RDB init failed: ${JSON.stringify(err)}`);
-    }
-
     // 启动HTTP服务器
     this.initHttpServer();
   }
@@ -86,9 +57,190 @@ export default class EntryAbility extends UIAbility {
     AppCleanup.shutdownAll();
   }
 
-  onWindowStageCreate(windowStage: window.WindowStage): void {
+  async onWindowStageCreate(windowStage: window.WindowStage): Promise<void> {
     // Main window is created, set main page for this ability
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
+
+    // 初始化 IBest-ORM 数据库（必须在加载页面之前完成）
+    try {
+      await IBestORMInit(this.context, {
+        name: "database.db",
+        securityLevel: relationalStore.SecurityLevel.S1
+      });
+      hilog.info(DOMAIN, 'EntryAbility', 'IBest-ORM 数据库初始化完成');
+      console.info('✅ IBest-ORM 数据库初始化完成');
+      
+      // 初始化数据库表结构
+      const dbManager = DatabaseManager.getInstance();
+      await dbManager.initDatabase();
+      hilog.info(DOMAIN, 'EntryAbility', '数据库表结构初始化完成');
+      console.info('✅ 数据库表结构初始化完成');
+      
+      // 测试数据库操作：查询现有数据
+      console.info('📊 ========== 开始数据库查询测试 ==========');
+      
+      // 测试用户数据
+      console.info('📋 ========== 用户数据测试 ==========');
+      const existingUsers: UserData[] = dbManager.getAllUsers();
+      console.info(`📋 当前数据库中的用户数量: ${existingUsers.length}`);
+      if (existingUsers.length > 0) {
+        console.info('📋 现有用户数据:');
+        existingUsers.forEach((user: UserData, index: number) => {
+          console.info(`  用户 ${index + 1}: ID=${user.id}, Name=${user.Name}, Age=${user.Age}`);
+        });
+      } else {
+        console.info('📋 用户表为空，正在创建测试数据...');
+        // 创建一些测试数据（使用实体对象传参）
+        dbManager.createUser(new User("测试用户1", 25));
+        dbManager.createUser(new User("测试用户2", 30));
+        dbManager.createUser(new User("测试用户3", 28));
+        console.info('✅ 测试数据创建完成');
+        
+        // 再次查询验证
+        const newUsers: UserData[] = dbManager.getAllUsers();
+        console.info(`📋 创建后的用户数量: ${newUsers.length}`);
+        console.info('📋 所有用户数据:');
+        newUsers.forEach((user: UserData, index: number) => {
+          console.info(`  用户 ${index + 1}: ID=${user.id}, Name=${user.Name}, Age=${user.Age}`);
+        });
+        
+        // 测试按年龄查询
+        const age25Users: UserData[] = dbManager.getUsersByAge(25);
+        console.info(`📋 年龄为25的用户数量: ${age25Users.length}`);
+        
+        // 测试按ID查询
+        if (newUsers.length > 0 && newUsers[0].id !== undefined) {
+          const firstUser: UserData | null = dbManager.getUserById(newUsers[0].id);
+          if (firstUser) {
+            console.info(`📋 通过ID查询到的用户: ID=${firstUser.id}, Name=${firstUser.Name}, Age=${firstUser.Age}`);
+          }
+        }
+      }
+      console.info('📋 ========== 用户数据测试完成 ==========');
+      
+      // 测试 TestModel 数据
+      console.info('📋 ========== 测试表数据测试 ==========');
+      const existingTestRecords: TestData[] = dbManager.getAllTestRecords();
+      console.info(`📋 当前数据库中的测试记录数量: ${existingTestRecords.length}`);
+      if (existingTestRecords.length > 0) {
+        console.info('📋 现有测试记录数据:');
+        existingTestRecords.forEach((record: TestData, index: number) => {
+          console.info(`  记录 ${index + 1}: ID=${record.id}, Title=${record.Title}, Count=${record.Count}`);
+        });
+      } else {
+        console.info('📋 测试表为空，正在创建测试数据...');
+        // 创建一些测试数据（使用实体对象传参）
+        dbManager.createTestRecord(new TestModel("测试标题1", "这是第一个测试描述", 10, 1));
+        dbManager.createTestRecord(new TestModel("测试标题2", "这是第二个测试描述", 20, 1));
+        dbManager.createTestRecord(new TestModel("测试标题3", "这是第三个测试描述", 30, 0));
+        console.info('✅ 测试数据创建完成');
+        
+        // 再次查询验证
+        const newTestRecords: TestData[] = dbManager.getAllTestRecords();
+        console.info(`📋 创建后的测试记录数量: ${newTestRecords.length}`);
+        console.info('📋 所有测试记录数据:');
+        newTestRecords.forEach((record: TestData, index: number) => {
+          console.info(`  记录 ${index + 1}: ID=${record.id}`);
+          console.info(`    标题: ${record.Title}`);
+          console.info(`    描述: ${record.Description}`);
+          console.info(`    数量: ${record.Count}`);
+          console.info(`    启用: ${record.IsEnabled}`);
+        });
+      }
+      console.info('📋 ========== 测试表数据测试完成 ==========');
+      
+      // 测试历史加工数据
+      console.info('📋 ========== 历史加工数据测试 ==========');
+      const existingHistory: ProcessingHistoryData[] = dbManager.getAllProcessingHistory();
+      console.info(`📋 当前数据库中的历史加工记录数量: ${existingHistory.length}`);
+      if (existingHistory.length > 0) {
+        console.info('📋 现有历史加工记录数据:');
+        existingHistory.forEach((record: ProcessingHistoryData, index: number) => {
+          console.info(`  记录 ${index + 1}: ID=${record.id}`);
+          console.info(`    客户名称: ${record.CustomerName}`);
+          console.info(`    农场名称: ${record.FarmName}`);
+          console.info(`    水果名称: ${record.FruitName}`);
+          console.info(`    状态: ${record.Status}`);
+          console.info(`    开始时间: ${record.StartTime}`);
+          console.info(`    结束时间: ${record.EndTime}`);
+          console.info(`    重量: ${record.Weight}`);
+          console.info(`    数量: ${record.Quantity}`);
+        });
+      } else {
+        console.info('📋 历史加工表为空，正在创建测试数据...');
+        // 创建一些测试数据
+        const now = new Date();
+        const startTime = new Date(now.getTime() - 2 * 60 * 60 * 1000); // 2小时前
+        const endTime = new Date(now.getTime() - 30 * 60 * 1000); // 30分钟前
+        
+        const formatDateTime = (date: Date): string => {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+          const seconds = String(date.getSeconds()).padStart(2, '0');
+          return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        };
+        
+        // 创建一些测试数据（使用实体对象传参）
+        dbManager.createProcessingHistory(new ProcessingHistory(
+          "客户A",
+          "阳光农场",
+          "苹果",
+          "已完成",
+          formatDateTime(startTime),
+          formatDateTime(endTime),
+          1500.5,
+          100
+        ));
+        
+        dbManager.createProcessingHistory(new ProcessingHistory(
+          "客户B",
+          "绿色农场",
+          "橙子",
+          "进行中",
+          formatDateTime(now),
+          "",  // 进行中的任务，结束时间为空字符串
+          800.0,
+          50
+        ));
+        
+        dbManager.createProcessingHistory(new ProcessingHistory(
+          "客户C",
+          "丰收农场",
+          "香蕉",
+          "已完成",
+          formatDateTime(new Date(now.getTime() - 5 * 60 * 60 * 1000)),
+          formatDateTime(new Date(now.getTime() - 3 * 60 * 60 * 1000)),
+          2000.0,
+          200
+        ));
+        
+        console.info('✅ 历史加工测试数据创建完成');
+        
+        // 再次查询验证
+        const newHistory: ProcessingHistoryData[] = dbManager.getAllProcessingHistory();
+        console.info(`📋 创建后的历史加工记录数量: ${newHistory.length}`);
+        console.info('📋 所有历史加工记录数据:');
+        newHistory.forEach((record: ProcessingHistoryData, index: number) => {
+          console.info(`  记录 ${index + 1}: ID=${record.id}`);
+          console.info(`    客户名称: ${record.CustomerName}`);
+          console.info(`    农场名称: ${record.FarmName}`);
+          console.info(`    水果名称: ${record.FruitName}`);
+          console.info(`    状态: ${record.Status}`);
+          console.info(`    开始时间: ${record.StartTime}`);
+          console.info(`    结束时间: ${record.EndTime}`);
+          console.info(`    重量: ${record.Weight}`);
+          console.info(`    数量: ${record.Quantity}`);
+        });
+      }
+      console.info('📋 ========== 历史加工数据测试完成 ==========');
+      console.info('📊 ========== 数据库查询测试完成 ==========');
+    } catch (e) {
+      hilog.error(DOMAIN, 'EntryAbility', `数据库初始化失败: ${JSON.stringify(e)}`);
+      console.error('❌ 数据库初始化失败:', e);
+    }
 
     windowStage.loadContent('pages/Home', async (err) => { // 修改进入的主页
       if (err.code) {

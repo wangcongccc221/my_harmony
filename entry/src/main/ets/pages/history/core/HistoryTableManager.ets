@@ -4,8 +4,10 @@
  * 已改为从数据库读取数据
  */
 
-import { RdbService, ProcessingRow, ProcessingInsertParams } from '../../../db/RdbService'
 import { DateValidationUtils } from '../../../utils/helpers/DateValidationUtils'
+import { DatabaseManager } from '../../../database/DatabaseManager'
+import { ProcessingHistory } from '../../../database/models/ProcessingHistory'
+import { ProcessingHistoryData } from '../../../database/types'
 
 // 表格数据接口定义
 export interface HistoryTableData {
@@ -62,6 +64,7 @@ export class HistoryTableManager {
   private static instance: HistoryTableManager
   private tableData: HistoryTableData[] = []
   private dataLoaded: boolean = false
+  private dbManager = DatabaseManager.getInstance()
 
   private constructor() {
     // 不再初始化默认数据，改为从数据库加载
@@ -79,43 +82,31 @@ export class HistoryTableManager {
    */
   public async loadDataFromDatabase(): Promise<void> {
     try {
-      const rows = await RdbService.queryAllProcessing()
-      // 转换数据库数据为HistoryTableData格式
-      this.tableData = rows.map((row: ProcessingRow): HistoryTableData => {
-        // 处理状态：如果数据库中没有status，根据endTime判断
-        let status: '已完成' | '进行中' | '待开始' = '已完成'
-        if (row.status) {
-          if (row.status === '已完成' || row.status === '进行中' || row.status === '待开始') {
-            status = row.status
-          }
-        } else {
-          // 根据endTime判断：如果是'-'或空，则为进行中或待开始
-          if (!row.endTime || row.endTime === '-' || row.endTime.trim() === '') {
-            status = '进行中'
-          } else {
-            status = '已完成'
-          }
+      // 从数据库查询所有历史加工记录
+      const dbRecords: ProcessingHistoryData[] = this.dbManager.getAllProcessingHistory()
+      
+      // 转换为 HistoryTableData 格式（字段名映射）
+      this.tableData = dbRecords.map((record: ProcessingHistoryData): HistoryTableData => {
+        const historyData: HistoryTableData = {
+          id: record.id || 0,
+          customerName: record.CustomerName || '',
+          farmName: record.FarmName || '',
+          fruitName: record.FruitName || '',
+          status: (record.Status as '已完成' | '进行中' | '待开始') || '待开始',
+          startTime: record.StartTime || '',
+          endTime: record.EndTime || '',
+          weight: record.Weight || 0,
+          count: record.Quantity || 0
         }
-        
-        return {
-          id: row.id,
-          customerName: row.customerName || '',
-          farmName: row.farmName || '',
-          // 以数据库中的 productType 为准展示与筛选，避免 fruitName/别名不一致导致显示混乱
-          fruitName: row.productType || row.fruitName || '',
-          status: status,
-          startTime: row.startTime || '',
-          endTime: row.endTime || '-',
-          weight: row.weight || row.totalWeight || 0,
-          count: row.count || 0
-        }
+        return historyData
       })
+      
       this.dataLoaded = true
-      console.log('从数据库加载数据成功，共', this.tableData.length, '条')
+      console.log(`✅ 从数据库加载历史加工数据成功，共 ${this.tableData.length} 条记录`)
     } catch (error) {
-      console.error('从数据库加载数据失败:', error)
+      console.error('❌ 从数据库加载历史加工数据失败:', error)
       this.tableData = []
-      this.dataLoaded = false
+      this.dataLoaded = true // 即使失败也标记为已加载，避免重复尝试
     }
   }
 
@@ -125,25 +116,27 @@ export class HistoryTableManager {
    */
   async addData(data: AddDataParams): Promise<void> {
     try {
-      const insertParams: ProcessingInsertParams = {
-        startTime: data.startTime,
-        endTime: data.endTime,
-        productType: data.fruitName, // 使用fruitName作为productType
-        totalWeight: data.weight,
-        customerName: data.customerName,
-        farmName: data.farmName,
-        fruitName: data.fruitName,
-        status: data.status,
-        count: data.count,
-        weight: data.weight
-      }
+      // 创建 ProcessingHistory 实体对象
+      const historyRecord = new ProcessingHistory(
+        data.customerName,
+        data.farmName,
+        data.fruitName,
+        data.status,
+        data.startTime,
+        data.endTime,
+        data.weight,
+        data.count
+      )
       
-      await RdbService.insertProcessingFull(insertParams)
-      // 重新加载数据
+      // 保存到数据库
+      this.dbManager.createProcessingHistory(historyRecord)
+      
+      // 重新从数据库加载数据，确保ID等字段正确
       await this.loadDataFromDatabase()
-      console.log('添加数据到数据库成功')
+      
+      console.log('✅ 添加历史加工数据到数据库成功')
     } catch (error) {
-      console.error('添加数据到数据库失败:', error)
+      console.error('❌ 添加数据到数据库失败:', error)
       const err = error as object
       throw new Error(JSON.stringify(err))
     }
@@ -154,12 +147,15 @@ export class HistoryTableManager {
    */
   async deleteData(id: number): Promise<void> {
     try {
-      await RdbService.deleteProcessingById(id)
-      // 重新加载数据
+      // 从数据库删除
+      this.dbManager.deleteProcessingHistory(id)
+      
+      // 重新从数据库加载数据
       await this.loadDataFromDatabase()
-      console.log('从数据库删除数据成功，ID:', id)
+      
+      console.log('✅ 从数据库删除历史加工数据成功，ID:', id)
     } catch (error) {
-      console.error('从数据库删除数据失败:', error)
+      console.error('❌ 从数据库删除数据失败:', error)
       const err = error as object
       throw new Error(JSON.stringify(err))
     }
@@ -176,29 +172,27 @@ export class HistoryTableManager {
         throw new Error(`未找到要更新的数据，ID: ${id}`)
       }
       
-      // 合并更新数据
-      const updateParams: ProcessingInsertParams = {
-        startTime: newData.startTime !== undefined ? newData.startTime : currentData.startTime,
-        endTime: newData.endTime !== undefined ? newData.endTime : currentData.endTime,
-        productType: newData.fruitName !== undefined ? newData.fruitName : currentData.fruitName,
-        totalWeight: newData.weight !== undefined ? newData.weight : currentData.weight,
-        customerName: newData.customerName !== undefined ? newData.customerName : currentData.customerName,
-        farmName: newData.farmName !== undefined ? newData.farmName : currentData.farmName,
-        fruitName: newData.fruitName !== undefined ? newData.fruitName : currentData.fruitName,
-        status: newData.status !== undefined ? newData.status : currentData.status,
-        count: newData.count !== undefined ? newData.count : currentData.count,
-        weight: newData.weight !== undefined ? newData.weight : currentData.weight
-      }
+      // 合并更新数据，创建 ProcessingHistory 实体对象
+      const updatedRecord = new ProcessingHistory(
+        newData.customerName !== undefined ? newData.customerName : currentData.customerName,
+        newData.farmName !== undefined ? newData.farmName : currentData.farmName,
+        newData.fruitName !== undefined ? newData.fruitName : currentData.fruitName,
+        newData.status !== undefined ? newData.status : currentData.status,
+        newData.startTime !== undefined ? newData.startTime : currentData.startTime,
+        newData.endTime !== undefined ? newData.endTime : currentData.endTime,
+        newData.weight !== undefined ? newData.weight : currentData.weight,
+        newData.count !== undefined ? newData.count : currentData.count
+      )
       
-      // 使用insertProcessingFull来更新（因为updateProcessingById不支持扩展字段）
-      // 先删除旧数据，再插入新数据（简单实现）
-      await RdbService.deleteProcessingById(id)
-      await RdbService.insertProcessingFull(updateParams)
-      // 重新加载数据
+      // 更新到数据库
+      this.dbManager.updateProcessingHistory(id, updatedRecord)
+      
+      // 重新从数据库加载数据
       await this.loadDataFromDatabase()
-      console.log('更新数据库数据成功，ID:', id)
+      
+      console.log('✅ 更新历史加工数据到数据库成功，ID:', id)
     } catch (error) {
-      console.error('更新数据库数据失败:', error)
+      console.error('❌ 更新数据库数据失败:', error)
       const err = error as object
       throw new Error(JSON.stringify(err))
     }
@@ -211,14 +205,14 @@ export class HistoryTableManager {
     if (!this.dataLoaded) {
       await this.loadDataFromDatabase()
     }
-    return [...this.tableData]
+    return this.tableData.slice()
   }
   
   /**
    * 同步获取所有数据（不触发加载，返回当前缓存）
    */
   getDataSync(): HistoryTableData[] {
-    return [...this.tableData]
+    return this.tableData.slice()
   }
 
   /**
@@ -364,28 +358,22 @@ export class HistoryTableManager {
    */
   async deleteBatchData(ids: number[]): Promise<void> {
     try {
+      // 从数据库批量删除
       for (const id of ids) {
-        await RdbService.deleteProcessingById(id)
+        this.dbManager.deleteProcessingHistory(id)
       }
-      // 重新加载数据
+      
+      // 重新从数据库加载数据
       await this.loadDataFromDatabase()
-      console.log('批量删除数据成功，共删除', ids.length, '条')
+      
+      console.log('✅ 批量删除历史加工数据成功，共删除', ids.length, '条')
     } catch (error) {
-      console.error('批量删除数据失败:', error)
+      console.error('❌ 批量删除数据失败:', error)
       const err = error as object
       throw new Error(JSON.stringify(err))
     }
   }
 
-  /**
-   * 获取下一个ID
-   */
-  private getNextId(): number {
-    if (this.tableData.length === 0) {
-      return 1
-    }
-    return Math.max(...this.tableData.map(item => item.id)) + 1
-  }
 
   /**
    * 获取数据总数

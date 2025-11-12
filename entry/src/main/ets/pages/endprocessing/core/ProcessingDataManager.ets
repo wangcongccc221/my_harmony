@@ -4,7 +4,6 @@
  * 已改为从数据库读取数据
  */
 
-import { RdbService, ProcessingRow } from '../../../db/RdbService'
 import { NumberUtils } from '../../../utils/helpers/NumberUtils'
 
 // 加工记录数据接口
@@ -47,6 +46,7 @@ export class ProcessingDataManager {
   private static instance: ProcessingDataManager | null = null
   processingRecords: ProcessingRecord[] = []
   private dataLoaded: boolean = false
+  private nextId: number = 1
 
   private constructor() {
     // 不再初始化默认数据，改为从数据库加载
@@ -63,49 +63,11 @@ export class ProcessingDataManager {
    * 从数据库加载数据
    */
   public async loadDataFromDatabase(): Promise<void> {
-    try {
-      const rows = await RdbService.queryAllProcessing()
-      // 转换数据库数据为ProcessingRecord格式
-      this.processingRecords = rows.map((row: ProcessingRow): ProcessingRecord => {
-        // 计算总重量：总重量 = 批重量 × 批个数
-        // weight: 批重量(kg), count: 批个数(个)
-        // totalWeight: 总重量(吨)
-        let calculatedWeight = 0
-        
-        // 优先使用 weight 和 count 计算：总重量(吨) = 批重量(kg) × 批个数(个) / 1000
-        if (row.weight && row.count && row.weight > 0 && row.count > 0) {
-          calculatedWeight = NumberUtils.calculateTotalWeight(row.weight, row.count)
-          console.log(`计算总重量: 批重量=${row.weight}kg × 批个数=${row.count}个 = ${calculatedWeight}吨(四舍五入)`)
-        } 
-        // 如果数据库中的totalWeight有值且大于0，使用它（可能已经计算过）
-        else if (row.totalWeight && row.totalWeight > 0) {
-          calculatedWeight = NumberUtils.roundToDecimal(row.totalWeight, 1)
-        } 
-        // 如果只有批重量，使用批重量（假设批个数为1）
-        else if (row.weight && row.weight > 0) {
-          calculatedWeight = NumberUtils.calculateTotalWeight(row.weight, 1)
-        } 
-        // 其他情况设为0
-        else {
-          calculatedWeight = 0
-          console.warn(`⚠️ 记录ID=${row.id} 无法计算总重量: weight=${row.weight}, count=${row.count}, totalWeight=${row.totalWeight}`)
-        }
-        
-        return {
-          id: row.id,
-          startTime: row.startTime || '-',
-          endTime: row.endTime || '-',
-          productType: row.productType || row.fruitName || '未知',
-          totalWeight: calculatedWeight
-        }
-      })
+    if (!this.dataLoaded) {
       this.dataLoaded = true
-      console.log(`✅ 从数据库加载加工记录成功，共 ${this.processingRecords.length} 条`)
-    } catch (error) {
-      console.error('❌ 从数据库加载加工记录失败:', error)
-      this.dataLoaded = false
-      // 如果加载失败，使用空数组
-      this.processingRecords = []
+      if (this.processingRecords.length === 0) {
+        this.processingRecords = []
+      }
     }
   }
 
@@ -123,16 +85,15 @@ export class ProcessingDataManager {
    */
   async addData(data: AddProcessingRecordParams): Promise<void> {
     try {
-      // 保存到数据库
-      await RdbService.insertProcessing(
-        data.startTime,
-        data.endTime,
-        data.productType,
-        data.totalWeight
-      )
-      // 重新加载数据以获取数据库生成的ID
-      await this.loadDataFromDatabase()
-      console.log('✅ 添加加工记录成功，已保存到数据库')
+      const newItem: ProcessingRecord = {
+        id: this.nextId++,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        productType: data.productType,
+        totalWeight: data.totalWeight
+      }
+      this.processingRecords.unshift(newItem)
+      console.log('✅ 添加加工记录成功（内存）')
     } catch (error) {
       console.error('❌ 添加加工记录失败:', error)
       const err = error as object
@@ -145,8 +106,6 @@ export class ProcessingDataManager {
    */
   async deleteData(id: number): Promise<void> {
     try {
-      // 从数据库删除
-      await RdbService.deleteProcessingById(id)
       // 从内存中删除
       const initialLength = this.processingRecords.length
       this.processingRecords = this.processingRecords.filter(item => item.id !== id)
@@ -172,15 +131,6 @@ export class ProcessingDataManager {
         console.log('⚠️ 未找到要更新的加工记录，ID:', id)
         return
       }
-
-      // 更新数据库
-      await RdbService.updateProcessingById(
-        id,
-        newData.startTime ?? record.startTime,
-        newData.endTime ?? record.endTime,
-        newData.productType ?? record.productType,
-        newData.totalWeight ?? record.totalWeight
-      )
 
       // 更新内存中的数据
       const index = this.processingRecords.findIndex(item => item.id === id)

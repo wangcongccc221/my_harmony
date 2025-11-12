@@ -1,7 +1,7 @@
 // 数据接口定义
 import { ExtendedOmniThemeStyle } from '../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../utils/theme/ThemeUtils'
-import { ProcessingBarFeed } from '../utils/ProcessingBarFeed'
+import { ProcessingBarFeed } from '../utils/data/ProcessingBarFeed'
 export interface ChartData {
   time: string;
   value: number;

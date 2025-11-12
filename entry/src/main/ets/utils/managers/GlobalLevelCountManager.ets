@@ -12,7 +12,7 @@
  * - 跨组件状态同步
  */
 
-import { LEVEL_COUNT_OPTIONS } from '../pages/quality/QualityConstants'
+import { LEVEL_COUNT_OPTIONS, LevelCountOption } from '../../pages/quality/QualityConstants'
 
 /**
  * 等级数量变化回调函数类型
@@ -91,7 +91,7 @@ export class GlobalLevelCountManager {
    * @param count 等级数量值
    */
   public setCount(count: number): void {
-    const index = LEVEL_COUNT_OPTIONS.findIndex(option => parseInt(option.value) === count)
+    const index: number = LEVEL_COUNT_OPTIONS.findIndex((option: LevelCountOption) => parseInt(option.value) === count)
     if (index !== -1) {
       this.setIndex(index)
     } else {
@@ -176,7 +176,7 @@ export class GlobalLevelCountManager {
    * 获取所有等级数量选项
    * @returns 等级数量选项数组
    */
-  public getLevelCountOptions() {
+  public getLevelCountOptions(): LevelCountOption[] {
     return LEVEL_COUNT_OPTIONS
   }
 

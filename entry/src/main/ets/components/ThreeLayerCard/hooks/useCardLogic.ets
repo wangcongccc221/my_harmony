@@ -5,7 +5,7 @@
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
 import { CardColorManager, CardColorConfig, getCardColorsByTheme } from '../../../utils/theme/CardColors'
-import { GlobalCardDataManager } from '../../../utils/GlobalCardDataManager'
+import { GlobalCardDataManager } from '../../../utils/managers/GlobalCardDataManager'
 import { ThreeLayerCardData } from '../types'
 
 export class UseCardLogic {

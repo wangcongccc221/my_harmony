@@ -40,7 +40,7 @@ import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../u
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { LEVEL_COUNT_OPTIONS } from './QualityConstants'
-import { GlobalLevelCountManager } from '../../utils/GlobalLevelCountManager'
+import { GlobalLevelCountManager } from '../../utils/managers/GlobalLevelCountManager'
 
 /**
  * 品质页面控制面板组件

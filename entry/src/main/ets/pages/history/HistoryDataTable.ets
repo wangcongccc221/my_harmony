@@ -13,6 +13,10 @@ export struct HistoryDataTable {
   @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
   @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
+  
+  // 提供主题给子组件
+  @Provide providedTheme: ExtendedOmniThemeStyle = this.consumedTheme
+  
   private tableManager = HistoryTableManager.getInstance()
   
   // 选中状态管理
