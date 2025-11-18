@@ -1,195 +1,139 @@
-# HarmonyOS 加工管理系统
+# 性能测试说明
 
-## 项目概述
+## 测试目标
+- 评估 ORM 在不同字段数量（10~300）下的 CRUD 与批量操作耗时
+- 环境：HarmonyOS 模拟器 5.0.0.317，`EntryAbility` 启动后自动执行 `runPerformanceTest()`
+- 日志输出标签：`A03d00/JSAPP`
 
-这是一个基于HarmonyOS开发的加工管理系统，提供完整的数据管理、HTTP服务和用户界面功能。系统支持加工历史数据的存储、查询、修改和删除，并通过RESTful API接口提供数据访问能力。
+## 运行方式
+- 现阶段在 `EntryAbility` 初始化完成后自动调用 `runPerformanceTest()`（会占用主线程，可能导致 SetUIContent 超时，建议后续改为调试入口或手动触发）
+- 日志中会按字段档位打印：
+  - 单条插入、查询、更新、删除耗时
+  - 批量插入 10 条耗时（与平均值）
+  - 批量查询耗时
+  - 汇总表
 
-### 主要功能
+## 模型列表
+| 字段数 | 表名                      |
+| ------ | ------------------------- |
+| 10     | `test_model_10_fields`    |
+| 20     | `test_model_20_fields`    |
+| 30     | `test_model_30_fields`    |
+| 50     | `test_model_50_fields`    |
+| 100    | `test_model_100_fields`   |
+| 150    | `test_model_150_fields`   |
+| 200    | `test_model_200_fields`   |
+| 250    | `test_model_250_fields`   |
+| 300    | `test_model_300_fields`   |
 
-- **加工历史管理**：记录和管理加工过程的详细信息
-- **数据持久化**：使用关系型数据库存储结构化数据
-- **HTTP服务**：内置轻量级HTTP服务器，提供RESTful API接口
-- **文件浏览**：支持应用内文件资源的访问和浏览
-- **数据可视化**：提供图表展示功能，直观呈现数据统计信息
+## 结果摘要（示例：2025-11-17 模拟器日志）
+| 字段数 | 插入(ms) | 查询(ms) | 更新(ms) | 删除(ms) | 批量插入(ms) | 批量查询(ms) |
+| ------ | -------- | -------- | -------- | -------- | ------------ | ------------ |
+| 10     | 5        | 2        | 19       | 8        | 53           | 4            |
+| 20     | 4        | 1        | 3        | 4        | 36           | 7            |
+| 30     | 5        | 14       | 5        | 4        | 39           | 7            |
+| 50     | 4        | 3        | 3        | 3        | 33           | 16           |
+| 100    | 5        | 9        | 5        | 3        | 35           | 57           |
+| 150    | 6        | 26       | 7        | 3        | 36           | 118          |
+| 200    | 4        | 22       | 5        | 4        | 42           | 241          |
+| 250    | 4        | 30       | 4        | 9        | 38           | 413          |
+| 300    | 5        | 47       | 5        | 5        | 41           | 497          |
 
-### 技术栈
+## 观察与建议
+- 单条 CRUD 与批量插入 10 条的耗时在 3~8ms，增长不明显
+- 批量查询随字段数呈线性~指数增长，300 字段约 500ms，是主要瓶颈
+- 建议：
+  1. 将 `runPerformanceTest()` 改为手动触发或后台任务，避免阻塞 UI
+  2. 评估批量查询的列选择与分页策略（如只查询必要字段或使用 `LIMIT/OFFSET`）
+  3. 如果需要线上监控，可将结果写入日志文件或上报分析
 
-- **开发语言**：TypeScript (ArkTS)
-- **开发框架**：HarmonyOS SDK
-- **ORM框架**：@ibestservices/ibest-orm
-- **UI组件库**：
-  - @wuba58/omni-ui
-  - @ibestservices/ibest-ui
-  - @mcui/mccharts
-- **测试框架**：@ohos/hypium, @ohos/hamock
-- **网络实现**：基于NetworkKit TCP Socket
+# my_harmony_master 项目总览
 
-## 快速开始
-
-### 运行应用
-
-1. 在DevEco Studio中选择目标设备（模拟器或真机）
-2. 点击运行按钮或使用快捷键Shift+F10启动应用
-
-### 启动HTTP服务器
-
-HTTP服务器会在应用启动时自动初始化，默认监听端口可在配置中修改。在`EntryAbility.ets`中可以找到服务器初始化相关代码。
-
-在主机上映射模拟器端口：hdc fport tcp:8080 tcp:8080
-
-```typescript
-// 启动HTTP服务器示例
-import { startHttpServer } from './utils/network/http/HttpServer';
-import { HttpServerHandler } from './utils/network/http/HttpServerHandler';
-
-// 在应用启动时初始化
-onCreate(want, launchParam) {
-  // 设置文件浏览基础路径
-  HttpServerHandler.setFileBasePath(this.context);
-  
-  // 启动HTTP服务器
-  startHttpServer(8080).then(() => {
-    console.info('HTTP服务器启动成功');
-  }).catch((error) => {
-    console.error('HTTP服务器启动失败:', error);
-  });
-}
-```
+## 目录结构
+- `entry/`：主应用（UIAbility、页面、网络服务、数据库等）
+  - `entryability/EntryAbility.ets`：应用生命周期与启动流程
+  - `pages/`：业务页面（历史加工、实时大屏等）
+  - `utils/`：网络、文件、生命周期等工具
+  - `database/`：业务模型、管理器与类型；`database/orm/` 内置 ORM 核心源码
+- `build-profile.json5`：构建配置（仅保留 entry 模块）
 
 ## 核心功能
+- **数据库持久化**：内嵌 ORM 支持自动迁移、CRUD、关系映射，`DatabaseManager` 负责建表及数据恢复。
+- **网络服务**：HTTP/TCP 服务为外部系统提供加工数据查询与导出。
+- **历史可视化**：历史页面支持筛选、统计、导出。
+- **启动流程**：`EntryAbility` 分阶段初始化资源、网络、数据库并恢复种子数据。
+- **UI 主题**：集成 Omni UI 与自研组件，满足大屏展示需求。
 
-### 数据库管理
+## 环境要求
+- DevEco Studio 5.0+ / HarmonyOS SDK 5.1.1
+- hvigor 构建链与 ohpm
+- PowerShell 7 或兼容终端
 
-系统使用关系型数据库存储数据，通过ORM框架提供便捷的数据访问接口。
+## 初始化与运行
+1. 执行 `ohpm install`
+2. DevEco Studio 导入项目，选择 5.1.1 SDK
+3. 直接运行 `entry` 模块到模拟器或真机
+4. 首次启动会复制资源、初始化网络/数据库、恢复历史数据；页面加载后可在历史模块查看与导出。
 
-#### 主要数据模型
+## 数据库说明
+- ORM 源码位于 `entry/src/main/ets/database/orm`（含 `core`、`decorator`、`model`、`utils` 等）
+- 业务实体在 `entry/src/main/ets/database/models`，通过 `../orm` 导出的装饰器与 `Model` 基类定义
+- `entry/src/main/ets/database/index.ets` 统一导出 ORM API 与业务对象，业务层仅需 `import { IBestORMInit, DatabaseManager } from '../database';`
 
-1. **ProcessingHistory** - 加工历史记录
-   - 客户名称、农场名称、水果名称
-   - 开始时间、结束时间、状态
-   - 重量、数量等关键信息
+## 常见命令
+- 构建调试：`hvigor assembleDebug`
+- 清理：`hvigor clean`
 
-2. **User** - 用户信息
+## 注意事项
+- 性能测试示例已拆除，如需恢复请在独立分支引入
+- HTTP/TCP 端口定义在 `utils/network`，部署到真机需确认权限
+- ORM 已完全内嵌，不再依赖外部 `library` 模块，如需复用可直接从 `database/orm` 拷贝
 
-3. **TestModel** - 测试数据模型
+## 网络与服务
+- **HTTP 服务**  
+  - 启停：`utils/network/http/HttpServer.ts` 暴露 `startHttpServer/stopHttpServer/isHttpServerRunning`。  
+  - 路由：`HttpServerHandler` 统一分发到 `handlers` 子目录。  
+  - 主要接口：  
+    | 接口 | 说明 | 对应文件 | 关键逻辑 |
+    | ---- | ---- | ---- | ---- |
+    | `GET /api/processing` | 分页查询加工记录 | `ProcessingApiHandler` | 支持时间、客户、农场、状态筛选 |
+    | `POST /api/processing/export` | 导出选中加工记录 | 同上 | 写入 rawfile，再返回路径 |
+    | `GET /api/files` | 浏览导出的 HTML/CSV | `FileBrowserHandler` | 基于沙箱路径读取 |
+- **TCP 服务**  
+  - 文件：`utils/network/tcp/TCPServer.ets`  
+  - 功能：维持与硬件端的长连接，实时接收加工线状态、心跳、告警；`NetworkOptimizer` 会根据配置调整收发缓冲与重连策略。  
+  - 数据分发：收到消息后写入 `GlobalCardDataManager` 等全局状态，触发 UI 刷新。
+- **处理流程**  
+  - `EntryAbility.onCreate`：顺序执行资源拷贝 → 网络优化器初始化 → HTTP/TCP 服务启动。  
+  - `EntryAbility.onDestroy/onStop`：调用 `AppCleanup` 与 `stopHttpServer`，确保端口与资源释放。
 
-#### 数据库初始化
+## UI 与组件
+- **页面结构**  
+  | 目录 | 说明 | 关键文件 |
+  | ---- | ---- | ---- |
+  | `pages/Home` | 汇总仪表盘、实时曲线、告警面板 | `Home.ets`, `components/layout/*` |
+  | `pages/history` | 历史加工列表、筛选、导出 | `HistoryContent.ets`, `HistoryDataTable.ets`, `core/HistoryTableManager.ets` |
+  | `components/feedback` | 弹框、Toast、导出对话框 | `FruitInfoDialog.ets` 等 |
+- **主题与状态**  
+  - `OmniThemeManager` + `@StorageLink` 共享主题状态，组件使用 `@Provide/@Consume` 传递主题对象。  
+  - 常量存于 `utils/constants/theme.ts`（如 `OMNI_THEME_KEY`、`TOP_STATUS_TEXT`）。
+- **典型组件**  
+  - `TopStatusBar`：顶部统计条，展示产量、告警、连接状态。  
+  - `CompactFsmToggle`：双通道切换器，通过动画指示当前生产线。  
+  - `HistoryDataTable`：封装 ArkUI 表格，可分页、勾选导出。  
+  - `FruitInfoDialog`：显示单果详细指标，支持滑动切换。  
+- **数据喂料**  
+  - `ProcessingCurveFeed`、`ProcessingBarFeed` 等模拟实时数据，供大屏 demo 使用。  
+  - 可接入 TCP 实时数据替换这些 feed。
 
-数据库在应用启动时自动初始化，包括表结构创建和迁移：
+## 其他模块
+- **数据恢复**  
+  - `database/DataRestore.ets` 提供 `restoreProcessingHistoryData`，检测表为空时批量插入示例数据。  
+  - 数据来源：`entry/src/main/resources/rawfile/file/*.html`/JSON，可自定义。
+- **文件操作**  
+  - `utils/FileUtils.ts`：递归复制 rawfile 至 `context.filesDir`，并包含基础的路径校验。  
+  - 导出报表时会使用 `fs` 写入 `files/export/...`。
+- **网络优化**  
+  - `utils/network/NetworkOptimizer.ets`：单例管理 socket 超时、缓冲区、连接监控。  
+  - 提供 `getInstance()`、`startMonitoring()` 等方法，供 Ability 与 server 调用。
 
-```typescript
-// 数据库初始化示例
-const dbManager = DatabaseManager.getInstance();
-await dbManager.initDatabase(); // 自动创建和迁移表结构
-```
-
-### HTTP接口
-
-系统提供完整的RESTful API接口，用于数据访问和操作。
-
-#### 状态检查接口
-
-- **GET /api/status**
-  - 功能：检查HTTP服务器运行状态
-  - 响应：返回服务器状态信息和时间戳
-
-#### 加工历史API
-
-- **GET /api/processing**
-  - 功能：获取加工历史列表，支持分页
-  - 参数：page（页码）、size（每页条数）
-  - 响应：返回加工记录列表和分页信息
-
-- **POST /api/processing**
-  - 功能：创建新的加工记录
-  - 请求体：包含加工记录的详细信息
-  - 响应：返回操作结果和更新后的记录列表
-
-- **PUT /api/processing/:id**
-  - 功能：更新指定ID的加工记录
-  - 路径参数：记录ID
-  - 请求体：要更新的字段信息
-  - 响应：返回操作结果和更新后的记录列表
-
-- **DELETE /api/processing/:id**
-  - 功能：删除指定ID的加工记录
-  - 路径参数：记录ID
-  - 响应：返回操作结果和更新后的记录列表
-
-## 关键文件位置
-
-### 应用核心结构
-
-- **entry/src/main/ets/entryability/EntryAbility.ets** - 应用入口能力
-- **entry/src/main/ets/pages/** - 页面组件目录
-  - **Home.ets** - 首页
-  - **history/** - 历史记录相关页面
-  - **realtime/** - 实时监控相关页面
-
-### 数据库相关
-
-- **entry/src/main/ets/database/DatabaseManager.ets** - 数据库管理类
-- **entry/src/main/ets/database/models/** - 数据模型定义
-  - **ProcessingHistory.ets** - 加工历史模型
-  - **User.ets** - 用户模型
-
-### HTTP服务器相关
-
-- **entry/src/main/ets/utils/network/http/HttpServer.ets** - HTTP服务器核心实现
-- **entry/src/main/ets/utils/network/http/HttpServerHandler.ets** - 路由处理器
-- **entry/src/main/ets/utils/network/http/handlers/ProcessingApiHandler.ets** - 加工数据API处理器
-
-### UI组件
-
-- **entry/src/main/ets/components/** - 公共组件目录
-  - **charts/** - 图表组件
-  - **common/** - 通用UI组件
-
-## 测试验证
-
-### 单元测试
-
-系统使用HarmonyOS的测试框架进行单元测试：
-
-```bash
-# 运行单元测试
-hvigor test
-```
-
-### API接口测试
-
-可以使用以下方法测试HTTP接口：
-
-1. **使用浏览器访问**：直接在浏览器中访问API接口
-   ```
-   http://[设备IP]:8080/api/status
-   ```
-
-2. **使用curl命令**：
-   ```bash
-   curl http://[设备IP]:8080/api/processing?page=1&size=20
-   ```
-
-3. **使用Postman等工具**：发送HTTP请求并查看响应
-
-### 功能验证
-
-1. **数据库功能验证**：
-   - 检查数据库是否正确创建
-   - 验证数据增删改查操作
-
-2. **HTTP服务验证**：
-   - 确认服务器正常启动
-   - 验证各API接口响应是否正确
-   - 测试错误处理和边界情况
-
-## 版本信息
-
-- **版本**：1.0.0
-
-
----
-
-如需更多详细信息，请参考项目中的具体文档：
-- HTTP服务器详细文档：HTTP服务器文档.md
-- 数据库设计文档：数据库文档.md

@@ -108,7 +108,12 @@
     function renderRows(list){
       const tbody = document.getElementById('rows');
       tbody.innerHTML = '';
-      (list||[]).forEach((r, idx)=>{
+      // 确保 list 是数组
+      if(!Array.isArray(list)){
+        console.error('renderRows: list is not an array', list);
+        return;
+      }
+      list.forEach((r, idx)=>{
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${idx + 1}</td>

@@ -4,7 +4,6 @@
   "dependencies": {
     "@wuba58/omni-ui": "^1.0.1",
     "@ibestservices/ibest-ui": "^2.1.7",
-    "@ibestservices/ibest-orm": "^1.1.0",
     "@mcui/mccharts": "^2.8.9"
   },
   "devDependencies": {

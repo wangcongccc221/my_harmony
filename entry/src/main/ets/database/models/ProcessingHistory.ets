@@ -1,4 +1,4 @@
-import { Table, Field, FieldType, Model } from '@ibestservices/ibest-orm';
+import { Table, Field, FieldType, Model } from '../orm';
 
 /**
  * 历史加工数据模型类

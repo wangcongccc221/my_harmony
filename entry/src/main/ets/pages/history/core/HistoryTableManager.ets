@@ -4,8 +4,8 @@
  * 已改为从数据库读取数据
  */
 
+import { GetIBestORM } from '../../../database/orm';
 import { DateValidationUtils } from '../../../utils/helpers/DateValidationUtils'
-import { DatabaseManager } from '../../../database/DatabaseManager'
 import { ProcessingHistory } from '../../../database/models/ProcessingHistory'
 import { ProcessingHistoryData } from '../../../database/types'
 
@@ -64,7 +64,6 @@ export class HistoryTableManager {
   private static instance: HistoryTableManager
   private tableData: HistoryTableData[] = []
   private dataLoaded: boolean = false
-  private dbManager = DatabaseManager.getInstance()
 
   private constructor() {
     // 不再初始化默认数据，改为从数据库加载
@@ -82,13 +81,28 @@ export class HistoryTableManager {
    */
   public async loadDataFromDatabase(): Promise<void> {
     try {
-      // 从数据库查询所有历史加工记录
-      const dbRecords: ProcessingHistoryData[] = this.dbManager.getAllProcessingHistory()
+      const db = GetIBestORM();
+      // 性能监控：记录开始时间
+      const startTime = Date.now();
       
-      // 转换为 HistoryTableData 格式（字段名映射）
+      // 执行数据库查询（同步操作，会阻塞主线程）
+      const dbRecords = db.Table("processing_history").Find(ProcessingHistory) as ProcessingHistoryData[];
+      
+      // 性能监控：记录查询耗时
+      const queryTime = Date.now() - startTime;
+      if (queryTime > 100) {
+        console.warn(`⚠️ 数据库查询耗时较长: ${queryTime}ms，查询到 ${dbRecords ? dbRecords.length : 0} 条记录`);
+      }
+      
+      // 性能监控：记录数据转换开始时间
+      const convertStartTime = Date.now();
+      
+      // 数据转换（字段越多，这里耗时越长）
       this.tableData = dbRecords.map((record: ProcessingHistoryData): HistoryTableData => {
+        // 处理 ID 字段：查询返回的是 ID（大写），但接口期望 id（小写）
+        const recordId = record.ID || record.id || 0;
         const historyData: HistoryTableData = {
-          id: record.id || 0,
+          id: recordId,
           customerName: record.CustomerName || '',
           farmName: record.FarmName || '',
           fruitName: record.FruitName || '',
@@ -101,12 +115,20 @@ export class HistoryTableManager {
         return historyData
       })
       
+      // 性能监控：记录总耗时
+      const totalTime = Date.now() - startTime;
+      const convertTime = Date.now() - convertStartTime;
+      
+      if (totalTime > 100) {
+        console.warn(`⚠️ 数据加载总耗时: ${totalTime}ms (查询: ${queryTime}ms, 转换: ${convertTime}ms), 记录数: ${this.tableData.length}`);
+        console.warn(`💡 提示: 如果字段数量很多，建议优化字段映射逻辑或使用异步加载`);
+      }
+      
       this.dataLoaded = true
-      console.log(`✅ 从数据库加载历史加工数据成功，共 ${this.tableData.length} 条记录`)
     } catch (error) {
       console.error('❌ 从数据库加载历史加工数据失败:', error)
       this.tableData = []
-      this.dataLoaded = true // 即使失败也标记为已加载，避免重复尝试
+      this.dataLoaded = true
     }
   }
 
@@ -116,7 +138,7 @@ export class HistoryTableManager {
    */
   async addData(data: AddDataParams): Promise<void> {
     try {
-      // 创建 ProcessingHistory 实体对象
+      const db = GetIBestORM();
       const historyRecord = new ProcessingHistory(
         data.customerName,
         data.farmName,
@@ -127,14 +149,8 @@ export class HistoryTableManager {
         data.weight,
         data.count
       )
-      
-      // 保存到数据库
-      this.dbManager.createProcessingHistory(historyRecord)
-      
-      // 重新从数据库加载数据，确保ID等字段正确
+      db.Create(historyRecord)
       await this.loadDataFromDatabase()
-      
-      console.log('✅ 添加历史加工数据到数据库成功')
     } catch (error) {
       console.error('❌ 添加数据到数据库失败:', error)
       const err = error as object
@@ -147,13 +163,9 @@ export class HistoryTableManager {
    */
   async deleteData(id: number): Promise<void> {
     try {
-      // 从数据库删除
-      this.dbManager.deleteProcessingHistory(id)
-      
-      // 重新从数据库加载数据
+      const db = GetIBestORM();
+      db.Table("processing_history").Where('id', id).Delete()
       await this.loadDataFromDatabase()
-      
-      console.log('✅ 从数据库删除历史加工数据成功，ID:', id)
     } catch (error) {
       console.error('❌ 从数据库删除数据失败:', error)
       const err = error as object
@@ -166,13 +178,11 @@ export class HistoryTableManager {
    */
   async updateData(id: number, newData: UpdateDataParams): Promise<void> {
     try {
-      // 先获取当前数据
       const currentData = this.tableData.find(item => item.id === id)
       if (!currentData) {
         throw new Error(`未找到要更新的数据，ID: ${id}`)
       }
-      
-      // 合并更新数据，创建 ProcessingHistory 实体对象
+      const db = GetIBestORM();
       const updatedRecord = new ProcessingHistory(
         newData.customerName !== undefined ? newData.customerName : currentData.customerName,
         newData.farmName !== undefined ? newData.farmName : currentData.farmName,
@@ -182,15 +192,10 @@ export class HistoryTableManager {
         newData.endTime !== undefined ? newData.endTime : currentData.endTime,
         newData.weight !== undefined ? newData.weight : currentData.weight,
         newData.count !== undefined ? newData.count : currentData.count
-      )
-      
-      // 更新到数据库
-      this.dbManager.updateProcessingHistory(id, updatedRecord)
-      
-      // 重新从数据库加载数据
+      );
+      updatedRecord.ID = id;
+      db.Save(updatedRecord);
       await this.loadDataFromDatabase()
-      
-      console.log('✅ 更新历史加工数据到数据库成功，ID:', id)
     } catch (error) {
       console.error('❌ 更新数据库数据失败:', error)
       const err = error as object
@@ -358,15 +363,11 @@ export class HistoryTableManager {
    */
   async deleteBatchData(ids: number[]): Promise<void> {
     try {
-      // 从数据库批量删除
+      const db = GetIBestORM();
       for (const id of ids) {
-        this.dbManager.deleteProcessingHistory(id)
+        db.Table("processing_history").Where('id', id).Delete()
       }
-      
-      // 重新从数据库加载数据
       await this.loadDataFromDatabase()
-      
-      console.log('✅ 批量删除历史加工数据成功，共删除', ids.length, '条')
     } catch (error) {
       console.error('❌ 批量删除数据失败:', error)
       const err = error as object

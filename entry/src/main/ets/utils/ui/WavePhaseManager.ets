@@ -36,15 +36,24 @@ export class WavePhaseManager {
    * 启动全局动画（统一更新相位）
    */
   private startGlobalAnimation(): void {
+    // 确保没有重复的定时器
     if (this.animationId) {
       clearInterval(this.animationId)
+      this.animationId = 0
     }
-    // 60fps（16ms间隔）统一更新相位
+    // 使用 requestAnimationFrame 的替代方案：固定时间间隔
+    // 60fps（约16.67ms间隔）统一更新相位，保持恒定速度
+    // 使用 17ms 而不是 16ms，给系统一些缓冲，避免时间累积误差
     this.animationId = setInterval(() => {
+      // 固定速度增量，确保动画速度一致
       this.phase += this.speed
+      // 相位值过大时重置，避免精度问题
+      if (this.phase > Math.PI * 2) {
+        this.phase = this.phase % (Math.PI * 2)
+      }
       // 通知所有监听器（WaveCard实例）重绘
       this.notifyListeners()
-    }, 16) as number
+    }, 17) as number
   }
 
   /**
@@ -78,6 +87,33 @@ export class WavePhaseManager {
    * 停止全局动画
    */
   public stop(): void {
+    if (this.animationId) {
+      clearInterval(this.animationId)
+      this.animationId = 0
+    }
+    // 注意：不清空 listeners，保留监听器以便恢复
+  }
+
+  /**
+   * 恢复全局动画（应用从后台恢复时调用）
+   */
+  public resume(): void {
+    // 确保只启动一次，避免重复启动导致速度异常
+    if (this.animationId) {
+      // 如果已经有动画在运行，先停止它
+      clearInterval(this.animationId)
+      this.animationId = 0
+    }
+    // 重新启动动画
+    this.startGlobalAnimation()
+    // 立即通知所有监听器，触发重绘
+    this.notifyListeners()
+  }
+
+  /**
+   * 完全停止并清理（应用退出时调用）
+   */
+  public destroy(): void {
     if (this.animationId) {
       clearInterval(this.animationId)
       this.animationId = 0

@@ -1,8 +1,8 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
+import { GetIBestORM } from '../../../../database/orm';
 import { QueryStringUtils } from '../../../helpers/QueryStringUtils';
 import { DateValidationUtils } from '../../../helpers/DateValidationUtils';
 import { HttpResponseUtils } from '../../../helpers/HttpResponseUtils';
-import { DatabaseManager } from '../../../../database/DatabaseManager';
 import { ProcessingHistory } from '../../../../database/models/ProcessingHistory';
 import { ProcessingHistoryData } from '../../../../database/types';
 
@@ -22,7 +22,7 @@ class ProcessingRow {
   weight?: number;
 
   constructor(record: ProcessingHistoryData) {
-    this.id = record.id;
+    this.id = record.ID || record.id;
     this.startTime = record.StartTime || '';
     this.endTime = record.EndTime || '';
     this.productType = record.FruitName || '';
@@ -70,8 +70,8 @@ export class ProcessingApiHandler {
    * 获取所有记录并转换为前端格式
    */
   private static getAllRecordsAsRows(): ProcessingRow[] {
-    const dbManager = DatabaseManager.getInstance();
-    const dbRecords = dbManager.getAllProcessingHistory();
+    const db = GetIBestORM();
+    const dbRecords = db.Table("processing_history").Find(ProcessingHistory) as ProcessingHistoryData[];
     const rows: ProcessingRow[] = [];
     for (let i = 0; i < dbRecords.length; i++) {
       rows.push(ProcessingApiHandler.convertToProcessingRow(dbRecords[i]));
@@ -156,10 +156,9 @@ export class ProcessingApiHandler {
       return HttpResponseUtils.buildErrorResponse(dateValidation.error || '日期验证失败', 400);
     }
 
-    // 保存到数据库（使用便捷方法）
     try {
-      const dbManager = DatabaseManager.getInstance();
-      dbManager.addProcessingHistory(
+      const db = GetIBestORM();
+      const historyRecord = new ProcessingHistory(
         customerName,
         farmName,
         fruitName,
@@ -169,7 +168,30 @@ export class ProcessingApiHandler {
         weight,
         count
       );
+      hilog.info(DOMAIN, 'ProcessingApiHandler', `准备插入数据: customerName=${customerName}, farmName=${farmName}, fruitName=${fruitName}, startTime=${startTime}, endTime=${endTime}, weight=${weight}, count=${count}`);
+      
+      // 插入前查询一次（用于对比）
+      const dataBefore = ProcessingApiHandler.getAllRecordsAsRows();
+      hilog.info(DOMAIN, 'ProcessingApiHandler', `插入前查询到 ${dataBefore.length} 条记录`);
+      
+      const insertResult = db.Create(historyRecord);
+      hilog.info(DOMAIN, 'ProcessingApiHandler', `插入数据结果: ${insertResult}`);
+      
+      // 检查是否有错误
+      const dbError = db.GetError();
+      if (dbError) {
+        hilog.error(DOMAIN, 'ProcessingApiHandler', `插入数据时发生错误: ${dbError}`);
+        return HttpResponseUtils.buildErrorResponse(`插入数据失败: ${dbError}`, 500);
+      }
+      
+      // 查询所有数据
       const data = ProcessingApiHandler.getAllRecordsAsRows();
+      hilog.info(DOMAIN, 'ProcessingApiHandler', `插入后查询到 ${data.length} 条记录`);
+      
+      if (data.length <= dataBefore.length) {
+        hilog.warn(DOMAIN, 'ProcessingApiHandler', `插入后数据量未增加！插入前: ${dataBefore.length}, 插入后: ${data.length}`);
+      }
+      
       return HttpResponseUtils.buildSuccessResponse(data, '添加成功');
     } catch (error) {
       hilog.error(DOMAIN, 'ProcessingApiHandler', `保存到数据库失败: ${JSON.stringify(error)}`);
@@ -187,26 +209,22 @@ export class ProcessingApiHandler {
     }
 
     try {
-      const dbManager = DatabaseManager.getInstance();
-      const existingRecord = dbManager.getProcessingHistoryById(id);
-      if (!existingRecord) {
+      const db = GetIBestORM();
+      const ref = new ProcessingHistory();
+      db.Table("processing_history").Where('id', id).First(ref);
+      if (db.GetError() || !ref) {
         return HttpResponseUtils.buildErrorResponse('记录不存在', 404);
       }
-
-      // 获取更新参数（如果字段未提供，则使用原值）
-      const customerName = params['customerName'] !== undefined ? params['customerName'] : (existingRecord.CustomerName || '');
-      const farmName = params['farmName'] !== undefined ? params['farmName'] : (existingRecord.FarmName || '');
-      const fruitName = params['fruitName'] !== undefined ? params['fruitName'] : (params['productType'] || existingRecord.FruitName || '');
-      const status = params['status'] !== undefined ? params['status'] : (existingRecord.Status || '');
-      // 统一时间格式：优先使用参数，其次使用已有记录；并将 'T' 替换为空格
-      const startTimeParam = params['startTime'] || '';
-      const endTimeParam = params['endTime'] || '';
-      const startTime = (startTimeParam ? startTimeParam : (existingRecord.StartTime || '')).replace('T', ' ');
-      const endTime = (endTimeParam ? endTimeParam : (existingRecord.EndTime || '')).replace('T', ' ');
-      const weight = params['weight'] !== undefined ? Number(params['weight']) :
-        (params['totalWeight'] ? Number(params['totalWeight']) : (existingRecord.Weight || 0));
-      const count = params['count'] !== undefined ? Number(params['count']) : (existingRecord.Quantity || 0);
-
+      
+      const customerName: string = params['customerName'] !== undefined ? params['customerName'] : (ref.CustomerName || '');
+      const farmName: string = params['farmName'] !== undefined ? params['farmName'] : (ref.FarmName || '');
+      const fruitName: string = params['fruitName'] !== undefined ? params['fruitName'] : (params['productType'] || ref.FruitName || '');
+      const status: string = params['status'] !== undefined ? params['status'] : (ref.Status || '');
+      const startTime: string = params['startTime'] ? (params['startTime'].replace('T', ' ')) : (ref.StartTime || '');
+      const endTime: string = params['endTime'] ? (params['endTime'].replace('T', ' ')) : (ref.EndTime || '');
+      const weight: number = params['weight'] !== undefined ? Number(params['weight']) : (params['totalWeight'] ? Number(params['totalWeight']) : (ref.Weight || 0));
+      const count: number = params['count'] !== undefined ? Number(params['count']) : (ref.Quantity || 0);
+      
       const updatedRecord = new ProcessingHistory(
         customerName,
         farmName,
@@ -217,8 +235,9 @@ export class ProcessingApiHandler {
         weight,
         count
       );
-
-      dbManager.updateProcessingHistory(id, updatedRecord);
+      updatedRecord.ID = id;
+      db.Save(updatedRecord);
+      
       const data = ProcessingApiHandler.getAllRecordsAsRows();
       return HttpResponseUtils.buildSuccessResponse(data, '更新成功');
     } catch (error) {
@@ -237,13 +256,14 @@ export class ProcessingApiHandler {
     }
 
     try {
-      const dbManager = DatabaseManager.getInstance();
-      const existingRecord = dbManager.getProcessingHistoryById(id);
-      if (!existingRecord) {
+      const db = GetIBestORM();
+      const ref = new ProcessingHistory();
+      db.Table("processing_history").Where('id', id).First(ref);
+      if (db.GetError() || !ref) {
         return HttpResponseUtils.buildErrorResponse('记录不存在', 404);
       }
-
-      dbManager.deleteProcessingHistory(id);
+      
+      db.Table("processing_history").Where('id', id).Delete();
       const data = ProcessingApiHandler.getAllRecordsAsRows();
       return HttpResponseUtils.buildSuccessResponse(data, '删除成功');
     } catch (error) {
@@ -326,6 +346,8 @@ export class ProcessingApiHandler {
    * @param body 请求体（POST/PUT 请求）
    */
   static async handle(method: string, path: string, body?: string): Promise<string> {
+    hilog.info(DOMAIN, 'ProcessingApiHandler', `收到请求: ${method} ${path}`);
+    
     if (path.indexOf('/api/processing') !== 0) {
       return HttpResponseUtils.buildErrorResponse('无效的API路径', 404);
     }
@@ -339,6 +361,8 @@ export class ProcessingApiHandler {
       const emptyBodyParams: Record<string, string> = {};
       const bodyParams = body ? ProcessingApiHandler.parseRequestBody(body) : emptyBodyParams;
       const params = ProcessingApiHandler.mergeParams(queryParams, bodyParams);
+      
+      hilog.info(DOMAIN, 'ProcessingApiHandler', `解析参数: action=${params['action']}, method=${method}, cleanPath=${cleanPath}`);
       
       // 从路径中提取 ID（如 /api/processing/123）
       const pathId = ProcessingApiHandler.extractIdFromPath(cleanPath);
@@ -354,6 +378,11 @@ export class ProcessingApiHandler {
         // 兼容旧版本：如果 action=listJson，使用旧接口
         if (params['action'] === 'listJson') {
           return ProcessingApiHandler.handleListJson();
+        }
+        // 兼容旧版本：GET 请求也可以用于 insert（虽然不符合 RESTful 规范）
+        if (params['action'] === 'insert') {
+          hilog.info(DOMAIN, 'ProcessingApiHandler', 'GET 请求的 insert action，调用 handleInsert');
+          return ProcessingApiHandler.handleInsert(params);
         }
         return ProcessingApiHandler.handleList(params);
       }

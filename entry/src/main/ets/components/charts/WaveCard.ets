@@ -14,7 +14,12 @@ export struct WaveCard {
 
   // 使用全局相位管理器，所有卡片共享同一个相位（确保同步）
   private phaseManager: WavePhaseManager = WavePhaseManager.getInstance()
-  private phaseUpdateCallback: () => void = () => {}
+  // 使用箭头函数绑定，确保 callback 引用唯一且稳定
+  private phaseUpdateCallback: () => void = () => {
+    if (this.isVisible && this.canvasWidth > 0 && this.canvasHeight > 0) {
+      this.drawWave()
+    }
+  }
   @State private canvasWidth: number = 0
   @State private canvasHeight: number = 0
 
@@ -23,22 +28,26 @@ export struct WaveCard {
   private cachedGradient: CanvasGradient | null = null
   private areaDebounceId: number = 0
   private isVisible: boolean = true
+  private isListenerRegistered: boolean = false
 
   aboutToAppear() {
-    // 注册到全局相位管理器，接收相位更新通知
-    this.phaseUpdateCallback = () => {
-      if (this.isVisible) {
-        this.drawWave()
-      }
+    // 确保只注册一次，避免重复注册导致速度异常
+    if (!this.isListenerRegistered) {
+      this.phaseManager.addListener(this.phaseUpdateCallback)
+      this.isListenerRegistered = true
     }
-    this.phaseManager.addListener(this.phaseUpdateCallback)
     // 立即绘制一次
-    this.drawWave()
+    if (this.canvasWidth > 0 && this.canvasHeight > 0) {
+      this.drawWave()
+    }
   }
 
   aboutToDisappear() {
     // 移除监听器
-    this.phaseManager.removeListener(this.phaseUpdateCallback)
+    if (this.isListenerRegistered) {
+      this.phaseManager.removeListener(this.phaseUpdateCallback)
+      this.isListenerRegistered = false
+    }
     // 清理定时器
     if (this.areaDebounceId) {
       clearTimeout(this.areaDebounceId)
@@ -63,10 +72,14 @@ export struct WaveCard {
           this.canvasWidth = cw
           this.canvasHeight = ch
           // 尺寸变化去抖，且重建渐变以匹配新尺寸
+          // 注意：不在这里调用 drawWave()，让定时器统一控制绘制，避免速度异常
           if (this.areaDebounceId) { clearTimeout(this.areaDebounceId) }
           this.areaDebounceId = setTimeout((): void => {
             this.cachedGradient = null
-            this.drawWave()
+            // 只在尺寸变化时立即绘制一次，之后由定时器控制
+            if (this.isVisible && this.canvasWidth > 0 && this.canvasHeight > 0) {
+              this.drawWave()
+            }
           }, 150) as number
         }
       })
@@ -74,9 +87,7 @@ export struct WaveCard {
         const nowVisible = ratio > 0
         if (this.isVisible !== nowVisible) {
           this.isVisible = nowVisible
-          if (this.isVisible) {
-            this.drawWave()
-          }
+          // 可见性变化时不立即绘制，让定时器统一控制，避免速度异常
         }
       })
   }

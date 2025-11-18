@@ -29,6 +29,7 @@ export interface TestData {
 
 export interface ProcessingHistoryData {
   id?: number;
+  ID?: number; // 模型基类返回的 ID 字段（大写）
   CustomerName?: string;
   FarmName?: string;
   FruitName?: string;

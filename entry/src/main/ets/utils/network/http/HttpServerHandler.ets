@@ -7,6 +7,7 @@ import { QueryStringUtils } from '../../helpers/QueryStringUtils';
 import { ApiDocumentation } from './docs/ApiDocumentation';
 import { ResponseHandler } from './handlers/ResponseHandler';
 import { ProcessingApiHandler } from './handlers/ProcessingApiHandler';
+import { PerformanceApiHandler } from './handlers/PerformanceApiHandler';
 import { FileBrowserHandler } from './handlers/FileBrowserHandler';
 
 const DOMAIN = 0x0000;
@@ -86,6 +87,8 @@ export class HttpServerHandler {
         }
       
       // 根据路径返回不同内容
+      hilog.info(DOMAIN, 'HttpServerHandler', `路由匹配: path=${path}, decodedPath=${decodedPath}`);
+      
       if (path === '/' || path === '/index') {
         return await HttpServerHandler.getFileBrowserResponse(params);
       }
@@ -100,6 +103,23 @@ export class HttpServerHandler {
       if (path === '/api/docs' || path === '/api/help') {
         // API文档页面
         return ApiDocumentation.getApiDocsResponse();
+      }
+      if (path.startsWith('/api/performance')) {
+        // 解析 HTTP 方法
+        const method = pathParts[0] || 'GET';
+        
+        // 提取请求体（POST/PUT 请求）
+        let requestBody: string | undefined = undefined;
+        if (method === 'POST' || method === 'PUT') {
+          // 查找空行后的请求体
+          const emptyLineIndex = rawRequest.indexOf('\r\n\r\n');
+          if (emptyLineIndex >= 0) {
+            requestBody = rawRequest.substring(emptyLineIndex + 4);
+          }
+        }
+        
+        hilog.info(DOMAIN, 'HttpServerHandler', `性能测试路由匹配: method=${method}, path=${path}, rawPath=${rawPath}`);
+        return await PerformanceApiHandler.handle(method, rawPath, requestBody);
       }
       if (path.startsWith('/api/processing')) {
         // 解析 HTTP 方法
