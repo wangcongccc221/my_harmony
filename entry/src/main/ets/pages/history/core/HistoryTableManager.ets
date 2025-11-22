@@ -149,7 +149,7 @@ export class HistoryTableManager {
         data.weight,
         data.count
       )
-      db.Create(historyRecord)
+      await db.Create(historyRecord)
       await this.loadDataFromDatabase()
     } catch (error) {
       console.error('❌ 添加数据到数据库失败:', error)

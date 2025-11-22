@@ -135,7 +135,7 @@ export class HttpServerHandler {
           }
         }
         
-        return await ProcessingApiHandler.handle(method, rawPath, requestBody);
+        return await ProcessingApiHandler.handle(method, rawPath, requestBody, HttpServerHandler.appContext as Context);
       }
       return ResponseHandler.getNotFoundResponse();
       } catch (error) {

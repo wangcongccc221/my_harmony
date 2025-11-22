@@ -148,7 +148,7 @@ export struct LiquidCardsArea {
    * @returns 波浪图数量
    */
   private getWaveCount(): number {
-    return this.selectedFSM === 'FSM1' ? 3 : 5
+    return this.selectedFSM === 'FSM1' ? 2 : 3
   }
 
   /**
@@ -354,15 +354,15 @@ export struct LiquidCardsArea {
           // 使用新的三层卡片
           ThreeLayerCard({
             cardData: cardData,
-            cardWidth: 120,
-            cardHeight: 160,
+            cardWidth: '9.26%',
+            cardHeight: '50.13%',
             mainColor: this.getCurrentTheme().primary,
             enableWave: idx < this.getWaveCount() && (!cardData.thirdLayer.chartData || cardData.thirdLayer.chartData.length === 0),
             onCardDrop: (data: ThreeLayerCardData) => {
               this.handleCardDrop(idx, data)
             }
           })
-          .margin({ right: 6, bottom: 6 })
+          .margin({ right: '0.28%', bottom: '0.28%' })
         })
       }
       .width('100%')
@@ -376,8 +376,8 @@ export struct LiquidCardsArea {
     .edgeEffect(EdgeEffect.Spring)
     .scrollBarColor(this.getCurrentTheme().borderColor)
     .scrollBarWidth(6)
-    .friction(0.6) // 进一步减少摩擦系数，提升流畅度
-    .padding({ left: 20, right: 20, top: 0, bottom: 4 })
+    .friction(0.6)
+    .padding({ left: '0.93%', right: '0.93%', top: '0%', bottom: '0.28%' })
     .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
     .border({ width: 1, color: this.getCurrentTheme().borderColor })
     .borderRadius(10)

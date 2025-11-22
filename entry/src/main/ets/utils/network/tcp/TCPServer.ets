@@ -3,6 +3,109 @@ import { util } from '@kit.ArkTS';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 // AppStorage 是全局可用的，无需导入
 import { TCP_CONNECTION_STATUS } from '../../../constants/TopBarKeys';
+import { taskpool } from '@kit.ArkTS';
+
+@Concurrent
+export async function runTcpServerWorker(ip: string, port: number): Promise<void> {
+  const DOMAIN = 0x0000;
+  try {
+    const server = socket.constructTCPSocketServerInstance();
+
+    const MAX_MSG_CONCURRENT = 64;
+    const MAX_MSG_QUEUE = 256;
+    let active = 0;
+    const queue: Array<() => Promise<void>> = [];
+
+    const processQueue = () => {
+      while (active < MAX_MSG_CONCURRENT && queue.length > 0) {
+        const next = queue.shift();
+        if (next) {
+          active++;
+          next().finally(() => {
+            active--;
+            processQueue();
+          });
+        }
+      }
+    };
+
+    const schedule = (task: () => Promise<void>, onReject: () => void) => {
+      if (active < MAX_MSG_CONCURRENT) {
+        active++;
+        task().finally(() => {
+          active--;
+          processQueue();
+        });
+        return;
+      }
+      if (queue.length < MAX_MSG_QUEUE) {
+        queue.push(task);
+        return;
+      }
+      onReject();
+    };
+
+    server.on('connect', async (client: socket.TCPSocketConnection) => {
+      try {
+        const remote = await client.getRemoteAddress();
+        hilog.info(DOMAIN, 'TCPServerWorker', `客户端连接: ${remote.address}:${remote.port || 0}`);
+        AppStorage.setOrCreate(TCP_CONNECTION_STATUS, true);
+
+        client.on('message', (data: socket.SocketMessageInfo) => {
+          schedule(async () => {
+            try {
+              const decoder = new util.TextDecoder();
+              const uint8Array = new Uint8Array(data.message);
+              const message = decoder.decode(uint8Array);
+              hilog.info(DOMAIN, 'TCPServerWorker', `收到消息: ${message}`);
+            } catch (error) {
+              hilog.error(DOMAIN, 'TCPServerWorker', `消息处理失败: ${error}`);
+            }
+          }, () => {
+            try {
+              const encoder = new util.TextEncoder();
+              const rejectMsg = encoder.encodeInto('SERVER_BUSY');
+              client.send({ data: rejectMsg }).catch(() => {});
+            } catch (_) {}
+          });
+        });
+
+        client.on('close', () => {
+          hilog.info(DOMAIN, 'TCPServerWorker', `客户端断开: ${remote.address}:${remote.port || 0}`);
+          AppStorage.setOrCreate(TCP_CONNECTION_STATUS, false);
+        });
+
+        client.on('error', (err: Error) => {
+          hilog.error(DOMAIN, 'TCPServerWorker', `客户端错误: ${err.message}`);
+        });
+      } catch (e) {
+        hilog.error(DOMAIN, 'TCPServerWorker', `处理连接失败: ${e}`);
+      }
+    });
+
+    server.on('error', (error: Error) => {
+      hilog.error(DOMAIN, 'TCPServerWorker', `服务器错误: ${error.message}`);
+    });
+
+    await server.listen({ address: ip, port, family: 1 });
+    hilog.info(DOMAIN, 'TCPServerWorker', `服务器启动成功: ${ip}:${port}`);
+
+    // 简单的关闭信号轮询
+    const SHUTDOWN_KEY = 'TCP_SERVER_SHUTDOWN';
+    const checkInterval = setInterval(async () => {
+      try {
+        const flag = AppStorage.get(SHUTDOWN_KEY) as boolean | null;
+        if (flag) {
+          clearInterval(checkInterval);
+          try { server.off('connect'); server.off('error'); } catch (_) {}
+          hilog.info(DOMAIN, 'TCPServerWorker', '收到关闭信号，服务器退出');
+        }
+      } catch (_) {}
+    }, 1000) as number;
+  } catch (error) {
+    hilog.error(DOMAIN, 'TCPServerWorker', `启动失败: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
 
 const DOMAIN = 0x0000;
 

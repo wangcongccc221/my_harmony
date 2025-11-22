@@ -71,8 +71,8 @@ export struct ThreeLayerCard {
   @Prop cardData: ThreeLayerCardData
   
   // 卡片尺寸
-  @Prop cardWidth: number = 150
-  @Prop cardHeight: number = 200
+  @Prop cardWidth: string | number = 150
+  @Prop cardHeight: string | number = 200
   
   // 主色调
   @Prop mainColor: string | number | Color = '#EA7A10'
@@ -340,7 +340,6 @@ export struct ThreeLayerCard {
       // 第一层：图片/文字层
       FirstLayer({
         cardData: this.cardData,
-        cardHeight: this.cardHeight,
         cardColors: this.getCardColors()
       })
       
@@ -353,7 +352,6 @@ export struct ThreeLayerCard {
       // 第二层：信息显示层
       SecondLayer({
         cardData: this.cardData,
-        cardHeight: this.cardHeight,
         enableWave: this.enableWave,
         cardColors: this.getCardColors(),
         cardNumber: this.getCardNumber(),
@@ -401,9 +399,9 @@ export struct ThreeLayerCard {
     .width(this.cardWidth)
     .height(this.cardHeight)
     .backgroundColor(Color.Transparent) // 透明背景
-    .borderRadius(12) // 圆角
-    .border({ width: 2, color: UseCardLogic.getCardColors().cardBorder }) // 卡片边框
-    .shadow({ radius: 10, color: UseCardLogic.getCardColors().cardShadow, offsetX: 0, offsetY: 4 }) // 卡片阴影
+    .borderRadius(8)
+    .border({ width: 1, color: UseCardLogic.getCardColors().cardBorder })
+    .shadow({ radius: 4, color: UseCardLogic.getCardColors().cardShadow, offsetX: 0, offsetY: 2 })
     .clip(true) // 裁剪子组件
     .onClick(() => {
       this.onCardDrop?.(this.cardData)

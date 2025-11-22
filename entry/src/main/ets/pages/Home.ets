@@ -1271,8 +1271,8 @@ struct Page {
         FloatingWindow({
           isVisible: this.showFloatingWindow,
           title: this.floatingWindowTitle,
-          windowWidth: '600px',
-          windowHeight: '700px',
+          windowWidth: '27.78%',
+          windowHeight: '48.61%',
           windowPosition: { x: 120, y: 400 },
           onClose: () => {
             this.handleFloatingWindowClose()
@@ -1287,7 +1287,7 @@ struct Page {
               this.buildFloatingTabButton('帮助', 'help')
             }
             .width('100%')
-            .height(50)
+            .height('3.47%')
             .backgroundColor(this.getCurrentTheme().surfaceColor)
             .borderRadius(8)
             .margin({ bottom: 16 })

@@ -2,6 +2,8 @@ import { socket } from '@kit.NetworkKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { util } from '@kit.ArkTS';
 import { hilog } from '@kit.PerformanceAnalysisKit';
+import { Context } from '@kit.AbilityKit';
+import { HttpServerHandler } from './HttpServerHandler';
 
 export type HttpRequestHandler = (requestRaw: string) => Promise<string> | string;
 
@@ -156,6 +158,109 @@ export function stopHttpServer(): void {
 
 export function isHttpServerRunning(): boolean {
   return httpServer.isRunning();
+}
+
+// 在 TaskPool worker 中运行 HTTP 服务器监听，使用本地变量与导入依赖，满足并发约束
+@Concurrent
+export async function runHttpServerWorker(ctx: Context, port: number): Promise<void> {
+  const server = socket.constructTCPSocketServerInstance();
+  const listenAddr: socket.NetAddress = { address: '0.0.0.0', port, family: 1 };
+  const MAX_CONCURRENT = 64;
+  const MAX_QUEUE = 256;
+  let active = 0;
+  const queue: Array<() => Promise<void>> = [];
+
+  const processQueue = () => {
+    while (active < MAX_CONCURRENT && queue.length > 0) {
+      const next = queue.shift();
+      if (next) {
+        active++;
+        next().finally(() => {
+          active--;
+          processQueue();
+        });
+      }
+    }
+  };
+
+  const schedule = (task: () => Promise<void>, onReject: () => void) => {
+    if (active < MAX_CONCURRENT) {
+      active++;
+      task().finally(() => {
+        active--;
+        processQueue();
+      });
+      return;
+    }
+    if (queue.length < MAX_QUEUE) {
+      queue.push(task);
+      return;
+    }
+    onReject();
+  };
+  try {
+    HttpServerHandler.setFileBasePath(ctx);
+    const handler = HttpServerHandler.createRouterHandler();
+
+    await new Promise<void>((resolve, reject) => {
+      server.listen(listenAddr, (err: BusinessError) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        hilog.info(0x0000, 'HttpServerWorker', `HTTP服务器(worker)启动成功，端口: ${port}`);
+        resolve();
+      });
+    });
+
+    server.on('connect', (clientSocket: socket.TCPSocketConnection) => {
+      const onMessage = (msgInfo: socket.SocketMessageInfo) => {
+        try {
+          const raw = util.TextDecoder.create('utf-8').decode(new Uint8Array(msgInfo.message));
+          const task = async () => {
+            try {
+              const response: string | Promise<string> = handler(raw);
+              const result: string = typeof response === 'string' ? response : await response;
+              const buf = new util.TextEncoder().encodeInto(result);
+              clientSocket.send({ data: buf.buffer });
+            } catch (err) {
+              const e = err as Error | BusinessError | object;
+              hilog.error(0x0000, 'HttpServerWorker', `处理请求失败: ${JSON.stringify(e)}`);
+              const errResp = 'HTTP/1.1 500 Internal Server Error\r\n\r\n';
+              const buf = new util.TextEncoder().encodeInto(errResp);
+              clientSocket.send({ data: buf.buffer });
+            }
+          };
+
+          schedule(task, () => {
+            const tooBusy = 'HTTP/1.1 503 Service Unavailable\r\nRetry-After: 1\r\n\r\n';
+            const buf = new util.TextEncoder().encodeInto(tooBusy);
+            clientSocket.send({ data: buf.buffer });
+          });
+        } catch (e) {
+          const err = e as Error | BusinessError | object;
+          hilog.error(0x0000, 'HttpServerWorker', `解析消息失败: ${JSON.stringify(err)}`);
+        }
+      };
+
+      clientSocket.on('message', onMessage);
+      clientSocket.on('close', () => {
+        clientSocket.off('message', onMessage);
+        hilog.info(0x0000, 'HttpServerWorker', '客户端连接关闭');
+      });
+      clientSocket.on('error', (error: BusinessError) => {
+        hilog.error(0x0000, 'HttpServerWorker', `客户端错误: ${JSON.stringify(error)}`);
+      });
+    });
+
+    // 防止并发函数返回导致 worker 退出：保持挂起
+    await new Promise<void>(() => {});
+  } catch (error) {
+    const err = error as Error | BusinessError | object;
+    hilog.error(0x0000, 'HttpServerWorker', `HTTP服务器(worker)启动失败: ${JSON.stringify(err)}`);
+    const e = error as Error;
+    throw e instanceof Error ? e : new Error(String(error));
+  }
 }
 
 

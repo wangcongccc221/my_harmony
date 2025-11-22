@@ -3,7 +3,8 @@ import common from '@ohos.app.ability.common';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { NetworkOptimizer } from '../utils/network/NetworkOptimizer';
-import { startHttpServer, stopHttpServer, isHttpServerRunning } from '../utils/network/http/HttpServer';
+import { startHttpServer, stopHttpServer, isHttpServerRunning, runHttpServerWorker } from '../utils/network/http/HttpServer';
+import { taskpool } from '@kit.ArkTS';
 import { HttpServerHandler } from '../utils/network/http/HttpServerHandler';
 import { copyRawDirectoryAuto } from '../utils/FileUtils';
 import { AppCleanup } from '../utils/lifecycle/AppCleanup';
@@ -12,9 +13,10 @@ import { ProcessingBarFeed } from '../utils/data/ProcessingBarFeed';
 import { MultiSeriesBarFeed } from '../utils/data/MultiSeriesBarFeed';
 import { WavePhaseManager } from '../utils/ui/WavePhaseManager';
 import { relationalStore } from '@kit.ArkData';
-import { IBestORMInit } from '../database/orm';
-import { runDatabaseDemo } from '../database/examples/DatabaseDemo';
-import { runPerformanceTest } from '../database/examples/PerformanceTest';
+import { IBestORMInit, GetIBestORM } from '../database/orm';
+import { Article, ArticlePayload } from '../database/models/Article';
+import { ProcessingHistory } from '../database/models/ProcessingHistory';
+import { taskPoolExecuteInsert, taskPoolExecuteQuery, taskPoolExecuteUpdate, taskPoolExecuteDelete } from '../database/examples/taskpool';
 
 const DOMAIN = 0x0000;
 const HTTP_SERVER_PORT: number = 8080;
@@ -52,25 +54,14 @@ export default class EntryAbility extends UIAbility {
 
     try {
       await IBestORMInit(this.context, {
-        name: "database.db",
-        securityLevel: relationalStore.SecurityLevel.S1
+        name: 'article.db',
+        securityLevel: relationalStore.SecurityLevel.S2,
       });
-      hilog.info(DOMAIN, 'EntryAbility', 'IBest-ORM 数据库初始化完成');
-      
-      // 运行数据库功能演示
-      runDatabaseDemo().then(() => {
-        hilog.info(DOMAIN, 'EntryAbility', '数据库功能演示执行完成');
-      }).catch((error: Error) => {
-        hilog.error(DOMAIN, 'EntryAbility', `数据库功能演示执行失败: ${JSON.stringify(error)}`);
-      });
-      
-      // 运行性能压测（可选，需要时取消注释）
-      // runPerformanceTest().then(() => {
-      //   hilog.info(DOMAIN, 'EntryAbility', '性能压测执行完成');
-      // }).catch((error: Error) => {
-      //   hilog.error(DOMAIN, 'EntryAbility', `性能压测执行失败: ${JSON.stringify(error)}`);
-      // });
-      
+      GetIBestORM().AutoMigrate(Article);
+      GetIBestORM().AutoMigrate(ProcessingHistory);
+      hilog.info(DOMAIN, 'EntryAbility', 'ORM 初始化完成并迁移 Article 表');
+
+      await this.runOrmTaskpoolDemo();
     } catch (e) {
       hilog.error(DOMAIN, 'EntryAbility', `数据库初始化失败: ${JSON.stringify(e)}`);
     }
@@ -166,20 +157,13 @@ export default class EntryAbility extends UIAbility {
     
     try {
       hilog.info(DOMAIN, 'EntryAbility', '开始启动HTTP服务器');
-      
-
       HttpServerHandler.setFileBasePath(this.context);
-      
-      const handler = HttpServerHandler.createRouterHandler(); // 带路由功能的处理器
-      
-      await startHttpServer(HTTP_SERVER_PORT, handler);
-      
-
+      const task: taskpool.Task = new taskpool.Task(runHttpServerWorker, this.context as common.Context, HTTP_SERVER_PORT);
+      taskpool.execute(task);
       this.httpServerInitialized = true;
       hilog.info(DOMAIN, 'EntryAbility', `HTTP服务器启动成功，监听端口: ${HTTP_SERVER_PORT}`);
     } catch (error) {
       hilog.error(DOMAIN, 'EntryAbility', `HTTP服务器启动失败: ${error.message}`);
-
       this.httpServerInitialized = false;
     }
   }
@@ -200,6 +184,52 @@ export default class EntryAbility extends UIAbility {
       hilog.info(DOMAIN, 'EntryAbility', `复制的文件列表: ${result.fileList.join(', ')}`);
     } catch (error) {
       hilog.error(DOMAIN, 'EntryAbility', `资源文件复制失败: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
+    }
+  }
+  private async runOrmTaskpoolDemo() {
+    const ctx = this.context as common.Context;
+    const title = `Demo_${Date.now()}`;
+    const a: ArticlePayload = {
+      userImage: 'default_image_url',
+      phone: '13800000000',
+      name: 'DemoUser',
+      source: 'DemoSource',
+      title: title,
+      contentStr: 'DemoContent',
+      likes: 1,
+      comments: 2,
+      shares: 3
+    };
+
+    try {
+      await taskPoolExecuteInsert(ctx, a);
+      hilog.info(DOMAIN, 'EntryAbility', `Demo: 插入完成 title=${title}`);
+
+      const list1 = await taskPoolExecuteQuery(ctx);
+      const inserted = list1.find(item => item.Title === title);
+      if (!inserted) {
+        hilog.error(DOMAIN, 'EntryAbility', 'Demo: 未找到插入的数据');
+        return;
+      }
+
+      inserted.Likes = (inserted.Likes ?? 0) + 1;
+      await taskPoolExecuteUpdate(ctx, inserted);
+      hilog.info(DOMAIN, 'EntryAbility', `Demo: 更新完成 id=${inserted.ID} likes=${inserted.Likes}`);
+
+      const list2 = await taskPoolExecuteQuery(ctx);
+      const updated = list2.find(item => item.ID === inserted.ID);
+      hilog.info(DOMAIN, 'EntryAbility', `Demo: 校验更新 likes=${updated?.Likes}`);
+
+      if (inserted.ID) {
+        await taskPoolExecuteDelete(ctx, inserted.ID);
+        hilog.info(DOMAIN, 'EntryAbility', `Demo: 删除完成 id=${inserted.ID}`);
+      }
+
+      const list3 = await taskPoolExecuteQuery(ctx);
+      const exists = list3.some(item => item.ID === inserted.ID);
+      hilog.info(DOMAIN, 'EntryAbility', `Demo: 删除校验 exists=${exists}`);
+    } catch (err) {
+      hilog.error(DOMAIN, 'EntryAbility', `Demo 执行失败: ${JSON.stringify(err)}`);
     }
   }
 }

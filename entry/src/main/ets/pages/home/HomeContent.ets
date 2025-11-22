@@ -495,7 +495,7 @@ export struct HomeContent {
       }
       .justifyContent(FlexAlign.End)
       .alignItems(VerticalAlign.Center)
-      .padding({ top: 0, left: 0, right: 20, bottom: '1%' })
+      .padding({ top: '0%', left: '0%', right: '0.93%', bottom: '1%' })
       // 主页信息卡片：分选速度 | 本批重量 | 本批个数 | 开始时间 | 分选程序 | 分选效率 | 平均重量 | 实时产量 | 间隔速度
       SortingInfoCard()
       .margin({ bottom: '1%' })
@@ -637,7 +637,7 @@ export struct HomeContent {
           .fontColor(Color.Black)
           .backgroundColor('#FFFFFFB0')
           .borderRadius(8)
-          .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+          .padding({ left: '0.37%', right: '0.37%', top: '0.28%', bottom: '0.28%' })
           .opacity(0.92)
           .position({ x: this.dragOverlayX - 20, y: this.dragOverlayY - 20 })
           .enabled(false)

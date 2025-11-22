@@ -464,7 +464,7 @@ export struct DataTablesTabBar {
             customBorderWidth: 2      // 容器表边框宽度
           })
           .width('48%')
-          .margin({ left: '2%', right: '2px' })
+          .margin({ left: '2%', right: '0.09%' })
         }
         .width('100%')
         .height('100%')
@@ -592,7 +592,7 @@ export struct DataTablesTabBar {
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
       .border({ width: 1, color: this.getCurrentTheme().borderColor })
       .borderRadius(6)
-      .padding(4)
+    .padding('0.28%')
       .margin({ top: 4, left: 4, right: 4, bottom: 2 })
       .alignItems(HorizontalAlign.Center)
       .justifyContent(FlexAlign.Center)
@@ -654,7 +654,7 @@ export struct DataTablesTabBar {
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
       .border({ width: 1, color: this.getCurrentTheme().borderColor })
       .borderRadius(6)
-      .padding(4)
+    .padding('0.28%')
       .margin({ top: 4, left: 4, right: 4, bottom: 2 })
       .alignItems(HorizontalAlign.Center)
       .justifyContent(FlexAlign.Center)
@@ -662,7 +662,7 @@ export struct DataTablesTabBar {
     }
     .width('100%')
     .layoutWeight(1)
-    .padding({ left: 16, right: 16, bottom: 16 })
+    .padding({ left: '0.74%', right: '0.74%', bottom: '1.11%' })
   }
 
   build() {

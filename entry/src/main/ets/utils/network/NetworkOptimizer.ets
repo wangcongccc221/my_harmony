@@ -8,8 +8,10 @@
  */
 
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { TCPServer } from './tcp/TCPServer';
-import { TcpClient, createTcpClient } from './tcp/TcpClient';
+import { TCPServer, SendResult } from './tcp/TCPServer';
+import { TcpClient, createTcpClient, runTcpClientWorker } from './tcp/TcpClient';
+import { runTcpServerWorker } from './tcp/TCPServer';
+import { taskpool } from '@kit.ArkTS';
 
 const DOMAIN = 0x0000;
 
@@ -25,8 +27,8 @@ export class NetworkOptimizer {
   private static instance: NetworkOptimizer | null = null;
   
   // 网络组件
-  private tcpServer: TCPServer | null = null;
-  private tcpClient: TcpClient | null = null;
+  private tcpServer: TCPServer | null = null; // 兼容保留，不再直接在UI启动
+  private tcpClient: TcpClient | null = null; // 兼容保留，不再直接在UI启动
   
   // 状态管理
   private isInitialized: boolean = false;
@@ -78,33 +80,9 @@ export class NetworkOptimizer {
    */
   private async initializeTCPServer(): Promise<void> {
     try {
-      this.tcpServer = new TCPServer();
-      
-      // 设置服务器回调
-      this.tcpServer.setOnServerStatus((isRunning, message) => {
-        hilog.info(DOMAIN, 'NetworkOptimizer', `TCP服务器状态: ${isRunning ? '运行中' : '已停止'} - ${message}`);
-      });
-      
-      this.tcpServer.setOnClientConnect((client) => {
-        hilog.info(DOMAIN, 'NetworkOptimizer', `客户端连接: ${client.address}:${client.port}`);
-      });
-      
-      this.tcpServer.setOnClientDisconnect((clientId) => {
-        hilog.info(DOMAIN, 'NetworkOptimizer', `客户端断开: ${clientId}`);
-      });
-      
-      this.tcpServer.setOnMessage((type, content, clientId) => {
-        hilog.info(DOMAIN, 'NetworkOptimizer', `TCP消息 [${type}]: ${content} ${clientId ? `from ${clientId}` : ''}`);
-      });
-      
-      // 启动服务器
-      const success = await this.tcpServer.start(TCP_SERVER_IP, TCP_SERVER_PORT);
-      if (success) {
-        hilog.info(DOMAIN, 'NetworkOptimizer', `TCP服务器启动成功 - ${TCP_SERVER_IP}:${TCP_SERVER_PORT}`);
-      } else {
-        hilog.error(DOMAIN, 'NetworkOptimizer', 'TCP服务器启动失败');
-        return;
-      }
+      const task: taskpool.Task = new taskpool.Task(runTcpServerWorker, TCP_SERVER_IP, TCP_SERVER_PORT);
+      taskpool.execute(task);
+      hilog.info(DOMAIN, 'NetworkOptimizer', `TCP服务器已在TaskPool中启动 - ${TCP_SERVER_IP}:${TCP_SERVER_PORT}`);
     } catch (error) {
       hilog.error(DOMAIN, 'NetworkOptimizer', `TCP服务器初始化失败: ${error}`);
       return;
@@ -116,31 +94,11 @@ export class NetworkOptimizer {
    */
   private async initializeTcpClient(): Promise<void> {
     try {
-      this.tcpClient = createTcpClient();
-      
-      // 设置客户端回调
-      this.tcpClient.onMessage((message) => {
-        hilog.info(DOMAIN, 'NetworkOptimizer', `TCP客户端收到消息: ${message}`);
-      });
-      
-      this.tcpClient.onStatusChange((connected) => {
-        hilog.info(DOMAIN, 'NetworkOptimizer', `TCP客户端连接状态: ${connected ? '已连接' : '已断开'}`);
-      });
-      
-      this.tcpClient.onError((error) => {
-        hilog.error(DOMAIN, 'NetworkOptimizer', `TCP客户端错误: ${error}`);
-      });
-      
-      // 设置重连配置
-      this.tcpClient.setReconnectConfig(10, 5000); // 最多重连10次，间隔5秒  后期修改一下 可以无限自动重连
-      
-      // 连接到服务器
-      const connected = await this.tcpClient.connect(TCP_CLIENT_REMOTE_IP, TCP_SERVER_PORT);
-      if (connected) {
-        hilog.info(DOMAIN, 'NetworkOptimizer', `TCP客户端连接成功 - ${TCP_CLIENT_REMOTE_IP}:${TCP_SERVER_PORT}`);
-      } else {
-        hilog.warn(DOMAIN, 'NetworkOptimizer', `TCP客户端连接失败，将自动重连`);
-      }
+      const task: taskpool.Task = new taskpool.Task(runTcpClientWorker, TCP_CLIENT_REMOTE_IP, TCP_SERVER_PORT);
+      taskpool.execute(task);
+      // 初始化客户端发信队列
+      AppStorage.setOrCreate('TCP_CLIENT_OUTBOX', [] as string[]);
+      hilog.info(DOMAIN, 'NetworkOptimizer', `TCP客户端已在TaskPool中启动 - ${TCP_CLIENT_REMOTE_IP}:${TCP_SERVER_PORT}`);
     } catch (error) {
       hilog.error(DOMAIN, 'NetworkOptimizer', `TCP客户端初始化失败: ${error}`);
       return;
@@ -158,15 +116,14 @@ export class NetworkOptimizer {
    * 发送消息
    */
   async sendMessage(message: string): Promise<boolean> {
-    if (!this.tcpClient) {
-      hilog.warn(DOMAIN, 'NetworkOptimizer', 'TCP客户端未初始化');
-      return false;
-    }
-    
     try {
-      return await this.tcpClient.sendMessage(message);
+      const queue = AppStorage.get('TCP_CLIENT_OUTBOX') as string[] | null;
+      const next = Array.isArray(queue) ? queue : [];
+      next.push(message);
+      AppStorage.setOrCreate('TCP_CLIENT_OUTBOX', next);
+      return true;
     } catch (error) {
-      hilog.error(DOMAIN, 'NetworkOptimizer', `发送消息失败: ${error}`);
+      hilog.error(DOMAIN, 'NetworkOptimizer', `发送消息失败(队列): ${error}`);
       return false;
     }
   }
@@ -178,17 +135,9 @@ export class NetworkOptimizer {
     try {
       hilog.info(DOMAIN, 'NetworkOptimizer', '正在停止网络优化器');
       
-      // 停止TCP服务器
-      if (this.tcpServer) {
-        await this.tcpServer.stop();
-        this.tcpServer = null;
-      }
-      
-      // 停止TCP客户端
-      if (this.tcpClient) {
-        await this.tcpClient.disconnect();
-        this.tcpClient = null;
-      }
+      // 发出停止信号，交由Worker处理
+      AppStorage.setOrCreate('TCP_SERVER_SHUTDOWN', true);
+      AppStorage.setOrCreate('TCP_CLIENT_SHUTDOWN', true);
       
       this.isInitialized = false;
       hilog.info(DOMAIN, 'NetworkOptimizer', '网络优化器已停止');

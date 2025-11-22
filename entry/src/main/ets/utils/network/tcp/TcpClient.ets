@@ -1,6 +1,7 @@
 import { socket } from '@kit.NetworkKit';
 import { util } from '@kit.ArkTS';
 import { hilog } from '@kit.PerformanceAnalysisKit';
+import { taskpool } from '@kit.ArkTS';
 
 const DOMAIN = 0x0000;
 
@@ -277,4 +278,82 @@ export class TcpClient {
  */
 export function createTcpClient(): TcpClient {
   return new TcpClient();
+}
+
+@Concurrent
+export async function runTcpClientWorker(remoteIp: string, port: number): Promise<void> {
+  const DOMAIN = 0x0000;
+  const OUTBOX_KEY = 'TCP_CLIENT_OUTBOX';
+  const SHUTDOWN_KEY = 'TCP_CLIENT_SHUTDOWN';
+  let client: socket.TCPSocket | null = null;
+  let connected = false;
+
+  const connect = async () => {
+    try {
+      client = socket.constructTCPSocketInstance();
+
+      client.on('message', (data: socket.SocketMessageInfo) => {
+        try {
+          const decoder = new util.TextDecoder();
+          const uint8Array = new Uint8Array(data.message);
+          const message = decoder.decode(uint8Array);
+          hilog.info(DOMAIN, 'TcpClientWorker', `收到消息: ${message}`);
+        } catch (error) {
+          hilog.error(DOMAIN, 'TcpClientWorker', `消息解码失败: ${error}`);
+        }
+      });
+
+      client.on('close', () => {
+        connected = false;
+        hilog.info(DOMAIN, 'TcpClientWorker', '连接已断开');
+      });
+
+      client.on('error', (error: Error) => {
+        connected = false;
+        hilog.error(DOMAIN, 'TcpClientWorker', `连接错误: ${error.message}`);
+      });
+
+      await client.connect({ address: { address: remoteIp, port, family: 1 } });
+      connected = true;
+      hilog.info(DOMAIN, 'TcpClientWorker', `已连接到服务器 ${remoteIp}:${port}`);
+    } catch (error) {
+      connected = false;
+      hilog.error(DOMAIN, 'TcpClientWorker', `连接失败: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  await connect();
+
+  const SEND_LIMIT_PER_TICK = 32;
+  const pollInterval = setInterval(async () => {
+    try {
+      const shutdown = AppStorage.get(SHUTDOWN_KEY) as boolean | null;
+      if (shutdown) {
+        clearInterval(pollInterval);
+        try { await client?.close(); } catch (_) {}
+        hilog.info(DOMAIN, 'TcpClientWorker', '收到关闭信号，客户端退出');
+        return;
+      }
+
+      const queue = AppStorage.get(OUTBOX_KEY) as string[] | null;
+      if (Array.isArray(queue) && queue.length > 0 && connected && client) {
+        const toSend = queue.splice(0, SEND_LIMIT_PER_TICK);
+        const encoder = new util.TextEncoder();
+        for (const msg of toSend) {
+          try {
+            const data = encoder.encodeInto(msg);
+            await client.send({ data });
+          } catch (e) {
+            hilog.error(DOMAIN, 'TcpClientWorker', `发送失败: ${e}`);
+          }
+        }
+        AppStorage.setOrCreate(OUTBOX_KEY, queue);
+      }
+
+      // 自动重连
+      if (!connected) {
+        await connect();
+      }
+    } catch (_) {}
+  }, 500) as number;
 }

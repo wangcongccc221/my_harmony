@@ -1,139 +1,56 @@
 # 性能测试说明
+##### **概念澄清**
+- 吞吐（Throughput）：单位时间内系统成功处理的请求数，常用 QPS/TPS。例：1 秒内完成的 HTTP 请求数量。反映“总体处理能力”和并发下的产能。
+- 延迟（Latency）：单个请求从到达到发送响应的耗时，通常用平均、P95、P99。反映“单次响应速度”。
 
-## 测试目标
-- 评估 ORM 在不同字段数量（10~300）下的 CRUD 与批量操作耗时
-- 环境：HarmonyOS 模拟器 5.0.0.317，`EntryAbility` 启动后自动执行 `runPerformanceTest()`
-- 日志输出标签：`A03d00/JSAPP`
+端到端分解
+- 网络接收与解析
+  - 接收套接字数据、把 `ArrayBuffer` 转成字符串、拆 HTTP 首行与头部。
+  - 位置：`utils/network/http/HttpServer.ets:38-45`（消息回调）和 `utils/network/http/HttpServerHandler.ets:65-88`（解析请求行和路径）。
+- 路由与参数处理
+  - 根据路径选择 API、解析查询参数与请求体。
+  - 位置：`utils/network/http/HttpServerHandler.ets:90-139`（路由到 `/api/processing`）、`handlers/ProcessingApiHandler.ets:356-373`（解析参数）。
+- 任务池调度（你已启用）
+  - 将 CRUD 交给 TaskPool 并发函数，避免阻塞路由线程和 UI。
+  - 位置：查询 `PH_QueryAll` 在 `handlers/ProcessingApiHandler.ets:75`；插入 `PH_Insert` 在 `handlers/ProcessingApiHandler.ets:82`；更新 `PH_Update` 在 `handlers/ProcessingApiHandler.ets:96`；删除 `PH_Delete` 在 `handlers/ProcessingApiHandler.ets:89`。
+- 数据库操作实际耗时
+  - ORM 初始化（幂等）与迁移、具体读写（`Insert`、`Find`、`Update`、`Delete`）。
+  - 位置：在 TaskPool 函数内调用 `IBestORMInit` 和 `AutoMigrate`，随后进行 CRUD；如 `handlers/ProcessingApiHandler.ets:70-73, 82-87`。
+- 序列化与响应发送
+  - 将查询结果转换为前端行结构、分页封装、生成 HTTP 响应文本并回写 socket。
+  - 位置：行转换 `handlers/ProcessingApiHandler.ets:65-67`，分页响应 `handlers/ProcessingApiHandler.ets:132-166`，默认响应 `handlers/ResponseHandler.ets:75-90`。
 
-## 运行方式
-- 现阶段在 `EntryAbility` 初始化完成后自动调用 `runPerformanceTest()`（会占用主线程，可能导致 SetUIContent 超时，建议后续改为调试入口或手动触发）
-- 日志中会按字段档位打印：
-  - 单条插入、查询、更新、删除耗时
-  - 批量插入 10 条耗时（与平均值）
-  - 批量查询耗时
-  - 汇总表
+“延迟”具体指哪些耗时
+- 等待时间（队列/背压）：路由线程把任务交给 TaskPool 后可能排队，取决于并发配额和任务堆积。
+- 解析与路由耗时：`HttpServerHandler` 中对字符串的处理与解码、分支选择。
+- TaskPool 分发耗时：创建 `taskpool.Task` 与投递到 worker 的时间，通常很短但在高并发下不可忽略。
+- ORM 初始化与迁移耗时：幂等操作，若未缓存会增加每次任务的固定开销；建议在每个 worker 中缓存初始化状态。
+- 数据库 I/O 耗时：查询、插入、更新、删除的核心时间；这通常是延迟的主因。
+- 序列化与生成响应耗时：将对象转为 JSON/HTML 并构造 HTTP 消息体。
 
-## 模型列表
-| 字段数 | 表名                      |
-| ------ | ------------------------- |
-| 10     | `test_model_10_fields`    |
-| 20     | `test_model_20_fields`    |
-| 30     | `test_model_30_fields`    |
-| 50     | `test_model_50_fields`    |
-| 100    | `test_model_100_fields`   |
-| 150    | `test_model_150_fields`   |
-| 200    | `test_model_200_fields`   |
-| 250    | `test_model_250_fields`   |
-| 300    | `test_model_300_fields`   |
+“吞吐”具体看哪些指标
+- 接口级 QPS/TPS：如 `/api/processing?action=insert` 每秒完成数。
+- 数据库层 TPS：每秒成功的 `Insert`/`Update`/`Delete` 数；只读 QPS（`Find`）。
+- 有效响应比率：成功响应占比、错误率。
+- 并发占用：路由线程并发、TaskPool 活跃 worker 数。
 
-## 结果摘要（示例：2025-11-17 模拟器日志）
-| 字段数 | 插入(ms) | 查询(ms) | 更新(ms) | 删除(ms) | 批量插入(ms) | 批量查询(ms) |
-| ------ | -------- | -------- | -------- | -------- | ------------ | ------------ |
-| 10     | 5        | 2        | 19       | 8        | 53           | 4            |
-| 20     | 4        | 1        | 3        | 4        | 36           | 7            |
-| 30     | 5        | 14       | 5        | 4        | 39           | 7            |
-| 50     | 4        | 3        | 3        | 3        | 33           | 16           |
-| 100    | 5        | 9        | 5        | 3        | 35           | 57           |
-| 150    | 6        | 26       | 7        | 3        | 36           | 118          |
-| 200    | 4        | 22       | 5        | 4        | 42           | 241          |
-| 250    | 4        | 30       | 4        | 9        | 38           | 413          |
-| 300    | 5        | 47       | 5        | 5        | 41           | 497          |
+你已有的观测点与工具
+- 路由日志：`utils/network/http/HttpServerHandler.ets:50-58, 89-92, 121-139` 会打印请求预览、路由匹配和方法。
+- 处理器日志：`handlers/ProcessingApiHandler.ets:366-373` 打印 action、方法；`handlers/ProcessingApiHandler.ets:180-236` 在插入前后打印记录数和插入 ID。
+- 性能测试 API：`/api/performance` 路由在 `HttpServerHandler.ets:107-123`，处理器 `handlers/PerformanceApiHandler.ets` 提供启动、状态、结果接口，可用于压测与统计结果。
 
-## 观察与建议
-- 单条 CRUD 与批量插入 10 条的耗时在 3~8ms，增长不明显
-- 批量查询随字段数呈线性~指数增长，300 字段约 500ms，是主要瓶颈
-- 建议：
-  1. 将 `runPerformanceTest()` 改为手动触发或后台任务，避免阻塞 UI
-  2. 评估批量查询的列选择与分页策略（如只查询必要字段或使用 `LIMIT/OFFSET`）
-  3. 如果需要线上监控，可将结果写入日志文件或上报分析
+如何衡量并诊断
+- 延迟分层采样
+  - 在路由入口、TaskPool 投递前后、TaskPool 函数内数据库操作前后、响应返回前分别打点，记录时间戳。
+  - 计算各阶段耗时分布，定位瓶颈（通常是数据库 I/O 或序列化大响应）。
+- 吞吐采样
+  - 统计单位时间内各接口完成次数（QPS/TPS），并记录错误率。
+  - 在高并发压测下观察随并发上升时的“QPS饱和点”和“延迟曲线”，评估是否需要队列/背压。
 
-# my_harmony_master 项目总览
+优化的优先级建议
+- 优先优化数据库 I/O（对延迟影响最大）：事务批量写入、必要时索引优化、减少重复迁移/初始化成本（在每个 worker 缓存 ORM 初始化）。
+- 保持“监听轻量、重活下沉到 TaskPool”：对吞吐更有效，监听本身下沉收益有限。
+- 加入并发控制与背压：设置 TaskPool 并发上限与队列长度，避免 1000 并发把 worker 拖慢整体响应。
 
-## 目录结构
-- `entry/`：主应用（UIAbility、页面、网络服务、数据库等）
-  - `entryability/EntryAbility.ets`：应用生命周期与启动流程
-  - `pages/`：业务页面（历史加工、实时大屏等）
-  - `utils/`：网络、文件、生命周期等工具
-  - `database/`：业务模型、管理器与类型；`database/orm/` 内置 ORM 核心源码
-- `build-profile.json5`：构建配置（仅保留 entry 模块）
-
-## 核心功能
-- **数据库持久化**：内嵌 ORM 支持自动迁移、CRUD、关系映射，`DatabaseManager` 负责建表及数据恢复。
-- **网络服务**：HTTP/TCP 服务为外部系统提供加工数据查询与导出。
-- **历史可视化**：历史页面支持筛选、统计、导出。
-- **启动流程**：`EntryAbility` 分阶段初始化资源、网络、数据库并恢复种子数据。
-- **UI 主题**：集成 Omni UI 与自研组件，满足大屏展示需求。
-
-## 环境要求
-- DevEco Studio 5.0+ / HarmonyOS SDK 5.1.1
-- hvigor 构建链与 ohpm
-- PowerShell 7 或兼容终端
-
-## 初始化与运行
-1. 执行 `ohpm install`
-2. DevEco Studio 导入项目，选择 5.1.1 SDK
-3. 直接运行 `entry` 模块到模拟器或真机
-4. 首次启动会复制资源、初始化网络/数据库、恢复历史数据；页面加载后可在历史模块查看与导出。
-
-## 数据库说明
-- ORM 源码位于 `entry/src/main/ets/database/orm`（含 `core`、`decorator`、`model`、`utils` 等）
-- 业务实体在 `entry/src/main/ets/database/models`，通过 `../orm` 导出的装饰器与 `Model` 基类定义
-- `entry/src/main/ets/database/index.ets` 统一导出 ORM API 与业务对象，业务层仅需 `import { IBestORMInit, DatabaseManager } from '../database';`
-
-## 常见命令
-- 构建调试：`hvigor assembleDebug`
-- 清理：`hvigor clean`
-
-## 注意事项
-- 性能测试示例已拆除，如需恢复请在独立分支引入
-- HTTP/TCP 端口定义在 `utils/network`，部署到真机需确认权限
-- ORM 已完全内嵌，不再依赖外部 `library` 模块，如需复用可直接从 `database/orm` 拷贝
-
-## 网络与服务
-- **HTTP 服务**  
-  - 启停：`utils/network/http/HttpServer.ts` 暴露 `startHttpServer/stopHttpServer/isHttpServerRunning`。  
-  - 路由：`HttpServerHandler` 统一分发到 `handlers` 子目录。  
-  - 主要接口：  
-    | 接口 | 说明 | 对应文件 | 关键逻辑 |
-    | ---- | ---- | ---- | ---- |
-    | `GET /api/processing` | 分页查询加工记录 | `ProcessingApiHandler` | 支持时间、客户、农场、状态筛选 |
-    | `POST /api/processing/export` | 导出选中加工记录 | 同上 | 写入 rawfile，再返回路径 |
-    | `GET /api/files` | 浏览导出的 HTML/CSV | `FileBrowserHandler` | 基于沙箱路径读取 |
-- **TCP 服务**  
-  - 文件：`utils/network/tcp/TCPServer.ets`  
-  - 功能：维持与硬件端的长连接，实时接收加工线状态、心跳、告警；`NetworkOptimizer` 会根据配置调整收发缓冲与重连策略。  
-  - 数据分发：收到消息后写入 `GlobalCardDataManager` 等全局状态，触发 UI 刷新。
-- **处理流程**  
-  - `EntryAbility.onCreate`：顺序执行资源拷贝 → 网络优化器初始化 → HTTP/TCP 服务启动。  
-  - `EntryAbility.onDestroy/onStop`：调用 `AppCleanup` 与 `stopHttpServer`，确保端口与资源释放。
-
-## UI 与组件
-- **页面结构**  
-  | 目录 | 说明 | 关键文件 |
-  | ---- | ---- | ---- |
-  | `pages/Home` | 汇总仪表盘、实时曲线、告警面板 | `Home.ets`, `components/layout/*` |
-  | `pages/history` | 历史加工列表、筛选、导出 | `HistoryContent.ets`, `HistoryDataTable.ets`, `core/HistoryTableManager.ets` |
-  | `components/feedback` | 弹框、Toast、导出对话框 | `FruitInfoDialog.ets` 等 |
-- **主题与状态**  
-  - `OmniThemeManager` + `@StorageLink` 共享主题状态，组件使用 `@Provide/@Consume` 传递主题对象。  
-  - 常量存于 `utils/constants/theme.ts`（如 `OMNI_THEME_KEY`、`TOP_STATUS_TEXT`）。
-- **典型组件**  
-  - `TopStatusBar`：顶部统计条，展示产量、告警、连接状态。  
-  - `CompactFsmToggle`：双通道切换器，通过动画指示当前生产线。  
-  - `HistoryDataTable`：封装 ArkUI 表格，可分页、勾选导出。  
-  - `FruitInfoDialog`：显示单果详细指标，支持滑动切换。  
-- **数据喂料**  
-  - `ProcessingCurveFeed`、`ProcessingBarFeed` 等模拟实时数据，供大屏 demo 使用。  
-  - 可接入 TCP 实时数据替换这些 feed。
-
-## 其他模块
-- **数据恢复**  
-  - `database/DataRestore.ets` 提供 `restoreProcessingHistoryData`，检测表为空时批量插入示例数据。  
-  - 数据来源：`entry/src/main/resources/rawfile/file/*.html`/JSON，可自定义。
-- **文件操作**  
-  - `utils/FileUtils.ts`：递归复制 rawfile 至 `context.filesDir`，并包含基础的路径校验。  
-  - 导出报表时会使用 `fs` 写入 `files/export/...`。
-- **网络优化**  
-  - `utils/network/NetworkOptimizer.ets`：单例管理 socket 超时、缓冲区、连接监控。  
-  - 提供 `getInstance()`、`startMonitoring()` 等方法，供 Ability 与 server 调用。
-
+一句话总结
+- 吞吐是“单位时间完成的请求数”，延迟是“单个请求从进来到出去的耗时”；它们涵盖网络接收、路由解析、TaskPool 分发、数据库读写和响应生成各个阶段，不只是查询耗时。当前架构中最关键的延迟影响点是数据库 CRUD 的 I/O 时间，其次是任务池分发与序列化，监听本身不是主要瓶颈。

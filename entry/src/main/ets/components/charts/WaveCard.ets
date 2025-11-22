@@ -27,15 +27,10 @@ export struct WaveCard {
   private context: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
   private cachedGradient: CanvasGradient | null = null
   private areaDebounceId: number = 0
-  private isVisible: boolean = true
+  private isVisible: boolean = false
   private isListenerRegistered: boolean = false
 
   aboutToAppear() {
-    // 确保只注册一次，避免重复注册导致速度异常
-    if (!this.isListenerRegistered) {
-      this.phaseManager.addListener(this.phaseUpdateCallback)
-      this.isListenerRegistered = true
-    }
     // 立即绘制一次
     if (this.canvasWidth > 0 && this.canvasHeight > 0) {
       this.drawWave()
@@ -87,7 +82,13 @@ export struct WaveCard {
         const nowVisible = ratio > 0
         if (this.isVisible !== nowVisible) {
           this.isVisible = nowVisible
-          // 可见性变化时不立即绘制，让定时器统一控制，避免速度异常
+          if (this.isVisible && !this.isListenerRegistered) {
+            this.phaseManager.addListener(this.phaseUpdateCallback)
+            this.isListenerRegistered = true
+          } else if (!this.isVisible && this.isListenerRegistered) {
+            this.phaseManager.removeListener(this.phaseUpdateCallback)
+            this.isListenerRegistered = false
+          }
         }
       })
   }

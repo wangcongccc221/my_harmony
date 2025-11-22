@@ -9,7 +9,6 @@ import { CardColorConfig } from '../../utils/theme/CardColors'
 @Component
 export struct SecondLayer {
   @Prop cardData: ThreeLayerCardData
-  @Prop cardHeight: number
   @Prop enableWave: boolean
   @Prop cardColors: CardColorConfig
   @Prop cardNumber: number
@@ -32,7 +31,7 @@ export struct SecondLayer {
       }
     }
     .width('100%')
-    .height(`${this.cardHeight * 0.20}px`)
+    .height('20%')
     .layoutWeight(0)
     .padding({ left: 8, right: 8, top: 4, bottom: 4 })
     .backgroundColor(Color.Transparent)

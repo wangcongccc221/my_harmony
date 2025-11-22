@@ -9,7 +9,6 @@ import { CardColorConfig } from '../../utils/theme/CardColors'
 @Component
 export struct FirstLayer {
   @Prop cardData: ThreeLayerCardData
-  @Prop cardHeight: number
   @Prop cardColors: CardColorConfig
 
   build() {
@@ -26,7 +25,7 @@ export struct FirstLayer {
       .margin({ left: 8 })
     }
     .width('100%')
-    .height(`${this.cardHeight * 0.20}px`)
+    .height('20%')
     .layoutWeight(0)
     .padding({ left: 8, right: 8, top: 4, bottom: 4 })
     .backgroundColor(Color.Transparent)

@@ -158,7 +158,7 @@ export struct OutletDialog {
                 .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
                 .border({ width: 1, color: this.getCurrentTheme().borderColor })
                 .borderRadius(6)
-                .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+                .padding({ left: '0.56%', right: '0.56%', top: '0.42%', bottom: '0.42%' })
                 .onClick(() => {
                   if (this.onPrevious) {
                     this.onPrevious()
@@ -171,8 +171,8 @@ export struct OutletDialog {
                 .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
                 .border({ width: 1, color: this.getCurrentTheme().borderColor })
                 .borderRadius(6)
-                .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-                .margin({ left: 8 })
+                .padding({ left: '0.56%', right: '0.56%', top: '0.42%', bottom: '0.42%' })
+                .margin({ left: '0.37%' })
                 .onClick(() => {
                   if (this.onNext) {
                     this.onNext()
@@ -182,7 +182,7 @@ export struct OutletDialog {
             .alignItems(VerticalAlign.Center)
           }
           .width('100%')
-          .padding({ left: 20, right: 20, top: 15, bottom: 15 })
+          .padding({ left: '0.93%', right: '0.93%', top: '1.04%', bottom: '1.04%' })
           .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
 
           // 内容区域
@@ -192,7 +192,7 @@ export struct OutletDialog {
               .fontWeight(FontWeight.Medium)
               .fontColor(this.getCurrentTheme().textColor)
               .textAlign(TextAlign.Center)
-              .margin({ top: 30, bottom: 30 })
+              .margin({ top: '2.08%', bottom: '2.08%' })
             
             // 出口信息卡片
             Column() {
@@ -206,7 +206,7 @@ export struct OutletDialog {
                 Text('出口编号：')
                   .fontSize(14)
                   .fontColor(this.getCurrentTheme().subTextColor)
-                  .width(80)
+                  .width('3.70%')
                 Text(this.currentOutletIndex.toString())
                   .fontSize(14)
                   .fontWeight(FontWeight.Medium)
@@ -214,13 +214,13 @@ export struct OutletDialog {
                   .layoutWeight(1)
               }
               .width('100%')
-              .margin({ bottom: 10 })
+              .margin({ bottom: '0.69%' })
               
               Row() {
                 Text('状态：')
                   .fontSize(14)
                   .fontColor(this.getCurrentTheme().subTextColor)
-                  .width(80)
+                  .width('3.70%')
                 Text('正常')
                   .fontSize(14)
                   .fontWeight(FontWeight.Medium)
@@ -228,13 +228,13 @@ export struct OutletDialog {
                   .layoutWeight(1)
               }
               .width('100%')
-              .margin({ bottom: 10 })
+              .margin({ bottom: '0.69%' })
               
               Row() {
                 Text('位置：')
                   .fontSize(14)
                   .fontColor(this.getCurrentTheme().subTextColor)
-                  .width(80)
+                  .width('3.70%')
                 Text('第' + this.currentOutletIndex + '个出口')
                   .fontSize(14)
                   .fontWeight(FontWeight.Medium)
@@ -244,11 +244,11 @@ export struct OutletDialog {
               .width('100%')
             }
             .width('100%')
-            .padding(20)
+            .padding({ left: '0.93%', right: '0.93%', top: '1.39%', bottom: '1.39%' })
             .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
             .borderRadius(8)
             .border({ width: 1, color: this.getCurrentTheme().borderColor })
-            .margin({ bottom: 30 })
+            .margin({ bottom: '2.08%' })
           }
           .width('100%')
           .justifyContent(FlexAlign.Center)
@@ -271,15 +271,14 @@ export struct OutletDialog {
             }
           })
           .width('100%')
-          .padding({ left: 20, right: 20, top: 0, bottom: 20 })
+          .padding({ left: '0.93%', right: '0.93%', top: '0%', bottom: '1.39%' })
         }
         .width('85%')
-        .constraintSize({ maxWidth: 600, maxHeight: 500 })
         .backgroundColor(this.getCurrentTheme().surfaceColor)
         .borderRadius(12)
         .shadow({ radius: 20, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 4 })
         .alignSelf(ItemAlign.Center)
-        .margin({ top: 80 })
+        .margin({ top: '5.56%' })
       }
       .width('100%')
       .height('100%')

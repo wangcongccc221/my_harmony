@@ -691,8 +691,8 @@ export const TABLE_CONFIG: TableConfig = {
     headers: ['等级', '30', '20', '10', '0'],
     /** 等级表宽度：100% */
     width: '100%',
-    /** 等级表最大高度：160px */
-    maxHeight: '160px'
+    /** 等级表最大高度：11.11% */
+    maxHeight: '11.11%'
   },
   /** 容器表配置 */
   CONTAINER_TABLE: {
@@ -702,8 +702,8 @@ export const TABLE_CONFIG: TableConfig = {
     headers: ['容器名称', '分选标准', '容器规格', '容器等级'],
     /** 容器表宽度：100% */
     width: '100%',
-    /** 容器表最大高度：160px */
-    maxHeight: '160px'
+    /** 容器表最大高度：11.11% */
+    maxHeight: '11.11%'
   },
   /** 等级统计表配置 */
   STATISTICS_TABLE: {
@@ -713,8 +713,8 @@ export const TABLE_CONFIG: TableConfig = {
     headers: ['等级名称', '重量', '等级出口', '等级个数', '个数百分比', '等级重量', '重量百分比', '箱数', '箱数百分比', '装箱量(克)', '箱重'],
     /** 等级统计表宽度：100% */
     width: '100%',
-    /** 等级统计表最大高度：160px */
-    maxHeight: '160px'
+    /** 等级统计表最大高度：11.11% */
+    maxHeight: '11.11%'
   },
   /** 动态装箱表配置 */
   DYNAMIC_PACKING_TABLE: {
@@ -724,8 +724,8 @@ export const TABLE_CONFIG: TableConfig = {
     headers: ['出口', '流水码', '装箱规格', '等级', '箱数', '纸箱规格', '纸箱净重', '箱数/分'],
     /** 动态装箱表宽度：100% */
     width: '100%',
-    /** 动态装箱表最大高度：160px */
-    maxHeight: '160px'
+    /** 动态装箱表最大高度：11.11% */
+    maxHeight: '11.11%'
   },
   /** 成品表配置 */
   FINISHED_PRODUCTS_TABLE: {
@@ -735,9 +735,8 @@ export const TABLE_CONFIG: TableConfig = {
     headers: ['成品码', '出口', '流水码', '容器名称', '等级', '包装时间', '纸箱规格', '纸箱净重'],
     /** 成品表宽度：100% */
     width: '100%',
-    /** 成品表最大高度：160px */
-    maxHeight: '160px'
+    /** 成品表最大高度：11.11% */
+    maxHeight: '11.11%'
   }
 }
-
 
