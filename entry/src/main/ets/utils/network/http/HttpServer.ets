@@ -4,6 +4,7 @@ import { util } from '@kit.ArkTS';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { Context } from '@kit.AbilityKit';
 import { HttpServerHandler } from './HttpServerHandler';
+import { HttpRequestQueueManager } from './dispatch/HttpRequestQueueManager';
 
 export type HttpResponseData = string | Uint8Array;
 export type HttpRequestHandler = (requestRaw: string) => Promise<HttpResponseData> | HttpResponseData;
@@ -164,40 +165,12 @@ export function isHttpServerRunning(): boolean {
 export async function runHttpServerWorker(ctx: Context, port: number): Promise<void> {
   const server = socket.constructTCPSocketServerInstance();
   const listenAddr: socket.NetAddress = { address: '0.0.0.0', port, family: 1 };
-  const MAX_CONCURRENT = 64;
-  const MAX_QUEUE = 256;
-  let active = 0;
-  const queue: Array<() => Promise<void>> = [];
-
-  const processQueue = () => {
-    while (active < MAX_CONCURRENT && queue.length > 0) {
-      const next = queue.shift();
-      if (next) {
-        active++;
-        next().finally(() => {
-          active--;
-          processQueue();
-        });
-      }
-    }
-  };
-
-  const schedule = (task: () => Promise<void>, onReject: () => void) => {
-    if (active < MAX_CONCURRENT) {
-      active++;
-      task().finally(() => {
-        active--;
-        processQueue();
-      });
-      return;
-    }
-    if (queue.length < MAX_QUEUE) {
-      queue.push(task);
-      return;
-    }
-    onReject();
-  };
+  
   try {
+    // 初始化 HTTP 请求队列管理器
+    HttpRequestQueueManager.initialize();
+    hilog.info(0x0000, 'HttpServerWorker', 'HTTP 请求队列管理器已初始化');
+    
     HttpServerHandler.setFileBasePath(ctx);
     const handler = HttpServerHandler.createRouterHandler();
 
@@ -247,22 +220,11 @@ export async function runHttpServerWorker(ctx: Context, port: number): Promise<v
         cache = remaining; // 保留剩余（理论上不会有管线）
         const raw = decoder.decode(requestBytes);
 
-        const task = async () => {
-          try {
-            const response: HttpResponseData | Promise<HttpResponseData> = handler(raw);
-            const result: HttpResponseData = (response instanceof Promise) ? await response : response;
-            clientSocket.send({ data: result });
-          } catch (err) {
-            const e = err as Error | BusinessError | object;
-            hilog.error(0x0000, 'HttpServerWorker', `处理请求失败: ${JSON.stringify(e)}`);
-            const errResp = 'HTTP/1.1 500 Internal Server Error\r\n\r\n';
-            clientSocket.send({ data: errResp });
-          }
-        };
-
-        schedule(task, () => {
-          const tooBusy = 'HTTP/1.1 503 Service Unavailable\r\nRetry-After: 1\r\n\r\n';
-          clientSocket.send({ data: tooBusy });
+        // 使用 Dispatch 队列处理请求
+        // 注意：这里使用 Promise 包装，但不等待完成，避免阻塞消息处理
+        HttpRequestQueueManager.executeRequest(raw, clientSocket, handler).catch((err: Error | BusinessError | object) => {
+          // 错误已经在 executeRequest 中处理，这里只记录日志
+          hilog.error(0x0000, 'HttpServerWorker', `请求处理异常: ${JSON.stringify(err)}`);
         });
       };
 
