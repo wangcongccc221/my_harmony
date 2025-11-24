@@ -171,6 +171,7 @@ export struct HistoryContent {
    */
   private async handleQuery(): Promise<void> {
     console.log('执行查询操作')
+    const t0 = Date.now()
     
     // 新规则：只要五个条件里任意一个填写即可查询
     const hasAnyCondition = !!(this.startDate || this.endDate || this.customerName.trim() || this.farmName.trim() || this.fruitName.trim())
@@ -189,14 +190,33 @@ export struct HistoryContent {
       }
     }
     
-    // 查询前刷新一次数据库缓存，确保映射后的 fruitName 最新
+    let tDbStart = Date.now()
+    let tDbEnd = tDbStart
+    const tableManager = HistoryTableManager.getInstance()
+    const filterParams: FilterParams = {
+      startDate: this.startDate || undefined,
+      endDate: this.endDate || undefined,
+      customerName: this.customerName.trim() || undefined,
+      farmName: this.farmName.trim() || undefined,
+      fruitName: this.fruitName.trim() || undefined
+    }
+    let totalCount = 0
     try {
-      const tableManager = HistoryTableManager.getInstance()
-      await tableManager.refreshData()
-    } catch (_) {}
+      totalCount = await tableManager.countFilteredPaginated(filterParams, 200)
+      tDbEnd = Date.now()
+    } catch (_) {
+      tDbEnd = Date.now()
+    }
 
     // 应用筛选
+    const tFilterStart = Date.now()
     const filteredCount = this.applyFilter()
+    const tFilterEnd = Date.now()
+    const t1 = Date.now()
+    const elapsedMs = t1 - t0
+    const dbMs = tDbEnd - tDbStart
+    const filterMs = tFilterEnd - tFilterStart
+    console.log(`查询了${totalCount}条数据，耗时${elapsedMs}毫秒（数据库${dbMs}毫秒，筛选${filterMs}毫秒）`)
     
     // 查询后清空左侧条件（客户/农场/水果）与日期输入
     this.customerName = ''
@@ -206,7 +226,7 @@ export struct HistoryContent {
     this.endDate = ''
     
     // 显示查询成功弹窗
-    this.showToast('success', `查询成功，共找到 ${filteredCount} 条记录`)
+    this.showToast('success', `查询成功，共找到 ${totalCount} 条记录`)
   }
 
   /**

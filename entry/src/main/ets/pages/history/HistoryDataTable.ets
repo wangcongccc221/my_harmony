@@ -28,6 +28,10 @@ export struct HistoryDataTable {
   // 防重复加载标志，避免aboutToUpdate循环触发
   private isLoading: boolean = false
   private lastUpdateKey: number = 0
+  @State private page: number = 1
+  @State private pageSize: number = 50
+  @State private hasMore: boolean = true
+  private isLoadingMore: boolean = false
 
   // 事件回调
   onRowClick?: (rowData: HistoryTableData) => void
@@ -115,9 +119,9 @@ export struct HistoryDataTable {
    */
   private async loadData(): Promise<void> {
     try {
-      console.log('HistoryDataTable loadData: 开始从数据库加载数据')
-      const data = await this.tableManager.getData()
-      console.log('HistoryDataTable loadData: 获取到数据', data.length, '条')
+      console.log('HistoryDataTable loadData: 开始从数据库分页加载数据')
+      const data = await this.tableManager.getPage(this.page, this.pageSize)
+      console.log('HistoryDataTable loadData: 获取到分页数据', data.length, '条')
       // 更新 @State tableData，这会触发UI重新渲染
       this.tableData = data
       console.log('HistoryDataTable loadData: tableData已更新，长度:', this.tableData.length)
@@ -125,6 +129,7 @@ export struct HistoryDataTable {
       if (this.onDataChange) {
         this.onDataChange(this.tableData)
       }
+      this.hasMore = data.length >= this.pageSize
     } catch (error) {
       console.error('HistoryDataTable loadData: 加载数据失败', error)
       this.tableData = []
@@ -158,7 +163,7 @@ export struct HistoryDataTable {
     if (this.filteredData && this.filteredData.length > 0) {
       return
     }
-    // 否则加载全部数据
+    // 否则加载分页数据
     this.loadData().then(() => {
       console.log('HistoryDataTable aboutToAppear: 数据加载完成')
     }).catch((error: Error) => {
@@ -179,7 +184,7 @@ export struct HistoryDataTable {
       }
       return
     }
-    // 否则加载全部数据（用于"重置"等场景）
+    // 否则加载分页数据（用于"重置"等场景）
     // 添加防重复加载机制，避免循环触发
     if (!this.isLoading) {
       this.isLoading = true
@@ -201,6 +206,26 @@ export struct HistoryDataTable {
         }
       })
     }
+  }
+
+  private async loadMore(): Promise<void> {
+    if (this.isLoadingMore || !this.hasMore || (this.filteredData && this.filteredData.length > 0)) return
+    this.isLoadingMore = true
+    const nextPage = this.page + 1
+    try {
+      const more = await this.tableManager.getPage(nextPage, this.pageSize)
+      if (more.length > 0) {
+        this.tableData = this.tableData.concat(more)
+        this.page = nextPage
+        this.hasMore = more.length >= this.pageSize
+        if (this.onDataChange) {
+          this.onDataChange(this.tableData)
+        }
+      } else {
+        this.hasMore = false
+      }
+    } catch (_) {}
+    this.isLoadingMore = false
   }
 
   build() {
@@ -323,6 +348,19 @@ export struct HistoryDataTable {
         .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
         .border({ width: 1, color: this.getCurrentTheme().borderColor })
         .borderRadius(4)
+        if (!(this.filteredData && this.filteredData.length > 0)) {
+          Row() {
+            Button(this.hasMore ? '加载更多' : '已到底')
+              .enabled(this.hasMore && !this.isLoadingMore)
+              .onClick(() => {
+                this.loadMore()
+              })
+              .height(36)
+          }
+          .width('100%')
+          .justifyContent(FlexAlign.Center)
+          .padding({ top: 8, bottom: 8 })
+        }
       }
       .width('100%')
       .height('70%')

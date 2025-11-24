@@ -59,6 +59,8 @@ export default class EntryAbility extends UIAbility {
       });
       GetIBestORM().AutoMigrate(Article);
       GetIBestORM().AutoMigrate(ProcessingHistory);
+      // 创建索引以优化查询性能
+      ProcessingHistory.createIndexes();
       hilog.info(DOMAIN, 'EntryAbility', 'ORM 初始化完成并迁移 Article 表');
 
       await this.runOrmTaskpoolDemo();

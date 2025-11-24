@@ -5,6 +5,9 @@
  */
 
 import { util } from '@kit.ArkTS';
+import { zlib } from '@kit.BasicServicesKit';
+import { fileIo as fs } from '@kit.CoreFileKit';
+import { Context } from '@kit.AbilityKit';
 
 /**
  * 成功响应接口
@@ -21,6 +24,7 @@ interface SuccessResponse {
  */
 export class HttpResponseUtils {
   private static textEncoder: util.TextEncoder = new util.TextEncoder();
+  private static tempCounter: number = 0;
 
   /**
    * 构建JSON响应
@@ -49,6 +53,68 @@ export class HttpResponseUtils {
     }
     
     return headers + `\r\n` + json;
+  }
+
+  static async buildJsonResponseGzip(
+    data: object,
+    statusCode: number = 200,
+    includeCors: boolean = false,
+    context?: Context
+  ): Promise<Uint8Array> {
+    try {
+      const json = JSON.stringify(data);
+      const bodyBytes = HttpResponseUtils.textEncoder.encodeInto(json);
+      const gzip = zlib.createGZipSync();
+      const baseDir = context ? context.getApplicationContext().filesDir : '/data/storage/el2/base/haps/entry/files';
+      const id = (++HttpResponseUtils.tempCounter) % 1000000;
+      const filePath = `${baseDir}/resp_${Date.now()}_${id}.gz`;
+      await gzip.gzopen(filePath, 'wb');
+      // 分块写入以降低单次内存峰值
+      const CHUNK = 64 * 1024;
+      const ab = (new Uint8Array(bodyBytes)).buffer;
+      let written = 0;
+      while (written < bodyBytes.length) {
+        const remain = bodyBytes.length - written;
+        const size = remain > CHUNK ? CHUNK : remain;
+        const slice = ab.slice(written, written + size);
+        await gzip.gzwrite(slice, size);
+        written += size;
+      }
+      await gzip.gzclose();
+      const stat = fs.statSync(filePath);
+      const compSize = stat.size;
+      const fd = fs.openSync(filePath, fs.OpenMode.READ_ONLY);
+      const readBuf = new ArrayBuffer(compSize);
+      fs.readSync(fd.fd, readBuf, { offset: 0 });
+      fs.closeSync(fd.fd);
+      try { fs.unlinkSync(filePath); } catch (_) {}
+
+      const statusText = statusCode === 200 ? 'OK' : 
+                        statusCode === 400 ? 'Bad Request' :
+                        statusCode === 404 ? 'Not Found' :
+                        statusCode === 405 ? 'Method Not Allowed' :
+                        statusCode === 500 ? 'Internal Server Error' : 'OK';
+      let headers = `HTTP/1.1 ${statusCode} ${statusText}\r\n` +
+                    `Content-Type: application/json; charset=utf-8\r\n` +
+                    `Content-Encoding: gzip\r\n` +
+                    `Content-Length: ${compSize}\r\n`;
+      if (includeCors) {
+        headers += `Access-Control-Allow-Origin: *\r\n` +
+                   `Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n` +
+                   `Access-Control-Allow-Headers: Content-Type, Accept-Encoding\r\n`;
+      }
+      headers += `\r\n`;
+      const headerBytes = HttpResponseUtils.textEncoder.encodeInto(headers);
+      const bodyUint8 = new Uint8Array(readBuf);
+      const out = new Uint8Array(headerBytes.length + bodyUint8.length);
+      out.set(headerBytes, 0);
+      out.set(bodyUint8, headerBytes.length);
+      return out;
+    } catch (e) {
+      const fallback = { ok: false, message: 'gzip 失败，返回未压缩响应', data } as SuccessResponse;
+      const resp = HttpResponseUtils.buildJsonResponse(fallback, 200, includeCors);
+      return HttpResponseUtils.textEncoder.encodeInto(resp);
+    }
   }
 
   /**

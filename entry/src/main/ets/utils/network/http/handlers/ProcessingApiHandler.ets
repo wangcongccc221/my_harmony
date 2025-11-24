@@ -12,7 +12,7 @@ import { common } from '@kit.AbilityKit';
 
 const DOMAIN = 0x0000;
 
-class ProcessingRow {
+interface ProcessingRow {
   id?: number;
   startTime: string;
   endTime: string;
@@ -24,20 +24,6 @@ class ProcessingRow {
   status?: string;
   count?: number;
   weight?: number;
-
-  constructor(record: ProcessingHistoryData) {
-    this.id = record.ID || record.id;
-    this.startTime = record.StartTime || '';
-    this.endTime = record.EndTime || '';
-    this.productType = record.FruitName || '';
-    this.totalWeight = record.Weight || 0;
-    this.customerName = record.CustomerName || '';
-    this.farmName = record.FarmName || '';
-    this.fruitName = record.FruitName || '';
-    this.status = record.Status || '';
-    this.count = record.Quantity || 0;
-    this.weight = record.Weight || 0;
-  }
 }
 
 /**
@@ -58,14 +44,77 @@ interface PaginatedResponse {
   pagination: PaginationInfo;
 }
 
-/**
- * 加工历史API处理器
- * 负责处理 /api/processing 相关的所有请求（RESTful 风格）
- */
-// 并发函数内部使用本地配置，避免捕获外部常量，满足 ArkTS 并发限制
+interface LiteListStats {
+  page: number;
+  size: number;
+  total: number;
+  totalPages: number;
+  count: number;
+}
+
+interface InsertIdResponse {
+  id: number;
+}
+
+interface PackedList {
+  schema: string[];
+  rows: Array<Array<string | number>>;
+}
+
+interface PackedSuccessResponse {
+  ok: boolean;
+  data: PackedList;
+}
+
+interface RowsSuccessResponse {
+  ok: boolean;
+  data: ProcessingRow[];
+}
+
+interface BatchInsertResult {
+  inserted: number;
+}
+
+interface BatchInsertRecord {
+  customerName?: string;
+  farmName?: string;
+  fruitName?: string;
+  productType?: string;
+  status?: string;
+  startTime?: string;
+  endTime?: string;
+  totalWeight?: number;
+  weight?: number;
+  count?: number;
+}
+
+interface BatchInsertWrapper {
+  records: BatchInsertRecord[];
+}
+
 
 @Concurrent
 export async function PH_QueryAll(ctx: Context): Promise<ProcessingHistoryData[]> {
+  const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
+  let initialized = true;
+  try {
+    GetIBestORM().AutoMigrate(ProcessingHistory);
+    ProcessingHistory.createIndexes();
+  } catch (e) {
+    initialized = false;
+  }
+  if (!initialized) {
+    await IBestORMInit(ctx as common.UIAbilityContext, config);
+    GetIBestORM().AutoMigrate(ProcessingHistory);
+    ProcessingHistory.createIndexes();
+  }
+  // 性能优化：直接查询，不使用OrderBy（查询全部数据时不需要排序）
+  const dbRecords = GetIBestORM().Table('processing_history').Find(ProcessingHistory) as ProcessingHistoryData[];
+  return dbRecords || [];
+}
+
+@Concurrent
+export async function PH_CountAll(ctx: Context): Promise<number> {
   const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
   let initialized = true;
   try {
@@ -77,10 +126,41 @@ export async function PH_QueryAll(ctx: Context): Promise<ProcessingHistoryData[]
     await IBestORMInit(ctx as common.UIAbilityContext, config);
     GetIBestORM().AutoMigrate(ProcessingHistory);
   }
-  const dbRecords = GetIBestORM().Table('processing_history').Find(ProcessingHistory) as ProcessingHistoryData[];
-  return dbRecords || [];
+  const db = GetIBestORM();
+  const core = db.GetCore();
+  let total = 0;
+  const rs = core!.querySqlSync("SELECT COUNT(*) AS cnt FROM processing_history;");
+  if (rs.columnCount > 0 && rs.goToFirstRow()) {
+    const col = rs.columnNames[0];
+    total = rs.getDouble(rs.getColumnIndex(col)) as number;
+  }
+  rs.close();
+  return total;
 }
 
+@Concurrent
+export async function PH_QueryPage(ctx: Context, page: number, size: number): Promise<ProcessingHistoryData[]> {
+  const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
+  let initialized = true;
+  try {
+    GetIBestORM().AutoMigrate(ProcessingHistory);
+    ProcessingHistory.createIndexes();
+  } catch (e) {
+    initialized = false;
+  }
+  if (!initialized) {
+    await IBestORMInit(ctx as common.UIAbilityContext, config);
+    GetIBestORM().AutoMigrate(ProcessingHistory);
+    ProcessingHistory.createIndexes();
+  }
+  const p = Math.max(1, page);
+  const s = Math.max(1, Math.min(100, size));
+  const offset = (p - 1) * s;
+  const db = GetIBestORM();
+  // 性能优化：使用id字段进行排序（已创建索引，性能更好）
+  const rows = db.Table('processing_history').OrderByDesc('id').Limit(s).Offset(offset).Find(ProcessingHistory) as ProcessingHistoryData[];
+  return rows || [];
+}
 @Concurrent
 export async function PH_Insert(ctx: Context, values: relationalStore.ValuesBucket): Promise<number> {
   const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
@@ -96,6 +176,23 @@ export async function PH_Insert(ctx: Context, values: relationalStore.ValuesBuck
   }
   const insertId = GetIBestORM().Table('processing_history').Insert(values);
   return insertId || 0;
+}
+
+@Concurrent
+export async function PH_BatchInsert(ctx: Context, values: Array<relationalStore.ValuesBucket>): Promise<number> {
+  const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
+  let initialized = true;
+  try {
+    GetIBestORM().AutoMigrate(ProcessingHistory);
+  } catch (e) {
+    initialized = false;
+  }
+  if (!initialized) {
+    await IBestORMInit(ctx as common.UIAbilityContext, config);
+    GetIBestORM().AutoMigrate(ProcessingHistory);
+  }
+  const affected = GetIBestORM().Table('processing_history').Insert(values);
+  return affected || 0;
 }
 
 @Concurrent
@@ -134,10 +231,54 @@ export async function PH_Update(ctx: Context, id: number, values: relationalStor
 
 export class ProcessingApiHandler {
   /**
-   * 将数据库记录转换为前端格式
+   * 将数据库记录转换为前端格式（优化版：直接构建对象，避免构造函数调用）
    */
   private static convertToProcessingRow(record: ProcessingHistoryData): ProcessingRow {
-    return new ProcessingRow(record);
+    // 性能优化：直接构建对象字面量，避免构造函数调用开销
+    return {
+      id: record.ID || record.id,
+      startTime: record.StartTime || '',
+      endTime: record.EndTime || '',
+      productType: record.FruitName || '',
+      totalWeight: record.Weight || 0,
+      customerName: record.CustomerName || '',
+      farmName: record.FarmName || '',
+      fruitName: record.FruitName || '',
+      status: record.Status || '',
+      count: record.Quantity || 0,
+      weight: record.Weight || 0
+    };
+  }
+
+  /**
+   * 批量转换数据库记录为前端格式（优化版：预分配数组，减少重复字段访问）
+   */
+  private static convertBatchToProcessingRows(records: ProcessingHistoryData[]): ProcessingRow[] {
+    const rows: ProcessingRow[] = [];
+    rows.length = records.length; // 预分配数组大小
+    
+    // 性能优化：直接构建对象，缓存重复访问的字段
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i];
+      // 性能优化：缓存重复访问的字段
+      const id = record.ID || record.id;
+      const fruitName = record.FruitName || '';
+      const weight = record.Weight || 0;
+      rows[i] = {
+        id: id,
+        startTime: record.StartTime || '',
+        endTime: record.EndTime || '',
+        productType: fruitName,
+        totalWeight: weight,
+        customerName: record.CustomerName || '',
+        farmName: record.FarmName || '',
+        fruitName: fruitName, // 使用缓存值
+        status: record.Status || '',
+        count: record.Quantity || 0,
+        weight: weight // 使用缓存值
+      };
+    }
+    return rows;
   }
 
   /**
@@ -152,11 +293,55 @@ export class ProcessingApiHandler {
       const db = GetIBestORM();
       dbRecords = db.Table('processing_history').Find(ProcessingHistory) as ProcessingHistoryData[];
     }
-    const rows: ProcessingRow[] = [];
+    // 性能优化：使用批量转换方法
+    return ProcessingApiHandler.convertBatchToProcessingRows(dbRecords);
+  }
+
+  private static async getAllRecordsAsPackedRowsTask(ctx?: Context): Promise<Array<Array<string | number>>> {
+    let dbRecords: ProcessingHistoryData[] = [];
+    if (ctx) {
+      const task = new taskpool.Task(PH_QueryAll, ctx);
+      dbRecords = await taskpool.execute(task) as ProcessingHistoryData[];
+    } else {
+      const db = GetIBestORM();
+      dbRecords = db.Table('processing_history').Find(ProcessingHistory) as ProcessingHistoryData[];
+    }
+    // 性能优化：预分配数组，减少重复字段访问
+    const rows: Array<Array<string | number>> = new Array(dbRecords.length);
     for (let i = 0; i < dbRecords.length; i++) {
-      rows.push(ProcessingApiHandler.convertToProcessingRow(dbRecords[i]));
+      const r = dbRecords[i];
+      // 性能优化：缓存重复访问的字段
+      const id = (r.ID || r.id) as number;
+      const fruitName = r.FruitName || '';
+      const weight = (r.Weight || 0) as number;
+      rows[i] = [
+        id,
+        r.StartTime || '',
+        r.EndTime || '',
+        fruitName,
+        weight,
+        r.CustomerName || '',
+        r.FarmName || '',
+        fruitName, // 重复字段，使用缓存值
+        r.Status || '',
+        (r.Quantity || 0) as number,
+        weight // 重复字段，使用缓存值
+      ];
     }
     return rows;
+  }
+
+  private static async getPageRecordsAsRowsTask(page: number, size: number, ctx?: Context): Promise<ProcessingRow[]> {
+    let dbRecords: ProcessingHistoryData[] = [];
+    if (ctx) {
+      const task = new taskpool.Task(PH_QueryPage, ctx, page, size);
+      dbRecords = await taskpool.execute(task) as ProcessingHistoryData[];
+    } else {
+      const db = GetIBestORM();
+      dbRecords = db.Table('processing_history').OrderByDesc('id').Limit(size).Offset((page - 1) * size).Find(ProcessingHistory) as ProcessingHistoryData[];
+    }
+    // 性能优化：使用批量转换方法
+    return ProcessingApiHandler.convertBatchToProcessingRows(dbRecords);
   }
 
   /**
@@ -164,29 +349,22 @@ export class ProcessingApiHandler {
    */
   private static async handleList(params: Record<string, string>, ctx?: Context): Promise<string> {
     try {
-      const allRows = await ProcessingApiHandler.getAllRecordsAsRowsTask(ctx);
-      
-      // 分页参数
       const page = Math.max(1, Number(params['page'] || '1'));
-      const size = Math.max(1, Math.min(100, Number(params['size'] || '20'))); // 限制每页最多100条
-      
-      const total = allRows.length;
-      const totalPages = Math.ceil(total / size);
-      const startIndex = (page - 1) * size;
-      const endIndex = startIndex + size;
-      const paginatedData = allRows.slice(startIndex, endIndex);
-      
-      const paginationInfo: PaginationInfo = {
-        page: page,
-        size: size,
-        total: total,
-        totalPages: totalPages
-      };
-      const response: PaginatedResponse = {
-        data: paginatedData,
-        pagination: paginationInfo
-      };
-      
+      const size = Math.max(1, Math.min(100, Number(params['size'] || '20')));
+      const lite = params['lite'] === '1';
+      const nocount = params['nocount'] === '1';
+      const pageTask = new taskpool.Task(PH_QueryPage, ctx as Context, page, size);
+      const pageRecords = await taskpool.execute(pageTask) as ProcessingHistoryData[];
+      const total = nocount ? 0 : await taskpool.execute(new taskpool.Task(PH_CountAll, ctx as Context)) as number;
+      // 性能优化：使用批量转换方法
+      const rows = ProcessingApiHandler.convertBatchToProcessingRows(pageRecords);
+      const totalPages = Math.ceil(Math.max(0, total) / size);
+      if (lite) {
+        const liteResp: LiteListStats = { page, size, total, totalPages, count: rows.length };
+        return HttpResponseUtils.buildSuccessResponse(liteResp);
+      }
+      const paginationInfo: PaginationInfo = { page, size, total, totalPages };
+      const response: PaginatedResponse = { data: rows, pagination: paginationInfo };
       return HttpResponseUtils.buildSuccessResponse(response);
     } catch (error) {
       hilog.error(DOMAIN, 'ProcessingApiHandler', `从数据库查询失败: ${JSON.stringify(error)}`);
@@ -197,10 +375,43 @@ export class ProcessingApiHandler {
   /**
    * 处理列表查询请求（兼容旧版本，无分页）
    */
-  private static async handleListJson(ctx?: Context): Promise<string> {
+  private static async handleListJson(params: Record<string, string>, ctx?: Context, allowGzip?: boolean): Promise<string | Uint8Array> {
     try {
+      const pack = params['pack'] === '1';
+      const gzip = allowGzip === true || params['gzip'] === '1';
+      if (pack) {
+        const schema: string[] = ['id','startTime','endTime','productType','totalWeight','customerName','farmName','fruitName','status','count','weight'];
+        const rows = await ProcessingApiHandler.getAllRecordsAsPackedRowsTask(ctx);
+        const packed: PackedList = { schema, rows };
+        if (gzip) {
+          const response: PackedSuccessResponse = { ok: true, data: packed };
+          return await HttpResponseUtils.buildJsonResponseGzip(response, 200, false, ctx);
+        }
+        return HttpResponseUtils.buildSuccessResponse(packed);
+      }
       const data = await ProcessingApiHandler.getAllRecordsAsRowsTask(ctx);
+      if (gzip) {
+        const response: RowsSuccessResponse = { ok: true, data };
+        return await HttpResponseUtils.buildJsonResponseGzip(response, 200, false, ctx);
+      }
       return HttpResponseUtils.buildSuccessResponse(data);
+    } catch (error) {
+      hilog.error(DOMAIN, 'ProcessingApiHandler', `从数据库查询失败: ${JSON.stringify(error)}`);
+      return HttpResponseUtils.buildErrorResponse('查询数据失败', 500);
+    }
+  }
+
+  private static async handleListJsonLite(params: Record<string, string>, ctx?: Context): Promise<string> {
+    try {
+      const page = Math.max(1, Number(params['page'] || '1'));
+      const size = Math.max(1, Math.min(100, Number(params['size'] || '20')));
+      const pageTask = new taskpool.Task(PH_QueryPage, ctx as Context, page, size);
+      const pageRecords = await taskpool.execute(pageTask) as ProcessingHistoryData[];
+      const rows = ProcessingApiHandler.convertBatchToProcessingRows(pageRecords);
+      const total = await taskpool.execute(new taskpool.Task(PH_CountAll, ctx as Context)) as number;
+      const totalPages = Math.ceil(Math.max(0, total) / size);
+      const liteResp: LiteListStats = { page, size, total, totalPages, count: rows.length };
+      return HttpResponseUtils.buildSuccessResponse(liteResp);
     } catch (error) {
       hilog.error(DOMAIN, 'ProcessingApiHandler', `从数据库查询失败: ${JSON.stringify(error)}`);
       return HttpResponseUtils.buildErrorResponse('查询数据失败', 500);
@@ -237,7 +448,6 @@ export class ProcessingApiHandler {
     }
 
     try {
-      hilog.info(DOMAIN, 'ProcessingApiHandler', `准备插入数据: customerName=${customerName}, farmName=${farmName}, fruitName=${fruitName}, startTime=${startTime}, endTime=${endTime}, weight=${weight}, count=${count}`);
       const values: relationalStore.ValuesBucket = {
         customer_name: customerName,
         farm_name: farmName,
@@ -248,20 +458,75 @@ export class ProcessingApiHandler {
         weight: weight,
         quantity: count,
       };
-      const before = await ProcessingApiHandler.getAllRecordsAsRowsTask(ctx);
-      hilog.info(DOMAIN, 'ProcessingApiHandler', `插入前查询到 ${before.length} 条记录`);
       const task = new taskpool.Task(PH_Insert, ctx as Context, values);
       const insertId = await taskpool.execute(task) as number;
-      hilog.info(DOMAIN, 'ProcessingApiHandler', `插入数据结果: id=${insertId}`);
-      const after = await ProcessingApiHandler.getAllRecordsAsRowsTask(ctx);
-      hilog.info(DOMAIN, 'ProcessingApiHandler', `插入后查询到 ${after.length} 条记录`);
-      if (after.length <= before.length) {
-        hilog.warn(DOMAIN, 'ProcessingApiHandler', `插入后数据量未增加！插入前: ${before.length}, 插入后: ${after.length}`);
+      if (params['compact'] === '1') {
+        const insertResp: InsertIdResponse = { id: insertId };
+        return HttpResponseUtils.buildSuccessResponse(insertResp, '添加成功');
       }
+      const after = await ProcessingApiHandler.getAllRecordsAsRowsTask(ctx);
       return HttpResponseUtils.buildSuccessResponse(after, '添加成功');
     } catch (error) {
       hilog.error(DOMAIN, 'ProcessingApiHandler', `保存到数据库失败: ${JSON.stringify(error)}`);
       return HttpResponseUtils.buildErrorResponse('保存数据失败', 500);
+    }
+  }
+
+  private static async handleBatchInsert(body: string | undefined, ctx?: Context): Promise<string> {
+    if (!body || body.trim().length === 0) {
+      return HttpResponseUtils.buildErrorResponse('请求体不能为空', 400);
+    }
+    try {
+      let arr: BatchInsertRecord[] = [];
+      const parsed = JSON.parse(body) as BatchInsertRecord[] | BatchInsertWrapper;
+      if (Array.isArray(parsed)) {
+        arr = parsed as BatchInsertRecord[];
+      } else {
+        const wrapper = parsed as BatchInsertWrapper;
+        if (wrapper && wrapper.records && Array.isArray(wrapper.records)) {
+          arr = wrapper.records;
+        }
+      }
+      if (!arr || arr.length === 0) {
+        return HttpResponseUtils.buildErrorResponse('无有效记录', 400);
+      }
+      const valuesList: Array<relationalStore.ValuesBucket> = [];
+      for (let i = 0; i < arr.length; i++) {
+        const it: BatchInsertRecord = arr[i];
+        const startTimeRaw: string = it.startTime || '';
+        const endTimeRaw: string = it.endTime || '';
+        const startTime: string = startTimeRaw ? startTimeRaw.replace('T', ' ') : '';
+        const endTime: string = endTimeRaw ? endTimeRaw.replace('T', ' ') : '';
+        const fruitName: string = (it.fruitName || it.productType || '') as string;
+        const weightVal: number = it.totalWeight !== undefined ? Number(it.totalWeight) : Number(it.weight || 0);
+        const countVal: number = it.count !== undefined ? Number(it.count) : 0;
+        const customerName: string = it.customerName || '';
+        const farmName: string = it.farmName || '';
+        const status: string = it.status || '';
+        if (!startTime || !endTime || !fruitName) {
+          continue;
+        }
+        const v: relationalStore.ValuesBucket = {
+          customer_name: customerName,
+          farm_name: farmName,
+          fruit_name: fruitName,
+          status: status,
+          start_time: startTime,
+          end_time: endTime,
+          weight: weightVal || 0,
+          quantity: countVal || 0,
+        };
+        valuesList.push(v);
+      }
+      if (valuesList.length === 0) {
+        return HttpResponseUtils.buildErrorResponse('无有效记录', 400);
+      }
+      const task = new taskpool.Task(PH_BatchInsert, ctx as Context, valuesList);
+      const inserted = await taskpool.execute(task) as number;
+      const result: BatchInsertResult = { inserted };
+      return HttpResponseUtils.buildSuccessResponse(result, '批量添加成功');
+    } catch (e) {
+      return HttpResponseUtils.buildErrorResponse('批量添加失败', 500);
     }
   }
 
@@ -394,9 +659,7 @@ export class ProcessingApiHandler {
    * @param path 请求路径，如 /api/processing 或 /api/processing/123
    * @param body 请求体（POST/PUT 请求）
    */
-  static async handle(method: string, path: string, body?: string, ctx?: Context): Promise<string> {
-    hilog.info(DOMAIN, 'ProcessingApiHandler', `收到请求: ${method} ${path}`);
-    
+  static async handle(method: string, path: string, body?: string, ctx?: Context, acceptGzip?: boolean): Promise<string | Uint8Array> {
     if (path.indexOf('/api/processing') !== 0) {
       return HttpResponseUtils.buildErrorResponse('无效的API路径', 404);
     }
@@ -411,7 +674,9 @@ export class ProcessingApiHandler {
       const bodyParams = body ? ProcessingApiHandler.parseRequestBody(body) : emptyBodyParams;
       const params = ProcessingApiHandler.mergeParams(queryParams, bodyParams);
       
-      hilog.info(DOMAIN, 'ProcessingApiHandler', `解析参数: action=${params['action']}, method=${method}, cleanPath=${cleanPath}`);
+      if (params['debug'] === '1') {
+        hilog.info(DOMAIN, 'ProcessingApiHandler', `请求: ${method} ${cleanPath}`);
+      }
       
       // 从路径中提取 ID（如 /api/processing/123）
       const pathId = ProcessingApiHandler.extractIdFromPath(cleanPath);
@@ -426,7 +691,10 @@ export class ProcessingApiHandler {
       if (upperMethod === 'GET' && cleanPath === '/api/processing') {
         // 兼容旧版本：如果 action=listJson，使用旧接口
         if (params['action'] === 'listJson') {
-          return await ProcessingApiHandler.handleListJson(ctx);
+          return await ProcessingApiHandler.handleListJson(params, ctx, acceptGzip === true);
+        }
+        if (params['action'] === 'listJsonLite') {
+          return await ProcessingApiHandler.handleListJsonLite(params, ctx);
         }
         // 兼容旧版本：GET 请求也可以用于 insert（虽然不符合 RESTful 规范）
         if (params['action'] === 'insert') {
@@ -449,6 +717,9 @@ export class ProcessingApiHandler {
         }
         return await ProcessingApiHandler.handleInsert(params, ctx);
       }
+      if (upperMethod === 'POST' && cleanPath === '/api/processing/batch') {
+        return await ProcessingApiHandler.handleBatchInsert(body, ctx);
+      }
       
       // PUT /api/processing/:id - 更新记录
       if (upperMethod === 'PUT' && pathId !== null) {
@@ -465,7 +736,9 @@ export class ProcessingApiHandler {
         const action = params['action'];
         switch (action) {
           case 'listJson':
-            return await ProcessingApiHandler.handleListJson(ctx);
+            return await ProcessingApiHandler.handleListJson(params, ctx, acceptGzip === true);
+          case 'listJsonLite':
+            return await ProcessingApiHandler.handleListJsonLite(params, ctx);
           case 'insert':
             return await ProcessingApiHandler.handleInsert(params, ctx);
           case 'update':

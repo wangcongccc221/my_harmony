@@ -81,49 +81,8 @@ export class HistoryTableManager {
    */
   public async loadDataFromDatabase(): Promise<void> {
     try {
-      const db = GetIBestORM();
-      // 性能监控：记录开始时间
-      const startTime = Date.now();
-      
-      // 执行数据库查询（同步操作，会阻塞主线程）
-      const dbRecords = db.Table("processing_history").Find(ProcessingHistory) as ProcessingHistoryData[];
-      
-      // 性能监控：记录查询耗时
-      const queryTime = Date.now() - startTime;
-      if (queryTime > 100) {
-        console.warn(`⚠️ 数据库查询耗时较长: ${queryTime}ms，查询到 ${dbRecords ? dbRecords.length : 0} 条记录`);
-      }
-      
-      // 性能监控：记录数据转换开始时间
-      const convertStartTime = Date.now();
-      
-      // 数据转换（字段越多，这里耗时越长）
-      this.tableData = dbRecords.map((record: ProcessingHistoryData): HistoryTableData => {
-        // 处理 ID 字段：查询返回的是 ID（大写），但接口期望 id（小写）
-        const recordId = record.ID || record.id || 0;
-        const historyData: HistoryTableData = {
-          id: recordId,
-          customerName: record.CustomerName || '',
-          farmName: record.FarmName || '',
-          fruitName: record.FruitName || '',
-          status: (record.Status as '已完成' | '进行中' | '待开始') || '待开始',
-          startTime: record.StartTime || '',
-          endTime: record.EndTime || '',
-          weight: record.Weight || 0,
-          count: record.Quantity || 0
-        }
-        return historyData
-      })
-      
-      // 性能监控：记录总耗时
-      const totalTime = Date.now() - startTime;
-      const convertTime = Date.now() - convertStartTime;
-      
-      if (totalTime > 100) {
-        console.warn(`⚠️ 数据加载总耗时: ${totalTime}ms (查询: ${queryTime}ms, 转换: ${convertTime}ms), 记录数: ${this.tableData.length}`);
-        console.warn(`💡 提示: 如果字段数量很多，建议优化字段映射逻辑或使用异步加载`);
-      }
-      
+      const data = await this.getPage(1, 50)
+      this.tableData = data
       this.dataLoaded = true
     } catch (error) {
       console.error('❌ 从数据库加载历史加工数据失败:', error)
@@ -394,7 +353,9 @@ export class HistoryTableManager {
    * 刷新数据（从数据库重新加载）
    */
   async refreshData(): Promise<void> {
-    await this.loadDataFromDatabase()
+    const data = await this.getPage(1, 50)
+    this.tableData = data
+    this.dataLoaded = true
   }
 
   /**
@@ -434,5 +395,171 @@ export class HistoryTableManager {
       }
     })
     return Array.from(names).sort()
+  }
+
+  private mapRecord(record: ProcessingHistoryData): HistoryTableData {
+    const recordId = record.ID || record.id || 0
+    return {
+      id: recordId,
+      customerName: record.CustomerName || '',
+      farmName: record.FarmName || '',
+      fruitName: record.FruitName || '',
+      status: (record.Status as '已完成' | '进行中' | '待开始') || '待开始',
+      startTime: record.StartTime || '',
+      endTime: record.EndTime || '',
+      weight: record.Weight || 0,
+      count: record.Quantity || 0
+    }
+  }
+
+  public async getPage(page: number, size: number): Promise<HistoryTableData[]> {
+    const db = GetIBestORM();
+    const p = Math.max(1, page)
+    const s = Math.max(1, Math.min(200, size))
+    const offset = (p - 1) * s
+    const dbRecords = db.Table('processing_history').OrderByDesc('id').Limit(s).Offset(offset).Find(ProcessingHistory) as ProcessingHistoryData[]
+    const out: HistoryTableData[] = []
+    for (let i = 0; i < dbRecords.length; i++) {
+      out.push(this.mapRecord(dbRecords[i]))
+    }
+    return out
+  }
+
+  public async refreshDataPage(page: number, size: number, append: boolean = false): Promise<number> {
+    const data = await this.getPage(page, size)
+    if (append) {
+      this.tableData = this.tableData.concat(data)
+    } else {
+      this.tableData = data
+    }
+    this.dataLoaded = true
+    return data.length
+  }
+
+  /**
+   * 优化后的计数方法：使用数据库查询而不是内存过滤
+   * 性能提升：从O(n)降低到O(1)，n为总记录数
+   */
+  public async countFilteredPaginated(filters: FilterParams, pageSize: number = 200): Promise<number> {
+    try {
+      const db = GetIBestORM();
+      const core = db.GetCore();
+      let sql = "SELECT COUNT(*) AS cnt FROM processing_history WHERE 1=1";
+      const parts: string[] = [];
+      const cn = filters.customerName && filters.customerName.trim().length > 0 ? filters.customerName.trim() : '';
+      const fn = filters.farmName && filters.farmName.trim().length > 0 ? filters.farmName.trim() : '';
+      const tn = filters.fruitName && filters.fruitName.trim().length > 0 ? filters.fruitName.trim() : '';
+      const st = filters.status ? String(filters.status) : '';
+      if (cn) parts.push(` AND customer_name='${cn.replace(/'/g, "''")}'`);
+      if (fn) parts.push(` AND farm_name='${fn.replace(/'/g, "''")}'`);
+      if (tn) parts.push(` AND fruit_name='${tn.replace(/'/g, "''")}'`);
+      if (st) parts.push(` AND status='${st.replace(/'/g, "''")}'`);
+      const sd = filters.startDate ? DateValidationUtils.extractDatePart(filters.startDate) : '';
+      const ed = filters.endDate ? DateValidationUtils.extractDatePart(filters.endDate) : '';
+      if (sd && DateValidationUtils.isValidDateFormat(sd)) {
+        parts.push(` AND start_time>='${sd}'`);
+      }
+      if (ed && DateValidationUtils.isValidDateFormat(ed)) {
+        parts.push(` AND end_time<='${ed} 23:59:59'`);
+      }
+      sql += parts.join('');
+      const rs = core!.querySqlSync(sql);
+      let total = 0;
+      if (rs.columnCount > 0 && rs.goToFirstRow()) {
+        const col = rs.columnNames[0];
+        total = rs.getDouble(rs.getColumnIndex(col)) as number;
+      }
+      rs.close();
+      return total;
+    } catch (error) {
+      console.error('❌ 计数查询失败:', error);
+      // 降级到原来的方法
+      let total = 0
+      let page = 1
+      while (true) {
+        const data = await this.getPage(page, pageSize)
+        if (data.length === 0) {
+          break
+        }
+        const filtered = HistoryTableManager.filterArray(data, filters)
+        total += filtered.length
+        if (data.length < pageSize) {
+          break
+        }
+        page++
+      }
+      return total
+    }
+  }
+
+  static filterArray(source: HistoryTableData[], filters: FilterParams): HistoryTableData[] {
+    let filteredData = [...source]
+    if (filters.startDate || filters.endDate) {
+      filteredData = filteredData.filter(item => {
+        if (!item.startTime) return false
+        const itemStartDate = DateValidationUtils.extractDatePart(item.startTime)
+        if (!DateValidationUtils.isValidDateFormat(itemStartDate)) {
+          return false
+        }
+        let itemEndDate = itemStartDate
+        if (item.endTime && item.endTime !== '-' && item.endTime.trim() !== '') {
+          const endDateStr = DateValidationUtils.extractDatePart(item.endTime)
+          if (DateValidationUtils.isValidDateFormat(endDateStr)) {
+            itemEndDate = endDateStr
+          } else {
+            itemEndDate = itemStartDate
+          }
+        } else {
+          itemEndDate = '9999-12-31'
+        }
+        let queryStartDate = '1970-01-01'
+        if (filters.startDate) {
+          const extracted = DateValidationUtils.extractDatePart(filters.startDate)
+          if (DateValidationUtils.isValidDateFormat(extracted)) {
+            queryStartDate = extracted
+          } else {
+            queryStartDate = '1970-01-01'
+          }
+        }
+        let queryEndDate = '9999-12-31'
+        if (filters.endDate) {
+          const extracted = DateValidationUtils.extractDatePart(filters.endDate)
+          if (DateValidationUtils.isValidDateFormat(extracted)) {
+            queryEndDate = extracted
+          } else {
+            queryEndDate = '9999-12-31'
+          }
+        }
+        const startInRange = itemStartDate >= queryStartDate && itemStartDate <= queryEndDate
+        const endInRange = itemEndDate >= queryStartDate && itemEndDate <= queryEndDate
+        let shouldShow = false
+        const hasQueryStart = !!filters.startDate
+        const hasQueryEnd = !!filters.endDate
+        if (hasQueryStart && hasQueryEnd) {
+          shouldShow = startInRange && endInRange
+        } else if (hasQueryStart) {
+          shouldShow = itemStartDate >= queryStartDate && itemEndDate >= queryStartDate
+        } else if (hasQueryEnd) {
+          shouldShow = itemStartDate <= queryEndDate && itemEndDate <= queryEndDate
+        }
+        return shouldShow
+      })
+    }
+    if (filters.customerName && filters.customerName.trim().length > 0) {
+      const target = filters.customerName.trim()
+      filteredData = filteredData.filter(item => (item.customerName || '').trim() === target)
+    }
+    if (filters.farmName && filters.farmName.trim().length > 0) {
+      const target = filters.farmName.trim()
+      filteredData = filteredData.filter(item => (item.farmName || '').trim() === target)
+    }
+    if (filters.fruitName && filters.fruitName.trim().length > 0) {
+      const target = filters.fruitName.trim()
+      filteredData = filteredData.filter(item => (item.fruitName || '').trim() === target)
+    }
+    if (filters.status) {
+      filteredData = filteredData.filter(item => item.status === filters.status)
+    }
+    return filteredData
   }
 }

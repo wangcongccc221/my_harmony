@@ -100,10 +100,9 @@ class Migrator {
             let value = resultSet.columnNames[i]
             Model[value] = resultSet.getValue(resultSet.getColumnIndex(value))
           }
-          // 防止重复
-          if (!resultData.includes(Model)) {
-            resultData.push(Model)
-          }
+          // 性能优化：移除不必要的去重检查
+          // PRAGMA table_info不会返回重复记录
+          resultData.push(Model)
           resultSet.goToNextRow()
         }
       }
@@ -298,6 +297,8 @@ export class IBestORM {
   private lazyLoadManager: LazyLoadManager|null = null
   // 级联操作管理器
   private cascadeManager: CascadeManager | null = null
+  // 已迁移的表缓存（性能优化：避免重复执行迁移检查）
+  private migratedTables: Set<string> = new Set()
 
   /**
    * 构造函数（请勿直接调用，用 IBestORM.Init 作为入口）
@@ -343,15 +344,27 @@ export class IBestORM {
    * 自动迁移
    * 会执行：新建表/加字段/字段类型同步
    * @param model 实体类
+   * @param force 是否强制迁移（忽略缓存）
    */
-  AutoMigrate(model: Class) {
+  AutoMigrate(model: Class, force: boolean = false) {
+    const tableName = GetTableName(model);
+    
+    // 性能优化：如果表已迁移且不强制，跳过迁移检查
+    if (!force && this.migratedTables.has(tableName)) {
+      return;
+    }
+    
     if(!this.Migrator().HasTable(model)) {
       this.Migrator().CreateTable(model);
+      this.migratedTables.add(tableName);
       return;
     }
     this.Migrator().AddColumn(model);
     //this.Migrator().DropColumn(model); // 视业务需要决定是否启用
     this.Migrator().AlterColumn(model);
+    
+    // 标记为已迁移
+    this.migratedTables.add(tableName);
 
     getMetadataCollector().collect(model, this);
   }
@@ -744,14 +757,87 @@ export class IBestORM {
     return this.lazyLoadManager;
   }
   ////////////////////////////////////////////////////////////
-  Insert(Data: relationalStore.ValuesBucket|Array<relationalStore.ValuesBucket>) {
+  /**
+   * 插入数据
+   * @param Data 可以是 ValuesBucket、实体对象、或它们的数组
+   * @returns 插入的主键ID或受影响的行数
+   */
+  Insert(Data: relationalStore.ValuesBucket|Array<relationalStore.ValuesBucket>|Object|Array<Object>) {
     if(this.notSetTableError()) return -1
+    
+    // 判断是否是实体对象：检查是否有Model基类的特征
+    // 实体对象通常有constructor且不是普通Object，并且有@Field装饰器的元数据
+    const isEntityObject = (obj: any): boolean => {
+      if (!obj || typeof obj !== 'object') return false;
+      if (!obj.constructor || obj.constructor === Object) return false;
+      // 检查是否有@Field装饰器的元数据（通过GetColumnMeta判断）
+      try {
+        const meta = GetColumnMeta(obj.constructor as Class);
+        return meta && meta.length > 0;
+      } catch {
+        return false;
+      }
+    };
+    
+    // 如果是实体对象，转换为ValuesBucket
+    let values: relationalStore.ValuesBucket|Array<relationalStore.ValuesBucket>;
+    
     if(Array.isArray(Data)) {
-      if(Array.length > 0) return this.rdbStore!.batchInsertSync(this.tableName, Data)
+      if(Data.length === 0) return 0
+      // 检查第一个元素是否是实体对象
+      const firstItem = Data[0];
+      if (isEntityObject(firstItem)) {
+        // 是实体对象数组，需要转换
+        values = [];
+        for (let i = 0; i < Data.length; i++) {
+          const entity = Data[i] as Object;
+          const meta = GetColumnMeta(entity.constructor as Class);
+          const bucket: relationalStore.ValuesBucket = {};
+          for (let j = 0; j < meta.length; j++) {
+            const propertyKey = meta[j].propertyKey!;
+            const columnName = meta[j].name!;
+            // 跳过主键和自动时间字段
+            if (meta[j].tag?.includes('primaryKey') || meta[j].tag?.includes('autoIncrement')) {
+              continue;
+            }
+            const value = (entity as Record<string, relationalStore.ValueType>)[propertyKey];
+            if (value !== undefined && value !== null) {
+              bucket[columnName] = value;
+            }
+          }
+          values.push(bucket);
+        }
+      } else {
+        // 已经是ValuesBucket数组
+        values = Data as Array<relationalStore.ValuesBucket>;
+      }
+      return this.rdbStore!.batchInsertSync(this.tableName!, values)
     } else {
-      return this.rdbStore!.insertSync(this.tableName, Data)
+      // 单个对象
+      if (isEntityObject(Data)) {
+        // 是实体对象，需要转换
+        const entity = Data as Object;
+        const meta = GetColumnMeta(entity.constructor as Class);
+        const bucket: relationalStore.ValuesBucket = {};
+        for (let j = 0; j < meta.length; j++) {
+          const propertyKey = meta[j].propertyKey!;
+          const columnName = meta[j].name!;
+          // 跳过主键和自动时间字段
+          if (meta[j].tag?.includes('primaryKey') || meta[j].tag?.includes('autoIncrement')) {
+            continue;
+          }
+          const value = (entity as Record<string, relationalStore.ValueType>)[propertyKey];
+          if (value !== undefined && value !== null) {
+            bucket[columnName] = value;
+          }
+        }
+        values = bucket;
+      } else {
+        // 已经是ValuesBucket
+        values = Data as relationalStore.ValuesBucket;
+      }
+      return this.rdbStore!.insertSync(this.tableName!, values)
     }
-    return 0
   }
   /**   M_查询First
    * 查询并返回第一条符合条件的数据。
@@ -770,18 +856,35 @@ export class IBestORM {
     let resultSet = this.rdbStore!.querySync(this.predicates, this.columns)
     if(resultSet.rowCount > 0) {
       if (resultSet.goToFirstRow()) {
+        // 性能优化：预先计算列映射
+        let columnNameMap: Record<string, string> | null = null;
+        if(Ref) {
+          const meta = GetColumnMeta(Ref.constructor as Class);
+          columnNameMap = {};
+          for (let j = 0; j < meta.length; j++) {
+            if(meta[j].name) {
+              columnNameMap[meta[j].name] = meta[j].propertyKey || meta[j].name;
+            }
+          }
+        }
+        
+        const hasColumnFilter = this.columns.length > 0;
+        const columnSet = hasColumnFilter ? new Set(this.columns) : null;
+        
         for (let i = 0; i < resultSet.columnNames.length; i++) {
           let value = resultSet.columnNames[i]
-          if((this.columns.length > 0 && this.columns.includes(value)) || this.columns.length == 0) {
-            if(Ref) {
-              const meta = GetColumnMeta(Ref.constructor as Class);
-              for (let j = 0; j < meta.length; j++) {
-                if(meta[j].name! == value) {
-                  Model[meta[j].propertyKey!] = resultSet.getValue(resultSet.getColumnIndex(value))
-                }
+          if (!hasColumnFilter || (columnSet && columnSet.has(value))) {
+            const columnIndex = resultSet.getColumnIndex(value);
+            const columnValue = resultSet.getValue(columnIndex);
+            if(Ref && columnNameMap) {
+              const propertyKey = columnNameMap[value];
+              if(propertyKey) {
+                Model[propertyKey] = columnValue;
+              } else {
+                Model[value] = columnValue;
               }
             } else {
-              Model[value] = resultSet.getValue(resultSet.getColumnIndex(value))
+              Model[value] = columnValue;
             }
           }
         }
@@ -799,18 +902,35 @@ export class IBestORM {
     let resultSet = this.rdbStore!.querySync(this.predicates, this.columns)
     if(resultSet.rowCount > 0) {
       if (resultSet.goToLastRow()) {
+        // 性能优化：预先计算列映射
+        let columnNameMap: Record<string, string> | null = null;
+        if(Ref) {
+          const meta = GetColumnMeta(Ref.constructor as Class);
+          columnNameMap = {};
+          for (let j = 0; j < meta.length; j++) {
+            if(meta[j].name) {
+              columnNameMap[meta[j].name] = meta[j].propertyKey || meta[j].name;
+            }
+          }
+        }
+        
+        const hasColumnFilter = this.columns.length > 0;
+        const columnSet = hasColumnFilter ? new Set(this.columns) : null;
+        
         for (let i = 0; i < resultSet.columnNames.length; i++) {
           let value = resultSet.columnNames[i]
-          if((this.columns.length > 0 && this.columns.includes(value)) || this.columns.length == 0) {
-            if(Ref) {
-              const meta = GetColumnMeta(Ref.constructor as Class);
-              for (let j = 0; j < meta.length; j++) {
-                if(meta[j].name! == value) {
-                  Model[meta[j].propertyKey!] = resultSet.getValue(resultSet.getColumnIndex(value))
-                }
+          if (!hasColumnFilter || (columnSet && columnSet.has(value))) {
+            const columnIndex = resultSet.getColumnIndex(value);
+            const columnValue = resultSet.getValue(columnIndex);
+            if(Ref && columnNameMap) {
+              const propertyKey = columnNameMap[value];
+              if(propertyKey) {
+                Model[propertyKey] = columnValue;
+              } else {
+                Model[value] = columnValue;
               }
             } else {
-              Model[value] = resultSet.getValue(resultSet.getColumnIndex(value))
+              Model[value] = columnValue;
             }
           }
         }
@@ -827,34 +947,66 @@ export class IBestORM {
     let resultSet = this.rdbStore!.querySync(this.predicates, this.columns)
     let resultData: Array<Record<string, relationalStore.ValueType>> = []
     if(resultSet.rowCount > 0) {
+      // 性能优化：预先获取元数据，避免在循环中重复调用
+      let meta: any[] | null = null;
+      if(ModelClass) {
+        meta = GetColumnMeta(ModelClass);
+      }
+      
+      // 性能优化：预先计算列名映射，避免在循环中重复查找
+      const columnNameMap: Record<string, string> = {};
+      if(meta && ModelClass) {
+        for (let j = 0; j < meta.length; j++) {
+          if(meta[j].name) {
+            columnNameMap[meta[j].name] = meta[j].propertyKey || meta[j].name;
+          }
+        }
+      }
+      
+      // 性能优化：预先计算列索引和过滤条件，避免在循环中重复计算
+      const columnIndices: Array<{index: number, name: string, propertyKey?: string}> = [];
+      const hasColumnFilter = this.columns.length > 0;
+      const columnSet = hasColumnFilter ? new Set(this.columns) : null;
+      
+      for (let i = 0; i < resultSet.columnNames.length; i++) {
+        const columnName = resultSet.columnNames[i];
+        // 如果指定了列过滤，检查是否包含此列
+        if (!hasColumnFilter || (columnSet && columnSet.has(columnName))) {
+          const propertyKey = ModelClass && meta ? (columnNameMap[columnName] || columnName) : columnName;
+          columnIndices.push({
+            index: resultSet.getColumnIndex(columnName),
+            name: columnName,
+            propertyKey: propertyKey !== columnName ? propertyKey : undefined
+          });
+        }
+      }
+      
       if (resultSet.goToFirstRow()) {
         while (!resultSet.isEnded) {
-          let Model: Record<string, relationalStore.ValueType> = {}
-          for (let i = 0; i < resultSet.columnNames.length; i++) {
-            let value = resultSet.columnNames[i]
-            if((this.columns.length > 0 && this.columns.includes(value)) || this.columns.length == 0) {
-              if(ModelClass) {
-                const meta = GetColumnMeta(ModelClass);
-                let mapped = false;
-                for (let j = 0; j < meta.length; j++) {
-                  if(meta[j].name! == value) {
-                    Model[meta[j].propertyKey!] = resultSet.getValue(resultSet.getColumnIndex(value))
-                    mapped = true;
-                    break;
-                  }
-                }
-                if(!mapped) {
-                  Model[value] = resultSet.getValue(resultSet.getColumnIndex(value))
-                }
-              } else {
-                Model[value] = resultSet.getValue(resultSet.getColumnIndex(value))
-              }
+          // 如果传入了ModelClass，创建实体类对象；否则创建普通对象
+          let Model: Record<string, relationalStore.ValueType>;
+          if (ModelClass) {
+            // 创建实体类实例，但类型仍然是Record以便兼容
+            Model = Object.create(ModelClass.prototype) as Record<string, relationalStore.ValueType>;
+          } else {
+            Model = {};
+          }
+          
+          // 性能优化：使用预计算的列索引，避免在循环中重复调用getColumnIndex
+          for (let i = 0; i < columnIndices.length; i++) {
+            const col = columnIndices[i];
+            const value = resultSet.getValue(col.index);
+            if (col.propertyKey) {
+              Model[col.propertyKey] = value;
+            } else {
+              Model[col.name] = value;
             }
           }
 
-          if (!resultData.includes(Model)) {
-            resultData.push(Model)
-          }
+          // 性能优化：移除不必要的去重检查
+          // 数据库查询本身不会返回重复记录，includes检查会导致O(n²)复杂度
+          // 对于12760条数据，includes检查会导致约1.6亿次比较操作！
+          resultData.push(Model);
           resultSet.goToNextRow()
         }
       } else {

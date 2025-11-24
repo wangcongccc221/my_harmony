@@ -5,7 +5,8 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { Context } from '@kit.AbilityKit';
 import { HttpServerHandler } from './HttpServerHandler';
 
-export type HttpRequestHandler = (requestRaw: string) => Promise<string> | string;
+export type HttpResponseData = string | Uint8Array;
+export type HttpRequestHandler = (requestRaw: string) => Promise<HttpResponseData> | HttpResponseData;
 
 // 内部接口和类，不导出
 interface IHttpServer {
@@ -50,9 +51,7 @@ class HttpServer implements IHttpServer {
         const promise: Promise<void> = Promise.resolve().then(async () => {
           try {
             const handlerResult = (this.handler as HttpRequestHandler)(request);
-            // 处理同步或异步返回
             const response = handlerResult instanceof Promise ? await handlerResult : handlerResult;
-            // 检查 socket 是否仍然有效
             if (this.running && clientSocket) {
               clientSocket.send({ data: response });
             }
@@ -214,29 +213,67 @@ export async function runHttpServerWorker(ctx: Context, port: number): Promise<v
     });
 
     server.on('connect', (clientSocket: socket.TCPSocketConnection) => {
+      let cache: Uint8Array = new Uint8Array(0);
+
+      const tryProcess = () => {
+        // 尝试解析完整HTTP请求（支持分片）
+        const decoder = util.TextDecoder.create('utf-8');
+        const encoded = decoder.decode(cache);
+        const headerEnd = encoded.indexOf('\r\n\r\n');
+        if (headerEnd < 0) {
+          return; // 头部未完整
+        }
+        const headerText = encoded.substring(0, headerEnd);
+        // 提取 Content-Length
+        const lines = headerText.split('\r\n');
+        let contentLength = 0;
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          if (line.toLowerCase().startsWith('content-length:')) {
+            const v = line.split(':')[1]?.trim() || '0';
+            contentLength = Number(v) || 0;
+            break;
+          }
+        }
+        // 计算字节头部长度
+        const enc = new util.TextEncoder();
+        const headerBytes = enc.encodeInto(encoded.substring(0, headerEnd + 4)).length;
+        if (cache.length < headerBytes + contentLength) {
+          return; // 正文未完整
+        }
+        // 切出完整请求
+        const requestBytes = cache.slice(0, headerBytes + contentLength);
+        const remaining = cache.slice(headerBytes + contentLength);
+        cache = remaining; // 保留剩余（理论上不会有管线）
+        const raw = decoder.decode(requestBytes);
+
+        const task = async () => {
+          try {
+            const response: HttpResponseData | Promise<HttpResponseData> = handler(raw);
+            const result: HttpResponseData = (response instanceof Promise) ? await response : response;
+            clientSocket.send({ data: result });
+          } catch (err) {
+            const e = err as Error | BusinessError | object;
+            hilog.error(0x0000, 'HttpServerWorker', `处理请求失败: ${JSON.stringify(e)}`);
+            const errResp = 'HTTP/1.1 500 Internal Server Error\r\n\r\n';
+            clientSocket.send({ data: errResp });
+          }
+        };
+
+        schedule(task, () => {
+          const tooBusy = 'HTTP/1.1 503 Service Unavailable\r\nRetry-After: 1\r\n\r\n';
+          clientSocket.send({ data: tooBusy });
+        });
+      };
+
       const onMessage = (msgInfo: socket.SocketMessageInfo) => {
         try {
-          const raw = util.TextDecoder.create('utf-8').decode(new Uint8Array(msgInfo.message));
-          const task = async () => {
-            try {
-              const response: string | Promise<string> = handler(raw);
-              const result: string = typeof response === 'string' ? response : await response;
-              const buf = new util.TextEncoder().encodeInto(result);
-              clientSocket.send({ data: buf.buffer });
-            } catch (err) {
-              const e = err as Error | BusinessError | object;
-              hilog.error(0x0000, 'HttpServerWorker', `处理请求失败: ${JSON.stringify(e)}`);
-              const errResp = 'HTTP/1.1 500 Internal Server Error\r\n\r\n';
-              const buf = new util.TextEncoder().encodeInto(errResp);
-              clientSocket.send({ data: buf.buffer });
-            }
-          };
-
-          schedule(task, () => {
-            const tooBusy = 'HTTP/1.1 503 Service Unavailable\r\nRetry-After: 1\r\n\r\n';
-            const buf = new util.TextEncoder().encodeInto(tooBusy);
-            clientSocket.send({ data: buf.buffer });
-          });
+          const incoming = new Uint8Array(msgInfo.message);
+          const merged = new Uint8Array(cache.length + incoming.length);
+          merged.set(cache, 0);
+          merged.set(incoming, cache.length);
+          cache = merged;
+          tryProcess();
         } catch (e) {
           const err = e as Error | BusinessError | object;
           hilog.error(0x0000, 'HttpServerWorker', `解析消息失败: ${JSON.stringify(err)}`);

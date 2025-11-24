@@ -309,9 +309,9 @@ export class RelationQueryExtension {
               Model[value] = resultSet.getValue(resultSet.getColumnIndex(value))
             }
 
-            if (!resultData.includes(Model)) {
-              resultData.push(Model)
-            }
+            // 性能优化：移除不必要的去重检查
+            // 数据库查询本身不会返回重复记录，includes检查会导致O(n²)复杂度
+            resultData.push(Model)
             resultSet.goToNextRow()
           }
         }

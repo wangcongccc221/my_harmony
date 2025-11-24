@@ -1,6 +1,10 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { util } from '@kit.ArkTS';
 import { Context } from '@kit.AbilityKit';
+import { relationalStore } from '@kit.ArkData';
+import { common } from '@kit.AbilityKit';
+import { IBestORMInit, GetIBestORM } from '../../../database/orm';
+import { ProcessingHistory } from '../../../database/models/ProcessingHistory';
 import { HttpRequestHandler } from './HttpServer';
 import { getDefaultStoragePath } from '../../FileUtils';
 import { QueryStringUtils } from '../../helpers/QueryStringUtils';
@@ -26,6 +30,21 @@ export class HttpServerHandler {
     hilog.info(DOMAIN, 'HttpServerHandler', `文件浏览基础路径已设置: ${HttpServerHandler.fileBasePath}`);
     console.log(`HTTP服务器文件浏览基础路径: ${HttpServerHandler.fileBasePath}`);
     console.log(`HTTP服务器实际浏览目录将是: ${HttpServerHandler.fileBasePath}/file`);
+    Promise.resolve().then(async () => {
+      const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
+      let initialized = true;
+      try {
+        GetIBestORM().AutoMigrate(ProcessingHistory); //自动给这个历史加工数据表建表
+        ProcessingHistory.createIndexes();
+      } catch (e) {
+        initialized = false;
+      }
+      if (!initialized) {
+        await IBestORMInit(context as common.UIAbilityContext, config);
+        GetIBestORM().AutoMigrate(ProcessingHistory);
+        ProcessingHistory.createIndexes();
+      }
+    });
   }
 
   /**
@@ -47,7 +66,7 @@ export class HttpServerHandler {
    * 可以扩展这个方法来实现路由功能
    */
   static createRouterHandler(): HttpRequestHandler {
-    return async (rawRequest: string): Promise<string> => {
+    return async (rawRequest: string): Promise<string | Uint8Array> => {
       try {
         // 安全地截取请求内容用于日志
         const requestPreview = rawRequest && rawRequest.length > 0 
@@ -71,6 +90,17 @@ export class HttpServerHandler {
       const requestLine = requestLines[0] || '';
         const pathParts = requestLine.split(' ');
         const rawPath = pathParts.length > 1 ? pathParts[1] : '/';
+        let acceptGzip = false;
+        for (let i = 1; i < requestLines.length; i++) {
+          const line = requestLines[i];
+          if (!line) continue;
+          const lower = line.toLowerCase();
+          if (lower.startsWith('accept-encoding:')) {
+            if (lower.indexOf('gzip') >= 0) {
+              acceptGzip = true;
+            }
+          }
+        }
         
         // 使用工具类解析路径和查询参数
         const pathAndQuery = QueryStringUtils.parsePathAndQuery(rawPath);
@@ -135,7 +165,7 @@ export class HttpServerHandler {
           }
         }
         
-        return await ProcessingApiHandler.handle(method, rawPath, requestBody, HttpServerHandler.appContext as Context);
+        return await ProcessingApiHandler.handle(method, rawPath, requestBody, HttpServerHandler.appContext as Context, acceptGzip);
       }
       return ResponseHandler.getNotFoundResponse();
       } catch (error) {
