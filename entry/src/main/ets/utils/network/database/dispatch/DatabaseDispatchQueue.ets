@@ -189,53 +189,52 @@ export class DatabaseDispatchQueue extends DispatchQueue {
 
   // 以下是数据库操作函数，需要在 TaskPool 中执行
   // 这些函数需要导入 ProcessingApiHandler 中的 @Concurrent 函数
-  // 或者在这里重新定义 @Concurrent 函数
 
   private async executeQueryAll(ctx: Context): Promise<ProcessingHistoryData[]> {
     // 导入 ProcessingApiHandler 中的 PH_QueryAll 函数
-    const ProcessingApiHandler = await import('../handlers/ProcessingApiHandler');
+    const ProcessingApiHandler = await import('../../http/handlers/ProcessingApiHandler');
     const task = new taskpool.Task(ProcessingApiHandler.PH_QueryAll, ctx);
     const result = await taskpool.execute(task);
     return result as ProcessingHistoryData[];
   }
 
   private async executeQueryPage(ctx: Context, page: number, size: number): Promise<ProcessingHistoryData[]> {
-    const ProcessingApiHandler = await import('../handlers/ProcessingApiHandler');
+    const ProcessingApiHandler = await import('../../http/handlers/ProcessingApiHandler');
     const task = new taskpool.Task(ProcessingApiHandler.PH_QueryPage, ctx, page, size);
     const result = await taskpool.execute(task);
     return result as ProcessingHistoryData[];
   }
 
   private async executeCountAll(ctx: Context): Promise<number> {
-    const ProcessingApiHandler = await import('../handlers/ProcessingApiHandler');
+    const ProcessingApiHandler = await import('../../http/handlers/ProcessingApiHandler');
     const task = new taskpool.Task(ProcessingApiHandler.PH_CountAll, ctx);
     const result = await taskpool.execute(task);
     return result as number;
   }
 
   private async executeInsert(ctx: Context, values: relationalStore.ValuesBucket): Promise<number> {
-    const ProcessingApiHandler = await import('../handlers/ProcessingApiHandler');
+    const ProcessingApiHandler = await import('../../http/handlers/ProcessingApiHandler');
     const task = new taskpool.Task(ProcessingApiHandler.PH_Insert, ctx, values);
     const result = await taskpool.execute(task);
     return result as number;
   }
 
   private async executeBatchInsert(ctx: Context, valuesList: Array<relationalStore.ValuesBucket>): Promise<number> {
-    const ProcessingApiHandler = await import('../handlers/ProcessingApiHandler');
+    const ProcessingApiHandler = await import('../../http/handlers/ProcessingApiHandler');
     const task = new taskpool.Task(ProcessingApiHandler.PH_BatchInsert, ctx, valuesList);
     const result = await taskpool.execute(task);
     return result as number;
   }
 
   private async executeUpdate(ctx: Context, id: number, values: relationalStore.ValuesBucket): Promise<number> {
-    const ProcessingApiHandler = await import('../handlers/ProcessingApiHandler');
+    const ProcessingApiHandler = await import('../../http/handlers/ProcessingApiHandler');
     const task = new taskpool.Task(ProcessingApiHandler.PH_Update, ctx, id, values);
     const result = await taskpool.execute(task);
     return result as number;
   }
 
   private async executeDelete(ctx: Context, id: number): Promise<number> {
-    const ProcessingApiHandler = await import('../handlers/ProcessingApiHandler');
+    const ProcessingApiHandler = await import('../../http/handlers/ProcessingApiHandler');
     const task = new taskpool.Task(ProcessingApiHandler.PH_Delete, ctx, id);
     const result = await taskpool.execute(task);
     return result as number;

@@ -2,7 +2,7 @@ import { socket } from '@kit.NetworkKit';
 import { util } from '@kit.ArkTS';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { taskpool } from '@kit.ArkTS';
-import { TcpMessageQueueManager } from './dispatch/TcpMessageQueueManager';
+import { TcpMessageQueueManager } from './dispatch';
 
 const DOMAIN = 0x0000;
 

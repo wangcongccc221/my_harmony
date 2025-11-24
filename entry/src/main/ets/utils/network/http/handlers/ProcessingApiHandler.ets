@@ -9,7 +9,7 @@ import { relationalStore } from '@kit.ArkData';
 import { taskpool } from '@kit.ArkTS';
 import { Context } from '@kit.AbilityKit';
 import { common } from '@kit.AbilityKit';
-import { DatabaseQueueManager } from '../dispatch/DatabaseQueueManager';
+import { DatabaseQueueManager } from '../../database';
 
 const DOMAIN = 0x0000;
 

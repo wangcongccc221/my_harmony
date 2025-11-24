@@ -4,7 +4,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 // AppStorage 是全局可用的，无需导入
 import { TCP_CONNECTION_STATUS } from '../../../constants/TopBarKeys';
 import { taskpool } from '@kit.ArkTS';
-import { TcpMessageQueueManager } from './dispatch/TcpMessageQueueManager';
+import { TcpMessageQueueManager } from './dispatch';
 
 @Concurrent
 export async function runTcpServerWorker(ip: string, port: number): Promise<void> {

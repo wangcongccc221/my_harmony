@@ -8,6 +8,47 @@ import { GetIBestORM } from '../../../database/orm';
 import { DateValidationUtils } from '../../../utils/helpers/DateValidationUtils'
 import { ProcessingHistory } from '../../../database/models/ProcessingHistory'
 import { ProcessingHistoryData } from '../../../database/types'
+import { DatabaseQueueManager } from '../../../utils/network/database';
+import GlobalStore from '../../../database/orm/model/GlobalStore';
+import { relationalStore } from '@kit.ArkData';
+import { taskpool } from '@kit.ArkTS';
+import { Context } from '@kit.AbilityKit';
+
+/**
+ * 在 TaskPool 中执行带过滤条件的计数查询
+ */
+@Concurrent
+async function countFilteredRecords(ctx: Context, filters: FilterParams): Promise<number> {
+  const db = GetIBestORM();
+  const core = db.GetCore();
+  let sql = "SELECT COUNT(*) AS cnt FROM processing_history WHERE 1=1";
+  const parts: string[] = [];
+  const cn = filters.customerName && filters.customerName.trim().length > 0 ? filters.customerName.trim() : '';
+  const fn = filters.farmName && filters.farmName.trim().length > 0 ? filters.farmName.trim() : '';
+  const tn = filters.fruitName && filters.fruitName.trim().length > 0 ? filters.fruitName.trim() : '';
+  const st = filters.status ? String(filters.status) : '';
+  if (cn) parts.push(` AND customer_name='${cn.replace(/'/g, "''")}'`);
+  if (fn) parts.push(` AND farm_name='${fn.replace(/'/g, "''")}'`);
+  if (tn) parts.push(` AND fruit_name='${tn.replace(/'/g, "''")}'`);
+  if (st) parts.push(` AND status='${st.replace(/'/g, "''")}'`);
+  const sd = filters.startDate ? DateValidationUtils.extractDatePart(filters.startDate) : '';
+  const ed = filters.endDate ? DateValidationUtils.extractDatePart(filters.endDate) : '';
+  if (sd && DateValidationUtils.isValidDateFormat(sd)) {
+    parts.push(` AND start_time>='${sd}'`);
+  }
+  if (ed && DateValidationUtils.isValidDateFormat(ed)) {
+    parts.push(` AND end_time<='${ed} 23:59:59'`);
+  }
+  sql += parts.join('');
+  const rs = core!.querySqlSync(sql);
+  let total = 0;
+  if (rs.columnCount > 0 && rs.goToFirstRow()) {
+    const col = rs.columnNames[0];
+    total = rs.getDouble(rs.getColumnIndex(col)) as number;
+  }
+  rs.close();
+  return total;
+}
 
 // 表格数据接口定义
 export interface HistoryTableData {
@@ -94,21 +135,27 @@ export class HistoryTableManager {
 
   /**
    * 添加数据（保存到数据库）
+   * 使用 Dispatch 队列管理，避免阻塞 UI 线程
    */
   async addData(data: AddDataParams): Promise<void> {
     try {
-      const db = GetIBestORM();
-      const historyRecord = new ProcessingHistory(
-        data.customerName,
-        data.farmName,
-        data.fruitName,
-        data.status,
-        data.startTime,
-        data.endTime,
-        data.weight,
-        data.count
-      )
-      await db.Create(historyRecord)
+      const ctx = GlobalStore.context;
+      if (!ctx) {
+        throw new Error('Context 未初始化');
+      }
+      
+      const values: relationalStore.ValuesBucket = {
+        customer_name: data.customerName,
+        farm_name: data.farmName,
+        fruit_name: data.fruitName,
+        status: data.status,
+        start_time: data.startTime,
+        end_time: data.endTime,
+        weight: data.weight,
+        quantity: data.count
+      };
+      
+      await DatabaseQueueManager.insert(ctx, values);
       await this.loadDataFromDatabase()
     } catch (error) {
       console.error('❌ 添加数据到数据库失败:', error)
@@ -119,11 +166,16 @@ export class HistoryTableManager {
 
   /**
    * 删除数据（从数据库删除）
+   * 使用 Dispatch 队列管理，避免阻塞 UI 线程
    */
   async deleteData(id: number): Promise<void> {
     try {
-      const db = GetIBestORM();
-      db.Table("processing_history").Where('id', id).Delete()
+      const ctx = GlobalStore.context;
+      if (!ctx) {
+        throw new Error('Context 未初始化');
+      }
+      
+      await DatabaseQueueManager.delete(ctx, id);
       await this.loadDataFromDatabase()
     } catch (error) {
       console.error('❌ 从数据库删除数据失败:', error)
@@ -134,6 +186,7 @@ export class HistoryTableManager {
 
   /**
    * 更新数据（保存到数据库）
+   * 使用 Dispatch 队列管理，避免阻塞 UI 线程
    */
   async updateData(id: number, newData: UpdateDataParams): Promise<void> {
     try {
@@ -141,19 +194,23 @@ export class HistoryTableManager {
       if (!currentData) {
         throw new Error(`未找到要更新的数据，ID: ${id}`)
       }
-      const db = GetIBestORM();
-      const updatedRecord = new ProcessingHistory(
-        newData.customerName !== undefined ? newData.customerName : currentData.customerName,
-        newData.farmName !== undefined ? newData.farmName : currentData.farmName,
-        newData.fruitName !== undefined ? newData.fruitName : currentData.fruitName,
-        newData.status !== undefined ? newData.status : currentData.status,
-        newData.startTime !== undefined ? newData.startTime : currentData.startTime,
-        newData.endTime !== undefined ? newData.endTime : currentData.endTime,
-        newData.weight !== undefined ? newData.weight : currentData.weight,
-        newData.count !== undefined ? newData.count : currentData.count
-      );
-      updatedRecord.ID = id;
-      db.Save(updatedRecord);
+      
+      const ctx = GlobalStore.context;
+      if (!ctx) {
+        throw new Error('Context 未初始化');
+      }
+      
+      const values: relationalStore.ValuesBucket = {};
+      if (newData.customerName !== undefined) values['customer_name'] = newData.customerName;
+      if (newData.farmName !== undefined) values['farm_name'] = newData.farmName;
+      if (newData.fruitName !== undefined) values['fruit_name'] = newData.fruitName;
+      if (newData.status !== undefined) values['status'] = newData.status;
+      if (newData.startTime !== undefined) values['start_time'] = newData.startTime;
+      if (newData.endTime !== undefined) values['end_time'] = newData.endTime;
+      if (newData.weight !== undefined) values['weight'] = newData.weight;
+      if (newData.count !== undefined) values['quantity'] = newData.count;
+      
+      await DatabaseQueueManager.update(ctx, id, values);
       await this.loadDataFromDatabase()
     } catch (error) {
       console.error('❌ 更新数据库数据失败:', error)
@@ -319,12 +376,18 @@ export class HistoryTableManager {
 
   /**
    * 批量删除数据（根据ID数组）
+   * 使用 Dispatch 队列管理，避免阻塞 UI 线程
    */
   async deleteBatchData(ids: number[]): Promise<void> {
     try {
-      const db = GetIBestORM();
+      const ctx = GlobalStore.context;
+      if (!ctx) {
+        throw new Error('Context 未初始化');
+      }
+      
+      // 批量删除：使用串行队列，逐个删除
       for (const id of ids) {
-        db.Table("processing_history").Where('id', id).Delete()
+        await DatabaseQueueManager.delete(ctx, id);
       }
       await this.loadDataFromDatabase()
     } catch (error) {
@@ -412,12 +475,29 @@ export class HistoryTableManager {
     }
   }
 
+  /**
+   * 获取分页数据
+   * 使用 Dispatch 队列管理，避免阻塞 UI 线程
+   */
   public async getPage(page: number, size: number): Promise<HistoryTableData[]> {
-    const db = GetIBestORM();
+    const ctx = GlobalStore.context;
+    if (!ctx) {
+      // 如果没有 Context，回退到直接查询（兼容性）
+      const db = GetIBestORM();
+      const p = Math.max(1, page)
+      const s = Math.max(1, Math.min(200, size))
+      const offset = (p - 1) * s
+      const dbRecords = db.Table('processing_history').OrderByDesc('id').Limit(s).Offset(offset).Find(ProcessingHistory) as ProcessingHistoryData[]
+      const out: HistoryTableData[] = []
+      for (let i = 0; i < dbRecords.length; i++) {
+        out.push(this.mapRecord(dbRecords[i]))
+      }
+      return out
+    }
+    
     const p = Math.max(1, page)
     const s = Math.max(1, Math.min(200, size))
-    const offset = (p - 1) * s
-    const dbRecords = db.Table('processing_history').OrderByDesc('id').Limit(s).Offset(offset).Find(ProcessingHistory) as ProcessingHistoryData[]
+    const dbRecords = await DatabaseQueueManager.queryPage(ctx, p, s);
     const out: HistoryTableData[] = []
     for (let i = 0; i < dbRecords.length; i++) {
       out.push(this.mapRecord(dbRecords[i]))
@@ -439,38 +519,48 @@ export class HistoryTableManager {
   /**
    * 优化后的计数方法：使用数据库查询而不是内存过滤
    * 性能提升：从O(n)降低到O(1)，n为总记录数
+   * 使用 TaskPool 执行，避免阻塞 UI 线程
    */
   public async countFilteredPaginated(filters: FilterParams, pageSize: number = 200): Promise<number> {
     try {
-      const db = GetIBestORM();
-      const core = db.GetCore();
-      let sql = "SELECT COUNT(*) AS cnt FROM processing_history WHERE 1=1";
-      const parts: string[] = [];
-      const cn = filters.customerName && filters.customerName.trim().length > 0 ? filters.customerName.trim() : '';
-      const fn = filters.farmName && filters.farmName.trim().length > 0 ? filters.farmName.trim() : '';
-      const tn = filters.fruitName && filters.fruitName.trim().length > 0 ? filters.fruitName.trim() : '';
-      const st = filters.status ? String(filters.status) : '';
-      if (cn) parts.push(` AND customer_name='${cn.replace(/'/g, "''")}'`);
-      if (fn) parts.push(` AND farm_name='${fn.replace(/'/g, "''")}'`);
-      if (tn) parts.push(` AND fruit_name='${tn.replace(/'/g, "''")}'`);
-      if (st) parts.push(` AND status='${st.replace(/'/g, "''")}'`);
-      const sd = filters.startDate ? DateValidationUtils.extractDatePart(filters.startDate) : '';
-      const ed = filters.endDate ? DateValidationUtils.extractDatePart(filters.endDate) : '';
-      if (sd && DateValidationUtils.isValidDateFormat(sd)) {
-        parts.push(` AND start_time>='${sd}'`);
+      const ctx = GlobalStore.context;
+      if (!ctx) {
+        // 如果没有 Context，回退到直接查询（兼容性）
+        const db = GetIBestORM();
+        const core = db.GetCore();
+        let sql = "SELECT COUNT(*) AS cnt FROM processing_history WHERE 1=1";
+        const parts: string[] = [];
+        const cn = filters.customerName && filters.customerName.trim().length > 0 ? filters.customerName.trim() : '';
+        const fn = filters.farmName && filters.farmName.trim().length > 0 ? filters.farmName.trim() : '';
+        const tn = filters.fruitName && filters.fruitName.trim().length > 0 ? filters.fruitName.trim() : '';
+        const st = filters.status ? String(filters.status) : '';
+        if (cn) parts.push(` AND customer_name='${cn.replace(/'/g, "''")}'`);
+        if (fn) parts.push(` AND farm_name='${fn.replace(/'/g, "''")}'`);
+        if (tn) parts.push(` AND fruit_name='${tn.replace(/'/g, "''")}'`);
+        if (st) parts.push(` AND status='${st.replace(/'/g, "''")}'`);
+        const sd = filters.startDate ? DateValidationUtils.extractDatePart(filters.startDate) : '';
+        const ed = filters.endDate ? DateValidationUtils.extractDatePart(filters.endDate) : '';
+        if (sd && DateValidationUtils.isValidDateFormat(sd)) {
+          parts.push(` AND start_time>='${sd}'`);
+        }
+        if (ed && DateValidationUtils.isValidDateFormat(ed)) {
+          parts.push(` AND end_time<='${ed} 23:59:59'`);
+        }
+        sql += parts.join('');
+        const rs = core!.querySqlSync(sql);
+        let total = 0;
+        if (rs.columnCount > 0 && rs.goToFirstRow()) {
+          const col = rs.columnNames[0];
+          total = rs.getDouble(rs.getColumnIndex(col)) as number;
+        }
+        rs.close();
+        return total;
       }
-      if (ed && DateValidationUtils.isValidDateFormat(ed)) {
-        parts.push(` AND end_time<='${ed} 23:59:59'`);
-      }
-      sql += parts.join('');
-      const rs = core!.querySqlSync(sql);
-      let total = 0;
-      if (rs.columnCount > 0 && rs.goToFirstRow()) {
-        const col = rs.columnNames[0];
-        total = rs.getDouble(rs.getColumnIndex(col)) as number;
-      }
-      rs.close();
-      return total;
+      
+      // 使用 TaskPool 执行查询
+      const countTask = new taskpool.Task(countFilteredRecords, ctx, filters);
+      const result = await taskpool.execute(countTask);
+      return result as number;
     } catch (error) {
       console.error('❌ 计数查询失败:', error);
       // 降级到原来的方法

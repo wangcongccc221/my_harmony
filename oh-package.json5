@@ -4,7 +4,8 @@
   "dependencies": {
     "@wuba58/omni-ui": "^1.0.1",
     "@ibestservices/ibest-ui": "^2.1.7",
-    "@mcui/mccharts": "^2.8.9"
+    "@mcui/mccharts": "^2.8.9",
+    "@magicnumber/dispatch": "^1.0.0"
   },
   "devDependencies": {
     "@ohos/hypium": "1.0.21",

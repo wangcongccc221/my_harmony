@@ -4,7 +4,7 @@ import { util } from '@kit.ArkTS';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { Context } from '@kit.AbilityKit';
 import { HttpServerHandler } from './HttpServerHandler';
-import { HttpRequestQueueManager } from './dispatch/HttpRequestQueueManager';
+import { HttpRequestQueueManager } from './dispatch';
 
 export type HttpResponseData = string | Uint8Array;
 export type HttpRequestHandler = (requestRaw: string) => Promise<HttpResponseData> | HttpResponseData;
