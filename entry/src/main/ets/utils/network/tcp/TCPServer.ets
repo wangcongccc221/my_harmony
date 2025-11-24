@@ -4,46 +4,13 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 // AppStorage 是全局可用的，无需导入
 import { TCP_CONNECTION_STATUS } from '../../../constants/TopBarKeys';
 import { taskpool } from '@kit.ArkTS';
+import { TcpMessageQueueManager } from './dispatch/TcpMessageQueueManager';
 
 @Concurrent
 export async function runTcpServerWorker(ip: string, port: number): Promise<void> {
   const DOMAIN = 0x0000;
   try {
     const server = socket.constructTCPSocketServerInstance();
-
-    const MAX_MSG_CONCURRENT = 64;
-    const MAX_MSG_QUEUE = 256;
-    let active = 0;
-    const queue: Array<() => Promise<void>> = [];
-
-    const processQueue = () => {
-      while (active < MAX_MSG_CONCURRENT && queue.length > 0) {
-        const next = queue.shift();
-        if (next) {
-          active++;
-          next().finally(() => {
-            active--;
-            processQueue();
-          });
-        }
-      }
-    };
-
-    const schedule = (task: () => Promise<void>, onReject: () => void) => {
-      if (active < MAX_MSG_CONCURRENT) {
-        active++;
-        task().finally(() => {
-          active--;
-          processQueue();
-        });
-        return;
-      }
-      if (queue.length < MAX_MSG_QUEUE) {
-        queue.push(task);
-        return;
-      }
-      onReject();
-    };
 
     server.on('connect', async (client: socket.TCPSocketConnection) => {
       try {
@@ -52,21 +19,17 @@ export async function runTcpServerWorker(ip: string, port: number): Promise<void
         AppStorage.setOrCreate(TCP_CONNECTION_STATUS, true);
 
         client.on('message', (data: socket.SocketMessageInfo) => {
-          schedule(async () => {
-            try {
-              const decoder = new util.TextDecoder();
-              const uint8Array = new Uint8Array(data.message);
-              const message = decoder.decode(uint8Array);
+          // 使用 Dispatch 队列处理消息
+          const messageData = new Uint8Array(data.message);
+          TcpMessageQueueManager.executeMessage(
+            messageData,
+            async (message: string) => {
               hilog.info(DOMAIN, 'TCPServerWorker', `收到消息: ${message}`);
-            } catch (error) {
-              hilog.error(DOMAIN, 'TCPServerWorker', `消息处理失败: ${error}`);
-            }
-          }, () => {
-            try {
-              const encoder = new util.TextEncoder();
-              const rejectMsg = encoder.encodeInto('SERVER_BUSY');
-              client.send({ data: rejectMsg }).catch(() => {});
-            } catch (_) {}
+            },
+            client
+          ).catch((err: Error | object) => {
+            // 错误已经在 executeMessage 中处理，这里只记录日志
+            hilog.error(DOMAIN, 'TCPServerWorker', `消息处理异常: ${JSON.stringify(err)}`);
           });
         });
 
@@ -188,18 +151,22 @@ export class TCPServer {
           
           // 监听客户端消息
           client.on('message', (data: socket.SocketMessageInfo) => {
-            try {
-              const decoder = new util.TextDecoder();
-              const uint8Array = new Uint8Array(data.message);
-              const message = decoder.decode(uint8Array);
-              hilog.info(DOMAIN, 'TCPServer', `收到消息: ${message}`);
-              console.log(`[TCP服务器] 从客户端 ${clientInfo.address}:${clientInfo.port} 接收到数据: ${message}`);
-              this.onMessageCallback?.('receive', message, clientInfo.id);
-            } catch (error) {
-              hilog.error(DOMAIN, 'TCPServer', `接收消息解码失败: ${error}`);
-              console.log(`[TCP服务器] 接收消息解码失败: ${error}`);
-              this.onMessageCallback?.('receive', `接收消息解码失败: ${error}`, clientInfo.id);
-            }
+            // 使用 Dispatch 队列处理消息
+            const messageData = new Uint8Array(data.message);
+            TcpMessageQueueManager.executeMessage(
+              messageData,
+              (message: string) => {
+                hilog.info(DOMAIN, 'TCPServer', `收到消息: ${message}`);
+                console.log(`[TCP服务器] 从客户端 ${clientInfo.address}:${clientInfo.port} 接收到数据: ${message}`);
+                this.onMessageCallback?.('receive', message, clientInfo.id);
+              },
+              client
+            ).catch((err: Error | object) => {
+              const errorMsg = err instanceof Error ? err.message : String(err);
+              hilog.error(DOMAIN, 'TCPServer', `接收消息处理失败: ${errorMsg}`);
+              console.log(`[TCP服务器] 接收消息处理失败: ${errorMsg}`);
+              this.onMessageCallback?.('receive', `接收消息处理失败: ${errorMsg}`, clientInfo.id);
+            });
           });
           
           // 监听客户端断开

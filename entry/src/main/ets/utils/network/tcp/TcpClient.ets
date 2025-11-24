@@ -2,6 +2,7 @@ import { socket } from '@kit.NetworkKit';
 import { util } from '@kit.ArkTS';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { taskpool } from '@kit.ArkTS';
+import { TcpMessageQueueManager } from './dispatch/TcpMessageQueueManager';
 
 const DOMAIN = 0x0000;
 
@@ -43,16 +44,20 @@ export class TcpClient {
       
       // 监听服务器消息
       this.tcpSocket.on('message', (data: socket.SocketMessageInfo) => {
-        try {
-          const decoder = new util.TextDecoder();
-          const uint8Array = new Uint8Array(data.message);
-          const message = decoder.decode(uint8Array);
-          hilog.info(DOMAIN, 'TcpClient', `收到消息: ${message}`);
-          this.notifyMessageCallbacks(message);
-        } catch (error) {
-          hilog.error(DOMAIN, 'TcpClient', `接收消息解码失败: ${error}`);
-          this.notifyErrorCallbacks(`接收消息解码失败: ${error}`);
-        }
+        // 使用 Dispatch 队列处理消息
+        const messageData = new Uint8Array(data.message);
+        TcpMessageQueueManager.executeMessage(
+          messageData,
+          (message: string) => {
+            hilog.info(DOMAIN, 'TcpClient', `收到消息: ${message}`);
+            this.notifyMessageCallbacks(message);
+          },
+          this.tcpSocket || undefined
+        ).catch((err: Error | object) => {
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          hilog.error(DOMAIN, 'TcpClient', `接收消息处理失败: ${errorMsg}`);
+          this.notifyErrorCallbacks(`接收消息处理失败: ${errorMsg}`);
+        });
       });
       
       // 监听连接关闭
@@ -293,14 +298,17 @@ export async function runTcpClientWorker(remoteIp: string, port: number): Promis
       client = socket.constructTCPSocketInstance();
 
       client.on('message', (data: socket.SocketMessageInfo) => {
-        try {
-          const decoder = new util.TextDecoder();
-          const uint8Array = new Uint8Array(data.message);
-          const message = decoder.decode(uint8Array);
-          hilog.info(DOMAIN, 'TcpClientWorker', `收到消息: ${message}`);
-        } catch (error) {
-          hilog.error(DOMAIN, 'TcpClientWorker', `消息解码失败: ${error}`);
-        }
+        // 使用 Dispatch 队列处理消息
+        const messageData = new Uint8Array(data.message);
+        TcpMessageQueueManager.executeMessage(
+          messageData,
+          (message: string) => {
+            hilog.info(DOMAIN, 'TcpClientWorker', `收到消息: ${message}`);
+          },
+          client || undefined
+        ).catch((err: Error | object) => {
+          hilog.error(DOMAIN, 'TcpClientWorker', `消息处理失败: ${JSON.stringify(err)}`);
+        });
       });
 
       client.on('close', () => {
