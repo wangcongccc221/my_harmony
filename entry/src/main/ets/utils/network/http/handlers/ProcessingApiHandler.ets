@@ -9,6 +9,7 @@ import { relationalStore } from '@kit.ArkData';
 import { taskpool } from '@kit.ArkTS';
 import { Context } from '@kit.AbilityKit';
 import { common } from '@kit.AbilityKit';
+import { DatabaseQueueManager } from '../dispatch/DatabaseQueueManager';
 
 const DOMAIN = 0x0000;
 
@@ -287,8 +288,7 @@ export class ProcessingApiHandler {
   private static async getAllRecordsAsRowsTask(ctx?: Context): Promise<ProcessingRow[]> {
     let dbRecords: ProcessingHistoryData[] = [];
     if (ctx) {
-      const task = new taskpool.Task(PH_QueryAll, ctx);
-      dbRecords = await taskpool.execute(task) as ProcessingHistoryData[];
+      dbRecords = await DatabaseQueueManager.queryAll(ctx);
     } else {
       const db = GetIBestORM();
       dbRecords = db.Table('processing_history').Find(ProcessingHistory) as ProcessingHistoryData[];
@@ -300,8 +300,7 @@ export class ProcessingApiHandler {
   private static async getAllRecordsAsPackedRowsTask(ctx?: Context): Promise<Array<Array<string | number>>> {
     let dbRecords: ProcessingHistoryData[] = [];
     if (ctx) {
-      const task = new taskpool.Task(PH_QueryAll, ctx);
-      dbRecords = await taskpool.execute(task) as ProcessingHistoryData[];
+      dbRecords = await DatabaseQueueManager.queryAll(ctx);
     } else {
       const db = GetIBestORM();
       dbRecords = db.Table('processing_history').Find(ProcessingHistory) as ProcessingHistoryData[];
@@ -334,8 +333,7 @@ export class ProcessingApiHandler {
   private static async getPageRecordsAsRowsTask(page: number, size: number, ctx?: Context): Promise<ProcessingRow[]> {
     let dbRecords: ProcessingHistoryData[] = [];
     if (ctx) {
-      const task = new taskpool.Task(PH_QueryPage, ctx, page, size);
-      dbRecords = await taskpool.execute(task) as ProcessingHistoryData[];
+      dbRecords = await DatabaseQueueManager.queryPage(ctx, page, size);
     } else {
       const db = GetIBestORM();
       dbRecords = db.Table('processing_history').OrderByDesc('id').Limit(size).Offset((page - 1) * size).Find(ProcessingHistory) as ProcessingHistoryData[];
@@ -353,9 +351,11 @@ export class ProcessingApiHandler {
       const size = Math.max(1, Math.min(100, Number(params['size'] || '20')));
       const lite = params['lite'] === '1';
       const nocount = params['nocount'] === '1';
-      const pageTask = new taskpool.Task(PH_QueryPage, ctx as Context, page, size);
-      const pageRecords = await taskpool.execute(pageTask) as ProcessingHistoryData[];
-      const total = nocount ? 0 : await taskpool.execute(new taskpool.Task(PH_CountAll, ctx as Context)) as number;
+      if (!ctx) {
+        return HttpResponseUtils.buildErrorResponse('Context 未提供', 500);
+      }
+      const pageRecords = await DatabaseQueueManager.queryPage(ctx, page, size);
+      const total = nocount ? 0 : await DatabaseQueueManager.countAll(ctx);
       // 性能优化：使用批量转换方法
       const rows = ProcessingApiHandler.convertBatchToProcessingRows(pageRecords);
       const totalPages = Math.ceil(Math.max(0, total) / size);
@@ -405,10 +405,12 @@ export class ProcessingApiHandler {
     try {
       const page = Math.max(1, Number(params['page'] || '1'));
       const size = Math.max(1, Math.min(100, Number(params['size'] || '20')));
-      const pageTask = new taskpool.Task(PH_QueryPage, ctx as Context, page, size);
-      const pageRecords = await taskpool.execute(pageTask) as ProcessingHistoryData[];
+      if (!ctx) {
+        return HttpResponseUtils.buildErrorResponse('Context 未提供', 500);
+      }
+      const pageRecords = await DatabaseQueueManager.queryPage(ctx, page, size);
       const rows = ProcessingApiHandler.convertBatchToProcessingRows(pageRecords);
-      const total = await taskpool.execute(new taskpool.Task(PH_CountAll, ctx as Context)) as number;
+      const total = await DatabaseQueueManager.countAll(ctx);
       const totalPages = Math.ceil(Math.max(0, total) / size);
       const liteResp: LiteListStats = { page, size, total, totalPages, count: rows.length };
       return HttpResponseUtils.buildSuccessResponse(liteResp);
@@ -458,8 +460,10 @@ export class ProcessingApiHandler {
         weight: weight,
         quantity: count,
       };
-      const task = new taskpool.Task(PH_Insert, ctx as Context, values);
-      const insertId = await taskpool.execute(task) as number;
+      if (!ctx) {
+        return HttpResponseUtils.buildErrorResponse('Context 未提供', 500);
+      }
+      const insertId = await DatabaseQueueManager.insert(ctx, values);
       if (params['compact'] === '1') {
         const insertResp: InsertIdResponse = { id: insertId };
         return HttpResponseUtils.buildSuccessResponse(insertResp, '添加成功');
@@ -521,8 +525,10 @@ export class ProcessingApiHandler {
       if (valuesList.length === 0) {
         return HttpResponseUtils.buildErrorResponse('无有效记录', 400);
       }
-      const task = new taskpool.Task(PH_BatchInsert, ctx as Context, valuesList);
-      const inserted = await taskpool.execute(task) as number;
+      if (!ctx) {
+        return HttpResponseUtils.buildErrorResponse('Context 未提供', 500);
+      }
+      const inserted = await DatabaseQueueManager.batchInsert(ctx, valuesList);
       const result: BatchInsertResult = { inserted };
       return HttpResponseUtils.buildSuccessResponse(result, '批量添加成功');
     } catch (e) {
@@ -551,8 +557,10 @@ export class ProcessingApiHandler {
       if (params['weight'] !== undefined) values['weight'] = Number(params['weight']);
       if (params['totalWeight'] !== undefined) values['weight'] = Number(params['totalWeight']);
       if (params['count'] !== undefined) values['quantity'] = Number(params['count']);
-      const task = new taskpool.Task(PH_Update, ctx as Context, id, values);
-      await taskpool.execute(task);
+      if (!ctx) {
+        return HttpResponseUtils.buildErrorResponse('Context 未提供', 500);
+      }
+      await DatabaseQueueManager.update(ctx, id, values);
       const data = await ProcessingApiHandler.getAllRecordsAsRowsTask(ctx);
       return HttpResponseUtils.buildSuccessResponse(data, '更新成功');
     } catch (error) {
@@ -576,8 +584,10 @@ export class ProcessingApiHandler {
       if (!found) {
         return HttpResponseUtils.buildErrorResponse('记录不存在', 404);
       }
-      const task = new taskpool.Task(PH_Delete, ctx as Context, id);
-      await taskpool.execute(task);
+      if (!ctx) {
+        return HttpResponseUtils.buildErrorResponse('Context 未提供', 500);
+      }
+      await DatabaseQueueManager.delete(ctx, id);
       const data = await ProcessingApiHandler.getAllRecordsAsRowsTask(ctx);
       return HttpResponseUtils.buildSuccessResponse(data, '删除成功');
     } catch (error) {
