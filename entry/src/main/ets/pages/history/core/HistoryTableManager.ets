@@ -132,6 +132,40 @@ export class HistoryTableManager {
     }
   }
 
+  /**
+   * 加载所有数据（用于重置功能）
+   * 使用查询 Dispatch 队列 + TaskPool，避免阻塞 UI
+   * 每次调用都会执行查询，不使用缓存
+   */
+  public async loadAllData(): Promise<HistoryTableData[]> {
+    try {
+      const ctx = GlobalStore.context
+      if (!ctx) {
+        // 回退：未初始化 Context 时直接查询
+        const db = GetIBestORM()
+        const dbRecords = db.Table('processing_history').OrderByDesc('id').Find(ProcessingHistory) as ProcessingHistoryData[]
+        this.tableData = dbRecords.map(record => this.mapRecord(record))
+        this.dataLoaded = true
+        return this.tableData.slice()
+      }
+
+      // 使用 TaskPool 异步加载所有数据（每次都会查询数据库）
+      const dbRecords = await DatabaseQueueManager.queryAll(ctx)
+      const out: HistoryTableData[] = []
+      for (let i = 0; i < dbRecords.length; i++) {
+        out.push(this.mapRecord(dbRecords[i]))
+      }
+      this.tableData = out
+      this.dataLoaded = true
+      
+      return out.slice()
+    } catch (error) {
+      console.error('❌ 从数据库加载全部历史加工数据失败:', error)
+      const err = error instanceof Error ? error : new Error(String(error))
+      throw err
+    }
+  }
+
 
   /**
    * 添加数据（保存到数据库）

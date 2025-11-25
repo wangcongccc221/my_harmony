@@ -25,6 +25,8 @@ export struct HistoryDataTable {
   @State private tableData: HistoryTableData[] = []
   // 外部传入的筛选数据（使用空数组作为默认值，避免可选参数）
   @Prop filteredData: HistoryTableData[] = []
+  // 外部传入的全部数据（用于重置功能，显示所有数据）
+  @Prop externalData: HistoryTableData[] = []
   // 防重复加载标志，避免aboutToUpdate循环触发
   private isLoading: boolean = false
   private lastUpdateKey: number = 0
@@ -32,6 +34,8 @@ export struct HistoryDataTable {
   @State private pageSize: number = 50
   @State private hasMore: boolean = true
   private isLoadingMore: boolean = false
+  // 当使用 externalData 时，用于分页显示
+  @State private displayCount: number = 50
 
   // 事件回调
   onRowClick?: (rowData: HistoryTableData) => void
@@ -137,13 +141,19 @@ export struct HistoryDataTable {
   }
 
   /**
-   * 获取要显示的数据（优先使用筛选数据）
+   * 获取要显示的数据（优先使用 externalData，然后是筛选数据，最后是分页数据）
    */
   private getDisplayData(): HistoryTableData[] {
-    // 返回拷贝，避免框架复用导致的渲染错位
+    // 如果提供了 externalData（重置功能），使用它并支持分页显示
+    if (this.externalData && this.externalData.length > 0) {
+      // 返回前 displayCount 条数据（支持滚动加载更多）
+      return [...this.externalData.slice(0, this.displayCount)]
+    }
+    // 如果提供了筛选数据，使用筛选数据
     if (this.filteredData && this.filteredData.length > 0) {
       return [...this.filteredData]
     }
+    // 否则使用分页数据
     return [...this.tableData]
   }
 
@@ -159,6 +169,12 @@ export struct HistoryDataTable {
    */
   aboutToAppear() {
     console.log('HistoryDataTable aboutToAppear: 组件已挂载')
+    // 如果提供了 externalData（重置功能），初始化显示数量为50条
+    if (this.externalData && this.externalData.length > 0) {
+      this.displayCount = 50
+      console.log(`重置功能：初始显示 50/${this.externalData.length} 条，滚动到底部自动加载更多`)
+      return
+    }
     // 若父组件已传入筛选数据，则直接显示，避免重新加载覆盖筛选结果
     if (this.filteredData && this.filteredData.length > 0) {
       return
@@ -175,6 +191,10 @@ export struct HistoryDataTable {
    * 组件更新时检查筛选数据和数据变化
    */
   aboutToUpdate() {
+    // 如果提供了 externalData（重置功能），不需要加载分页数据
+    if (this.externalData && this.externalData.length > 0) {
+      return
+    }
     // 如果外部传入了筛选数据，直接作为显示数据来源
     if (this.filteredData && this.filteredData.length > 0) {
       this.tableData = this.filteredData
@@ -209,7 +229,25 @@ export struct HistoryDataTable {
   }
 
   private async loadMore(): Promise<void> {
-    if (this.isLoadingMore || !this.hasMore || (this.filteredData && this.filteredData.length > 0)) return
+    // 如果提供了 externalData（重置功能），从 externalData 中加载更多
+    if (this.externalData && this.externalData.length > 0) {
+      if (this.isLoadingMore || this.displayCount >= this.externalData.length) return
+      this.isLoadingMore = true
+      try {
+        // 每次加载50条
+        this.displayCount = Math.min(this.displayCount + 50, this.externalData.length)
+        console.log(`从 externalData 加载更多，当前显示 ${this.displayCount}/${this.externalData.length} 条`)
+      } finally {
+        this.isLoadingMore = false
+      }
+      return
+    }
+    
+    // 如果提供了筛选数据，不支持加载更多
+    if (this.filteredData && this.filteredData.length > 0) return
+    
+    // 否则从数据库加载更多分页数据
+    if (this.isLoadingMore || !this.hasMore) return
     this.isLoadingMore = true
     const nextPage = this.page + 1
     try {
@@ -341,6 +379,28 @@ export struct HistoryDataTable {
             })
             .border({ width: { bottom: 0.5 }, color: this.getCurrentTheme().borderColor })
           }, (item: HistoryTableData, idx?: number) => `${item.id}`)
+          
+          // 哨兵行：当滚动到底部时自动加载更多（仅在使用 externalData 或分页数据时）
+          if (!(this.filteredData && this.filteredData.length > 0) && 
+              ((this.externalData && this.externalData.length > 0
+                ? this.displayCount < this.externalData.length
+                : this.hasMore) && !this.isLoadingMore)) {
+            ListItem() {
+              Row() {
+                Text('加载中...')
+                  .fontSize(14)
+                  .fontColor(this.getCurrentTheme().subTextColor)
+                  .textAlign(TextAlign.Center)
+              }
+              .width('100%')
+              .height(40)
+              .justifyContent(FlexAlign.Center)
+            }
+            .onAppear(() => {
+              // 当哨兵行出现时，自动加载更多
+              this.loadMore()
+            })
+          }
         }
         .width('100%')
         .layoutWeight(1)
@@ -348,19 +408,6 @@ export struct HistoryDataTable {
         .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
         .border({ width: 1, color: this.getCurrentTheme().borderColor })
         .borderRadius(4)
-        if (!(this.filteredData && this.filteredData.length > 0)) {
-          Row() {
-            Button(this.hasMore ? '加载更多' : '已到底')
-              .enabled(this.hasMore && !this.isLoadingMore)
-              .onClick(() => {
-                this.loadMore()
-              })
-              .height(36)
-          }
-          .width('100%')
-          .justifyContent(FlexAlign.Center)
-          .padding({ top: 8, bottom: 8 })
-        }
       }
       .width('100%')
       .height('70%')

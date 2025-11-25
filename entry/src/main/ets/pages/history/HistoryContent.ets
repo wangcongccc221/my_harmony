@@ -340,6 +340,7 @@ export struct HistoryContent {
    */
   private async handleReset(): Promise<void> {
     console.log('执行重置操作')
+    const t0 = Date.now()
     
     // 重置查询条件
     this.startDate = ''
@@ -354,11 +355,12 @@ export struct HistoryContent {
     this.isFiltered = false
     this.filteredTableData = []
     
-    // 重新加载所有数据
+    // 重新加载所有数据（使用 loadAllData 加载全部数据）
     try {
       const tableManager = HistoryTableManager.getInstance()
-      await tableManager.refreshData()
-      const allData = await tableManager.getData()
+      const allData = await tableManager.loadAllData()
+      const t1 = Date.now()
+      const elapsed = t1 - t0
       
       // 更新表格数据
       this.currentTableData = allData
@@ -374,12 +376,13 @@ export struct HistoryContent {
         console.log('重置后表格组件已重新创建，key:', this.tableRefreshKey)
       }, 50)
       
-      // 显示重置成功提示
-      this.showToast('success', `重置完成，共显示 ${allData.length} 条数据`)
-      console.log('重置完成，已加载所有数据，共', allData.length, '条')
+      // 显示重置成功提示（包含耗时和数据量）
+      console.log(`重置完成，耗时 ${elapsed}ms，共加载 ${allData.length} 条数据`)
+      this.showToast('success', `重置完成，耗时 ${elapsed}ms，共显示 ${allData.length} 条数据`)
     } catch (error) {
-      console.error('重置数据失败:', error)
-      this.showToast('error', '重置失败，请重试')
+      console.error('❌ 从数据库加载全部历史加工数据失败:', error)
+      const err = error instanceof Error ? error : new Error(String(error))
+      this.showToast('error', `重置失败: ${err.message}`)
     }
   }
 
@@ -812,6 +815,7 @@ export struct HistoryContent {
         if (this.tableRefreshKey >= 0) {
           HistoryDataTable({
             filteredData: this.isFiltered && this.filteredTableData.length > 0 ? this.filteredTableData : [],
+            externalData: !this.isFiltered && this.currentTableData.length > 0 ? this.currentTableData : [],
             onRowClick: (rowData: HistoryTableData) => {
               console.log('点击行数据:', rowData)
             },
