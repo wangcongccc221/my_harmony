@@ -338,7 +338,7 @@ export struct HistoryContent {
   /**
    * 处理重置操作（重置查询条件，显示所有数据）
    */
-  private async handleReset(): Promise<void> {
+  private handleReset(): void {
     console.log('执行重置操作')
     const t0 = Date.now()
     
@@ -355,35 +355,41 @@ export struct HistoryContent {
     this.isFiltered = false
     this.filteredTableData = []
     
-    // 重新加载所有数据（使用 loadAllData 加载全部数据）
-    try {
-      const tableManager = HistoryTableManager.getInstance()
-      const allData = await tableManager.loadAllData()
-      const t1 = Date.now()
-      const elapsed = t1 - t0
-      
-      // 更新表格数据
-      this.currentTableData = allData
-      this.filteredTableData = []
-      
-      // 强制刷新表格：先设置为负数销毁组件，然后立即设置为正数重新创建
-      // 这样可以确保组件完全重新创建，重新执行 aboutToAppear 并加载最新数据
-      this.tableRefreshKey = -1
-      // 使用 setTimeout 确保在下一个事件循环中重新创建组件
-      setTimeout(() => {
-        // 使用时间戳确保每次都是新的key值
+    // 直接显示重置完成，让用户感觉操作已完成
+    this.showToast('success', '重置完成')
+    
+    // 在后台异步加载数据，不阻塞 UI
+    // 数据加载完成后自动更新表格，不显示额外提示
+    const loadData = async () => {
+      try {
+        const tableManager = HistoryTableManager.getInstance()
+        const allData = await tableManager.loadAllData()
+        const t1 = Date.now()
+        const elapsed = t1 - t0
+        
+        // 更新表格数据（直接更新，让组件响应式刷新，避免闪烁）
+        this.currentTableData = allData
+        this.filteredTableData = []
+        
+        // 使用响应式更新，不需要销毁和重新创建组件
+        // 只需要更新 key 值，让组件知道数据已更新
         this.tableRefreshKey = Math.abs(Date.now())
-        console.log('重置后表格组件已重新创建，key:', this.tableRefreshKey)
-      }, 50)
-      
-      // 显示重置成功提示（包含耗时和数据量）
-      console.log(`重置完成，耗时 ${elapsed}ms，共加载 ${allData.length} 条数据`)
-      this.showToast('success', `重置完成，耗时 ${elapsed}ms，共显示 ${allData.length} 条数据`)
-    } catch (error) {
-      console.error('❌ 从数据库加载全部历史加工数据失败:', error)
-      const err = error instanceof Error ? error : new Error(String(error))
-      this.showToast('error', `重置失败: ${err.message}`)
+        console.log('数据已更新，表格将自动刷新，key:', this.tableRefreshKey)
+        
+        // 数据加载完成，静默更新（只打印日志，不显示提示）
+        console.log(`数据加载完成，耗时 ${elapsed}ms，共加载 ${allData.length} 条数据`)
+      } catch (error) {
+        console.error('❌ 从数据库加载全部历史加工数据失败:', error)
+        const err = error instanceof Error ? error : new Error(String(error))
+        this.showToast('error', `数据加载失败: ${err.message}`)
+      }
     }
+    
+    loadData().catch((error: Error | object) => {
+      const err = error instanceof Error ? error : new Error(String(error))
+      console.error('重置操作异常:', err.message)
+      this.showToast('error', `数据加载失败: ${err.message}`)
+    })
   }
 
   /**

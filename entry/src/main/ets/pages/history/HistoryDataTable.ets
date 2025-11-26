@@ -36,6 +36,8 @@ export struct HistoryDataTable {
   private isLoadingMore: boolean = false
   // 当使用 externalData 时，用于分页显示
   @State private displayCount: number = 50
+  // 跟踪 externalData 的长度变化，用于检测数据更新
+  private lastExternalDataLength: number = 0
 
   // 事件回调
   onRowClick?: (rowData: HistoryTableData) => void
@@ -191,8 +193,13 @@ export struct HistoryDataTable {
    * 组件更新时检查筛选数据和数据变化
    */
   aboutToUpdate() {
-    // 如果提供了 externalData（重置功能），不需要加载分页数据
+    // 如果提供了 externalData（重置功能），重置显示数量并直接使用
     if (this.externalData && this.externalData.length > 0) {
+      // 如果 externalData 是新数据（长度变化），重置 displayCount
+      if (this.displayCount !== 50 || this.externalData.length !== this.lastExternalDataLength) {
+        this.displayCount = 50
+        this.lastExternalDataLength = this.externalData.length
+      }
       return
     }
     // 如果外部传入了筛选数据，直接作为显示数据来源

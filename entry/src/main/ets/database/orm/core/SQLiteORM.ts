@@ -325,7 +325,30 @@ export class IBestORM {
   static async Init(Context: Context, Config: relationalStore.StoreConfig): Promise<IBestORM> {
     try {
       const rdbStore = await relationalStore.getRdbStore(Context, Config);
-      return new IBestORM(rdbStore, Config);
+      const orm = new IBestORM(rdbStore, Config);
+      
+      // 性能优化：配置 PRAGMA 设置以提升查询性能
+      try {
+        const core = orm.GetCore();
+        if (core) {
+          // 设置缓存大小为 64MB（负值表示 KB，-64000 = 64MB）
+          core.executeSql('PRAGMA cache_size = -64000;');
+          // 临时表存储在内存中，提升性能
+          core.executeSql('PRAGMA temp_store = MEMORY;');
+          // 平衡性能和安全性（WAL 模式下推荐使用 NORMAL）
+          core.executeSql('PRAGMA synchronous = NORMAL;');
+          // WAL 模式已在配置中设置，这里确保启用
+          core.executeSql('PRAGMA journal_mode = WAL;');
+          // 优化查询计划器
+          core.executeSql('PRAGMA optimize;');
+          console.log(TAG, 'PRAGMA 性能优化配置已应用');
+        }
+      } catch (pragmaError) {
+        // PRAGMA 配置失败不影响数据库初始化
+        console.warn(TAG, 'PRAGMA 配置失败（不影响使用）:', pragmaError);
+      }
+      
+      return orm;
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       console.log(TAG, "SQLiteORM Init Error:", error.message);

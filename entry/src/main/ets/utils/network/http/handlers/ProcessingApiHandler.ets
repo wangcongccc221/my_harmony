@@ -95,8 +95,10 @@ interface BatchInsertWrapper {
 
 
 @Concurrent
-export async function PH_QueryAll(ctx: Context): Promise<ProcessingHistoryData[]> {
+export async function PH_QueryAll(ctx: Context, tableName?: string): Promise<ProcessingHistoryData[]> {
   const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
+  const targetTableName = tableName || 'processing_history';
+  
   let initialized = true;
   try {
     GetIBestORM().AutoMigrate(ProcessingHistory);
@@ -109,14 +111,17 @@ export async function PH_QueryAll(ctx: Context): Promise<ProcessingHistoryData[]
     GetIBestORM().AutoMigrate(ProcessingHistory);
     ProcessingHistory.createIndexes();
   }
-  // 性能优化：直接查询，不使用OrderBy（查询全部数据时不需要排序）
-  const dbRecords = GetIBestORM().Table('processing_history').Find(ProcessingHistory) as ProcessingHistoryData[];
+  // 使用 ORM 查询，返回实体类实例（可以添加业务方法）
+  const db = GetIBestORM();
+  const dbRecords = db.Table(targetTableName).OrderByDesc('id').Find(ProcessingHistory) as ProcessingHistoryData[];
   return dbRecords || [];
 }
 
 @Concurrent
-export async function PH_CountAll(ctx: Context): Promise<number> {
+export async function PH_CountAll(ctx: Context, tableName?: string): Promise<number> {
   const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
+  const targetTableName = tableName || 'processing_history';
+  
   let initialized = true;
   try {
     GetIBestORM().AutoMigrate(ProcessingHistory);
@@ -130,7 +135,7 @@ export async function PH_CountAll(ctx: Context): Promise<number> {
   const db = GetIBestORM();
   const core = db.GetCore();
   let total = 0;
-  const rs = core!.querySqlSync("SELECT COUNT(*) AS cnt FROM processing_history;");
+  const rs = core!.querySqlSync(`SELECT COUNT(*) AS cnt FROM ${targetTableName};`);
   if (rs.columnCount > 0 && rs.goToFirstRow()) {
     const col = rs.columnNames[0];
     total = rs.getDouble(rs.getColumnIndex(col)) as number;
@@ -140,8 +145,10 @@ export async function PH_CountAll(ctx: Context): Promise<number> {
 }
 
 @Concurrent
-export async function PH_QueryPage(ctx: Context, page: number, size: number): Promise<ProcessingHistoryData[]> {
+export async function PH_QueryPage(ctx: Context, page: number, size: number, tableName?: string): Promise<ProcessingHistoryData[]> {
   const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
+  const targetTableName = tableName || 'processing_history';
+  
   let initialized = true;
   try {
     GetIBestORM().AutoMigrate(ProcessingHistory);
@@ -159,12 +166,14 @@ export async function PH_QueryPage(ctx: Context, page: number, size: number): Pr
   const offset = (p - 1) * s;
   const db = GetIBestORM();
   // 性能优化：使用id字段进行排序（已创建索引，性能更好）
-  const rows = db.Table('processing_history').OrderByDesc('id').Limit(s).Offset(offset).Find(ProcessingHistory) as ProcessingHistoryData[];
+  const rows = db.Table(targetTableName).OrderByDesc('id').Limit(s).Offset(offset).Find(ProcessingHistory) as ProcessingHistoryData[];
   return rows || [];
 }
 @Concurrent
-export async function PH_Insert(ctx: Context, values: relationalStore.ValuesBucket): Promise<number> {
+export async function PH_Insert(ctx: Context, values: relationalStore.ValuesBucket, tableName?: string): Promise<number> {
   const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
+  const targetTableName = tableName || 'processing_history';
+  
   let initialized = true;
   try {
     GetIBestORM().AutoMigrate(ProcessingHistory);
@@ -175,13 +184,15 @@ export async function PH_Insert(ctx: Context, values: relationalStore.ValuesBuck
     await IBestORMInit(ctx as common.UIAbilityContext, config);
     GetIBestORM().AutoMigrate(ProcessingHistory);
   }
-  const insertId = GetIBestORM().Table('processing_history').Insert(values);
+  const insertId = GetIBestORM().Table(targetTableName).Insert(values);
   return insertId || 0;
 }
 
 @Concurrent
-export async function PH_BatchInsert(ctx: Context, values: Array<relationalStore.ValuesBucket>): Promise<number> {
+export async function PH_BatchInsert(ctx: Context, values: Array<relationalStore.ValuesBucket>, tableName?: string): Promise<number> {
   const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
+  const targetTableName = tableName || 'processing_history';
+  
   let initialized = true;
   try {
     GetIBestORM().AutoMigrate(ProcessingHistory);
@@ -192,13 +203,15 @@ export async function PH_BatchInsert(ctx: Context, values: Array<relationalStore
     await IBestORMInit(ctx as common.UIAbilityContext, config);
     GetIBestORM().AutoMigrate(ProcessingHistory);
   }
-  const affected = GetIBestORM().Table('processing_history').Insert(values);
+  const affected = GetIBestORM().Table(targetTableName).Insert(values);
   return affected || 0;
 }
 
 @Concurrent
-export async function PH_Delete(ctx: Context, id: number): Promise<number> {
+export async function PH_Delete(ctx: Context, id: number, tableName?: string): Promise<number> {
   const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
+  const targetTableName = tableName || 'processing_history';
+  
   let initialized = true;
   try {
     GetIBestORM().AutoMigrate(ProcessingHistory);
@@ -209,13 +222,15 @@ export async function PH_Delete(ctx: Context, id: number): Promise<number> {
     await IBestORMInit(ctx as common.UIAbilityContext, config);
     GetIBestORM().AutoMigrate(ProcessingHistory);
   }
-  const affected = GetIBestORM().Table('processing_history').Where('id', id).Delete();
+  const affected = GetIBestORM().Table(targetTableName).Where('id', id).Delete();
   return affected || 0;
 }
 
 @Concurrent
-export async function PH_Update(ctx: Context, id: number, values: relationalStore.ValuesBucket): Promise<number> {
+export async function PH_Update(ctx: Context, id: number, values: relationalStore.ValuesBucket, tableName?: string): Promise<number> {
   const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
+  const targetTableName = tableName || 'processing_history';
+  
   let initialized = true;
   try {
     GetIBestORM().AutoMigrate(ProcessingHistory);
@@ -226,7 +241,7 @@ export async function PH_Update(ctx: Context, id: number, values: relationalStor
     await IBestORMInit(ctx as common.UIAbilityContext, config);
     GetIBestORM().AutoMigrate(ProcessingHistory);
   }
-  const affected = GetIBestORM().Table('processing_history').Where('id', id).Update(values);
+  const affected = GetIBestORM().Table(targetTableName).Where('id', id).Update(values);
   return affected || 0;
 }
 

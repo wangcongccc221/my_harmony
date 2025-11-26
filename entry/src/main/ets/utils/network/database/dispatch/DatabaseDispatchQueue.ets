@@ -78,6 +78,9 @@ export class DatabaseTask extends DispatchTask {
 export class DatabaseDispatchQueue extends DispatchQueue {
   // 存储 Context 的映射（key: task uniqueId, value: Context）
   private contextMap: Map<string, Context> = new Map();
+  // 存储表名的映射（key: task uniqueId, value: tableName string）
+  // 注意：使用表名字符串而不是 Class 对象，因为 Class 无法序列化传递给 TaskPool
+  private tableNameMap: Map<string, string> = new Map();
 
   /**
    * 创建串行队列（用于写入操作：INSERT、UPDATE、DELETE）
@@ -111,47 +114,47 @@ export class DatabaseDispatchQueue extends DispatchQueue {
       return;
     }
 
-    // 在 TaskPool 中执行数据库操作
+    const tableName = this.tableNameMap.get(taskId);
     const executeDbOperation = async () => {
       try {
         let result: ProcessingHistoryData[] | number;
         
         switch (dbTask.type) {
           case DatabaseTaskType.QUERY_ALL:
-            result = await this.executeQueryAll(ctx);
+            result = await this.executeQueryAll(ctx, tableName);
             break;
           case DatabaseTaskType.QUERY_PAGE:
             if (dbTask.page === undefined || dbTask.size === undefined) {
               throw new Error('查询分页参数缺失');
             }
-            result = await this.executeQueryPage(ctx, dbTask.page, dbTask.size);
+            result = await this.executeQueryPage(ctx, dbTask.page, dbTask.size, tableName);
             break;
           case DatabaseTaskType.COUNT_ALL:
-            result = await this.executeCountAll(ctx);
+            result = await this.executeCountAll(ctx, tableName);
             break;
           case DatabaseTaskType.INSERT:
             if (!dbTask.values) {
               throw new Error('插入参数缺失');
             }
-            result = await this.executeInsert(ctx, dbTask.values);
+            result = await this.executeInsert(ctx, dbTask.values, tableName);
             break;
           case DatabaseTaskType.BATCH_INSERT:
             if (!dbTask.valuesList) {
               throw new Error('批量插入参数缺失');
             }
-            result = await this.executeBatchInsert(ctx, dbTask.valuesList);
+            result = await this.executeBatchInsert(ctx, dbTask.valuesList, tableName);
             break;
           case DatabaseTaskType.UPDATE:
             if (dbTask.id === undefined || !dbTask.values) {
               throw new Error('更新参数缺失');
             }
-            result = await this.executeUpdate(ctx, dbTask.id, dbTask.values);
+            result = await this.executeUpdate(ctx, dbTask.id, dbTask.values, tableName);
             break;
           case DatabaseTaskType.DELETE:
             if (dbTask.id === undefined) {
               throw new Error('删除参数缺失');
             }
-            result = await this.executeDelete(ctx, dbTask.id);
+            result = await this.executeDelete(ctx, dbTask.id, tableName);
             break;
           default:
             throw new Error(`未知的数据库操作类型: ${dbTask.type}`);
@@ -173,6 +176,7 @@ export class DatabaseDispatchQueue extends DispatchQueue {
       } finally {
         // 清理映射
         this.contextMap.delete(taskId);
+        this.tableNameMap.delete(taskId);
       }
     };
 
@@ -187,55 +191,70 @@ export class DatabaseDispatchQueue extends DispatchQueue {
     this.contextMap.set(taskId, ctx);
   }
 
+  /**
+   * 设置任务的表名（在添加任务前调用）
+   * 注意：使用表名字符串而不是 Class 对象，因为 Class 无法序列化传递给 TaskPool
+   */
+  setTaskTableName(taskId: string, tableName: string): void {
+    this.tableNameMap.set(taskId, tableName);
+  }
+
   // 以下是数据库操作函数，需要在 TaskPool 中执行
   // 这些函数需要导入 ProcessingApiHandler 中的 @Concurrent 函数
 
-  private async executeQueryAll(ctx: Context): Promise<ProcessingHistoryData[]> {
+  private async executeQueryAll(ctx: Context, tableName?: string): Promise<ProcessingHistoryData[]> {
     // 导入 ProcessingApiHandler 中的 PH_QueryAll 函数
     const ProcessingApiHandler = await import('../../http/handlers/ProcessingApiHandler');
-    const task = new taskpool.Task(ProcessingApiHandler.PH_QueryAll, ctx);
+    const targetTableName = tableName || 'processing_history';
+    const task = new taskpool.Task(ProcessingApiHandler.PH_QueryAll, ctx, targetTableName);
     const result = await taskpool.execute(task);
     return result as ProcessingHistoryData[];
   }
 
-  private async executeQueryPage(ctx: Context, page: number, size: number): Promise<ProcessingHistoryData[]> {
+  private async executeQueryPage(ctx: Context, page: number, size: number, tableName?: string): Promise<ProcessingHistoryData[]> {
     const ProcessingApiHandler = await import('../../http/handlers/ProcessingApiHandler');
-    const task = new taskpool.Task(ProcessingApiHandler.PH_QueryPage, ctx, page, size);
+    const targetTableName = tableName || 'processing_history';
+    const task = new taskpool.Task(ProcessingApiHandler.PH_QueryPage, ctx, page, size, targetTableName);
     const result = await taskpool.execute(task);
     return result as ProcessingHistoryData[];
   }
 
-  private async executeCountAll(ctx: Context): Promise<number> {
+  private async executeCountAll(ctx: Context, tableName?: string): Promise<number> {
     const ProcessingApiHandler = await import('../../http/handlers/ProcessingApiHandler');
-    const task = new taskpool.Task(ProcessingApiHandler.PH_CountAll, ctx);
+    const targetTableName = tableName || 'processing_history';
+    const task = new taskpool.Task(ProcessingApiHandler.PH_CountAll, ctx, targetTableName);
     const result = await taskpool.execute(task);
     return result as number;
   }
 
-  private async executeInsert(ctx: Context, values: relationalStore.ValuesBucket): Promise<number> {
+  private async executeInsert(ctx: Context, values: relationalStore.ValuesBucket, tableName?: string): Promise<number> {
     const ProcessingApiHandler = await import('../../http/handlers/ProcessingApiHandler');
-    const task = new taskpool.Task(ProcessingApiHandler.PH_Insert, ctx, values);
+    const targetTableName = tableName || 'processing_history';
+    const task = new taskpool.Task(ProcessingApiHandler.PH_Insert, ctx, values, targetTableName);
     const result = await taskpool.execute(task);
     return result as number;
   }
 
-  private async executeBatchInsert(ctx: Context, valuesList: Array<relationalStore.ValuesBucket>): Promise<number> {
+  private async executeBatchInsert(ctx: Context, valuesList: Array<relationalStore.ValuesBucket>, tableName?: string): Promise<number> {
     const ProcessingApiHandler = await import('../../http/handlers/ProcessingApiHandler');
-    const task = new taskpool.Task(ProcessingApiHandler.PH_BatchInsert, ctx, valuesList);
+    const targetTableName = tableName || 'processing_history';
+    const task = new taskpool.Task(ProcessingApiHandler.PH_BatchInsert, ctx, valuesList, targetTableName);
     const result = await taskpool.execute(task);
     return result as number;
   }
 
-  private async executeUpdate(ctx: Context, id: number, values: relationalStore.ValuesBucket): Promise<number> {
+  private async executeUpdate(ctx: Context, id: number, values: relationalStore.ValuesBucket, tableName?: string): Promise<number> {
     const ProcessingApiHandler = await import('../../http/handlers/ProcessingApiHandler');
-    const task = new taskpool.Task(ProcessingApiHandler.PH_Update, ctx, id, values);
+    const targetTableName = tableName || 'processing_history';
+    const task = new taskpool.Task(ProcessingApiHandler.PH_Update, ctx, id, values, targetTableName);
     const result = await taskpool.execute(task);
     return result as number;
   }
 
-  private async executeDelete(ctx: Context, id: number): Promise<number> {
+  private async executeDelete(ctx: Context, id: number, tableName?: string): Promise<number> {
     const ProcessingApiHandler = await import('../../http/handlers/ProcessingApiHandler');
-    const task = new taskpool.Task(ProcessingApiHandler.PH_Delete, ctx, id);
+    const targetTableName = tableName || 'processing_history';
+    const task = new taskpool.Task(ProcessingApiHandler.PH_Delete, ctx, id, targetTableName);
     const result = await taskpool.execute(task);
     return result as number;
   }

@@ -3,6 +3,8 @@ import { Context } from '@kit.AbilityKit';
 import { relationalStore } from '@kit.ArkData';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { ProcessingHistoryData } from '../../../../database/types';
+import { Class, GetTableName } from '../../../../database/orm';
+import { ProcessingHistory } from '../../../../database/models/ProcessingHistory';
 
 const DOMAIN = 0x0000;
 
@@ -61,19 +63,24 @@ export class DatabaseQueueManager {
 
   /**
    * 执行查询所有记录
+   * @param ctx Context 上下文
+   * @param entityClass 实体类（可选，默认使用 ProcessingHistory）
    */
-  static async queryAll(ctx: Context): Promise<ProcessingHistoryData[]> {
-    return new Promise<ProcessingHistoryData[]>((resolve, reject) => {
+  static async queryAll<T = ProcessingHistoryData>(ctx: Context, entityClass?: Class): Promise<T[]> {
+    return new Promise<T[]>((resolve, reject) => {
       const queue = DatabaseQueueManager.getQueryQueue();
       const task = new DatabaseTask({ type: DatabaseTaskType.QUERY_ALL });
       
       queue.setTaskContext(task.uniqueId, ctx);
+      // 设置表名（如果提供实体类，转换为表名；否则使用默认表名）
+      const tableName = entityClass ? GetTableName(entityClass) : 'processing_history';
+      queue.setTaskTableName(task.uniqueId, tableName);
       
       queue.async(task, (result: ESObject) => {
         try {
           const taskResult = result as DatabaseTaskResult;
           if (taskResult.success && taskResult.data) {
-            resolve(taskResult.data as ProcessingHistoryData[]);
+            resolve(taskResult.data as T[]);
           } else {
             const errorMsg = taskResult.error || '查询失败';
             hilog.error(DOMAIN, 'DatabaseQueueManager', `查询所有记录失败: ${errorMsg}`);
@@ -90,9 +97,13 @@ export class DatabaseQueueManager {
 
   /**
    * 执行分页查询
+   * @param ctx Context 上下文
+   * @param page 页码
+   * @param size 每页大小
+   * @param entityClass 实体类（可选，默认使用 ProcessingHistory）
    */
-  static async queryPage(ctx: Context, page: number, size: number): Promise<ProcessingHistoryData[]> {
-    return new Promise<ProcessingHistoryData[]>((resolve, reject) => {
+  static async queryPage<T = ProcessingHistoryData>(ctx: Context, page: number, size: number, entityClass?: Class): Promise<T[]> {
+    return new Promise<T[]>((resolve, reject) => {
       const queue = DatabaseQueueManager.getQueryQueue();
       const task = new DatabaseTask({ 
         type: DatabaseTaskType.QUERY_PAGE, 
@@ -101,12 +112,15 @@ export class DatabaseQueueManager {
       });
       
       queue.setTaskContext(task.uniqueId, ctx);
+      // 设置表名（如果提供实体类，转换为表名；否则使用默认表名）
+      const tableName = entityClass ? GetTableName(entityClass) : 'processing_history';
+      queue.setTaskTableName(task.uniqueId, tableName);
       
       queue.async(task, (result: ESObject) => {
         try {
           const taskResult = result as DatabaseTaskResult;
           if (taskResult.success && taskResult.data) {
-            resolve(taskResult.data as ProcessingHistoryData[]);
+            resolve(taskResult.data as T[]);
           } else {
             const errorMsg = taskResult.error || '查询失败';
             hilog.error(DOMAIN, 'DatabaseQueueManager', `分页查询失败: ${errorMsg}`);
@@ -123,13 +137,18 @@ export class DatabaseQueueManager {
 
   /**
    * 执行计数查询
+   * @param ctx Context 上下文
+   * @param entityClass 实体类（可选，默认使用 ProcessingHistory）
    */
-  static async countAll(ctx: Context): Promise<number> {
+  static async countAll(ctx: Context, entityClass?: Class): Promise<number> {
     return new Promise<number>((resolve, reject) => {
       const queue = DatabaseQueueManager.getQueryQueue();
       const task = new DatabaseTask({ type: DatabaseTaskType.COUNT_ALL });
       
       queue.setTaskContext(task.uniqueId, ctx);
+      // 设置表名（如果提供实体类，转换为表名；否则使用默认表名）
+      const tableName = entityClass ? GetTableName(entityClass) : 'processing_history';
+      queue.setTaskTableName(task.uniqueId, tableName);
       
       queue.async(task, (result: ESObject) => {
         try {
@@ -152,8 +171,11 @@ export class DatabaseQueueManager {
 
   /**
    * 执行插入操作
+   * @param ctx Context 上下文
+   * @param values 插入的数据
+   * @param entityClass 实体类（可选，默认使用 ProcessingHistory）
    */
-  static async insert(ctx: Context, values: relationalStore.ValuesBucket): Promise<number> {
+  static async insert(ctx: Context, values: relationalStore.ValuesBucket, entityClass?: Class): Promise<number> {
     return new Promise<number>((resolve, reject) => {
       const queue = DatabaseQueueManager.getWriteQueue();
       const task = new DatabaseTask({ 
@@ -162,6 +184,9 @@ export class DatabaseQueueManager {
       });
       
       queue.setTaskContext(task.uniqueId, ctx);
+      // 设置表名（如果提供实体类，转换为表名；否则使用默认表名）
+      const tableName = entityClass ? GetTableName(entityClass) : 'processing_history';
+      queue.setTaskTableName(task.uniqueId, tableName);
       
       queue.async(task, (result: ESObject) => {
         try {
@@ -184,8 +209,11 @@ export class DatabaseQueueManager {
 
   /**
    * 执行批量插入操作
+   * @param ctx Context 上下文
+   * @param valuesList 批量插入的数据列表
+   * @param entityClass 实体类（可选，默认使用 ProcessingHistory）
    */
-  static async batchInsert(ctx: Context, valuesList: Array<relationalStore.ValuesBucket>): Promise<number> {
+  static async batchInsert(ctx: Context, valuesList: Array<relationalStore.ValuesBucket>, entityClass?: Class): Promise<number> {
     return new Promise<number>((resolve, reject) => {
       const queue = DatabaseQueueManager.getWriteQueue();
       const task = new DatabaseTask({ 
@@ -194,6 +222,9 @@ export class DatabaseQueueManager {
       });
       
       queue.setTaskContext(task.uniqueId, ctx);
+      // 设置表名（如果提供实体类，转换为表名；否则使用默认表名）
+      const tableName = entityClass ? GetTableName(entityClass) : 'processing_history';
+      queue.setTaskTableName(task.uniqueId, tableName);
       
       queue.async(task, (result: ESObject) => {
         try {
@@ -216,8 +247,12 @@ export class DatabaseQueueManager {
 
   /**
    * 执行更新操作
+   * @param ctx Context 上下文
+   * @param id 记录ID
+   * @param values 更新的数据
+   * @param entityClass 实体类（可选，默认使用 ProcessingHistory）
    */
-  static async update(ctx: Context, id: number, values: relationalStore.ValuesBucket): Promise<number> {
+  static async update(ctx: Context, id: number, values: relationalStore.ValuesBucket, entityClass?: Class): Promise<number> {
     return new Promise<number>((resolve, reject) => {
       const queue = DatabaseQueueManager.getWriteQueue();
       const task = new DatabaseTask({ 
@@ -227,6 +262,9 @@ export class DatabaseQueueManager {
       });
       
       queue.setTaskContext(task.uniqueId, ctx);
+      // 设置表名（如果提供实体类，转换为表名；否则使用默认表名）
+      const tableName = entityClass ? GetTableName(entityClass) : 'processing_history';
+      queue.setTaskTableName(task.uniqueId, tableName);
       
       queue.async(task, (result: ESObject) => {
         try {
@@ -249,8 +287,11 @@ export class DatabaseQueueManager {
 
   /**
    * 执行删除操作
+   * @param ctx Context 上下文
+   * @param id 记录ID
+   * @param entityClass 实体类（可选，默认使用 ProcessingHistory）
    */
-  static async delete(ctx: Context, id: number): Promise<number> {
+  static async delete(ctx: Context, id: number, entityClass?: Class): Promise<number> {
     return new Promise<number>((resolve, reject) => {
       const queue = DatabaseQueueManager.getWriteQueue();
       const task = new DatabaseTask({ 
@@ -259,6 +300,9 @@ export class DatabaseQueueManager {
       });
       
       queue.setTaskContext(task.uniqueId, ctx);
+      // 设置表名（如果提供实体类，转换为表名；否则使用默认表名）
+      const tableName = entityClass ? GetTableName(entityClass) : 'processing_history';
+      queue.setTaskTableName(task.uniqueId, tableName);
       
       queue.async(task, (result: ESObject) => {
         try {

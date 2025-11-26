@@ -1,9 +1,3 @@
-/**
- * 历史表格数据管理器
- * 负责表格数据的增删改查操作
- * 已改为从数据库读取数据
- */
-
 import { GetIBestORM } from '../../../database/orm';
 import { DateValidationUtils } from '../../../utils/helpers/DateValidationUtils'
 import { ProcessingHistory } from '../../../database/models/ProcessingHistory'
@@ -151,10 +145,29 @@ export class HistoryTableManager {
 
       // 使用 TaskPool 异步加载所有数据（每次都会查询数据库）
       const dbRecords = await DatabaseQueueManager.queryAll(ctx)
+      
+      // 性能优化：使用预分配数组，减少数组扩容开销
       const out: HistoryTableData[] = []
+      out.length = dbRecords.length // 预分配数组大小
+      
+      // 性能优化：内联 mapRecord 逻辑，减少函数调用开销
+      // 直接构建对象，避免函数调用和参数传递
       for (let i = 0; i < dbRecords.length; i++) {
-        out.push(this.mapRecord(dbRecords[i]))
+        const record = dbRecords[i]
+        const recordId = record.ID || record.id || 0
+        out[i] = {
+          id: recordId,
+          customerName: record.CustomerName || '',
+          farmName: record.FarmName || '',
+          fruitName: record.FruitName || '',
+          status: (record.Status as '已完成' | '进行中' | '待开始') || '待开始',
+          startTime: record.StartTime || '',
+          endTime: record.EndTime || '',
+          weight: record.Weight || 0,
+          count: record.Quantity || 0
+        }
       }
+      
       this.tableData = out
       this.dataLoaded = true
       
