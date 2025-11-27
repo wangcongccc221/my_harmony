@@ -38,6 +38,8 @@ export struct HistoryDataTable {
   @State private displayCount: number = 50
   // 跟踪 externalData 的长度变化，用于检测数据更新
   private lastExternalDataLength: number = 0
+  // 页面可见性标志：只有页面可见时才刷新UI
+  @State private isPageVisible: boolean = false
 
   // 事件回调
   onRowClick?: (rowData: HistoryTableData) => void
@@ -170,7 +172,10 @@ export struct HistoryDataTable {
    * 组件挂载时从数据库加载数据
    */
   aboutToAppear() {
-    console.log('HistoryDataTable aboutToAppear: 组件已挂载')
+    console.log('HistoryDataTable aboutToAppear: 组件已挂载，页面可见')
+    // 标记页面为可见状态
+    this.isPageVisible = true
+    
     // 如果提供了 externalData（重置功能），初始化显示数量为50条
     if (this.externalData && this.externalData.length > 0) {
       this.displayCount = 50
@@ -181,7 +186,7 @@ export struct HistoryDataTable {
     if (this.filteredData && this.filteredData.length > 0) {
       return
     }
-    // 否则加载分页数据
+    // 否则加载分页数据（页面可见时才加载）
     this.loadData().then(() => {
       console.log('HistoryDataTable aboutToAppear: 数据加载完成')
     }).catch((error: Error) => {
@@ -190,9 +195,24 @@ export struct HistoryDataTable {
   }
 
   /**
+   * 组件消失时标记页面为不可见
+   */
+  aboutToDisappear() {
+    console.log('HistoryDataTable aboutToDisappear: 组件已隐藏，停止UI刷新')
+    // 标记页面为不可见状态，停止后台刷新
+    this.isPageVisible = false
+  }
+
+  /**
    * 组件更新时检查筛选数据和数据变化
+   * 优化：只有页面可见时才刷新UI，避免后台不必要的刷新
    */
   aboutToUpdate() {
+    // 如果页面不可见，不执行任何刷新操作（性能优化）
+    if (!this.isPageVisible) {
+      return
+    }
+    
     // 如果提供了 externalData（重置功能），重置显示数量并直接使用
     if (this.externalData && this.externalData.length > 0) {
       // 如果 externalData 是新数据（长度变化），重置 displayCount
@@ -219,6 +239,11 @@ export struct HistoryDataTable {
       this.lastUpdateKey = currentKey
       // 使用异步延迟，避免在更新过程中同步加载导致循环
       Promise.resolve().then(() => {
+        // 再次检查页面可见性（可能在异步过程中页面已隐藏）
+        if (!this.isPageVisible) {
+          this.isLoading = false
+          return
+        }
         // 检查是否仍然是最新的更新请求
         if (this.lastUpdateKey === currentKey) {
           this.loadData().then(() => {

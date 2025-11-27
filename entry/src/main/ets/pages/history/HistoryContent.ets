@@ -31,7 +31,6 @@ import { util, buffer } from '@kit.ArkTS'
 
 /**
  * 历史加工内容组件结构体
- * 
  * 属性说明：
  * - startDate: 开始日期字符串
  * - endDate: 结束日期字符串
@@ -40,7 +39,6 @@ import { util, buffer } from '@kit.ArkTS'
  * - customerName: 客户名称输入值
  * - farmName: 农场名称输入值
  * - fruitName: 水果品种输入值
- * 
  * 方法说明：
  * - getCurrentTheme(): 获取当前主题配置
  * - build(): 构建历史加工内容的UI结构

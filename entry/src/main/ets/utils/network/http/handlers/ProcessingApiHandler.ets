@@ -1,5 +1,4 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { IBestORMInit, GetIBestORM } from '../../../../database/orm';
 import { QueryStringUtils } from '../../../helpers/QueryStringUtils';
 import { DateValidationUtils } from '../../../helpers/DateValidationUtils';
 import { HttpResponseUtils } from '../../../helpers/HttpResponseUtils';
@@ -8,8 +7,8 @@ import { ProcessingHistoryData } from '../../../../database/types';
 import { relationalStore } from '@kit.ArkData';
 import { taskpool } from '@kit.ArkTS';
 import { Context } from '@kit.AbilityKit';
-import { common } from '@kit.AbilityKit';
 import { DatabaseQueueManager } from '../../database';
+import { DatabaseHelper } from '../../../../database/DatabaseHelper';
 
 const DOMAIN = 0x0000;
 
@@ -96,153 +95,59 @@ interface BatchInsertWrapper {
 
 @Concurrent
 export async function PH_QueryAll(ctx: Context, tableName?: string): Promise<ProcessingHistoryData[]> {
-  const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
   const targetTableName = tableName || 'processing_history';
   
-  let initialized = true;
-  try {
-    GetIBestORM().AutoMigrate(ProcessingHistory);
-    ProcessingHistory.createIndexes();
-  } catch (e) {
-    initialized = false;
-  }
-  if (!initialized) {
-    await IBestORMInit(ctx as common.UIAbilityContext, config);
-    GetIBestORM().AutoMigrate(ProcessingHistory);
-    ProcessingHistory.createIndexes();
-  }
-  // 使用 ORM 查询，返回实体类实例（可以添加业务方法）
-  const db = GetIBestORM();
-  const dbRecords = db.Table(targetTableName).OrderByDesc('id').Find(ProcessingHistory) as ProcessingHistoryData[];
+  // 使用数据库封装类（简单直接，可在任何地方使用）
+  const dbRecords = await DatabaseHelper.queryAll<ProcessingHistoryData>(ctx, targetTableName, ProcessingHistory);
   return dbRecords || [];
 }
 
 @Concurrent
 export async function PH_CountAll(ctx: Context, tableName?: string): Promise<number> {
-  const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
   const targetTableName = tableName || 'processing_history';
   
-  let initialized = true;
-  try {
-    GetIBestORM().AutoMigrate(ProcessingHistory);
-  } catch (e) {
-    initialized = false;
-  }
-  if (!initialized) {
-    await IBestORMInit(ctx as common.UIAbilityContext, config);
-    GetIBestORM().AutoMigrate(ProcessingHistory);
-  }
-  const db = GetIBestORM();
-  const core = db.GetCore();
-  let total = 0;
-  const rs = core!.querySqlSync(`SELECT COUNT(*) AS cnt FROM ${targetTableName};`);
-  if (rs.columnCount > 0 && rs.goToFirstRow()) {
-    const col = rs.columnNames[0];
-    total = rs.getDouble(rs.getColumnIndex(col)) as number;
-  }
-  rs.close();
-  return total;
+  // 使用数据库封装类
+  return await DatabaseHelper.count(ctx, targetTableName);
 }
 
 @Concurrent
 export async function PH_QueryPage(ctx: Context, page: number, size: number, tableName?: string): Promise<ProcessingHistoryData[]> {
-  const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
   const targetTableName = tableName || 'processing_history';
   
-  let initialized = true;
-  try {
-    GetIBestORM().AutoMigrate(ProcessingHistory);
-    ProcessingHistory.createIndexes();
-  } catch (e) {
-    initialized = false;
-  }
-  if (!initialized) {
-    await IBestORMInit(ctx as common.UIAbilityContext, config);
-    GetIBestORM().AutoMigrate(ProcessingHistory);
-    ProcessingHistory.createIndexes();
-  }
-  const p = Math.max(1, page);
-  const s = Math.max(1, Math.min(100, size));
-  const offset = (p - 1) * s;
-  const db = GetIBestORM();
-  // 性能优化：使用id字段进行排序（已创建索引，性能更好）
-  const rows = db.Table(targetTableName).OrderByDesc('id').Limit(s).Offset(offset).Find(ProcessingHistory) as ProcessingHistoryData[];
+  // 使用数据库封装类
+  const rows = await DatabaseHelper.queryPage<ProcessingHistoryData>(ctx, targetTableName, page, size, ProcessingHistory);
   return rows || [];
 }
 @Concurrent
 export async function PH_Insert(ctx: Context, values: relationalStore.ValuesBucket, tableName?: string): Promise<number> {
-  const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
   const targetTableName = tableName || 'processing_history';
   
-  let initialized = true;
-  try {
-    GetIBestORM().AutoMigrate(ProcessingHistory);
-  } catch (e) {
-    initialized = false;
-  }
-  if (!initialized) {
-    await IBestORMInit(ctx as common.UIAbilityContext, config);
-    GetIBestORM().AutoMigrate(ProcessingHistory);
-  }
-  const insertId = GetIBestORM().Table(targetTableName).Insert(values);
-  return insertId || 0;
+  // 使用数据库封装类
+  return await DatabaseHelper.insert(ctx, targetTableName, values);
 }
 
 @Concurrent
 export async function PH_BatchInsert(ctx: Context, values: Array<relationalStore.ValuesBucket>, tableName?: string): Promise<number> {
-  const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
   const targetTableName = tableName || 'processing_history';
   
-  let initialized = true;
-  try {
-    GetIBestORM().AutoMigrate(ProcessingHistory);
-  } catch (e) {
-    initialized = false;
-  }
-  if (!initialized) {
-    await IBestORMInit(ctx as common.UIAbilityContext, config);
-    GetIBestORM().AutoMigrate(ProcessingHistory);
-  }
-  const affected = GetIBestORM().Table(targetTableName).Insert(values);
-  return affected || 0;
+  // 使用数据库封装类
+  return await DatabaseHelper.batchInsert(ctx, targetTableName, values);
 }
 
 @Concurrent
 export async function PH_Delete(ctx: Context, id: number, tableName?: string): Promise<number> {
-  const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
   const targetTableName = tableName || 'processing_history';
   
-  let initialized = true;
-  try {
-    GetIBestORM().AutoMigrate(ProcessingHistory);
-  } catch (e) {
-    initialized = false;
-  }
-  if (!initialized) {
-    await IBestORMInit(ctx as common.UIAbilityContext, config);
-    GetIBestORM().AutoMigrate(ProcessingHistory);
-  }
-  const affected = GetIBestORM().Table(targetTableName).Where('id', id).Delete();
-  return affected || 0;
+  // 使用数据库封装类
+  return await DatabaseHelper.delete(ctx, targetTableName, id);
 }
 
 @Concurrent
 export async function PH_Update(ctx: Context, id: number, values: relationalStore.ValuesBucket, tableName?: string): Promise<number> {
-  const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
   const targetTableName = tableName || 'processing_history';
   
-  let initialized = true;
-  try {
-    GetIBestORM().AutoMigrate(ProcessingHistory);
-  } catch (e) {
-    initialized = false;
-  }
-  if (!initialized) {
-    await IBestORMInit(ctx as common.UIAbilityContext, config);
-    GetIBestORM().AutoMigrate(ProcessingHistory);
-  }
-  const affected = GetIBestORM().Table(targetTableName).Where('id', id).Update(values);
-  return affected || 0;
+  // 使用数据库封装类
+  return await DatabaseHelper.update(ctx, targetTableName, id, values);
 }
 
 export class ProcessingApiHandler {
@@ -305,8 +210,8 @@ export class ProcessingApiHandler {
     if (ctx) {
       dbRecords = await DatabaseQueueManager.queryAll(ctx);
     } else {
-      const db = GetIBestORM();
-      dbRecords = db.Table('processing_history').Find(ProcessingHistory) as ProcessingHistoryData[];
+      // 如果没有 Context，使用 DatabaseHelper（需要 Context，所以这里不应该执行）
+      throw new Error('Context 是必需的');
     }
     // 性能优化：使用批量转换方法
     return ProcessingApiHandler.convertBatchToProcessingRows(dbRecords);
@@ -317,8 +222,8 @@ export class ProcessingApiHandler {
     if (ctx) {
       dbRecords = await DatabaseQueueManager.queryAll(ctx);
     } else {
-      const db = GetIBestORM();
-      dbRecords = db.Table('processing_history').Find(ProcessingHistory) as ProcessingHistoryData[];
+      // 如果没有 Context，抛出错误
+      throw new Error('Context 是必需的');
     }
     // 性能优化：预分配数组，减少重复字段访问
     const rows: Array<Array<string | number>> = new Array(dbRecords.length);
@@ -350,8 +255,8 @@ export class ProcessingApiHandler {
     if (ctx) {
       dbRecords = await DatabaseQueueManager.queryPage(ctx, page, size);
     } else {
-      const db = GetIBestORM();
-      dbRecords = db.Table('processing_history').OrderByDesc('id').Limit(size).Offset((page - 1) * size).Find(ProcessingHistory) as ProcessingHistoryData[];
+      // 如果没有 Context，抛出错误
+      throw new Error('Context 是必需的');
     }
     // 性能优化：使用批量转换方法
     return ProcessingApiHandler.convertBatchToProcessingRows(dbRecords);
