@@ -32,6 +32,10 @@ type ESObject = object;
  * ```
  */
 export class DatabaseHelper {
+  // 初始化 Promise 缓存，避免重复初始化
+  private static initPromise: Promise<void> | null = null;
+  private static initContext: Context | null = null;
+
   /**
    * 获取数据库适配器实例
    */
@@ -41,10 +45,22 @@ export class DatabaseHelper {
 
   /**
    * 初始化数据库（如果需要）
+   * 使用 Promise 缓存，避免并发调用时重复初始化
    */
   private static async initIfNeeded(ctx: Context): Promise<void> {
-    const adapter = DatabaseHelper.getAdapter();
-    await adapter.initialize(ctx);
+    // 如果已经初始化过且 Context 相同，直接返回
+    if (DatabaseHelper.initPromise && DatabaseHelper.initContext === ctx) {
+      return DatabaseHelper.initPromise;
+    }
+    
+    // 创建新的初始化 Promise
+    DatabaseHelper.initContext = ctx;
+    DatabaseHelper.initPromise = (async () => {
+      const adapter = DatabaseHelper.getAdapter();
+      await adapter.initialize(ctx);
+    })();
+    
+    return DatabaseHelper.initPromise;
   }
 
   /**

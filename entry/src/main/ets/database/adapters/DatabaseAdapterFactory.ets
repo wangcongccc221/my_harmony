@@ -1,5 +1,5 @@
 import { IDatabaseAdapter } from './IDatabaseAdapter';
-import { SQLiteAdapter } from './SQLiteAdapter';
+import { SQLiteAdapter, SQLiteAdapterConfig } from './SQLiteAdapter';
 
 /**
  * 数据库适配器工厂
@@ -7,11 +7,17 @@ import { SQLiteAdapter } from './SQLiteAdapter';
  * 
  * 使用方式：
  * ```typescript
- * // 获取当前数据库适配器（默认是 SQLite）
+ * // 获取当前数据库适配器（默认是 SQLite，无自动迁移）
  * const adapter = DatabaseAdapterFactory.getAdapter();
  * 
- * // 未来切换数据库时，只需修改这里：
- * // DatabaseAdapterFactory.setAdapter(new MySQLAdapter());
+ * // 带配置初始化（自动迁移模型）
+ * DatabaseAdapterFactory.initialize({
+ *   dbName: 'my_app.db',
+ *   models: [User, Product]
+ * });
+ * 
+ * // 未来切换数据库时：
+ * DatabaseAdapterFactory.setAdapter(new MySQLAdapter());
  * ```
  */
 export class DatabaseAdapterFactory {
@@ -19,8 +25,18 @@ export class DatabaseAdapterFactory {
   private static adapter: IDatabaseAdapter | null = null;
 
   /**
+   * 初始化适配器（带配置）
+   * @param config SQLite 适配器配置
+   */
+  static initialize(config?: SQLiteAdapterConfig): void {
+    if (!DatabaseAdapterFactory.adapter) {
+      DatabaseAdapterFactory.adapter = new SQLiteAdapter(config);
+    }
+  }
+
+  /**
    * 获取数据库适配器实例
-   * 如果未初始化，则创建默认的 SQLiteAdapter
+   * 如果未初始化，则创建默认的 SQLiteAdapter（无自动迁移）
    */
   static getAdapter(): IDatabaseAdapter {
     if (!DatabaseAdapterFactory.adapter) {

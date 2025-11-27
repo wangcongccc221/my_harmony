@@ -3,7 +3,6 @@ import { common } from '@kit.AbilityKit';
 import { relationalStore } from '@kit.ArkData';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { IBestORMInit, GetIBestORM, Class } from '../orm';
-import { ProcessingHistory } from '../models/ProcessingHistory';
 import { IDatabaseAdapter } from './IDatabaseAdapter';
 
 const DOMAIN = 0x0000;
@@ -12,24 +11,53 @@ const TAG = 'SQLiteAdapter';
 // ESObject 类型别名
 type ESObject = object;
 
+
+/**
+ * SQLite 适配器配置选项
+ */
+export interface SQLiteAdapterConfig {
+  /** 数据库文件名 */
+  dbName?: string;
+  /** 安全级别 */
+  securityLevel?: relationalStore.SecurityLevel;
+  /** 需要自动迁移的模型类列表（可选） */
+  models?: Class[];
+}
+
 /**
  * SQLite 数据库适配器实现
  * 封装 IBestORM 的所有操作
  * 
  * 使用方式：
  * ```typescript
+ * // 基本使用（不自动迁移）
  * const adapter = new SQLiteAdapter();
  * await adapter.initialize(ctx);
- * const data = await adapter.queryAll(ctx, 'processing_history', ProcessingHistory);
+ * 
+ * // 带配置使用（自动迁移模型）
+ * const adapter = new SQLiteAdapter({
+ *   dbName: 'my_app.db',
+ *   models: [User, Product]  // 需要迁移的模型
+ * });
+ * await adapter.initialize(ctx);
  * ```
  */
 export class SQLiteAdapter implements IDatabaseAdapter {
-  private readonly config: relationalStore.StoreConfig = {
-    name: 'article.db',
-    securityLevel: relationalStore.SecurityLevel.S2
-  };
-
+  private config: relationalStore.StoreConfig;
+  private models: Class[];
   private initialized: boolean = false;
+
+  /**
+   * 构造函数
+   * @param options 配置选项（可选）
+   */
+  constructor(options?: SQLiteAdapterConfig) {
+    this.config = {
+      name: options?.dbName || 'article.db',
+      securityLevel: options?.securityLevel || relationalStore.SecurityLevel.S2
+    };
+    this.models = options?.models || [];
+  }
 
   /**
    * 初始化数据库连接
@@ -44,9 +72,18 @@ export class SQLiteAdapter implements IDatabaseAdapter {
       await IBestORMInit(ctx as common.UIAbilityContext, this.config);
       db = GetIBestORM();
       if (db) {
-        db.AutoMigrate(ProcessingHistory);
-        ProcessingHistory.createIndexes();
-        hilog.info(DOMAIN, TAG, 'SQLite 数据库已初始化');
+        // 如果提供了模型列表，则自动迁移
+        if (this.models.length > 0) {
+          for (const modelClass of this.models) {
+            db.AutoMigrate(modelClass);
+            // 注意：由于 ArkTS 类型限制，无法自动调用 createIndexes 静态方法
+            // 如果模型有 createIndexes 方法，需要在初始化后手动调用
+            // 例如：ProcessingHistory.createIndexes();
+          }
+          hilog.info(DOMAIN, TAG, `SQLite 数据库已初始化，已迁移 ${this.models.length} 个模型`);
+        } else {
+          hilog.info(DOMAIN, TAG, 'SQLite 数据库已初始化（无自动迁移）');
+        }
       } else {
         throw new Error('SQLite 数据库初始化失败：GetIBestORM() 返回 undefined');
       }
