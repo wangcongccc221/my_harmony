@@ -41,8 +41,7 @@ export class WavePhaseManager {
       clearInterval(this.animationId)
       this.animationId = 0
     }
-    // 使用 requestAnimationFrame 的替代方案：固定时间间隔
-    // 60fps（约16.67ms间隔）统一更新相位，保持恒定速度
+    // 使用60fps（约16.67ms间隔）统一更新相位，保持恒定速度
     // 使用 17ms 而不是 16ms，给系统一些缓冲，避免时间累积误差
     this.animationId = setInterval(() => {
       // 固定速度增量，确保动画速度一致

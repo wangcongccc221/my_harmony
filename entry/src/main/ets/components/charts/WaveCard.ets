@@ -26,6 +26,7 @@ export struct WaveCard {
   private settings: RenderingContextSettings = new RenderingContextSettings(true)
   private context: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
   private cachedGradient: CanvasGradient | null = null
+  private cachedGradientWidth: number = 0  // 缓存渐变对应的宽度
   private areaDebounceId: number = 0
   private isVisible: boolean = false
   private isListenerRegistered: boolean = false
@@ -97,6 +98,11 @@ export struct WaveCard {
     const width = this.canvasWidth || 1
     const height = this.canvasHeight || 1
     
+    // 性能优化：如果尺寸无效，直接返回
+    if (width <= 0 || height <= 0) {
+      return
+    }
+    
     // 计算波浪图从底部开始的实际高度
     const waveHeight = height * (this.waveHeightPercent / 100)
     
@@ -104,15 +110,17 @@ export struct WaveCard {
     // 基准位置 = 目标高度 - 振幅，这样最高点就是目标高度
     const centerY = height - waveHeight + this.amplitude
 
+    // 清除整个画布（保持简单，避免计算错误）
     this.context.clearRect(0, 0, width, height)
 
     // 缓存渐变对象，避免每帧创建
-    if (!this.cachedGradient) {
+    if (!this.cachedGradient || this.cachedGradientWidth !== width) {
       const gradient = this.context.createLinearGradient(0, 0, width, 0)
       gradient.addColorStop(0, this.gradientLeft)
       gradient.addColorStop(0.5, this.gradientMid)
       gradient.addColorStop(1, this.gradientRight)
       this.cachedGradient = gradient
+      this.cachedGradientWidth = width
     }
     this.context.fillStyle = this.cachedGradient as CanvasGradient
     this.context.beginPath()
@@ -122,20 +130,24 @@ export struct WaveCard {
     const phase = this.phaseManager.getPhase()
     
     // 性能优化：根据画布宽度动态调整绘制步长
-    // 小画布（<100px）：每像素绘制
+    // 小画布（<100px）：每像素绘制（保持平滑）
     // 中等画布（100-200px）：每2像素绘制
     // 大画布（>200px）：每3像素绘制
-    // 这样可以减少计算量和Native Heap压力，同时保持视觉效果
+    // 平衡性能和视觉效果
     const step = width > 200 ? 3 : (width > 100 ? 2 : 1)
     
+    // 性能优化：预计算频率和振幅，减少重复访问
+    const freq = this.frequency
+    const amp = this.amplitude
+    
     for (let x = 0; x <= width; x += step) {
-      const y = centerY + Math.sin(x * this.frequency + phase) * this.amplitude
+      const y = centerY + Math.sin(x * freq + phase) * amp
       this.context.lineTo(x, y)
     }
     
     // 确保最后一点连接到右边界（如果步长导致未到达边界）
     if (width % step !== 0) {
-      const y = centerY + Math.sin(width * this.frequency + phase) * this.amplitude
+      const y = centerY + Math.sin(width * freq + phase) * amp
       this.context.lineTo(width, y)
     }
 

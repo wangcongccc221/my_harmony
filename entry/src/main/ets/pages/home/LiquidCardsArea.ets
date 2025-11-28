@@ -152,6 +152,15 @@ export struct LiquidCardsArea {
   }
 
   /**
+   * 是否启用波浪图动画
+   * 性能优化：如果出现卡顿，可以暂时禁用波浪图动画
+   * 设置为 false 可以完全禁用波浪图，提升性能
+   */
+  private isWaveAnimationEnabled(): boolean {
+    return true  // 启用波浪图动画
+  }
+
+  /**
    * 初始化卡片数据
    */
   private initializeCardData(): void {
@@ -357,7 +366,7 @@ export struct LiquidCardsArea {
             cardWidth: '9.26%',
             cardHeight: '50.13%',
             mainColor: this.getCurrentTheme().primary,
-            enableWave: idx < this.getWaveCount() && (!cardData.thirdLayer.chartData || cardData.thirdLayer.chartData.length === 0),
+            enableWave: this.isWaveAnimationEnabled() && idx < this.getWaveCount() && (!cardData.thirdLayer.chartData || cardData.thirdLayer.chartData.length === 0),
             onCardDrop: (data: ThreeLayerCardData) => {
               this.handleCardDrop(idx, data)
             }

@@ -1101,4 +1101,16 @@ export struct HistoryContent {
       .zIndex(999)
     }
   }
+
+  /**
+   * 组件即将消失时的生命周期方法
+   * 清理页面资源，避免内存泄漏
+   */
+  aboutToDisappear(): void {
+    // 清理状态，释放内存
+    this.currentTableData = []
+    this.filteredTableData = []
+    this.selectedTableData = []
+    console.log('HistoryContent: 页面资源已清理')
+  }
 }

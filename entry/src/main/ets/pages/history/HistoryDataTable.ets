@@ -5,6 +5,55 @@ import { HistoryTableManager, HistoryTableData } from './core/HistoryTableManage
 import { TableHeaderCell } from '../../components/ui/tables/TableHeaderCell'
 import { TableCell } from '../../components/ui/tables/TableCell'
 
+interface ListDataChangeListener {
+  onDataReload?: () => void
+  onDataAdd?: (index: number) => void
+  onDataDelete?: (index: number) => void
+  onDataChange?: (index: number) => void
+  onDataMove?: (from: number, to: number) => void
+}
+
+class HistoryTableLazyDataSource implements IDataSource {
+  private listeners: ListDataChangeListener[] = []
+  private data: HistoryTableData[]
+
+  constructor(data: HistoryTableData[] = []) {
+    this.data = data
+  }
+
+  updateData(data: HistoryTableData[]): void {
+    this.data = data
+    this.notifyDataReload()
+  }
+
+  private notifyDataReload(): void {
+    this.listeners.forEach(listener => listener.onDataReload && listener.onDataReload())
+  }
+
+  totalCount(): number {
+    return this.data.length
+  }
+
+  getData(index: number): HistoryTableData {
+    return this.data[index]
+  }
+
+  registerDataChangeListener(listener: ListDataChangeListener): void {
+    if (!listener || this.listeners.includes(listener)) {
+      return
+    }
+    this.listeners.push(listener)
+  }
+
+  unregisterDataChangeListener(listener?: ListDataChangeListener): void {
+    if (!listener) {
+      this.listeners = []
+      return
+    }
+    this.listeners = this.listeners.filter(item => item !== listener)
+  }
+}
+
 /**
  * 历史数据表格组件
  */
@@ -34,12 +83,9 @@ export struct HistoryDataTable {
   @State private pageSize: number = 50
   @State private hasMore: boolean = true
   private isLoadingMore: boolean = false
-  // 当使用 externalData 时，用于分页显示
-  @State private displayCount: number = 50
-  // 跟踪 externalData 的长度变化，用于检测数据更新
-  private lastExternalDataLength: number = 0
   // 页面可见性标志：只有页面可见时才刷新UI
   @State private isPageVisible: boolean = false
+  private lazyDataSource: HistoryTableLazyDataSource = new HistoryTableLazyDataSource([])
 
   // 事件回调
   onRowClick?: (rowData: HistoryTableData) => void
@@ -133,6 +179,7 @@ export struct HistoryDataTable {
       // 更新 @State tableData，这会触发UI重新渲染
       this.tableData = data
       console.log('HistoryDataTable loadData: tableData已更新，长度:', this.tableData.length)
+      this.syncLazyDataSource()
       // 通知父组件数据变化
       if (this.onDataChange) {
         this.onDataChange(this.tableData)
@@ -150,8 +197,7 @@ export struct HistoryDataTable {
   private getDisplayData(): HistoryTableData[] {
     // 如果提供了 externalData（重置功能），使用它并支持分页显示
     if (this.externalData && this.externalData.length > 0) {
-      // 返回前 displayCount 条数据（支持滚动加载更多）
-      return [...this.externalData.slice(0, this.displayCount)]
+      return [...this.externalData]
     }
     // 如果提供了筛选数据，使用筛选数据
     if (this.filteredData && this.filteredData.length > 0) {
@@ -159,6 +205,10 @@ export struct HistoryDataTable {
     }
     // 否则使用分页数据
     return [...this.tableData]
+  }
+
+  private syncLazyDataSource(): void {
+    this.lazyDataSource.updateData(this.getDisplayData())
   }
 
   /**
@@ -176,14 +226,15 @@ export struct HistoryDataTable {
     // 标记页面为可见状态
     this.isPageVisible = true
     
-    // 如果提供了 externalData（重置功能），初始化显示数量为50条
+    // 如果提供了 externalData（重置功能），直接展示全部
     if (this.externalData && this.externalData.length > 0) {
-      this.displayCount = 50
-      console.log(`重置功能：初始显示 50/${this.externalData.length} 条，滚动到底部自动加载更多`)
+      console.log(`重置功能：直接展示 ${this.externalData.length} 条数据`)
+      this.syncLazyDataSource()
       return
     }
     // 若父组件已传入筛选数据，则直接显示，避免重新加载覆盖筛选结果
     if (this.filteredData && this.filteredData.length > 0) {
+      this.syncLazyDataSource()
       return
     }
     // 否则加载分页数据（页面可见时才加载）
@@ -213,18 +264,15 @@ export struct HistoryDataTable {
       return
     }
     
-    // 如果提供了 externalData（重置功能），重置显示数量并直接使用
+    // 如果提供了 externalData（重置功能），直接使用
     if (this.externalData && this.externalData.length > 0) {
-      // 如果 externalData 是新数据（长度变化），重置 displayCount
-      if (this.displayCount !== 50 || this.externalData.length !== this.lastExternalDataLength) {
-        this.displayCount = 50
-        this.lastExternalDataLength = this.externalData.length
-      }
+      this.syncLazyDataSource()
       return
     }
     // 如果外部传入了筛选数据，直接作为显示数据来源
     if (this.filteredData && this.filteredData.length > 0) {
       this.tableData = this.filteredData
+      this.syncLazyDataSource()
       if (this.onDataChange) {
         // 告知父组件当前显示的数据（父组件在筛选态会忽略该回调，避免循环）
         this.onDataChange(this.filteredData)
@@ -261,17 +309,8 @@ export struct HistoryDataTable {
   }
 
   private async loadMore(): Promise<void> {
-    // 如果提供了 externalData（重置功能），从 externalData 中加载更多
+    // 如果提供了 externalData（重置功能），已经一次性展示全部数据
     if (this.externalData && this.externalData.length > 0) {
-      if (this.isLoadingMore || this.displayCount >= this.externalData.length) return
-      this.isLoadingMore = true
-      try {
-        // 每次加载50条
-        this.displayCount = Math.min(this.displayCount + 50, this.externalData.length)
-        console.log(`从 externalData 加载更多，当前显示 ${this.displayCount}/${this.externalData.length} 条`)
-      } finally {
-        this.isLoadingMore = false
-      }
       return
     }
     
@@ -288,6 +327,7 @@ export struct HistoryDataTable {
         this.tableData = this.tableData.concat(more)
         this.page = nextPage
         this.hasMore = more.length >= this.pageSize
+        this.syncLazyDataSource()
         if (this.onDataChange) {
           this.onDataChange(this.tableData)
         }
@@ -335,88 +375,91 @@ export struct HistoryDataTable {
 
         // 可滚动数据区域（List + ListItem）
         List() {
-          ForEach(this.getDisplayData(), (item: HistoryTableData, rowIdx?: number) => {
-            ListItem() {
-              Row() {
-                // 复选框列
-                Checkbox({ name: `checkbox_${item.id}`, group: 'tableCheckbox' })
-                  .select(this.isSelected(item.id))
-                  .onChange((value: boolean) => {
-                    this.handleCheckboxChange(item.id, value)
-                  })
-                  .layoutWeight(6)
-                  .height(20)
+          LazyForEach(
+            this.lazyDataSource,
+            (item: HistoryTableData, rowIdx?: number) => {
+              ListItem() {
+                Row() {
+                  // 复选框列
+                  Checkbox({ name: `checkbox_${item.id}`, group: 'tableCheckbox' })
+                    .select(this.isSelected(item.id))
+                    .onChange((value: boolean) => {
+                      this.handleCheckboxChange(item.id, value)
+                    })
+                    .layoutWeight(6)
+                    .height(20)
 
-                Text((rowIdx !== undefined ? (rowIdx + 1) : 1).toString())
-                  .fontSize(14)
-                  .fontColor(this.getCurrentTheme().textColor)
-                  .textAlign(TextAlign.Center)
-                  .layoutWeight(8)
+                  Text((rowIdx !== undefined ? (rowIdx + 1) : 1).toString())
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .layoutWeight(8)
 
-                Text(item.customerName)
-                  .fontSize(14)
-                  .fontColor(this.getCurrentTheme().textColor)
-                  .textAlign(TextAlign.Center)
-                  .layoutWeight(12)
+                  Text(item.customerName)
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .layoutWeight(12)
 
-                Text(item.farmName)
-                  .fontSize(14)
-                  .fontColor(this.getCurrentTheme().textColor)
-                  .textAlign(TextAlign.Center)
-                  .layoutWeight(12)
+                  Text(item.farmName)
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .layoutWeight(12)
 
-                Text(item.fruitName)
-                  .fontSize(14)
-                  .fontColor(this.getCurrentTheme().textColor)
-                  .textAlign(TextAlign.Center)
-                  .layoutWeight(10)
+                  Text(item.fruitName)
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .layoutWeight(10)
 
-                Text(item.status)
-                  .fontSize(14)
-                  .fontColor(this.getStatusColor(item.status))
-                  .textAlign(TextAlign.Center)
-                  .layoutWeight(10)
+                  Text(item.status)
+                    .fontSize(14)
+                    .fontColor(this.getStatusColor(item.status))
+                    .textAlign(TextAlign.Center)
+                    .layoutWeight(10)
 
-                Text(item.startTime)
-                  .fontSize(14)
-                  .fontColor(this.getCurrentTheme().textColor)
-                  .textAlign(TextAlign.Center)
-                  .layoutWeight(12)
+                  Text(item.startTime)
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .layoutWeight(12)
 
-                Text(item.endTime)
-                  .fontSize(14)
-                  .fontColor(item.endTime === '-' ? this.getCurrentTheme().subTextColor : this.getCurrentTheme().textColor)
-                  .textAlign(TextAlign.Center)
-                  .layoutWeight(12)
+                  Text(item.endTime)
+                    .fontSize(14)
+                    .fontColor(item.endTime === '-' ? this.getCurrentTheme().subTextColor : this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .layoutWeight(12)
 
-                Text(item.weight.toString())
-                  .fontSize(14)
-                  .fontColor(this.getCurrentTheme().textColor)
-                  .textAlign(TextAlign.Center)
-                  .layoutWeight(12)
+                  Text(item.weight.toString())
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .layoutWeight(12)
 
-                Text(item.count.toString())
-                  .fontSize(14)
-                  .fontColor(this.getCurrentTheme().textColor)
-                  .textAlign(TextAlign.Center)
-                  .layoutWeight(12)
+                  Text(item.count.toString())
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().textColor)
+                    .textAlign(TextAlign.Center)
+                    .layoutWeight(12)
+                }
+                .width('100%')
+                .height(36)
+                .backgroundColor((rowIdx ?? 0) % 2 === 0 ? (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor) : (this.getCurrentTheme().surfaceColor))
+                .padding({ left: 4, right: 4 })
               }
-              .width('100%')
-              .height(36)
-              .backgroundColor((rowIdx ?? 0) % 2 === 0 ? (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor) : (this.getCurrentTheme().surfaceColor))
-              .padding({ left: 4, right: 4 })
-            }
-            .onClick(() => {
-              this.handleRowClick(item)
-            })
-            .border({ width: { bottom: 0.5 }, color: this.getCurrentTheme().borderColor })
-          }, (item: HistoryTableData, idx?: number) => `${item.id}`)
+              .onClick(() => {
+                this.handleRowClick(item)
+              })
+              .border({ width: { bottom: 0.5 }, color: this.getCurrentTheme().borderColor })
+            },
+            (item: HistoryTableData) => `${item.id}`
+          )
           
           // 哨兵行：当滚动到底部时自动加载更多（仅在使用 externalData 或分页数据时）
-          if (!(this.filteredData && this.filteredData.length > 0) && 
-              ((this.externalData && this.externalData.length > 0
-                ? this.displayCount < this.externalData.length
-                : this.hasMore) && !this.isLoadingMore)) {
+          if (!(this.filteredData && this.filteredData.length > 0) &&
+              !(this.externalData && this.externalData.length > 0) &&
+              this.hasMore && !this.isLoadingMore) {
             ListItem() {
               Row() {
                 Text('加载中...')
@@ -437,6 +480,11 @@ export struct HistoryDataTable {
         .width('100%')
         .layoutWeight(1)
         .scrollBar(BarState.Auto)
+        .onReachEnd(() => {
+          if (!this.externalData || this.externalData.length === 0) {
+            this.loadMore()
+          }
+        })
         .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
         .border({ width: 1, color: this.getCurrentTheme().borderColor })
         .borderRadius(4)

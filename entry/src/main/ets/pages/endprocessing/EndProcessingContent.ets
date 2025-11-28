@@ -38,6 +38,16 @@ export struct EndProcessingContent {
   }
 
   /**
+   * 组件即将消失时的生命周期方法
+   * 清理页面资源，避免内存泄漏
+   */
+  aboutToDisappear(): void {
+    // 清理数据，释放内存
+    this.processingRecords = []
+    console.log('EndProcessingContent: 页面资源已清理')
+  }
+
+  /**
    * 从数据库加载数据
    */
   private async loadDataFromDatabase(): Promise<void> {

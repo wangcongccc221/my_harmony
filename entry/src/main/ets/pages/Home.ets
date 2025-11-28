@@ -607,30 +607,63 @@ struct Page {
     ]
   }
 
-  // 渲染页面内容
+  // ==================== 页面懒加载：为每个页面创建独立的 Builder ====================
+  // 这样只有在切换到对应页面时才会创建组件，实现真正的懒加载
+
+  @Builder
+  private buildHomePage(): void {
+    HomeContent()
+  }
+
+  @Builder
+  private buildLevelPage(): void {
+    LevelContent()
+  }
+
+  @Builder
+  private buildQualityPage(): void {
+    QualityContent()
+  }
+
+  @Builder
+  private buildRealtimePage(): void {
+    // 实时统计占位页面（后续可替换为真实组件）
+    Column() {
+      Text('实时统计')
+        .fontSize(18)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.getCurrentTheme().primary)
+        .margin({ top: 20 })
+    }
+    .width('100%')
+    .height('100%')
+  }
+
+  @Builder
+  private buildHistoryPage(): void {
+    HistoryContent()
+  }
+
+  @Builder
+  private buildEndPage(): void {
+    EndProcessingContent()
+  }
+
+  // 渲染页面内容（懒加载：只创建当前页面的组件）
   @Builder
   private renderPageContent(): void {
     if (this.currentPage === 'home') {
-      HomeContent()
+      this.buildHomePage()  // 延迟创建：只有切换到 home 时才创建
     } else if (this.currentPage === 'level') {
-      LevelContent()
+      this.buildLevelPage()  // 延迟创建：只有切换到 level 时才创建
     } else if (this.currentPage === 'quality') {
-      QualityContent()
+      this.buildQualityPage()  // 延迟创建：只有切换到 quality 时才创建
     } else if (this.currentPage === 'realtime') {
-      // 实时统计占位页面（后续可替换为真实组件）
-      Column() {
-        Text('实时统计')
-          .fontSize(18)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().primary)
-          .margin({ top: 20 })
-      }
-      .width('100%')
-      .height('100%')
+      this.buildRealtimePage()  // 延迟创建：只有切换到 realtime 时才创建
     } else if (this.currentPage === 'history') {
-      HistoryContent()
+      this.buildHistoryPage()  // 延迟创建：只有切换到 history 时才创建
     } else if (this.currentPage === 'end') {
-      EndProcessingContent()
+      this.buildEndPage()  // 延迟创建：只有切换到 end 时才创建
     } else {
       // 默认页面内容
       this.renderDefaultPage()

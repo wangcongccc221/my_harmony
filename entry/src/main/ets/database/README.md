@@ -310,7 +310,7 @@ private readonly config: relationalStore.StoreConfig = {
    import { DatabaseHelper } from '@your-org/database';
    ```
 
-## 🐛 问题排查
+##  问题排查
 
 ### 数据库未初始化错误
 
@@ -328,11 +328,4 @@ onWindowStageCreate(windowStage: window.WindowStage) {
 
 确保表已经创建，可以通过 ORM 的 `AutoMigrate` 或手动创建。
 
-## 📄 许可证
-
-[你的许可证]
-
-## 👥 贡献
-
-欢迎提交 Issue 和 Pull Request！
 

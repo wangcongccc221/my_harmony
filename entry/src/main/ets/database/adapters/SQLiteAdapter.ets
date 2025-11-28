@@ -167,7 +167,8 @@ export class SQLiteAdapter implements IDatabaseAdapter {
     const db = this.getDatabase();
 
     const core = db.GetCore();
-    if (!core) {
+    if (!core) 
+    {
       throw new Error('无法获取数据库核心对象');
     }
 
