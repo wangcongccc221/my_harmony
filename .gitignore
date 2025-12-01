@@ -8,5 +8,6 @@
 /.clangd
 /.clang-format
 /.clang-tidy
+*.rar
 **/.test
 /.appanalyzer
