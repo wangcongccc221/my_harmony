@@ -5,7 +5,7 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { HttpResponseUtils } from '../../../helpers/HttpResponseUtils';
 import { QueryStringUtils } from '../../../helpers/QueryStringUtils';
-import { runPerformanceTest } from '../../../../database/examples/PerformanceTest';
+// import { runPerformanceTest } from '../../../../database/examples/PerformanceTest'; // 文件已删除
 
 const DOMAIN = 0x0000;
 
@@ -169,17 +169,22 @@ export class PerformanceApiHandler {
     state.setRunning(true);
     state.setProgress('性能测试启动中...');
 
-    runPerformanceTest()
-      .then(() => {
-        state.setProgress('性能测试完成');
-        state.setRunning(false);
-        hilog.info(DOMAIN, 'PerformanceApiHandler', '性能测试执行完成');
-      })
-      .catch((error: Error) => {
-        state.setProgress(`性能测试失败: ${error.message}`);
-        state.setRunning(false);
-        hilog.error(DOMAIN, 'PerformanceApiHandler', `性能测试执行失败: ${JSON.stringify(error)}`);
-      });
+    // 性能测试功能已禁用（PerformanceTest.ets 已删除）
+    state.setProgress('性能测试功能暂时不可用');
+    state.setRunning(false);
+    hilog.info(DOMAIN, 'PerformanceApiHandler', '性能测试功能已禁用');
+    
+    // runPerformanceTest()
+    //   .then(() => {
+    //     state.setProgress('性能测试完成');
+    //     state.setRunning(false);
+    //     hilog.info(DOMAIN, 'PerformanceApiHandler', '性能测试执行完成');
+    //   })
+    //   .catch((error: Error) => {
+    //     state.setProgress(`性能测试失败: ${error.message}`);
+    //     state.setRunning(false);
+    //     hilog.error(DOMAIN, 'PerformanceApiHandler', `性能测试执行失败: ${JSON.stringify(error)}`);
+    //   });
 
     interface StartResponse {
       message: string;

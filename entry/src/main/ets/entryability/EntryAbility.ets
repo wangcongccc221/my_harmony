@@ -16,7 +16,7 @@ import { relationalStore } from '@kit.ArkData';
 import { IBestORMInit, GetIBestORM } from '../database/orm';
 import { Article, ArticlePayload } from '../database/models/Article';
 import { ProcessingHistory } from '../database/models/ProcessingHistory';
-import { taskPoolExecuteInsert, taskPoolExecuteQuery, taskPoolExecuteUpdate, taskPoolExecuteDelete } from '../database/examples/taskpool';
+// import { taskPoolExecuteInsert, taskPoolExecuteQuery, taskPoolExecuteUpdate, taskPoolExecuteDelete } from '../database/examples/taskpool'; // 文件已删除
 
 const DOMAIN = 0x0000;
 const HTTP_SERVER_PORT: number = 8080;
@@ -63,7 +63,7 @@ export default class EntryAbility extends UIAbility {
       ProcessingHistory.createIndexes();
       hilog.info(DOMAIN, 'EntryAbility', 'ORM 初始化完成并迁移 Article 表');
 
-      await this.runOrmTaskpoolDemo();
+      // await this.runOrmTaskpoolDemo(); // taskpool示例已删除
     } catch (e) {
       hilog.error(DOMAIN, 'EntryAbility', `数据库初始化失败: ${JSON.stringify(e)}`);
     }
@@ -188,50 +188,51 @@ export default class EntryAbility extends UIAbility {
       hilog.error(DOMAIN, 'EntryAbility', `资源文件复制失败: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
     }
   }
-  private async runOrmTaskpoolDemo() {
-    const ctx = this.context as common.Context;
-    const title = `Demo_${Date.now()}`;
-    const a: ArticlePayload = {
-      userImage: 'default_image_url',
-      phone: '13800000000',
-      name: 'DemoUser',
-      source: 'DemoSource',
-      title: title,
-      contentStr: 'DemoContent',
-      likes: 1,
-      comments: 2,
-      shares: 3
-    };
-
-    try {
-      await taskPoolExecuteInsert(ctx, a);
-      hilog.info(DOMAIN, 'EntryAbility', `Demo: 插入完成 title=${title}`);
-
-      const list1 = await taskPoolExecuteQuery(ctx);
-      const inserted = list1.find(item => item.Title === title);
-      if (!inserted) {
-        hilog.error(DOMAIN, 'EntryAbility', 'Demo: 未找到插入的数据');
-        return;
-      }
-
-      inserted.Likes = (inserted.Likes ?? 0) + 1;
-      await taskPoolExecuteUpdate(ctx, inserted);
-      hilog.info(DOMAIN, 'EntryAbility', `Demo: 更新完成 id=${inserted.ID} likes=${inserted.Likes}`);
-
-      const list2 = await taskPoolExecuteQuery(ctx);
-      const updated = list2.find(item => item.ID === inserted.ID);
-      hilog.info(DOMAIN, 'EntryAbility', `Demo: 校验更新 likes=${updated?.Likes}`);
-
-      if (inserted.ID) {
-        await taskPoolExecuteDelete(ctx, inserted.ID);
-        hilog.info(DOMAIN, 'EntryAbility', `Demo: 删除完成 id=${inserted.ID}`);
-      }
-
-      const list3 = await taskPoolExecuteQuery(ctx);
-      const exists = list3.some(item => item.ID === inserted.ID);
-      hilog.info(DOMAIN, 'EntryAbility', `Demo: 删除校验 exists=${exists}`);
-    } catch (err) {
-      hilog.error(DOMAIN, 'EntryAbility', `Demo 执行失败: ${JSON.stringify(err)}`);
-    }
-  }
+  // TaskPool 示例已删除（taskpool.ets 文件已删除）
+  // private async runOrmTaskpoolDemo() {
+  //   const ctx = this.context as common.Context;
+  //   const title = `Demo_${Date.now()}`;
+  //   const a: ArticlePayload = {
+  //     userImage: 'default_image_url',
+  //     phone: '13800000000',
+  //     name: 'DemoUser',
+  //     source: 'DemoSource',
+  //     title: title,
+  //     contentStr: 'DemoContent',
+  //     likes: 1,
+  //     comments: 2,
+  //     shares: 3
+  //   };
+  //
+  //   try {
+  //     await taskPoolExecuteInsert(ctx, a);
+  //     hilog.info(DOMAIN, 'EntryAbility', `Demo: 插入完成 title=${title}`);
+  //
+  //     const list1 = await taskPoolExecuteQuery(ctx);
+  //     const inserted = list1.find(item => item.Title === title);
+  //     if (!inserted) {
+  //       hilog.error(DOMAIN, 'EntryAbility', 'Demo: 未找到插入的数据');
+  //       return;
+  //     }
+  //
+  //     inserted.Likes = (inserted.Likes ?? 0) + 1;
+  //     await taskPoolExecuteUpdate(ctx, inserted);
+  //     hilog.info(DOMAIN, 'EntryAbility', `Demo: 更新完成 id=${inserted.ID} likes=${inserted.Likes}`);
+  //
+  //     const list2 = await taskPoolExecuteQuery(ctx);
+  //     const updated = list2.find(item => item.ID === inserted.ID);
+  //     hilog.info(DOMAIN, 'EntryAbility', `Demo: 校验更新 likes=${updated?.Likes}`);
+  //
+  //     if (inserted.ID) {
+  //       await taskPoolExecuteDelete(ctx, inserted.ID);
+  //       hilog.info(DOMAIN, 'EntryAbility', `Demo: 删除完成 id=${inserted.ID}`);
+  //     }
+  //
+  //     const list3 = await taskPoolExecuteQuery(ctx);
+  //     const exists = list3.some(item => item.ID === inserted.ID);
+  //     hilog.info(DOMAIN, 'EntryAbility', `Demo: 删除校验 exists=${exists}`);
+  //   } catch (err) {
+  //     hilog.error(DOMAIN, 'EntryAbility', `Demo 执行失败: ${JSON.stringify(err)}`);
+  //   }
+  // }
 }

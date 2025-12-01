@@ -62,8 +62,8 @@ export class DatabaseHelper {
     
     return DatabaseHelper.initPromise;
   }
-
-  /**
+ 
+  /** 
    * 查询所有记录
    * @param ctx 应用上下文
    * @param tableName 表名
