@@ -9,6 +9,9 @@
 
 import { DatabaseAdapterFactory } from './adapters/DatabaseAdapterFactory';
 import { ProcessingHistory } from './models/ProcessingHistory';
+import { FruitInfo } from './models/FruitInfo';
+import { GradeInfo } from './models/GradeInfo';
+import { ExportInfo } from './models/ExportInfo';
 
 /**
  * 初始化数据库适配器（当前项目专用）
@@ -24,12 +27,15 @@ import { ProcessingHistory } from './models/ProcessingHistory';
  */
 export function initDatabase(): void {
   DatabaseAdapterFactory.initialize({
-    dbName: 'article.db',
-    models: [ProcessingHistory]  // 当前项目需要迁移的模型
+    dbName: 'db_fruitsor.db',
+    models: [ProcessingHistory, FruitInfo, GradeInfo, ExportInfo]  // 当前项目需要迁移的模型
   });
   
   // 由于 ArkTS 类型限制，无法在适配器中自动调用 createIndexes
   // 需要在这里手动调用
   ProcessingHistory.createIndexes();
+  FruitInfo.createIndexes();
+  GradeInfo.createIndexes();
+  ExportInfo.createIndexes();
 }
 

@@ -16,6 +16,9 @@ import { relationalStore } from '@kit.ArkData';
 import { IBestORMInit, GetIBestORM } from '../database/orm';
 import { Article, ArticlePayload } from '../database/models/Article';
 import { ProcessingHistory } from '../database/models/ProcessingHistory';
+import { FruitInfo } from '../database/models/FruitInfo';
+import { GradeInfo } from '../database/models/GradeInfo';
+import { ExportInfo } from '../database/models/ExportInfo';
 // import { taskPoolExecuteInsert, taskPoolExecuteQuery, taskPoolExecuteUpdate, taskPoolExecuteDelete } from '../database/examples/taskpool'; // 文件已删除
 
 const DOMAIN = 0x0000;
@@ -54,14 +57,20 @@ export default class EntryAbility extends UIAbility {
 
     try {
       await IBestORMInit(this.context, {
-        name: 'article.db',
+        name: 'db_fruitsor.db',
         securityLevel: relationalStore.SecurityLevel.S2,
       });
       GetIBestORM().AutoMigrate(Article);
       GetIBestORM().AutoMigrate(ProcessingHistory);
+      GetIBestORM().AutoMigrate(FruitInfo);
+      GetIBestORM().AutoMigrate(GradeInfo);
+      GetIBestORM().AutoMigrate(ExportInfo);
       // 创建索引以优化查询性能
       ProcessingHistory.createIndexes();
-      hilog.info(DOMAIN, 'EntryAbility', 'ORM 初始化完成并迁移 Article 表');
+      FruitInfo.createIndexes();
+      GradeInfo.createIndexes();
+      ExportInfo.createIndexes();
+      hilog.info(DOMAIN, 'EntryAbility', 'ORM 初始化完成并迁移所有表');
 
       // await this.runOrmTaskpoolDemo(); // taskpool示例已删除
     } catch (e) {

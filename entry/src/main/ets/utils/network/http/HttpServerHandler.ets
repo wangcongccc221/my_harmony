@@ -5,6 +5,8 @@ import { relationalStore } from '@kit.ArkData';
 import { common } from '@kit.AbilityKit';
 import { IBestORMInit, GetIBestORM } from '../../../database/orm';
 import { ProcessingHistory } from '../../../database/models/ProcessingHistory';
+import { FruitInfo } from '../../../database/models/FruitInfo';
+import { GradeInfo } from '../../../database/models/GradeInfo';
 import { HttpRequestHandler } from './HttpServer';
 import { getDefaultStoragePath } from '../../FileUtils';
 import { QueryStringUtils } from '../../helpers/QueryStringUtils';
@@ -30,21 +32,6 @@ export class HttpServerHandler {
     hilog.info(DOMAIN, 'HttpServerHandler', `文件浏览基础路径已设置: ${HttpServerHandler.fileBasePath}`);
     console.log(`HTTP服务器文件浏览基础路径: ${HttpServerHandler.fileBasePath}`);
     console.log(`HTTP服务器实际浏览目录将是: ${HttpServerHandler.fileBasePath}/file`);
-    Promise.resolve().then(async () => {
-      const config: relationalStore.StoreConfig = { name: 'article.db', securityLevel: relationalStore.SecurityLevel.S2 };
-      let initialized = true;
-      try {
-        GetIBestORM().AutoMigrate(ProcessingHistory); //自动给这个历史加工数据表建表
-        ProcessingHistory.createIndexes();
-      } catch (e) {
-        initialized = false;
-      }
-      if (!initialized) {
-        await IBestORMInit(context as common.UIAbilityContext, config);
-        GetIBestORM().AutoMigrate(ProcessingHistory);
-        ProcessingHistory.createIndexes();
-      }
-    });
   }
 
   /**

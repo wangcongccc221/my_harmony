@@ -322,5 +322,80 @@ export class DatabaseQueueManager {
       });
     });
   }
+
+  /**
+   * 执行原生 SQL 查询
+   * @param ctx Context 上下文
+   * @param sql SQL 语句
+   */
+  static async querySql<T = ESObject>(ctx: Context, sql: string): Promise<T[]> {
+    return new Promise<T[]>((resolve, reject) => {
+      const queue = DatabaseQueueManager.getQueryQueue();
+      const task = new DatabaseTask({ 
+        type: DatabaseTaskType.QUERY_SQL, 
+        sql: sql 
+      });
+      
+      queue.setTaskContext(task.uniqueId, ctx);
+      // SQL 查询不需要表名，但为了兼容性可以设置为空字符串
+      queue.setTaskTableName(task.uniqueId, '');
+      
+      queue.async(task, (result: ESObject) => {
+        try {
+          const taskResult = result as DatabaseTaskResult;
+          if (taskResult.success && taskResult.data) {
+            resolve(taskResult.data as T[]);
+          } else {
+            const errorMsg = taskResult.error || 'SQL查询失败';
+            hilog.error(DOMAIN, 'DatabaseQueueManager', `SQL查询失败: ${errorMsg}`);
+            reject(new Error(errorMsg));
+          }
+        } catch (err) {
+          const error = err as Error | object;
+          hilog.error(DOMAIN, 'DatabaseQueueManager', `处理SQL查询结果失败: ${JSON.stringify(error)}`);
+          reject(error instanceof Error ? error : new Error(String(error)));
+        }
+      });
+    });
+  }
+
+  /**
+   * 根据条件查询
+   * @param ctx Context 上下文
+   * @param entityClass 实体类
+   * @param whereClause 条件语句
+   * @param args 参数
+   */
+  static async queryByCondition<T = ESObject>(ctx: Context, entityClass: Class, whereClause: string, args: Array<string | number | boolean>): Promise<T[]> {
+    return new Promise<T[]>((resolve, reject) => {
+      const queue = DatabaseQueueManager.getQueryQueue();
+      const task = new DatabaseTask({ 
+        type: DatabaseTaskType.QUERY_BY_CONDITION, 
+        whereClause: whereClause,
+        args: args
+      });
+      
+      queue.setTaskContext(task.uniqueId, ctx);
+      const tableName = GetTableName(entityClass);
+      queue.setTaskTableName(task.uniqueId, tableName);
+      
+      queue.async(task, (result: ESObject) => {
+        try {
+          const taskResult = result as DatabaseTaskResult;
+          if (taskResult.success && taskResult.data) {
+            resolve(taskResult.data as T[]);
+          } else {
+            const errorMsg = taskResult.error || '条件查询失败';
+            hilog.error(DOMAIN, 'DatabaseQueueManager', `条件查询失败: ${errorMsg}`);
+            reject(new Error(errorMsg));
+          }
+        } catch (err) {
+          const error = err as Error | object;
+          hilog.error(DOMAIN, 'DatabaseQueueManager', `处理条件查询结果失败: ${JSON.stringify(error)}`);
+          reject(error instanceof Error ? error : new Error(String(error)));
+        }
+      });
+    });
+  }
 }
 

@@ -74,3 +74,97 @@ export interface CreateProcessingHistoryParams {
   quantity: number;
 }
 
+/**
+ * 水果信息数据接口
+ * 对应数据库表：tb_fruitinfo
+ */
+export interface FruitInfoData {
+  id?: number;
+  ID?: number;
+  CustomerID?: number;
+  SysID?: number;
+  FeedPortID?: number;
+  MajorCustomerID?: number;
+  FBatchNo?: string;
+  OrderID?: number;
+  ChainIdx?: string;
+  CustomerName?: string;
+  FarmName?: string;
+  FruitName?: string;
+  StartTime?: string;
+  EndTime?: string;
+  StartedState?: string;
+  CompletedState?: string;
+  BatchWeight?: number;
+  BatchNumber?: number;
+  SortType?: number;
+  SystemNum?: number;
+  SizeIDNum?: number;
+  ChannelNum?: number;
+  QualityGradeSum?: number;
+  WeightOrSizeGradeSum?: number;
+  ColorGradeName?: string;
+  ShapeGradeName?: string;
+  FlawGradeName?: string;
+  HardGradeName?: string;
+  DensityGradeName?: string;
+  SugarDegreeGradeName?: string;
+  ExportSum?: number;
+  ProgramName?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * 等级信息数据接口
+ * 对应数据库表：tb_gradeinfo
+ */
+export interface GradeInfoData {
+  id?: number;
+  ID?: number;
+  FID?: number;
+  CustomerID?: number;
+  ChannelID?: number;
+  QualityIndex?: number;
+  SizeID?: number;
+  SizeIndex?: number;
+  BoxNumber?: number;
+  BoxWeight?: number;
+  FruitNumber?: number;
+  FruitWeight?: number;
+  FPrice?: number;
+  GradeID?: number;
+  QualityName?: string;
+  WeightOrSizeName?: string;
+  WeightOrSizeLimit?: number;
+  SelectWeightOrSize?: string;
+  TraitWeightOrSize?: string;
+  TraitColor?: string;
+  TraitShape?: string;
+  TraitFlaw?: string;
+  TraitHard?: string;
+  TraitDensity?: string;
+  TraitSugarDegree?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * 导出信息数据接口
+ * 对应数据库表：tb_exportinfo
+ */
+export interface ExportInfoData {
+  id?: number;
+  ID?: number;
+  FID?: number;
+  CustomerID?: number;
+  ChannelID?: number;
+  ExportID?: number;
+  FruitNumber?: number;
+  FruitWeight?: number;
+  BoxNumber?: number;
+  ExitName?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+

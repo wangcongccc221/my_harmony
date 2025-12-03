@@ -11,16 +11,35 @@ export function camelToSnakeCase(camelCase: string): string {
 
   // 处理连续大写字母的情况，在小写字母前的大写字母前插入下划线
   const snakeCase = camelCase
-      // 纯大写字母（如 ID → id，UUID → uuid）
+    // 纯大写字母（如 ID → id，UUID → uuid）
     .replace(/^[A-Z]+$/, match => match.toLowerCase())
-      // 处理一般驼峰：在非首字母的大写字母前插入下划线（如 CreatedAt → Created_At）
+    // 处理一般驼峰：在非首字母的大写字母前插入下划线（如 CreatedAt → Created_At）
     .replace(/(?<!^)([A-Z])/g, '_$1')
-      // 处理连续大写后接小写的情况（如 IDCard → ID_Card → 最终 id_card）
+    // 处理连续大写后接小写的情况（如 IDCard → ID_Card → 最终 id_card）
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
-      // 全部转为小写
+    // 全部转为小写
     .toLowerCase();
 
   return snakeCase;
+}
+
+/**
+ * 将蛇形命名（如 created_at、id）转换为驼峰命名（如 CreatedAt、ID）
+ * 注意：这里采用大驼峰（PascalCase），因为模型属性是 PascalCase
+ * @param snakeCase 蛇形命名的字符串
+ * @returns 驼峰命名的字符串
+ */
+export function snakeToCamel(snakeCase: string): string {
+  if (!snakeCase) return '';
+
+  // 特殊处理 id -> ID (根据项目惯例)
+  if (snakeCase === 'id') return 'ID';
+  if (snakeCase === 'f_id') return 'FID';
+
+  return snakeCase
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join('');
 }
 
 export function createTableSQLByMeta(tableName: string, meta: FieldParams[]): string {
@@ -29,12 +48,12 @@ export function createTableSQLByMeta(tableName: string, meta: FieldParams[]): st
     const item = meta[i];
     const fieldType = item.type;
     const name = item.name!;
-    const tag = item.tag ? item.tag: [];
+    const tag = item.tag ? item.tag : [];
     const isNotNull = tag.includes('notNull') ? "NOT NULL" : "";
     const isPrimaryKey = tag.includes('primaryKey') ? "PRIMARY KEY" : "";
     const autoIncrement = (fieldType == FieldType.INTEGER && tag.includes('autoIncrement')) ? "AUTOINCREMENT" : "";
     let sqlStr = `${name} ${fieldType} ${isNotNull} ${isPrimaryKey} ${autoIncrement}`;
-    if(fieldType == FieldType.TEXT && (tag.includes('autoCreateTime') || tag.includes('autoUpdateTime'))) {
+    if (fieldType == FieldType.TEXT && (tag.includes('autoCreateTime') || tag.includes('autoUpdateTime'))) {
       sqlStr += ` DEFAULT (DATETIME('now', 'localtime'))`;
     }
     fields.push(sqlStr);

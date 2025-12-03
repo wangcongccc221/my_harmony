@@ -53,6 +53,23 @@ export interface IDatabaseAdapter {
   ): Promise<T[]>;
 
   /**
+   * 根据条件查询记录
+   * @param ctx 应用上下文
+   * @param tableName 表名
+   * @param whereClause WHERE 子句（例如 "customer_id = ?"）
+   * @param args 参数数组
+   * @param modelClass 实体类（可选，用于类型转换）
+   * @returns 查询结果数组
+   */
+  queryByCondition<T extends ESObject = ESObject>(
+    ctx: Context,
+    tableName: string,
+    whereClause: string,
+    args: Array<string | number | boolean>,
+    modelClass?: Class
+  ): Promise<T[]>;
+
+  /**
    * 统计记录总数
    * @param ctx 应用上下文
    * @param tableName 表名

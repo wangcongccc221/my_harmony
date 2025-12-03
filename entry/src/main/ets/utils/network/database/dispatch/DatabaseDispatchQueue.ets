@@ -20,7 +20,9 @@ export enum DatabaseTaskType {
   INSERT = 'INSERT',
   BATCH_INSERT = 'BATCH_INSERT',
   UPDATE = 'UPDATE',
-  DELETE = 'DELETE'
+  DELETE = 'DELETE',
+  QUERY_SQL = 'QUERY_SQL',
+  QUERY_BY_CONDITION = 'QUERY_BY_CONDITION'
 }
 
 /**
@@ -36,6 +38,11 @@ export interface DatabaseTaskParams {
   valuesList?: Array<relationalStore.ValuesBucket>;
   // 更新/删除参数
   id?: number;
+  // SQL 查询参数
+  sql?: string;
+  // 条件查询参数
+  whereClause?: string;
+  args?: Array<string | number | boolean>;
 }
 
 /**
@@ -58,6 +65,9 @@ export class DatabaseTask extends DispatchTask {
   values?: relationalStore.ValuesBucket;
   valuesList?: Array<relationalStore.ValuesBucket>;
   id?: number;
+  sql?: string;
+  whereClause?: string;
+  args?: Array<string | number | boolean>;
 
   constructor(params: DatabaseTaskParams) {
     super({ type: params.type });
@@ -67,6 +77,9 @@ export class DatabaseTask extends DispatchTask {
     this.values = params.values;
     this.valuesList = params.valuesList;
     this.id = params.id;
+    this.sql = params.sql;
+    this.whereClause = params.whereClause;
+    this.args = params.args;
   }
 }
 
@@ -155,6 +168,18 @@ export class DatabaseDispatchQueue extends DispatchQueue {
               throw new Error('删除参数缺失');
             }
             result = await this.executeDelete(ctx, dbTask.id, tableName);
+            break;
+          case DatabaseTaskType.QUERY_SQL:
+            if (!dbTask.sql) {
+              throw new Error('SQL 参数缺失');
+            }
+            result = await this.executeQuerySql(ctx, dbTask.sql);
+            break;
+          case DatabaseTaskType.QUERY_BY_CONDITION:
+            if (!dbTask.whereClause || !dbTask.args) {
+              throw new Error('条件查询参数缺失');
+            }
+            result = await this.executeQueryByCondition(ctx, tableName, dbTask.whereClause, dbTask.args);
             break;
           default:
             throw new Error(`未知的数据库操作类型: ${dbTask.type}`);
@@ -257,6 +282,21 @@ export class DatabaseDispatchQueue extends DispatchQueue {
     const task = new taskpool.Task(ProcessingApiHandler.PH_Delete, ctx, id, targetTableName);
     const result = await taskpool.execute(task);
     return result as number;
+  }
+
+  private async executeQuerySql(ctx: Context, sql: string): Promise<ProcessingHistoryData[]> {
+    const ProcessingApiHandler = await import('../../http/handlers/ProcessingApiHandler');
+    const task = new taskpool.Task(ProcessingApiHandler.PH_QuerySql, ctx, sql);
+    const result = await taskpool.execute(task);
+    return result as ProcessingHistoryData[];
+  }
+
+  private async executeQueryByCondition(ctx: Context, tableName: string | undefined, whereClause: string, args: Array<string | number | boolean>): Promise<ProcessingHistoryData[]> {
+    const ProcessingApiHandler = await import('../../http/handlers/ProcessingApiHandler');
+    const targetTableName = tableName || 'processing_history';
+    const task = new taskpool.Task(ProcessingApiHandler.PH_QueryByCondition, ctx, targetTableName, whereClause, args);
+    const result = await taskpool.execute(task);
+    return result as ProcessingHistoryData[];
   }
 }
 

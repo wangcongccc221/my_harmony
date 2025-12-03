@@ -150,6 +150,26 @@ export async function PH_Update(ctx: Context, id: number, values: relationalStor
   return await DatabaseHelper.update(ctx, targetTableName, id, values);
 }
 
+@Concurrent
+export async function PH_QuerySql(ctx: Context, sql: string): Promise<ESObject[]> {
+  // 使用数据库封装类
+  return await DatabaseHelper.querySql(ctx, sql);
+}
+
+@Concurrent
+export async function PH_QueryByCondition(ctx: Context, tableName: string, whereClause: string, args: Array<string | number | boolean>): Promise<ESObject[]> {
+  // 使用数据库封装类
+  // 注意：这里我们无法传递 Class 对象，因为 Class 无法序列化
+  // 所以我们只能返回 ESObject[]，然后在 Service 层进行转换（如果需要）
+  // 或者 DatabaseHelper 内部处理（但 DatabaseHelper.queryByCondition 需要 Class）
+  // 由于 TaskPool 的限制，我们无法直接传递 Class。
+  // 解决方案：
+  // 1. 传递 Class 名称，然后在 DatabaseHelper 中根据名称查找 Class（需要注册表）
+  // 2. 不传递 Class，返回 ESObject[]，由调用方（Service）负责转换
+  // 这里采用方案 2，因为 Service 层已经有 mapRowsToModels 逻辑
+  return await DatabaseHelper.queryByCondition(ctx, tableName, whereClause, args);
+}
+
 export class ProcessingApiHandler {
   /**
    * 将数据库记录转换为前端格式（优化版：直接构建对象，避免构造函数调用）

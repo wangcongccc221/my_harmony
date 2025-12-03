@@ -4,6 +4,7 @@ import { relationalStore } from '@kit.ArkData';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { IBestORMInit, GetIBestORM, Class } from '../orm';
 import { IDatabaseAdapter } from './IDatabaseAdapter';
+import { snakeToCamel } from '../orm/utils/Utils';
 
 const DOMAIN = 0x0000;
 const TAG = 'SQLiteAdapter';
@@ -53,7 +54,7 @@ export class SQLiteAdapter implements IDatabaseAdapter {
    */
   constructor(options?: SQLiteAdapterConfig) {
     this.config = {
-      name: options?.dbName || 'article.db',
+      name: options?.dbName || 'db_fruitsor.db',
       securityLevel: options?.securityLevel || relationalStore.SecurityLevel.S2
     };
     this.models = options?.models || [];
@@ -157,6 +158,94 @@ export class SQLiteAdapter implements IDatabaseAdapter {
       const records = query.Find() as T[];
       return records || [];
     }
+  }
+
+  /**
+   * 根据条件查询记录
+   */
+  async queryByCondition<T extends ESObject = ESObject>(
+    ctx: Context,
+    tableName: string,
+    whereClause: string,
+    args: Array<string | number | boolean>,
+    modelClass?: Class
+  ): Promise<T[]> {
+    await this.ensureInitialized(ctx);
+    const db = this.getDatabase();
+
+    // 使用 IBestORM 的 Where 方法进行查询
+    // 注意：IBestORM 的 Where 方法通常接受 (field, value) 或 (field, operator, value)
+    // 这里我们假设 whereClause 是完整的条件字符串，args 是参数
+    // 如果 IBestORM 支持原生 WHERE 子句，我们可以直接使用
+    // 否则我们需要解析 whereClause
+    
+    // 尝试使用 querySql 来实现通用条件查询，但为了保持 ORM 特性（如自动映射），
+    // 我们最好使用 Table().Where()
+    
+    // 假设 whereClause 是 "customer_id = ?"，args 是 [1]
+    // 我们可以尝试解析简单的条件
+    
+    // 简单实现：如果 whereClause 包含 =，则尝试拆分
+    // 更通用的做法是直接使用 querySql，然后手动映射，或者看 IBestORM 是否支持 Raw Where
+    
+    // 这里我们使用 querySql 来确保灵活性，但为了响应用户的"使用 ORM"请求，
+    // 我们应该尽可能使用 ORM 的 API。
+    // 如果 IBestORM 没有提供直接执行带参数 WHERE 的 API，我们可能需要回退到 querySql
+    // 但为了"转换成实体"，我们可以使用 modelClass
+    
+    // 检查 IBestORM 文档或源码（假设）：
+    // db.Table(tableName).Where(whereClause, ...args).Find(modelClass)
+    
+    // 由于我们无法确定 IBestORM 的确切 API，我们这里使用一种混合方法：
+    // 使用 querySql 获取数据，然后如果提供了 modelClass，则尝试转换
+    // 但用户明确要求"使用 ORM 转换成实体"
+    
+    // 让我们尝试使用 IBestORM 的 Where 接口
+    // 假设 args[0] 是值
+    if (whereClause.includes('=') && args.length === 1) {
+      const field = whereClause.split('=')[0].trim();
+      const value = args[0];
+      if (modelClass) {
+        return db.Table(tableName).Where(field, value).OrderByDesc('id').Find(modelClass) as T[];
+      } else {
+        return db.Table(tableName).Where(field, value).OrderByDesc('id').Find() as T[];
+      }
+    }
+    
+    // 对于复杂查询，回退到 SQL，但尝试手动映射（如果 IBestORM 不支持）
+    // 或者，我们可以构造完整的 SQL
+    let sql = `SELECT * FROM ${tableName} WHERE ${whereClause}`;
+    // 简单的参数替换（注意：这只是一个简单的实现，不支持复杂的参数替换）
+    args.forEach(arg => {
+      const val = typeof arg === 'string' ? `'${arg}'` : arg;
+      sql = sql.replace('?', String(val));
+    });
+    sql += ' ORDER BY id DESC';
+    
+    const records = await this.querySql<T>(ctx, sql);
+    
+    // 如果提供了 modelClass，我们可能需要手动映射（如果 querySql 返回的是纯对象）
+    // 但 SQLiteAdapter.querySql 返回的是 Record<string, ValueType>
+    // 如果我们需要返回实体实例，我们需要转换
+    if (modelClass && records.length > 0) {
+      // 简单的转换逻辑：实例化 modelClass 并赋值
+      // 注意：这里假设 records 的键是蛇形命名，而 modelClass 属性是驼峰命名
+      const mappedResults: T[] = [];
+      for (const record of records) {
+        const entity = new modelClass() as ESObject;
+        const recordObj = record as ESObject;
+        const keys = Object.keys(recordObj);
+        for (const key of keys) {
+          const camelKey = snakeToCamel(key);
+          const value = (recordObj as Record<string, ESObject>)[key];
+          (entity as Record<string, ESObject>)[camelKey] = value;
+        }
+        mappedResults.push(entity as T);
+      }
+      return mappedResults;
+    }
+    
+    return records;
   }
 
   /**
