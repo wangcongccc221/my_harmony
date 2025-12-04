@@ -4,11 +4,12 @@ import { DateValidationUtils } from '../../../helpers/DateValidationUtils';
 import { HttpResponseUtils } from '../../../helpers/HttpResponseUtils';
 import { ProcessingHistory } from '../../../../database/models/ProcessingHistory';
 import { ProcessingHistoryData } from '../../../../database/types';
+import { Class } from '../../../../database/orm';
 import { relationalStore } from '@kit.ArkData';
 import { taskpool } from '@kit.ArkTS';
 import { Context } from '@kit.AbilityKit';
 import { DatabaseQueueManager } from '../../database';
-import { DatabaseHelper } from '../../../../database/DatabaseHelper';
+import { DatabaseInterface } from '../../../../database/DatabaseInterface';
 
 const DOMAIN = 0x0000;
 
@@ -97,8 +98,9 @@ interface BatchInsertWrapper {
 export async function PH_QueryAll(ctx: Context, tableName?: string): Promise<ProcessingHistoryData[]> {
   const targetTableName = tableName || 'processing_history';
   
-  // 使用数据库封装类（简单直接，可在任何地方使用）
-  const dbRecords = await DatabaseHelper.queryAll<ProcessingHistoryData>(ctx, targetTableName, ProcessingHistory);
+  // 使用数据库接口（简单直接，可在任何地方使用）
+  const modelClass: Class = ProcessingHistory;
+  const dbRecords = await DatabaseInterface.queryAll<ProcessingHistoryData>(ctx, targetTableName, modelClass);
   return dbRecords || [];
 }
 
@@ -106,16 +108,17 @@ export async function PH_QueryAll(ctx: Context, tableName?: string): Promise<Pro
 export async function PH_CountAll(ctx: Context, tableName?: string): Promise<number> {
   const targetTableName = tableName || 'processing_history';
   
-  // 使用数据库封装类
-  return await DatabaseHelper.count(ctx, targetTableName);
+  // 使用数据库接口
+  return await DatabaseInterface.count(ctx, targetTableName);
 }
 
 @Concurrent
 export async function PH_QueryPage(ctx: Context, page: number, size: number, tableName?: string): Promise<ProcessingHistoryData[]> {
   const targetTableName = tableName || 'processing_history';
   
-  // 使用数据库封装类
-  const rows = await DatabaseHelper.queryPage<ProcessingHistoryData>(ctx, targetTableName, page, size, ProcessingHistory);
+  // 使用数据库接口
+  const modelClass: Class = ProcessingHistory;
+  const rows = await DatabaseInterface.queryPage<ProcessingHistoryData>(ctx, targetTableName, page, size, modelClass);
   return rows || [];
 }
 @Concurrent
@@ -123,7 +126,7 @@ export async function PH_Insert(ctx: Context, values: relationalStore.ValuesBuck
   const targetTableName = tableName || 'processing_history';
   
   // 使用数据库封装类
-  return await DatabaseHelper.insert(ctx, targetTableName, values);
+  return await DatabaseInterface.insert(ctx, targetTableName, values);
 }
 
 @Concurrent
@@ -131,7 +134,7 @@ export async function PH_BatchInsert(ctx: Context, values: Array<relationalStore
   const targetTableName = tableName || 'processing_history';
   
   // 使用数据库封装类
-  return await DatabaseHelper.batchInsert(ctx, targetTableName, values);
+  return await DatabaseInterface.batchInsert(ctx, targetTableName, values);
 }
 
 @Concurrent
@@ -139,7 +142,7 @@ export async function PH_Delete(ctx: Context, id: number, tableName?: string): P
   const targetTableName = tableName || 'processing_history';
   
   // 使用数据库封装类
-  return await DatabaseHelper.delete(ctx, targetTableName, id);
+  return await DatabaseInterface.delete(ctx, targetTableName, id);
 }
 
 @Concurrent
@@ -147,13 +150,13 @@ export async function PH_Update(ctx: Context, id: number, values: relationalStor
   const targetTableName = tableName || 'processing_history';
   
   // 使用数据库封装类
-  return await DatabaseHelper.update(ctx, targetTableName, id, values);
+  return await DatabaseInterface.update(ctx, targetTableName, id, values);
 }
 
 @Concurrent
 export async function PH_QuerySql(ctx: Context, sql: string): Promise<ESObject[]> {
   // 使用数据库封装类
-  return await DatabaseHelper.querySql(ctx, sql);
+  return await DatabaseInterface.querySql(ctx, sql);
 }
 
 @Concurrent
@@ -161,13 +164,13 @@ export async function PH_QueryByCondition(ctx: Context, tableName: string, where
   // 使用数据库封装类
   // 注意：这里我们无法传递 Class 对象，因为 Class 无法序列化
   // 所以我们只能返回 ESObject[]，然后在 Service 层进行转换（如果需要）
-  // 或者 DatabaseHelper 内部处理（但 DatabaseHelper.queryByCondition 需要 Class）
+  // 或者 DatabaseInterface 内部处理（但 DatabaseInterface.queryByCondition 需要 Class）
   // 由于 TaskPool 的限制，我们无法直接传递 Class。
   // 解决方案：
-  // 1. 传递 Class 名称，然后在 DatabaseHelper 中根据名称查找 Class（需要注册表）
+  // 1. 传递 Class 名称，然后在 DatabaseInterface 中根据名称查找 Class（需要注册表）
   // 2. 不传递 Class，返回 ESObject[]，由调用方（Service）负责转换
   // 这里采用方案 2，因为 Service 层已经有 mapRowsToModels 逻辑
-  return await DatabaseHelper.queryByCondition(ctx, tableName, whereClause, args);
+  return await DatabaseInterface.queryByCondition(ctx, tableName, whereClause, args);
 }
 
 export class ProcessingApiHandler {
@@ -230,7 +233,7 @@ export class ProcessingApiHandler {
     if (ctx) {
       dbRecords = await DatabaseQueueManager.queryAll(ctx);
     } else {
-      // 如果没有 Context，使用 DatabaseHelper（需要 Context，所以这里不应该执行）
+      // 如果没有 Context，使用 DatabaseInterface（需要 Context，所以这里不应该执行）
       throw new Error('Context 是必需的');
     }
     // 性能优化：使用批量转换方法

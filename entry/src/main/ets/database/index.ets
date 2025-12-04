@@ -1,37 +1,38 @@
 /**
  * 数据库模块统一导出入口
  * 
- * 其他项目使用方式：
+ * 使用方式：
  * ```typescript
- * import { DatabaseHelper, DatabaseAdapterFactory } from './database';
+ * import { DatabaseInterface, DatabaseAdapterFactory } from './database';
  * 
- * // 方式1: 基本使用（不自动迁移模型）
- * // 直接使用，数据库会在首次调用时自动初始化
- * const data = await DatabaseHelper.queryAll(ctx, 'table_name');
+ * // 查询数据
+ * const data = await DatabaseInterface.queryAll<MyModel>(ctx, 'table_name', MyModel);
  * 
- * // 方式2: 带配置使用（自动迁移模型）
+ * // 插入数据
+ * const id = await DatabaseInterface.insert(ctx, 'table_name', { name: 'test', value: 100 });
+ * 
+ * // 带配置初始化（自动迁移模型）
  * import { User, Product } from './models';
  * DatabaseAdapterFactory.initialize({
  *   dbName: 'my_app.db',
  *   models: [User, Product]  // 需要自动迁移的模型
  * });
- * const data = await DatabaseHelper.queryAll(ctx, 'users');
  * ```
  * 
  * 高级用法（切换数据库）：
  * ```typescript
- * import { DatabaseHelper, DatabaseAdapterFactory, MySQLAdapter } from './database';
+ * import { DatabaseInterface, DatabaseAdapterFactory, MySQLAdapter } from './database';
  * 
  * // 切换数据库
  * DatabaseAdapterFactory.setAdapter(new MySQLAdapter());
  * 
- * // 之后所有 DatabaseHelper 的调用都会使用 MySQL
- * const data = await DatabaseHelper.queryAll(ctx, 'table_name');
+ * // 之后所有 DatabaseInterface 的调用都会使用 MySQL
+ * const data = await DatabaseInterface.queryAll(ctx, 'table_name');
  * ```
  */
 
-// 主要使用入口：DatabaseHelper（推荐）
-export { DatabaseHelper } from './DatabaseHelper';
+// 主要使用入口：DatabaseInterface（推荐）
+export { DatabaseInterface } from './DatabaseInterface';
 
 // 适配器相关（高级用法）
 export { IDatabaseAdapter } from './adapters/IDatabaseAdapter';

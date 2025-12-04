@@ -5,6 +5,7 @@
  */
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { KeyCode } from '@kit.InputKit';
 import { IBestSwitch } from '@ibestservices/ibest-ui'
 import { SwitchControl } from '../../components/ui/forms/SwitchControl'
 import { TableRow } from '../../components/layout/LevelTable'
@@ -26,6 +27,9 @@ import { DEFAULT_TOP_BAR_DATA, DEFAULT_SORTING_INFO, DEFAULT_SETTINGS, DEFAULT_S
 // 日志总开关（减少频繁日志导致的内存与卡顿）
 const LOG_TIME_ENABLED: boolean = false
 const LOG_SORT_ENABLED: boolean = false
+
+// 全局键盘状态：主页是否按下左 Ctrl（供等级表等组件使用）
+const HOME_CTRL_PRESSED = 'HOME_CTRL_PRESSED'
 
 // FSM设置状态接口
 interface FSMSettings {
@@ -110,6 +114,8 @@ export struct HomeContent {
   @State private dragOverlayX: number = 0
   @State private dragOverlayY: number = 0
   @State private dragOverlayText: string = ''
+  // 是否按下左 Ctrl 键（全局主页级别状态）
+  private isCtrlPressed: boolean = false
   // 等级统计更新事件监听（简化负载）
   @StorageLink(StorageKeys.LEVEL_STAT_UPDATE) private levelStatUpdate: Record<string, number | string> | null = null
   // 批量追加（多选仅添加）
@@ -646,6 +652,23 @@ export struct HomeContent {
     }
     .width('100%')
     .height('100%')
+    .focusable(true)
+    .defaultFocus(true) // 让主页整体默认获得键盘焦点
+    .onKeyEvent((event) => {
+      // 只监听左 CTRL 键
+      if (event.keyCode === KeyCode.KEYCODE_CTRL_LEFT) {
+        if (event.type === KeyType.Down) {
+          this.isCtrlPressed = true;   // 现在处于“按下左Ctrl”状态
+          AppStorage.setOrCreate(HOME_CTRL_PRESSED, true);
+          console.log('HomeContent: 左CTRL键已按下');
+        } else if (event.type === KeyType.Up) {
+          this.isCtrlPressed = false;  // 没有按下左Ctrl
+          AppStorage.setOrCreate(HOME_CTRL_PRESSED, false);
+          console.log('HomeContent: 左CTRL键已释放');
+        }
+      }
+      return false; // 不拦截事件，继续向下传递
+    })
     // 统一跟踪触摸坐标与拖拽激活状态
     .onTouch((event?: TouchEvent) => {
       if (!event) { return }

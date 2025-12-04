@@ -28,20 +28,6 @@ export interface SQLiteAdapterConfig {
 /**
  * SQLite 数据库适配器实现
  * 封装 IBestORM 的所有操作
- * 
- * 使用方式：
- * ```typescript
- * // 基本使用（不自动迁移）
- * const adapter = new SQLiteAdapter();
- * await adapter.initialize(ctx);
- * 
- * // 带配置使用（自动迁移模型）
- * const adapter = new SQLiteAdapter({
- *   dbName: 'my_app.db',
- *   models: [User, Product]  // 需要迁移的模型
- * });
- * await adapter.initialize(ctx);
- * ```
  */
 export class SQLiteAdapter implements IDatabaseAdapter {
   private config: relationalStore.StoreConfig;
@@ -72,23 +58,22 @@ export class SQLiteAdapter implements IDatabaseAdapter {
     if (!db) {
       await IBestORMInit(ctx as common.UIAbilityContext, this.config);
       db = GetIBestORM();
-      if (db) {
-        // 如果提供了模型列表，则自动迁移
-        if (this.models.length > 0) {
-          for (const modelClass of this.models) {
-            db.AutoMigrate(modelClass);
-            // 注意：由于 ArkTS 类型限制，无法自动调用 createIndexes 静态方法
-            // 如果模型有 createIndexes 方法，需要在初始化后手动调用
-            // 例如：ProcessingHistory.createIndexes();
-          }
-          hilog.info(DOMAIN, TAG, `SQLite 数据库已初始化，已迁移 ${this.models.length} 个模型`);
-        } else {
-          hilog.info(DOMAIN, TAG, 'SQLite 数据库已初始化（无自动迁移）');
-        }
-      } else {
-        throw new Error('SQLite 数据库初始化失败：GetIBestORM() 返回 undefined');
-      }
     }
+    
+    if (db) {
+      // 如果提供了模型列表，则自动迁移（无论之前是否已初始化）
+      if (this.models.length > 0) {
+        for (const modelClass of this.models) {
+          db.AutoMigrate(modelClass);
+        }
+        hilog.info(DOMAIN, TAG, `SQLite 数据库已初始化，已迁移 ${this.models.length} 个模型`);
+      } else {
+        hilog.info(DOMAIN, TAG, 'SQLite 数据库已初始化（无自动迁移）');
+      }
+    } else {
+      throw new Error('SQLite 数据库初始化失败：GetIBestORM() 返回 undefined');
+    }
+    
     this.initialized = true;
   }
 
@@ -122,12 +107,13 @@ export class SQLiteAdapter implements IDatabaseAdapter {
   ): Promise<T[]> {
     await this.ensureInitialized(ctx);
     const db = this.getDatabase();
+    const primaryKeyField = this.getPrimaryKeyField(tableName);
 
     if (modelClass) {
-      const records = db.Table(tableName).OrderByDesc('id').Find(modelClass) as T[];
+      const records = db.Table(tableName).OrderByDesc(primaryKeyField).Find(modelClass) as T[];
       return records || [];
     } else {
-      const records = db.Table(tableName).OrderByDesc('id').Find() as T[];
+      const records = db.Table(tableName).OrderByDesc(primaryKeyField).Find() as T[];
       return records || [];
     }
   }
@@ -144,12 +130,13 @@ export class SQLiteAdapter implements IDatabaseAdapter {
   ): Promise<T[]> {
     await this.ensureInitialized(ctx);
     const db = this.getDatabase();
+    const primaryKeyField = this.getPrimaryKeyField(tableName);
 
     const p = Math.max(1, page);
     const s = Math.max(1, Math.min(100, size));
     const offset = (p - 1) * s;
 
-    let query = db.Table(tableName).OrderByDesc('id').Limit(s).Offset(offset);
+    let query = db.Table(tableName).OrderByDesc(primaryKeyField).Limit(s).Offset(offset);
 
     if (modelClass) {
       const records = query.Find(modelClass) as T[];
@@ -173,42 +160,14 @@ export class SQLiteAdapter implements IDatabaseAdapter {
     await this.ensureInitialized(ctx);
     const db = this.getDatabase();
 
-    // 使用 IBestORM 的 Where 方法进行查询
-    // 注意：IBestORM 的 Where 方法通常接受 (field, value) 或 (field, operator, value)
-    // 这里我们假设 whereClause 是完整的条件字符串，args 是参数
-    // 如果 IBestORM 支持原生 WHERE 子句，我们可以直接使用
-    // 否则我们需要解析 whereClause
-    
-    // 尝试使用 querySql 来实现通用条件查询，但为了保持 ORM 特性（如自动映射），
-    // 我们最好使用 Table().Where()
-    
-    // 假设 whereClause 是 "customer_id = ?"，args 是 [1]
-    // 我们可以尝试解析简单的条件
-    
-    // 简单实现：如果 whereClause 包含 =，则尝试拆分
-    // 更通用的做法是直接使用 querySql，然后手动映射，或者看 IBestORM 是否支持 Raw Where
-    
-    // 这里我们使用 querySql 来确保灵活性，但为了响应用户的"使用 ORM"请求，
-    // 我们应该尽可能使用 ORM 的 API。
-    // 如果 IBestORM 没有提供直接执行带参数 WHERE 的 API，我们可能需要回退到 querySql
-    // 但为了"转换成实体"，我们可以使用 modelClass
-    
-    // 检查 IBestORM 文档或源码（假设）：
-    // db.Table(tableName).Where(whereClause, ...args).Find(modelClass)
-    
-    // 由于我们无法确定 IBestORM 的确切 API，我们这里使用一种混合方法：
-    // 使用 querySql 获取数据，然后如果提供了 modelClass，则尝试转换
-    // 但用户明确要求"使用 ORM 转换成实体"
-    
-    // 让我们尝试使用 IBestORM 的 Where 接口
-    // 假设 args[0] 是值
+    const primaryKeyField = this.getPrimaryKeyField(tableName);
     if (whereClause.includes('=') && args.length === 1) {
       const field = whereClause.split('=')[0].trim();
       const value = args[0];
       if (modelClass) {
-        return db.Table(tableName).Where(field, value).OrderByDesc('id').Find(modelClass) as T[];
+        return db.Table(tableName).Where(field, value).OrderByDesc(primaryKeyField).Find(modelClass) as T[];
       } else {
-        return db.Table(tableName).Where(field, value).OrderByDesc('id').Find() as T[];
+        return db.Table(tableName).Where(field, value).OrderByDesc(primaryKeyField).Find() as T[];
       }
     }
     
@@ -220,7 +179,7 @@ export class SQLiteAdapter implements IDatabaseAdapter {
       const val = typeof arg === 'string' ? `'${arg}'` : arg;
       sql = sql.replace('?', String(val));
     });
-    sql += ' ORDER BY id DESC';
+    sql += ` ORDER BY ${primaryKeyField} DESC`;
     
     const records = await this.querySql<T>(ctx, sql);
     
@@ -277,8 +236,58 @@ export class SQLiteAdapter implements IDatabaseAdapter {
   async insert(ctx: Context, tableName: string, values: relationalStore.ValuesBucket): Promise<number> {
     await this.ensureInitialized(ctx);
     const db = this.getDatabase();
-    const insertId = db.Table(tableName).Insert(values);
-    return insertId || 0;
+    
+    try {
+      // 移除主键字段（如果是 autoIncrement）
+      const primaryKeyField = this.getPrimaryKeyField(tableName);
+      const insertValues: relationalStore.ValuesBucket = {};
+      
+      // 复制所有字段，除了主键
+      const keys = Object.keys(values);
+      for (const key of keys) {
+        if (key !== primaryKeyField) {
+          insertValues[key] = values[key];
+        }
+      }
+      
+      hilog.info(DOMAIN, TAG, `插入数据到表 ${tableName}，字段: ${JSON.stringify(Object.keys(insertValues))}`);
+      hilog.info(DOMAIN, TAG, `插入数据值: ${JSON.stringify(insertValues)}`);
+      
+      // 检查表是否存在
+      const core = db.GetCore();
+      if (core) {
+        try {
+          const rs = core.querySqlSync(`SELECT name FROM sqlite_master WHERE type='table' AND name='${tableName}';`);
+          const tableExists = rs.columnCount > 0 && rs.goToFirstRow();
+          rs.close();
+          hilog.info(DOMAIN, TAG, `表 ${tableName} 是否存在: ${tableExists}`);
+          
+          if (tableExists) {
+            // 获取表结构
+            const infoRs = core.querySqlSync(`PRAGMA table_info('${tableName}');`);
+            const columns: string[] = [];
+            if (infoRs.columnCount > 0 && infoRs.goToFirstRow()) {
+              do {
+                const colName = infoRs.getString(infoRs.getColumnIndex('name'));
+                columns.push(colName);
+              } while (infoRs.goToNextRow());
+            }
+            infoRs.close();
+            hilog.info(DOMAIN, TAG, `表 ${tableName} 的字段: ${JSON.stringify(columns)}`);
+          }
+        } catch (e) {
+          hilog.warn(DOMAIN, TAG, `检查表结构失败: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+      
+      const insertId = db.Table(tableName).Insert(insertValues);
+      hilog.info(DOMAIN, TAG, `插入成功，返回ID: ${insertId}`);
+      return insertId || 0;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, TAG, `插入失败 - 表: ${tableName}, 错误: ${errorMsg}, 数据: ${JSON.stringify(Object.keys(values))}`);
+      throw new Error(`插入失败 - 表: ${tableName}, 错误: ${errorMsg}`);
+    }
   }
 
   /**
@@ -296,6 +305,27 @@ export class SQLiteAdapter implements IDatabaseAdapter {
   }
 
   /**
+   * 根据表名获取主键字段名
+   *
+   * 注意：由于 camelToSnakeCase 对结尾为 "ID" 的属性会生成 "customer_i_d" 这种形式，
+   * 实际表结构中的主键字段名与预期的 "customer_id"、"f_id" 不同。
+   * 这里需要按真实表结构返回正确的列名。
+   */
+  private getPrimaryKeyField(tableName: string): string {
+    // 根据表名确定主键字段（使用实际 PRAGMA table_info 返回的列名）
+    if (tableName === 'tb_fruitinfo') {
+      // CustomerID -> customer_i_d
+      return 'customer_i_d';
+    } else if (tableName === 'tb_gradeinfo' || tableName === 'tb_exportinfo') {
+      // FID -> fid
+      return 'fid';
+    } else {
+      // 默认使用 id（适用于 processing_history, article 等表）
+      return 'id';
+    }
+  }
+
+  /**
    * 更新记录
    */
   async update(
@@ -306,7 +336,8 @@ export class SQLiteAdapter implements IDatabaseAdapter {
   ): Promise<number> {
     await this.ensureInitialized(ctx);
     const db = this.getDatabase();
-    const affected = db.Table(tableName).Where('id', id).Update(values);
+    const primaryKeyField = this.getPrimaryKeyField(tableName);
+    const affected = db.Table(tableName).Where(primaryKeyField, id).Update(values);
     return affected || 0;
   }
 
@@ -316,7 +347,8 @@ export class SQLiteAdapter implements IDatabaseAdapter {
   async delete(ctx: Context, tableName: string, id: number): Promise<number> {
     await this.ensureInitialized(ctx);
     const db = this.getDatabase();
-    const affected = db.Table(tableName).Where('id', id).Delete();
+    const primaryKeyField = this.getPrimaryKeyField(tableName);
+    const affected = db.Table(tableName).Where(primaryKeyField, id).Delete();
     return affected || 0;
   }
 

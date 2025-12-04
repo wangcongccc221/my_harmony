@@ -99,14 +99,14 @@ export class FruitInfo {
   ProgramName?: string;
 
   constructor(data?: Partial<FruitInfo>) {
-    // 设置默认值：SysID、FeedPortID、OrderID、SortType 默认为 0
+    // 设置默认值
     this.SysID = 0;
     this.FeedPortID = 0;
     this.OrderID = 0;
     this.SortType = 0;
     
+    // 从 data 复制属性（ArkTS 兼容方式） 不支持展开运算符 被限制了
     if (data) {
-      // 手动赋值，避免使用 Object.assign（ArkTS 限制）
       if (data.CustomerID !== undefined) this.CustomerID = data.CustomerID;
       if (data.SysID !== undefined) this.SysID = data.SysID;
       if (data.FeedPortID !== undefined) this.FeedPortID = data.FeedPortID;

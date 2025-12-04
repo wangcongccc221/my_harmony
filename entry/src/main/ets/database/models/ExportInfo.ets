@@ -33,12 +33,12 @@ export class ExportInfo {
   ExitName?: string;
 
   constructor(data?: Partial<ExportInfo>) {
-    // 设置默认值：ChannelID、BoxNumber 默认为 0
+    // 设置默认值
     this.ChannelID = 0;
     this.BoxNumber = 0;
     
+    // 从 data 复制属性（ArkTS 兼容方式）
     if (data) {
-      // 手动赋值，避免使用 Object.assign（ArkTS 限制）
       if (data.FID !== undefined) this.FID = data.FID;
       if (data.CustomerID !== undefined) this.CustomerID = data.CustomerID;
       if (data.ChannelID !== undefined) this.ChannelID = data.ChannelID;

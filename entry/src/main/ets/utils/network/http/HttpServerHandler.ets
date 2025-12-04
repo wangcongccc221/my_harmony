@@ -15,6 +15,9 @@ import { ResponseHandler } from './handlers/ResponseHandler';
 import { ProcessingApiHandler } from './handlers/ProcessingApiHandler';
 import { PerformanceApiHandler } from './handlers/PerformanceApiHandler';
 import { FileBrowserHandler } from './handlers/FileBrowserHandler';
+import { FruitInfoApiHandler } from './handlers/FruitInfoApiHandler';
+import { GradeInfoApiHandler } from './handlers/GradeInfoApiHandler';
+import { ExportInfoApiHandler } from './handlers/ExportInfoApiHandler';
 
 const DOMAIN = 0x0000;
 
@@ -154,6 +157,46 @@ export class HttpServerHandler {
         
         return await ProcessingApiHandler.handle(method, rawPath, requestBody, HttpServerHandler.appContext as Context, acceptGzip);
       }
+
+      // 水果信息 API
+      if (path.startsWith('/api/fruitinfo')) {
+        const method = pathParts[0] || 'GET';
+        let requestBody: string | undefined = undefined;
+        if (method === 'POST' || method === 'PUT') {
+          const emptyLineIndex = rawRequest.indexOf('\r\n\r\n');
+          if (emptyLineIndex >= 0) {
+            requestBody = rawRequest.substring(emptyLineIndex + 4);
+          }
+        }
+        return await FruitInfoApiHandler.handle(method, rawPath, requestBody, HttpServerHandler.appContext as Context);
+      }
+
+      // 等级信息 API
+      if (path.startsWith('/api/gradeinfo')) {
+        const method = pathParts[0] || 'GET';
+        let requestBody: string | undefined = undefined;
+        if (method === 'POST' || method === 'PUT') {
+          const emptyLineIndex = rawRequest.indexOf('\r\n\r\n');
+          if (emptyLineIndex >= 0) {
+            requestBody = rawRequest.substring(emptyLineIndex + 4);
+          }
+        }
+        return await GradeInfoApiHandler.handle(method, rawPath, requestBody, HttpServerHandler.appContext as Context);
+      }
+
+      // 导出信息 API
+      if (path.startsWith('/api/exportinfo')) {
+        const method = pathParts[0] || 'GET';
+        let requestBody: string | undefined = undefined;
+        if (method === 'POST' || method === 'PUT') {
+          const emptyLineIndex = rawRequest.indexOf('\r\n\r\n');
+          if (emptyLineIndex >= 0) {
+            requestBody = rawRequest.substring(emptyLineIndex + 4);
+          }
+        }
+        return await ExportInfoApiHandler.handle(method, rawPath, requestBody, HttpServerHandler.appContext as Context);
+      }
+
       return ResponseHandler.getNotFoundResponse();
       } catch (error) {
         // 捕获所有异常，防止崩溃

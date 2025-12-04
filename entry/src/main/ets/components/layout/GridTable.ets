@@ -110,15 +110,26 @@ export struct GridTable {
     }
     
     const cellId = `${rowIndex}_${colIndex}`
-    
-    if (this.selectedCells.has(cellId)) {
-      // 取消选中
-      this.selectedCells.delete(cellId)
+
+    // 从 AppStorage 读取主页是否按下左 Ctrl（由 HomeContent 维护）
+    const ctrlPressedRaw = AppStorage.get('HOME_CTRL_PRESSED') as boolean | undefined
+    const isCtrlMultiSelect = ctrlPressedRaw === true
+
+    if (isCtrlMultiSelect) {
+      // Ctrl 多选模式：点击时切换当前单元格选中状态（不清空其他）
+      if (this.selectedCells.has(cellId)) {
+        // 取消选中
+        this.selectedCells.delete(cellId)
+      } else {
+        // 追加选中
+        this.selectedCells.add(cellId)
+      }
     } else {
-      // 选中
+      // 单选模式：清空已有选中，只保留当前单元格
+      this.selectedCells.clear()
       this.selectedCells.add(cellId)
     }
-    
+
     // 更新多选模式状态
     this.isMultiSelectMode = this.selectedCells.size > 1
     

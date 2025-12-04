@@ -28,6 +28,7 @@ import { ToastDialog } from '../../components/dialogs/ToastDialog'
 import fs from '@ohos.file.fs'
 import common from '@ohos.app.ability.common'
 import { util, buffer } from '@kit.ArkTS'
+import { InternalApiTester } from '../../utils/tests/InternalApiTester'
 
 /**
  * 历史加工内容组件结构体
@@ -773,7 +774,7 @@ export struct HistoryContent {
             this.handleShowFileNameDialog('merge')
           },
           onReportClick: () => {
-            console.log('报告按钮被点击')
+            this.handleInternalApiReportTest()
           },
           onDeleteClick: () => {
             this.handleDelete()
@@ -905,6 +906,21 @@ export struct HistoryContent {
       if (this.showFileNameDialog) {
         this.buildFileNameDialog()
       }
+    }
+  }
+
+  /**
+   * 触发内部接口测试（点击“报告”按钮）
+   */
+  private async handleInternalApiReportTest(): Promise<void> {
+    try {
+      const ctx = getContext(this) as common.UIAbilityContext
+      this.showToast('success', '开始执行内部接口测试…')
+      await InternalApiTester.runAll(ctx)
+      this.showToast('success', '内部接口测试完成')
+    } catch (error) {
+      console.error('内部接口测试失败:', error)
+      this.showToast('error', '内部接口测试失败')
     }
   }
 

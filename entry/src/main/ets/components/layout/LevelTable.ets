@@ -8,7 +8,7 @@ import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/Omni
 import { TableRowComponent } from '../ui/tables/TableRow'
 import { SimpleDraggableCell } from '../ui/tables/SimpleDraggableCell'
 import { MultiSelectCell, MULTI_SELECT_CELLS_KEY, MULTI_SELECT_ACTIVE_KEY } from '../ui/tables/SimpleDraggableCell'
-
+import { KeyCode } from '@kit.InputKit'; // 键盘键码
 // 通用表格行：每行由若干字符串单元格组成
 export type TableRow = string[]
 
@@ -124,23 +124,36 @@ export struct LevelTable {
       return
     }
     const cellId = `${rowIndex}_${colIndex}`
-    
-    if (this.selectedCells.has(cellId)) {
-      // 取消选中
-      this.selectedCells.delete(cellId)
-      console.log('🔴 LevelTable - 取消选中单元格:', cellText)
+
+    // 从 AppStorage 读取主页是否按下左 Ctrl（由 HomeContent 维护）
+    // 这里直接使用与 HomeContent 中一致的键名字符串
+    const ctrlPressedRaw = AppStorage.get('HOME_CTRL_PRESSED') as boolean | undefined
+    const isCtrlMultiSelect = ctrlPressedRaw === true
+
+    if (isCtrlMultiSelect) {
+      // Ctrl 多选模式：类似 Excel，点击时切换当前单元格的选中状态（不清空其他选中）
+      if (this.selectedCells.has(cellId)) {
+        // 取消选中
+        this.selectedCells.delete(cellId)
+        console.log('🔴 LevelTable - Ctrl 多选模式取消选中单元格:', cellText)
+      } else {
+        // 追加选中
+        this.selectedCells.add(cellId)
+        console.log('🟢 LevelTable - Ctrl 多选模式选中单元格:', cellText)
+      }
     } else {
-      // 选中
+      // 单选模式：清空已有选中，只保留当前单元格
+      this.selectedCells.clear()
       this.selectedCells.add(cellId)
-      console.log('🟢 LevelTable - 选中单元格:', cellText)
+      console.log('🟢 LevelTable - 单选模式选中单元格:', cellText)
     }
-    
+
     // 更新多选模式状态
     this.isMultiSelectMode = this.selectedCells.size > 1
-    
+
     // 更新全局多选状态
     this.updateGlobalMultiSelectState()
-    
+
     console.log('📊 LevelTable - 当前选中单元格数量:', this.selectedCells.size)
   }
 
@@ -545,5 +558,12 @@ export struct LevelTable {
     .margin({ top: 12, left: 12, right: 12, bottom: 8 })
     .alignItems(HorizontalAlign.Center)
     .justifyContent(FlexAlign.Center)
+    .focusable(true)
+    .onKeyEvent((event) => {
+      // 只要检测到左 Ctrl（按下/抬起都会进来）就打印
+      if (event.keyCode === KeyCode.KEYCODE_CTRL_LEFT) {
+        console.log('按了左Ctrl');
+      }
+    })
   }
 }

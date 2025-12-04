@@ -14,7 +14,7 @@ import { MultiSeriesBarFeed } from '../utils/data/MultiSeriesBarFeed';
 import { WavePhaseManager } from '../utils/ui/WavePhaseManager';
 import { relationalStore } from '@kit.ArkData';
 import { IBestORMInit, GetIBestORM } from '../database/orm';
-import { Article, ArticlePayload } from '../database/models/Article';
+import GlobalStore from '../database/orm/model/GlobalStore';
 import { ProcessingHistory } from '../database/models/ProcessingHistory';
 import { FruitInfo } from '../database/models/FruitInfo';
 import { GradeInfo } from '../database/models/GradeInfo';
@@ -56,11 +56,10 @@ export default class EntryAbility extends UIAbility {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
 
     try {
-      await IBestORMInit(this.context, {
+      await GlobalStore.init(this.context, {
         name: 'db_fruitsor.db',
         securityLevel: relationalStore.SecurityLevel.S2,
       });
-      GetIBestORM().AutoMigrate(Article);
       GetIBestORM().AutoMigrate(ProcessingHistory);
       GetIBestORM().AutoMigrate(FruitInfo);
       GetIBestORM().AutoMigrate(GradeInfo);
@@ -72,7 +71,6 @@ export default class EntryAbility extends UIAbility {
       ExportInfo.createIndexes();
       hilog.info(DOMAIN, 'EntryAbility', 'ORM 初始化完成并迁移所有表');
 
-      // await this.runOrmTaskpoolDemo(); // taskpool示例已删除
     } catch (e) {
       hilog.error(DOMAIN, 'EntryAbility', `数据库初始化失败: ${JSON.stringify(e)}`);
     }

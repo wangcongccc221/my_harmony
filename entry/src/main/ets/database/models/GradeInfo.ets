@@ -78,7 +78,7 @@ export class GradeInfo {
   TraitSugarDegree?: string;
 
   constructor(data?: Partial<GradeInfo>) {
-    // 设置默认值：ChannelID、QualityIndex、SizeID、SizeIndex、BoxNumber、FruitNumber、FruitWeight、FPrice 默认为 0 或 0.00
+    // 设置默认值
     this.ChannelID = 0;
     this.QualityIndex = 0;
     this.SizeID = 0;
@@ -88,8 +88,8 @@ export class GradeInfo {
     this.FruitWeight = 0.00;
     this.FPrice = 0.00;
     
+    // 从 data 复制属性（ArkTS 兼容方式）
     if (data) {
-      // 手动赋值，避免使用 Object.assign（ArkTS 限制）
       if (data.FID !== undefined) this.FID = data.FID;
       if (data.CustomerID !== undefined) this.CustomerID = data.CustomerID;
       if (data.ChannelID !== undefined) this.ChannelID = data.ChannelID;
