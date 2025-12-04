@@ -111,7 +111,7 @@ export struct GridTable {
     
     const cellId = `${rowIndex}_${colIndex}`
 
-    // 从 AppStorage 读取主页是否按下左 Ctrl（由 HomeContent 维护）
+    // 从 AppStorage 读取是否按下左 Ctrl（由页面级监听维护）
     const ctrlPressedRaw = AppStorage.get('HOME_CTRL_PRESSED') as boolean | undefined
     const isCtrlMultiSelect = ctrlPressedRaw === true
 

@@ -27,6 +27,7 @@ import { window } from '@kit.ArkUI'
 import { RectButton } from '../components/ui/buttons/RectButton'
 import { TopStatusBar } from '../components/layout/TopStatusBar'
 import { BottomControlBar } from '../components/layout/BottomControlBar'
+import { KeyCode } from '@kit.InputKit';
 // 移除 BottomBar 集成
 
 
@@ -135,6 +136,8 @@ struct Page {
   aboutToAppear() {
     this.omniUIInit.init()
     this.omniThemeManager.init()
+    // 初始化 Ctrl 多选状态
+    AppStorage.setOrCreate('HOME_CTRL_PRESSED', false)
   }
   
   
@@ -1382,5 +1385,20 @@ struct Page {
     }
     .width('100%')
     .height('100%')
+    .focusable(true)
+    .defaultFocus(true)
+    .onKeyEvent((event) => {
+      // 在最外层 Home 页面统一监听左 Ctrl，并写入全局多选状态
+      if (event.keyCode === KeyCode.KEYCODE_CTRL_LEFT) {
+        if (event.type === KeyType.Down) {
+          AppStorage.setOrCreate('HOME_CTRL_PRESSED', true);
+          console.log('Home: 左CTRL键已按下（全局）');
+        } else if (event.type === KeyType.Up) {
+          AppStorage.setOrCreate('HOME_CTRL_PRESSED', false);
+          console.log('Home: 左CTRL键已释放（全局）');
+        }
+      }
+      return false;
+    })
   }
 }

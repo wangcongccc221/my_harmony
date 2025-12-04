@@ -33,6 +33,7 @@
  */
 
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { KeyCode } from '@kit.InputKit';
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { LevelControlPanel } from './LevelControlPanel'
@@ -686,7 +687,22 @@ export struct LevelContent {
       })
     }
     .width('100%')                                                             // Stack宽度（100%）
-    .height('100%')                                                             // Stack高度（100%）
+    .height('100%')                                                            // Stack高度（100%）
+    .focusable(true)
+    .defaultFocus(true)
+    .onKeyEvent((event) => {
+      // 等级页面也监听左 Ctrl，并同步到全局状态，供等级相关表格使用
+      if (event.keyCode === KeyCode.KEYCODE_CTRL_LEFT) {
+        if (event.type === KeyType.Down) {
+          AppStorage.setOrCreate('HOME_CTRL_PRESSED', true);
+          console.log('LevelContent: 左CTRL键已按下');
+        } else if (event.type === KeyType.Up) {
+          AppStorage.setOrCreate('HOME_CTRL_PRESSED', false);
+          console.log('LevelContent: 左CTRL键已释放');
+        }
+      }
+      return false;
+    })
   }
   /**
    * 处理统计表单元格编辑：三列都可改，并做联动

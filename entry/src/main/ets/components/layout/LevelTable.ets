@@ -125,8 +125,7 @@ export struct LevelTable {
     }
     const cellId = `${rowIndex}_${colIndex}`
 
-    // 从 AppStorage 读取主页是否按下左 Ctrl（由 HomeContent 维护）
-    // 这里直接使用与 HomeContent 中一致的键名字符串
+    // 从 AppStorage 读取是否按下左 Ctrl（由页面级监听维护）
     const ctrlPressedRaw = AppStorage.get('HOME_CTRL_PRESSED') as boolean | undefined
     const isCtrlMultiSelect = ctrlPressedRaw === true
 
@@ -233,9 +232,8 @@ export struct LevelTable {
             .padding(0)
             .draggable(false) // 禁用拖拽
             .onClick(() => {
-              if (colIndex > 0) {
-                this.toggleCellSelection(rowIndex, colIndex, cellText)
-              }
+              // 允许点击任意列触发选中（包含等级列）
+              this.toggleCellSelection(rowIndex, colIndex, cellText)
             })
             .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
               return { pixelMap: undefined, builder: undefined, extraInfo: '' }
@@ -265,9 +263,8 @@ export struct LevelTable {
         .border({ width: { right: 1 }, color: this.isCellSelected(rowIndex, colIndex) ? this.getCurrentTheme().primary : this.getCurrentTheme().borderColor })
         .draggable(this.enableDrag)
         .onClick(() => {
-          if (colIndex > 0) {
-            this.toggleCellSelection(rowIndex, colIndex, cellText)
-          }
+          // 允许点击任意列触发选中（包含等级列）
+          this.toggleCellSelection(rowIndex, colIndex, cellText)
         })
         .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
           if (!this.enableDrag) {

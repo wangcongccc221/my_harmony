@@ -88,6 +88,8 @@ export default class EntryAbility extends UIAbility {
       } catch (e) {
         hilog.error(DOMAIN, 'testTag', `set non-fullscreen failed: ${JSON.stringify(e)}`);
       }
+
+      // 注册全局键盘监听（左 Ctrl），供全局多选等功能使用
     });
   }
 
