@@ -473,9 +473,15 @@ export struct HomeContent {
 
   // 处理卡片点击
   private handleCardClick(cardIndex: number, cardData: ThreeLayerCardData): void {
+    console.log(`卡片被点击: index=${cardIndex}`)
+    this.currentOutletIndex = cardIndex + 1
+    this.stateManager.updateCurrentOutletIndex(this.currentOutletIndex)
+    this.showOutletDialog = true
+    this.stateManager.updateShowOutletDialog(true)
+    
+    // 也可以保留选中数据供后续使用
     this.selectedCardIndex = cardIndex
     this.selectedCardData = cardData
-    this.showCardDialog = true
   }
 
   // 关闭卡片详情对话框
