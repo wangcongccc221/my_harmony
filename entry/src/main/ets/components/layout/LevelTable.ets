@@ -245,8 +245,12 @@ export struct LevelTable {
       }
       .layoutWeight(1)
       .padding(6)
-      .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? (this.getCurrentTheme().primary + '20') : this.getCurrentTheme().surfaceColor)
-      .border({ width: { right: 1 }, color: this.isCellSelected(rowIndex, colIndex) ? this.getCurrentTheme().primary : this.getCurrentTheme().borderColor })
+      // 选中时：背景更鲜艳 + 主题色边框加粗，更显眼
+      .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? (this.getCurrentTheme().primary + 'AA') : this.getCurrentTheme().surfaceColor)
+      .border({
+        width: this.isCellSelected(rowIndex, colIndex) ? { right: 2, top: 2, bottom: 2, left: 2 } : { right: 1 },
+        color: this.isCellSelected(rowIndex, colIndex) ? this.getCurrentTheme().primary : this.getCurrentTheme().borderColor
+      })
       .scrollable(ScrollDirection.Horizontal)
       .scrollBar(BarState.Auto)
       .scrollBarWidth(6)
@@ -254,13 +258,17 @@ export struct LevelTable {
       // 常规单元格
       Text(cellText)
         .fontSize(26)
-        .fontColor(this.getCurrentTheme().subTextColor)
-        .fontWeight(FontWeight.Normal)
+        .fontColor(this.isCellSelected(rowIndex, colIndex) ? this.getCurrentTheme().primary : this.getCurrentTheme().subTextColor)
+        .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Medium : FontWeight.Normal)
         .textAlign(TextAlign.Center)
         .layoutWeight(1)
         .padding(10)
-        .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? (this.getCurrentTheme().primary + '20') : this.getCurrentTheme().surfaceColor)
-        .border({ width: { right: 1 }, color: this.isCellSelected(rowIndex, colIndex) ? this.getCurrentTheme().primary : this.getCurrentTheme().borderColor })
+        // 选中时：背景更鲜艳 + 主题色边框加粗，更显眼
+        .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? (this.getCurrentTheme().primary + 'AA') : this.getCurrentTheme().surfaceColor)
+        .border({
+          width: this.isCellSelected(rowIndex, colIndex) ? { right: 2, top: 2, bottom: 2, left: 2 } : { right: 1 },
+          color: this.isCellSelected(rowIndex, colIndex) ? this.getCurrentTheme().primary : this.getCurrentTheme().borderColor
+        })
         .draggable(this.enableDrag)
         .onClick(() => {
           // 允许点击任意列触发选中（包含等级列）

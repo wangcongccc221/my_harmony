@@ -33,6 +33,7 @@ export struct ThirdLayer {
   onDragEnterCallback: () => void = () => {}
   onDragLeaveCallback: () => void = () => {}
   onTouchCallback: () => void = () => {}
+  onClickCallback: () => void = () => {}
   deleteItemFromThirdLayer: () => void = () => {}
 
   // 拖拽处理器
@@ -42,6 +43,10 @@ export struct ThirdLayer {
   private scroller: Scroller = new Scroller()
   private lastDataLength: number = 0
   @State private scrollKey: number = 0 // 用于强制重新创建Scroll组件
+  
+  // 双击检测相关
+  private lastClickTime: number = 0
+  private readonly DOUBLE_CLICK_INTERVAL: number = 300 // 双击间隔时间（毫秒）
 
   build() {
     Column() {
@@ -64,8 +69,31 @@ export struct ThirdLayer {
       if (DEBUG_LOGS) { console.log('第三层onDrop事件触发:', extraParams) }
       this.onDropCallback(event, extraParams)
     })
-    .onTouch(() => {
+    .onTouch((event?: TouchEvent) => {
+      if (!event) { return }
+      
+      // 先执行原有的触摸回调（用于拖拽检测）
       this.onTouchCallback()
+      
+      // 双击检测：当触摸抬起时检查时间间隔
+      if (event.type === TouchType.Up) {
+        const currentTime = Date.now()
+        const timeSinceLastClick = currentTime - this.lastClickTime
+        
+        // 如果两次点击间隔在阈值内，认为是双击
+        if (timeSinceLastClick > 0 && timeSinceLastClick <= this.DOUBLE_CLICK_INTERVAL) {
+          // 双击事件
+          console.log('第三层被双击，通知父组件显示详情对话框')
+          if (this.onClickCallback) {
+            this.onClickCallback()
+          }
+          // 重置时间戳，避免连续触发
+          this.lastClickTime = 0
+        } else {
+          // 更新最后点击时间
+          this.lastClickTime = currentTime
+        }
+      }
     })
     .onDragEnter((event: DragEvent) => {
       if (DEBUG_LOGS) { console.log('第三层onDragEnter事件触发') }
@@ -74,6 +102,28 @@ export struct ThirdLayer {
     .onDragLeave((event: DragEvent) => {
       if (DEBUG_LOGS) { console.log('第三层onDragLeave事件触发') }
       this.onDragLeaveCallback()
+    })
+    .onTouch((event?: TouchEvent) => {
+      if (!event) { return }
+      // 检测双击：当触摸抬起时检查时间间隔
+      if (event.type === TouchType.Up) {
+        const currentTime = Date.now()
+        const timeSinceLastClick = currentTime - this.lastClickTime
+        
+        // 如果两次点击间隔在阈值内，认为是双击
+        if (timeSinceLastClick > 0 && timeSinceLastClick <= this.DOUBLE_CLICK_INTERVAL) {
+          // 双击事件
+          console.log('第三层被双击，通知父组件显示详情对话框')
+          if (this.onClickCallback) {
+            this.onClickCallback()
+          }
+          // 重置时间戳，避免连续触发
+          this.lastClickTime = 0
+        } else {
+          // 更新最后点击时间
+          this.lastClickTime = currentTime
+        }
+      }
     })
   }
 

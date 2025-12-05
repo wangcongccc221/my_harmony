@@ -81,6 +81,8 @@ export struct ThreeLayerCard {
   
   // 拖拽回调
   onCardDrop?: (data: ThreeLayerCardData) => void
+  // 第三层点击回调
+  onThirdLayerClick?: () => void
   @State private isHovering: boolean = false
   // 本地可见渲染用列表，确保立即可见
   @State private localChartData: number[] = []
@@ -393,6 +395,13 @@ export struct ThreeLayerCard {
             this.handleGridDragDrop(gridDragData)
           }
         },
+        onClickCallback: () => {
+          // 点击第三层时通知父组件
+          console.log('第三层被点击，通知父组件显示详情对话框')
+          if (this.onThirdLayerClick) {
+            this.onThirdLayerClick()
+          }
+        },
         deleteItemFromThirdLayer: () => this.deleteItemFromThirdLayer()
       })
     }
@@ -406,7 +415,7 @@ export struct ThreeLayerCard {
     .onClick(() => {
       this.onCardDrop?.(this.cardData)
     })
-    // 大卡片外层：落在卡片容器（第一/第二层或卡片边内空白）视为“内容不变”
+    // 大卡片外层：落在卡片容器（第一/第二层或卡片边内空白）视为"内容不变"
     .onDrop((event: DragEvent, extraParams: string) => {
       UseDragDrop.handleOuterDrop(extraParams)
       // 外层容器不改变 handled 标志，避免覆盖真实目标层的处理结果

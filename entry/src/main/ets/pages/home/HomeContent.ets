@@ -23,6 +23,8 @@ import { HomeEventHandler } from './core/HomeEventHandler'
 import { HomeStateManager } from './core/HomeStateManager'
 import { HomeState, DEFAULT_HOME_STATE } from './core/HomeState'
 import { DEFAULT_TOP_BAR_DATA, DEFAULT_SORTING_INFO, DEFAULT_SETTINGS, DEFAULT_SELECTED_BUTTON, DEFAULT_SELECTED_FSM } from './HomeConstants'
+import { CardDetailDialog } from '../../components/dialogs/CardDetailDialog'
+import { ThreeLayerCardData } from '../../components/ThreeLayerCard/types'
 
 // 日志总开关（减少频繁日志导致的内存与卡顿）
 const LOG_TIME_ENABLED: boolean = false
@@ -91,6 +93,10 @@ export struct HomeContent {
   @StorageLink(HOME_SELECTED_BUTTON) private selectedButton: string = DEFAULT_HOME_STATE.selectedButton
   @State private showOutletDialog: boolean = DEFAULT_HOME_STATE.showOutletDialog
   @State private currentOutletIndex: number = DEFAULT_HOME_STATE.currentOutletIndex
+  // 卡片详情对话框状态
+  @State private showCardDialog: boolean = false
+  @State private selectedCardIndex: number = -1
+  @State private selectedCardData: ThreeLayerCardData | null = null
   @State private topProduction: string = DEFAULT_HOME_STATE.topProduction
   @State private topSumWeightTon: string = DEFAULT_HOME_STATE.topSumWeightTon
   @State private topSumCounts: string = DEFAULT_HOME_STATE.topSumCounts
@@ -121,6 +127,7 @@ export struct HomeContent {
   @StorageLink(StorageKeys.LEVEL_STAT_REMOVE) private levelStatRemove: Record<string, number | string> | null = null
   @State private statsVersion: number = 0
   @State private tablesRefreshKey: number = 0
+  @State private settingsRenderKey: number = 0
   
   // FSM设置状态存储（每个FSM独立保存设置状态）
   @State private fsm1Settings: FSMSettings = {
@@ -464,6 +471,20 @@ export struct HomeContent {
     this.eventHandler.handleOutletCancel()
   }
 
+  // 处理卡片点击
+  private handleCardClick(cardIndex: number, cardData: ThreeLayerCardData): void {
+    this.selectedCardIndex = cardIndex
+    this.selectedCardData = cardData
+    this.showCardDialog = true
+  }
+
+  // 关闭卡片详情对话框
+  private closeCardDialog(): void {
+    this.showCardDialog = false
+    this.selectedCardIndex = -1
+    this.selectedCardData = null
+  }
+
 
 
   // 将原来的build方法内容提取为单独的方法
@@ -497,15 +518,37 @@ export struct HomeContent {
           onToggle: () => { this.toggleSetting('设置4') } 
         })
       }
-      .justifyContent(FlexAlign.End)
+      .key(`settings-${this.settingsRenderKey}`)
+      .width('100%')
+      .height('auto')
+      .justifyContent(FlexAlign.Start)
       .alignItems(VerticalAlign.Center)
-      .padding({ top: '0%', left: '0%', right: '0.93%', bottom: '1%' })
+      .padding({ top: '1%', left: '0.93%', right: '0.93%', bottom: '1%' })
+      .onAppear(() => {
+        // 使用多次延迟刷新确保布局完成
+        setTimeout(() => {
+          this.settingsRenderKey++
+          console.log('[HomeContent] 设置区域已显示，第一次刷新')
+        }, 50)
+        setTimeout(() => {
+          this.settingsRenderKey++
+          console.log('[HomeContent] 设置区域已显示，第二次刷新')
+        }, 300)
+        setTimeout(() => {
+          this.settingsRenderKey++
+          console.log('[HomeContent] 设置区域已显示，第三次刷新')
+        }, 600)
+      })
       // 主页信息卡片：分选速度 | 本批重量 | 本批个数 | 开始时间 | 分选程序 | 分选效率 | 平均重量 | 实时产量 | 间隔速度
       SortingInfoCard()
       .margin({ bottom: '1%' })
 
       // 液体卡片区域：单容器自动换行，固定显示两排高度，支持纵向滚动查看更多
-      LiquidCardsArea()
+      LiquidCardsArea({
+        onCardClick: (cardIndex: number, cardData: ThreeLayerCardData) => {
+          this.handleCardClick(cardIndex, cardData)
+        }
+      })
       .margin({ bottom: '0.5%' })
 
       // 数据表格TabBar组件 - 替换原有的FunctionButtons和DataTablesCard
@@ -632,6 +675,21 @@ export struct HomeContent {
             this.cancelOutletSetting()
           }
         })
+        
+        // 卡片详情对话框 - 放在Stack的最上层，显示在整个页面中间
+        if (this.showCardDialog && this.selectedCardIndex >= 0 && this.selectedCardData) {
+          CardDetailDialog({
+            isVisible: this.showCardDialog,
+            cardNumber: this.selectedCardIndex + 1,
+            cardData: this.selectedCardData,
+            onConfirm: () => {
+              this.closeCardDialog()
+            },
+            onCancel: () => {
+              this.closeCardDialog()
+            }
+          })
+        }
       // 拖拽预览浮层（跟随指针）
       if (this.dragOverlayActive) {
         // 半透明标签，显示被拖拽的单元格内容
@@ -652,6 +710,19 @@ export struct HomeContent {
     .height('100%')
     .focusable(true)
     .defaultFocus(true) // 让主页整体默认获得键盘焦点
+    .onAppear(() => {
+      // Stack 出现时触发设置区域刷新，确保布局正确计算
+      Promise.resolve().then(() => {
+        setTimeout(() => {
+          this.settingsRenderKey++
+          console.log('[HomeContent] Stack已显示，刷新设置区域')
+        }, 100)
+        setTimeout(() => {
+          this.settingsRenderKey++
+          console.log('[HomeContent] Stack已显示，再次刷新设置区域')
+        }, 500)
+      })
+    })
     .onKeyEvent((event) => {
       // 主页监听左 Ctrl，写入全局多选状态
       if (event.keyCode === KeyCode.KEYCODE_CTRL_LEFT) {
@@ -760,16 +831,39 @@ export struct HomeContent {
 
     // 初始化主页状态（新增的@StorageLink变量）
     AppStorage.setOrCreate(HOME_SELECTED_FSM, this.selectedFSM)
+    // 确保设置状态正确同步到 AppStorage（在初始化之后立即同步）
     AppStorage.setOrCreate(HOME_SETTING1_ENABLED, this.setting1Enabled)
+    AppStorage.setOrCreate(HOME_SETTING2_ENABLED, this.setting2Enabled)
+    AppStorage.setOrCreate(HOME_SETTING3_ENABLED, this.setting3Enabled)
+    AppStorage.setOrCreate(HOME_SETTING4_ENABLED, this.setting4Enabled)
+    AppStorage.setOrCreate(HOME_SELECTED_BUTTON, this.selectedButton)
     
     // 注册HomeDataManager到AppStorage，供其他组件使用
     AppStorage.setOrCreate('HOME_DATA_MANAGER', this.dataManager)
     // 注册HomeContent实例到AppStorage，供其他组件使用
     AppStorage.setOrCreate('HOME_CONTENT_REF', this)
-    AppStorage.setOrCreate(HOME_SETTING2_ENABLED, this.setting2Enabled)
-    AppStorage.setOrCreate(HOME_SETTING3_ENABLED, this.setting3Enabled)
-    AppStorage.setOrCreate(HOME_SETTING4_ENABLED, this.setting4Enabled)
-    AppStorage.setOrCreate(HOME_SELECTED_BUTTON, this.selectedButton)
+    
+    // 使用异步延迟确保首次渲染时布局正确计算
+    Promise.resolve().then(() => {
+      // 强制同步设置状态，确保首次渲染时能够正确显示
+      AppStorage.set(HOME_SETTING1_ENABLED, this.setting1Enabled)
+      AppStorage.set(HOME_SETTING2_ENABLED, this.setting2Enabled)
+      AppStorage.set(HOME_SETTING3_ENABLED, this.setting3Enabled)
+      AppStorage.set(HOME_SETTING4_ENABLED, this.setting4Enabled)
+      // 延迟刷新设置区域布局，确保首次渲染时完整显示
+      setTimeout(() => {
+        this.settingsRenderKey++
+        console.log('[HomeContent] aboutToAppear: 第一次刷新设置区域')
+      }, 100)
+      setTimeout(() => {
+        this.settingsRenderKey++
+        console.log('[HomeContent] aboutToAppear: 第二次刷新设置区域')
+      }, 400)
+      setTimeout(() => {
+        this.settingsRenderKey++
+        console.log('[HomeContent] aboutToAppear: 第三次刷新设置区域')
+      }, 800)
+    })
 
     // 初始化表格数据
     this.addDataToTables()

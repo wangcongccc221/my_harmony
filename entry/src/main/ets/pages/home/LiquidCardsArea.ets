@@ -69,6 +69,9 @@ export struct LiquidCardsArea {
   @StorageLink(HOME_SELECTED_FSM) @Watch('onFSMChange') private selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
   // 简化：不记录几何，直接在卡片自身接收抬手投放
   
+  // 卡片点击回调
+  onCardClick?: (cardIndex: number, cardData: ThreeLayerCardData) => void
+  
   // 全局数据管理器实例
   private globalDataManager: GlobalCardDataManager = GlobalCardDataManager.getInstance()
   
@@ -357,42 +360,52 @@ export struct LiquidCardsArea {
    * - 内边距：左右20px，上下0px和4px
    */
   build() {
-    Scroll() {
-      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Start }) {
-        ForEach(this.cardDataList, (cardData: ThreeLayerCardData, idx: number) => {
-          // 使用新的三层卡片
-          ThreeLayerCard({
-            cardData: cardData,
-            cardWidth: '9.26%',
-            cardHeight: '50.13%',
-            mainColor: this.getCurrentTheme().primary,
-            enableWave: this.isWaveAnimationEnabled() && idx < this.getWaveCount() && (!cardData.thirdLayer.chartData || cardData.thirdLayer.chartData.length === 0),
-            onCardDrop: (data: ThreeLayerCardData) => {
-              this.handleCardDrop(idx, data)
-            }
+    Stack() {
+      // 卡片区域
+      Scroll() {
+        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Start }) {
+          ForEach(this.cardDataList, (cardData: ThreeLayerCardData, idx: number) => {
+            // 使用新的三层卡片
+            ThreeLayerCard({
+              cardData: cardData,
+              cardWidth: '9.26%',
+              cardHeight: '50.13%',
+              mainColor: this.getCurrentTheme().primary,
+              enableWave: this.isWaveAnimationEnabled() && idx < this.getWaveCount() && (!cardData.thirdLayer.chartData || cardData.thirdLayer.chartData.length === 0),
+              onCardDrop: (data: ThreeLayerCardData) => {
+                this.handleCardDrop(idx, data)
+              },
+              onThirdLayerClick: () => {
+                // 点击第三层时触发回调
+                if (this.onCardClick) {
+                  this.onCardClick(idx, cardData)
+                }
+              }
+            })
+            .margin({ right: '0.28%', bottom: '0.28%' })
           })
-          .margin({ right: '0.28%', bottom: '0.28%' })
-        })
+        }
+        .width('100%')
       }
       .width('100%')
+      // 拖拽激活时禁用滚动，避免抢占onDrop事件
+      .enabled(!this.gridDragActive)
+      .scrollable(ScrollDirection.Vertical)
+      .scrollBar(BarState.Auto)
+      .edgeEffect(EdgeEffect.Spring)
+      .scrollBarColor(this.getCurrentTheme().borderColor)
+      .scrollBarWidth(6)
+      .friction(0.6)
+      .padding({ left: '0.93%', right: '0.93%', top: '0%', bottom: '0.28%' })
+      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      .border({ width: 1, color: this.getCurrentTheme().borderColor })
+      .borderRadius(10)
+      .onAppear(() => {
+        this.initializeCardData()
+      })
     }
     .width('100%')
-    .height('36%') // 液体卡片区域占36%
-    // 拖拽激活时禁用滚动，避免抢占onDrop事件
-    .enabled(!this.gridDragActive)
-    .scrollable(ScrollDirection.Vertical)
-    .scrollBar(BarState.Auto)
-    .edgeEffect(EdgeEffect.Spring)
-    .scrollBarColor(this.getCurrentTheme().borderColor)
-    .scrollBarWidth(6)
-    .friction(0.6)
-    .padding({ left: '0.93%', right: '0.93%', top: '0%', bottom: '0.28%' })
-    .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-    .border({ width: 1, color: this.getCurrentTheme().borderColor })
-    .borderRadius(10)
-    .onAppear(() => {
-      this.initializeCardData()
-    })
+    .height('36%')
   }
 
 }

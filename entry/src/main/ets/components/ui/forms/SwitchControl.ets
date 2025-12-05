@@ -28,6 +28,7 @@ export struct SwitchControl {
         .fontSize(12)
         .fontColor(this.getCurrentTheme().textColor)
         .margin({ right: 8 })
+        .flexShrink(0)
 
       IBestSwitch({
         value: $isEnabled,
@@ -47,8 +48,12 @@ export struct SwitchControl {
           return Promise.resolve(true)
         }
       })
+      .flexShrink(0)
     }
+    .width('auto')
+    .height('auto')
     .alignItems(VerticalAlign.Center)
-    .margin({ right: 12 })
+    .margin({ right: 8 })
+    .flexShrink(0)
   }
 }
