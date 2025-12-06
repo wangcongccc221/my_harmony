@@ -145,10 +145,7 @@ export struct CardDetailDialog {
               // 统计信息卡片
               this.buildStatisticsInfoCard()
 
-              // 数据列表卡片
-              if (this.getDataCount() > 0) {
-                this.buildDataListCard()
-              }
+              // 数据列表卡片 (已移除)
             }
             .width('100%')
             .padding({ left: '0.93%', right: '0.93%', top: '1.39%', bottom: '1.39%' })
@@ -272,45 +269,5 @@ export struct CardDetailDialog {
   /**
    * 构建数据列表卡片
    */
-  @Builder
-  private buildDataListCard() {
-    Column() {
-      Text('数据列表')
-        .fontSize(16)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.getCurrentTheme().textColor)
-        .margin({ bottom: '1.04%' })
-      
-      Column() {
-        if (this.cardData && this.cardData.thirdLayer.chartData) {
-          ForEach(this.cardData.thirdLayer.chartData, (value: number, index: number) => {
-            Row() {
-              Text(`${index + 1}.`)
-                .fontSize(14)
-                .fontColor(this.getCurrentTheme().subTextColor)
-                .width('2.78%')
-              Text(`${value}`)
-                .fontSize(14)
-                .fontWeight(FontWeight.Medium)
-                .fontColor(this.getCurrentTheme().textColor)
-                .layoutWeight(1)
-            }
-            .width('100%')
-            .padding({ left: '0.56%', right: '0.56%', top: '0.42%', bottom: '0.42%' })
-            .backgroundColor(index % 2 === 0 ? this.getCurrentTheme().backgroundColor : this.getCurrentTheme().controlBg)
-            .borderRadius(4)
-            .margin({ bottom: '0.35%' })
-          })
-        }
-      }
-      .width('100%')
-      .constraintSize({ maxHeight: '13.89%' })
-    }
-    .width('100%')
-    .padding({ left: '0.93%', right: '0.93%', top: '1.39%', bottom: '1.39%' })
-    .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
-    .borderRadius(8)
-    .border({ width: 1, color: this.getCurrentTheme().borderColor })
-    .margin({ bottom: '1.39%' })
-  }
+
 }

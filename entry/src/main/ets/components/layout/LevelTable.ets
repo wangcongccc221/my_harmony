@@ -104,6 +104,12 @@ export struct LevelTable {
   
   // 外层容器背景色（不传则使用主题 surfaceColor）
   @Prop containerBg: string = ''
+
+  // 字体大小（默认26，弹窗可传小值）
+  @Prop fontSize: number = 26
+  
+  // 单元格内边距（默认10，弹窗可传小值）
+  @Prop cellPadding: number = 10
   
   // 多选状态管理
   @State private selectedCells: Set<string> = new Set()
@@ -257,12 +263,12 @@ export struct LevelTable {
     } else {
       // 常规单元格
       Text(cellText)
-        .fontSize(26)
+        .fontSize(this.fontSize)
         .fontColor(this.isCellSelected(rowIndex, colIndex) ? this.getCurrentTheme().primary : this.getCurrentTheme().subTextColor)
         .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Medium : FontWeight.Normal)
         .textAlign(TextAlign.Center)
         .layoutWeight(1)
-        .padding(10)
+        .padding(this.cellPadding)
         // 选中时：背景更鲜艳 + 主题色边框加粗，更显眼
         .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? (this.getCurrentTheme().primary + 'AA') : this.getCurrentTheme().surfaceColor)
         .border({
@@ -483,20 +489,20 @@ export struct LevelTable {
                 text: title,
                 rowIndex: -1,
                 colIndex: idx,
-                fontSize: (this.tableName === '等级统计表' ? 24 : 26),
-                cellPadding: 10,
+                fontSize: (this.tableName === '等级统计表' ? 24 : this.fontSize),
+                cellPadding: this.cellPadding,
                 isHeader: true,
                 canDrag: false
               })
             } else {
               // 可拖拽的表头单元格
               Text(title)
-                .fontSize(this.tableName === '等级统计表' ? 24 : 26)
+                .fontSize(this.tableName === '等级统计表' ? 24 : this.fontSize)
                 .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
                 .fontWeight(FontWeight.Bold)
                 .textAlign(TextAlign.Center)
                 .layoutWeight(1)
-                .padding(10)
+                .padding(this.cellPadding)
                 .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().surfaceColor)
                 .border({ width: { right: 1 }, color: this.getCurrentTheme().borderColor })
                 .draggable(this.enableDrag)
@@ -545,7 +551,7 @@ export struct LevelTable {
           .width('100%')
         }
         .width('100%')
-        .height(this.maxHeight)
+        .constraintSize({ maxHeight: this.maxHeight })
         .scrollable(ScrollDirection.Vertical)
         .scrollBar(BarState.Auto)
         .scrollBarColor(this.getCurrentTheme().borderColor)
@@ -562,7 +568,7 @@ export struct LevelTable {
     .padding(12)
     .margin({ top: 12, left: 12, right: 12, bottom: 8 })
     .alignItems(HorizontalAlign.Center)
-    .justifyContent(FlexAlign.Center)
+    .justifyContent(FlexAlign.Start)
     .focusable(true)
     .onKeyEvent((event) => {
       // 只要检测到左 Ctrl（按下/抬起都会进来）就打印

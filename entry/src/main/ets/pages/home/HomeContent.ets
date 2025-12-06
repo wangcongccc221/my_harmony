@@ -670,6 +670,7 @@ export struct HomeContent {
         OutletDialog({
           isVisible: this.showOutletDialog,
           currentOutletIndex: this.currentOutletIndex,
+          levelTableData: this.getTableData('等级表'),
           onPrevious: () => {
             this.switchToPreviousOutlet()
           },
