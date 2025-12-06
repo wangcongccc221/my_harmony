@@ -174,7 +174,7 @@ export struct OutletDialog {
         .fontSize(14)
         .fontColor('#333333')
         .margin({ right: 8 })
-        .width(60) // 固定标签宽度以对齐
+        .width(70) // 统一标签宽度
       
       TextInput({ text: String(value) })
         .height(24)
@@ -201,14 +201,14 @@ export struct OutletDialog {
     Row() {
       Text(label)
         .fontSize(14)
-        .width(40)
+        .width(70) // 统一标签宽度
         .margin({ right: 8 })
       Select(options)
         .selected(0)
         .value(value)
         .font({ size: 14 })
         .height(28)
-        .width(120)
+        .layoutWeight(1) // 统一使用权重填充
         .onSelect(onSelect)
     }
     .margin({ bottom: 8 })
@@ -220,12 +220,12 @@ export struct OutletDialog {
     Row() {
       Text(label)
         .fontSize(14)
-        .width(40)
+        .width(70) // 统一标签宽度
         .margin({ right: 8 })
       TextInput({ text: String(value) })
         .height(32)
         .fontSize(12)
-        .width(120)
+        .layoutWeight(1) // 统一使用权重填充
         .border({ width: 1, color: '#CCCCCC', radius: 2 })
         .onChange(onChange)
     }
@@ -238,12 +238,12 @@ export struct OutletDialog {
     Row() {
       Text(label)
         .fontSize(14)
-        .width(40)
+        .width(70) // 统一标签宽度
         .margin({ right: 8 })
       TextInput({ text: String(value) })
         .height(32)
         .fontSize(12)
-        .width(120)
+        .layoutWeight(1) // 统一使用权重填充
         .border({ width: 1, color: '#CCCCCC', radius: 2 })
         .onChange(onChange)
       Text(unit)
@@ -392,7 +392,7 @@ export struct OutletDialog {
                                   .width('100%')
                                   .onChange((val) => this.disableCount = Number(val))
                               }
-                              .width(60)
+                              .width(70)
                             }
                             .width('100%')
                             .alignItems(VerticalAlign.Center)
@@ -448,7 +448,7 @@ export struct OutletDialog {
                       Row() {
                         Text('延时时间')
                           .fontSize(13)
-                          .width(60)
+                          .width(70)
                           .margin({ right: 6 })
                         TextInput({ text: String(this.delayTime) })
                           .height(32)
@@ -462,7 +462,7 @@ export struct OutletDialog {
                         
                         Text('持续时间')
                           .fontSize(13)
-                          .width(60)
+                          .width(70)
                           .margin({ right: 6 })
                         TextInput({ text: String(this.durationTime) })
                           .height(32)
@@ -533,12 +533,12 @@ export struct OutletDialog {
                           .height(16)
                         Text('显示名称')
                           .fontSize(14)
-                          .width(40)
+                          .width(70)
                           .margin({ left: 4 })
                         TextInput({ text: this.displayName })
                           .height(32)
                           .fontSize(12)
-                          .width(120)
+                          .layoutWeight(1)
                           .border({ width: 1, color: '#CCCCCC', radius: 2 })
                           .onChange((v) => this.displayName = v)
                       }
@@ -557,18 +557,25 @@ export struct OutletDialog {
 
           // 右侧表格 (60%)
           Column() {
-            LevelTable({
-              tableName: `outlet-dialog-level-table`,
-              tableTitle: '等级表',
-              headerTitles: ['等级', '30', '20', '10', '0'], // 默认表头，如果需要动态的可能需要传参
-              tableRows: this.levelTableData,
-              tableWidth: '100%',
-              maxHeight: '100%', // 恢复最大高度限制，由LevelTable内部的constraintSize控制实际高度
-              enableDrag: false,
-              containerBg: '#FFFFFF',
-              fontSize: 14,
-              cellPadding: 4
-            })
+            // 右侧父容器卡片
+            Column() {
+              LevelTable({
+                tableName: `outlet-dialog-level-table`,
+                tableTitle: '等级表',
+                headerTitles: ['等级', '30', '20', '10', '0'], // 默认表头，如果需要动态的可能需要传参
+                tableRows: this.levelTableData,
+                tableWidth: '100%',
+                maxHeight: '100%', // 恢复最大高度限制，由LevelTable内部的constraintSize控制实际高度
+                enableDrag: false,
+                containerBg: '#FFFFFF',
+                fontSize: 14,
+                cellPadding: 4
+              })
+            }
+            .width('100%')
+            .height('100%')
+            .border({ width: 1, color: '#CCCCCC', radius: 8 }) // 与左侧一致的边框样式
+            .padding(10)
           }
           .width('60%')
           .height('100%')

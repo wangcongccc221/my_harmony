@@ -198,7 +198,7 @@ export struct SimpleDraggableCell {
               : (this.isSelected ? (this.getTheme().primary + '20') : this.getTheme().surfaceColor))
       )
       .border({ 
-        width: { right: 1 }, 
+        width: { right: 1, bottom: 1 }, 
         color: (this.isDragging || this.isSelected) ? this.getTheme().primary : this.getTheme().borderColor 
       })
       .borderRadius((this.isDragging || this.isSelected) ? 4 : 0) // 拖拽或选中时添加圆角

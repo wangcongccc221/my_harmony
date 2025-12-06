@@ -254,7 +254,7 @@ export struct LevelTable {
       // 选中时：背景更鲜艳 + 主题色边框加粗，更显眼
       .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? (this.getCurrentTheme().primary + 'AA') : this.getCurrentTheme().surfaceColor)
       .border({
-        width: this.isCellSelected(rowIndex, colIndex) ? { right: 2, top: 2, bottom: 2, left: 2 } : { right: 1 },
+        width: this.isCellSelected(rowIndex, colIndex) ? { right: 2, top: 2, bottom: 2, left: 2 } : { right: 1, bottom: 1 },
         color: this.isCellSelected(rowIndex, colIndex) ? this.getCurrentTheme().primary : this.getCurrentTheme().borderColor
       })
       .scrollable(ScrollDirection.Horizontal)
@@ -272,7 +272,7 @@ export struct LevelTable {
         // 选中时：背景更鲜艳 + 主题色边框加粗，更显眼
         .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? (this.getCurrentTheme().primary + 'AA') : this.getCurrentTheme().surfaceColor)
         .border({
-          width: this.isCellSelected(rowIndex, colIndex) ? { right: 2, top: 2, bottom: 2, left: 2 } : { right: 1 },
+          width: this.isCellSelected(rowIndex, colIndex) ? { right: 2, top: 2, bottom: 2, left: 2 } : { right: 1, bottom: 1 },
           color: this.isCellSelected(rowIndex, colIndex) ? this.getCurrentTheme().primary : this.getCurrentTheme().borderColor
         })
         .draggable(this.enableDrag)
@@ -504,7 +504,7 @@ export struct LevelTable {
                 .layoutWeight(1)
                 .padding(this.cellPadding)
                 .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().surfaceColor)
-                .border({ width: { right: 1 }, color: this.getCurrentTheme().borderColor })
+                .border({ width: { right: 1, bottom: 1 }, color: this.getCurrentTheme().borderColor })
                 .draggable(this.enableDrag)
                 .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
                   if (!this.enableDrag) {
