@@ -7,7 +7,7 @@
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { KeyCode } from '@kit.InputKit';
 import { IBestSwitch } from '@ibestservices/ibest-ui'
-
+import { SwitchControl } from '../../components/ui/forms/SwitchControl'
 import { TableRow } from '../../components/layout/LevelTable'
 import { DataTablesTabBar } from './DataTablesTabBar'
 import { DragData } from '../../components/layout/DraggableGridTable'
@@ -336,28 +336,26 @@ export struct HomeContent {
     }
   }
 
-  // 切换设置开关（互斥模式 - 同一时间只能有一个开启）
-  private toggleSetting(setting: '设置1' | '设置2' | '设置3' | '设置4'): void {
-    // 如果当前开关是开启状态，则关闭它
-    if (this.settingMap[setting]()) {
-      this.settingUpdateMap[setting](false)
-    } else {
-      // 如果当前开关是关闭状态，则先关闭所有开关，再开启当前开关
-      this.setting1Enabled = false
-      this.setting2Enabled = false
-      this.setting3Enabled = false
-      this.setting4Enabled = false
-      this.stateManager.updateSetting1Enabled(false)
-      this.stateManager.updateSetting2Enabled(false)
-      this.stateManager.updateSetting3Enabled(false)
-      this.stateManager.updateSetting4Enabled(false)
-
-      // 开启当前选中的开关
-      this.settingUpdateMap[setting](true)
+  // 处理设置状态变更（互斥逻辑：当某个开启时，关闭其他所有）
+  private handleSettingChange(activeSetting: '设置1' | '设置2' | '设置3' | '设置4'): void {
+    // 检查当前这个设置是否刚刚变成了"开启"状态
+    // 注意：由于是 @Link 双向绑定，SwitchControl 内部已经修改了 settingXEnabled 的值
+    if (this.settingMap[activeSetting]()) {
+      // 如果它现在是开启的，那么我们需要把其他所有的都关掉
+      const allSettings: ('设置1' | '设置2' | '设置3' | '设置4')[] = ['设置1', '设置2', '设置3', '设置4']
+      allSettings.forEach(setting => {
+        if (setting !== activeSetting) {
+          // 关闭其他设置
+          this.settingUpdateMap[setting](false)
+        }
+      })
+      
+      // 调用事件处理器通知业务层
+      this.eventHandler.toggleSetting(activeSetting)
     }
-
-    // 调用事件处理器
-    this.eventHandler.toggleSetting(setting)
+    // 如果是变成了"关闭"状态，我们不需要做任何事，
+    // 因为 SwitchControl 内部的 isLastEnabled 逻辑已经保证了"最后一个不能关闭"。
+    // 只有当有 >=2 个开启时才能关闭其中一个，这时候也无需联动其他。
   }
 
   // 选择功能按钮
@@ -498,7 +496,57 @@ export struct HomeContent {
   private buildMainContent() {
     Column() {
       // 设置开关区域（FSM切换已移至顶部状态栏）
-
+      Row() {
+        SwitchControl({ 
+          label: '设置1', 
+          isEnabled: $setting1Enabled, 
+          switchSize: 26,
+          isLastEnabled: this.isLastEnabledSetting(0),
+          onToggle: () => { this.handleSettingChange('设置1') } 
+        })
+        SwitchControl({ 
+          label: '设置2', 
+          isEnabled: $setting2Enabled, 
+          switchSize: 26,
+          isLastEnabled: this.isLastEnabledSetting(1),
+          onToggle: () => { this.handleSettingChange('设置2') } 
+        })
+        SwitchControl({ 
+          label: '设置3', 
+          isEnabled: $setting3Enabled, 
+          switchSize: 26,
+          isLastEnabled: this.isLastEnabledSetting(2),
+          onToggle: () => { this.handleSettingChange('设置3') } 
+        })
+        SwitchControl({ 
+          label: '设置4', 
+          isEnabled: $setting4Enabled, 
+          switchSize: 26,
+          isLastEnabled: this.isLastEnabledSetting(3),
+          onToggle: () => { this.handleSettingChange('设置4') } 
+        })
+      }
+      .key(`settings-${this.settingsRenderKey}`)
+      .width('100%')
+      .height('auto')
+      .justifyContent(FlexAlign.Start)
+      .alignItems(VerticalAlign.Center)
+      .padding({ top: '1%', left: '0.93%', right: '0.93%', bottom: '1%' })
+      .onAppear(() => {
+        // 使用多次延迟刷新确保布局完成
+        setTimeout(() => {
+          this.settingsRenderKey++
+          console.log('[HomeContent] 设置区域已显示，第一次刷新')
+        }, 50)
+        setTimeout(() => {
+          this.settingsRenderKey++
+          console.log('[HomeContent] 设置区域已显示，第二次刷新')
+        }, 300)
+        setTimeout(() => {
+          this.settingsRenderKey++
+          console.log('[HomeContent] 设置区域已显示，第三次刷新')
+        }, 600)
+      })
       // 主页信息卡片：分选速度 | 本批重量 | 本批个数 | 开始时间 | 分选程序 | 分选效率 | 平均重量 | 实时产量 | 间隔速度
       SortingInfoCard()
       .margin({ bottom: '1%' })
