@@ -182,7 +182,7 @@ export struct OutletDialog {
         .fontSize(11)
         .padding({ top: 0, bottom: 0, left: 4, right: 4 }) // 移除垂直内边距
         .border({ width: 1, color: '#CCCCCC', radius: 2 })
-        .layoutWeight(1)
+        .width(240) // 固定宽度
         .onChange((val) => onValueChange(val))
       
       if (unit) {
@@ -209,7 +209,7 @@ export struct OutletDialog {
         .value(value)
         .font({ size: 14 })
         .height(28)
-        .width(240) // 固定宽度
+        .width(240)
         .onSelect(onSelect)
     }
     .margin({ bottom: 8 })
@@ -217,7 +217,7 @@ export struct OutletDialog {
   }
 
   @Builder
-  LabeledInputShort(label: string, value: number | string, onChange: (val: string) => void, inputWidth?: number) {
+  LabeledInputShort(label: string, value: number | string, onChange: (val: string) => void, inputWidth: number = 240) {
     Row() {
       Text(label)
         .fontSize(14)
@@ -226,8 +226,7 @@ export struct OutletDialog {
       TextInput({ text: String(value) })
         .height(32)
         .fontSize(12)
-        .width(inputWidth ? inputWidth : undefined)
-        .layoutWeight(inputWidth ? 0 : 1) // 有宽度则不使用权重
+        .width(inputWidth)
         .border({ width: 1, color: '#CCCCCC', radius: 2 })
         .onChange(onChange)
     }
@@ -516,7 +515,7 @@ export struct OutletDialog {
                           .backgroundColor('#F0F0F0')
                           .border({ width: 1, color: '#CCCCCC', radius: 4 })
                       }
-                      .width('40%')
+                      .width('25%')
                       .height(110)
                     }
                   }
@@ -524,26 +523,70 @@ export struct OutletDialog {
                   // 名称
                   GroupContainer({ title: '名称' }) {
                     Column() {
-                      this.LabeledInputShort('自定义', this.customName, (v) => this.customName = v)
-                      this.LabeledInputShort('产品名称', this.productName, (v) => this.productName = v)
+                      // 自定义
+                      Row() {
+                        // 占位符，对齐复选框 (16 + 4 = 20)
+                        Row().width(20)
+                        
+                        Text('自定义')
+                          .fontSize(14)
+                          .width(70)
+                          .margin({ right: 8 })
+                        
+                        TextInput({ text: this.customName })
+                          .height(32)
+                          .fontSize(12)
+                          .layoutWeight(1) // 充满剩余空间
+                          .border({ width: 1, color: '#CCCCCC', radius: 2 })
+                          .onChange((v) => this.customName = v)
+                      }
+                      .width('100%')
+                      .alignItems(VerticalAlign.Center)
+                      .margin({ bottom: 8 })
 
+                      // 产品名称
+                      Row() {
+                        // 占位符，对齐复选框
+                        Row().width(20)
+
+                        Text('产品名称')
+                          .fontSize(14)
+                          .width(70)
+                          .margin({ right: 8 })
+                        
+                        TextInput({ text: this.productName })
+                          .height(32)
+                          .fontSize(12)
+                          .layoutWeight(1) // 充满剩余空间
+                          .border({ width: 1, color: '#CCCCCC', radius: 2 })
+                          .onChange((v) => this.productName = v)
+                      }
+                      .width('100%')
+                      .alignItems(VerticalAlign.Center)
+                      .margin({ bottom: 8 })
+
+                      // 显示名称
                       Row() {
                         Checkbox({ name: 'display', group: 'display' })
                           .select(this.displayNameChecked)
                           .onChange((v) => this.displayNameChecked = v)
                           .width(16)
                           .height(16)
+                        
                         Text('显示名称')
                           .fontSize(14)
                           .width(70)
-                          .margin({ left: 4 })
+                          .margin({ left: 4, right: 8 })
+                        
                         TextInput({ text: this.displayName })
                           .height(32)
                           .fontSize(12)
-                          .layoutWeight(1)
+                          .layoutWeight(1) // 充满剩余空间
                           .border({ width: 1, color: '#CCCCCC', radius: 2 })
                           .onChange((v) => this.displayName = v)
                       }
+                      .width('100%')
+                      .alignItems(VerticalAlign.Center)
                     }
                   }
                 }
@@ -593,65 +636,71 @@ export struct OutletDialog {
 
           // 底部按钮栏
           Row() {
-            Button('上一个出口')
-              .backgroundColor('#4CAF50') // 绿色
-              .fontColor('#FFFFFF')
-              .fontSize(14)
-              .height(32)
-              .onClick(() => {
-                if (this.onPrevious) this.onPrevious()
-              })
-            
-            Blank()
-
-            Button('取消')
-              .backgroundColor('#E0E0E0')
-              .fontColor('#333333')
-              .fontSize(14)
-              .height(32)
-              .margin({ right: 10 })
-              .onClick(() => {
-                if (this.onCancel) this.onCancel()
-              })
-            
-            Button('确定')
-              .backgroundColor('#4CAF50') // 绿色
-              .fontColor('#FFFFFF')
-              .fontSize(14)
-              .height(32)
-              .margin({ right: 20 })
-              .onClick(() => {
-                if (this.onConfirm) this.onConfirm()
-              })
-            
-            // 常规 Toggle
+            // 左侧：取消、确定
             Row() {
-              Text('常规').fontSize(14).fontColor(this.isGeneral ? '#4CAF50' : '#333333')
-              Toggle({ type: ToggleType.Switch, isOn: this.isGeneral })
-                .onChange((isOn) => this.isGeneral = isOn)
-                .selectedColor('#4CAF50')
-                .switchPointColor('#FFFFFF')
-                .height(20)
-                .margin({ left: 5 })
+              Button('取消')
+                .backgroundColor('#E0E0E0')
+                .fontColor('#333333')
+                .fontSize(14)
+                .height(32)
+                .margin({ right: 10 })
+                .onClick(() => {
+                  if (this.onCancel) this.onCancel()
+                })
+              
+              Button('确定')
+                .backgroundColor('#4CAF50') // 绿色
+                .fontColor('#FFFFFF')
+                .fontSize(14)
+                .height(32)
+                .onClick(() => {
+                  if (this.onConfirm) this.onConfirm()
+                })
             }
-            .margin({ right: 20 })
 
-            Button('缺箱')
-              .backgroundColor(this.isMissingBox ? '#FFA500' : '#E0E0E0')
-              .fontColor(this.isMissingBox ? '#FFFFFF' : '#333333')
-              .fontSize(14)
-              .height(32)
+            // 中间：上一个、下一个
+            Row() {
+              Button('上一个出口')
+                .backgroundColor('#4CAF50') // 绿色
+                .fontColor('#FFFFFF')
+                .fontSize(14)
+                .height(32)
+                .margin({ right: 20 })
+                .onClick(() => {
+                  if (this.onPrevious) this.onPrevious()
+                })
+
+              Button('下一个出口')
+                .backgroundColor('#4CAF50') // 绿色
+                .fontColor('#FFFFFF')
+                .fontSize(14)
+                .height(32)
+                .onClick(() => {
+                  if (this.onNext) this.onNext()
+                })
+            }
+
+            // 右侧：常规、缺箱
+            Row() {
+              // 常规 Toggle
+              Row() {
+                Text('常规').fontSize(14).fontColor(this.isGeneral ? '#4CAF50' : '#333333')
+                Toggle({ type: ToggleType.Switch, isOn: this.isGeneral })
+                  .onChange((isOn) => this.isGeneral = isOn)
+                  .selectedColor('#4CAF50')
+                  .switchPointColor('#FFFFFF')
+                  .height(20)
+                  .margin({ left: 5 })
+              }
               .margin({ right: 20 })
-              .onClick(() => this.isMissingBox = !this.isMissingBox)
 
-            Button('下一个出口')
-              .backgroundColor('#4CAF50') // 绿色
-              .fontColor('#FFFFFF')
-              .fontSize(14)
-              .height(32)
-              .onClick(() => {
-                if (this.onNext) this.onNext()
-              })
+              Button('缺箱')
+                .backgroundColor(this.isMissingBox ? '#FFA500' : '#E0E0E0')
+                .fontColor(this.isMissingBox ? '#FFFFFF' : '#333333')
+                .fontSize(14)
+                .height(32)
+                .onClick(() => this.isMissingBox = !this.isMissingBox)
+            }
           }
           .width('100%')
           .height(50)
