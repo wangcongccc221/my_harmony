@@ -27,6 +27,17 @@ interface SelectedCell {
   col: number;
 }
 
+// 选择项类型与常量
+interface SelectOption {
+  value: string;
+}
+
+const SPEC_OPTIONS: SelectOption[] = [
+  { value: '' },
+  { value: '规格A' },
+  { value: '规格B' },
+]
+
 @Component
 struct GroupContainer {
   @Prop title: string = ''
@@ -196,6 +207,64 @@ export struct OutletDialog {
     .width('100%')
     .alignItems(VerticalAlign.Center)
     .margin({ bottom: 8 })
+  }
+
+  @Builder
+  LabeledSelectShort(label: string, value: string, options: SelectOption[], onSelect: (index: number, value: string) => void) {
+    Row() {
+      Text(label)
+        .fontSize(14)
+        .width(40)
+        .margin({ right: 8 })
+      Select(options)
+        .selected(0)
+        .value(value)
+        .font({ size: 14 })
+        .height(28)
+        .width(120)
+        .onSelect(onSelect)
+    }
+    .margin({ bottom: 8 })
+    .width('100%')
+  }
+
+  @Builder
+  LabeledInputShort(label: string, value: number | string, onChange: (val: string) => void) {
+    Row() {
+      Text(label)
+        .fontSize(14)
+        .width(40)
+        .margin({ right: 8 })
+      TextInput({ text: String(value) })
+        .height(32)
+        .fontSize(12)
+        .width(120)
+        .border({ width: 1, color: '#CCCCCC', radius: 2 })
+        .onChange(onChange)
+    }
+    .margin({ bottom: 8 })
+    .width('100%')
+  }
+
+  @Builder
+  LabeledInputWithUnitShort(label: string, value: number | string, unit: string, onChange: (val: string) => void) {
+    Row() {
+      Text(label)
+        .fontSize(14)
+        .width(40)
+        .margin({ right: 8 })
+      TextInput({ text: String(value) })
+        .height(32)
+        .fontSize(12)
+        .width(120)
+        .border({ width: 1, color: '#CCCCCC', radius: 2 })
+        .onChange(onChange)
+      Text(unit)
+        .fontSize(14)
+        .margin({ left: 4 })
+    }
+    .margin({ bottom: 8 })
+    .width('100%')
   }
 
   build() {
@@ -443,99 +512,31 @@ export struct OutletDialog {
                     // 出口规格
                     GroupContainer({ title: '出口规格' }) {
                       Row() {
-                        // 左侧三个输入框
                         Column() {
-                          Row() {
-                            Text('规格')
-                              .fontSize(14)
-                              .width(40)
-                              .margin({ right: 8 })
-                            Select([{ value: '' }, { value: '规格A' }, { value: '规格B' }])
-                              .selected(0)
-                              .value(this.spec)
-                              .font({ size: 14 })
-                              .height(28)
-                              .width(120)
-                              .onSelect((index, value) => this.spec = value)
-                          }
-                          .margin({ bottom: 8 })
-                          .width('100%')
-
-                          Row() {
-                            Text('净重')
-                              .fontSize(14)
-                              .width(40)
-                              .margin({ right: 8 })
-                            TextInput({ text: String(this.netWeight) })
-                              .height(32)
-                              .fontSize(12)
-                              .width(120)
-                              .border({ width: 1, color: '#CCCCCC', radius: 2 })
-                              .onChange((v) => this.netWeight = Number(v))
-                            Text('g')
-                              .fontSize(14)
-                              .margin({ left: 4 })
-                          }
-                          .margin({ bottom: 8 })
-                          .width('100%')
-
-                          Row() {
-                            Text('尺寸')
-                              .fontSize(14)
-                              .width(40)
-                              .margin({ right: 8 })
-                            TextInput({ text: this.dimensions })
-                              .height(32)
-                              .fontSize(12)
-                              .width(120)
-                              .border({ width: 1, color: '#6d9651ff', radius: 2 })
-                              .onChange((v) => this.dimensions = v)
-                          }
-                          .width('100%')
+                          this.LabeledSelectShort('规格', this.spec, SPEC_OPTIONS, (index, value) => this.spec = value)
+                          this.LabeledInputWithUnitShort('净重', this.netWeight, 'g', (v) => this.netWeight = Number(v))
+                          this.LabeledInputShort('尺寸', this.dimensions, (v) => this.dimensions = v)
                         }
-                        .layoutWeight(1) // 占据剩余空间
+                        .layoutWeight(1)
                         .margin({ right: 10 })
 
-                        // 右侧占位方块
                         Column() {
-                          // 占位方块 (加大尺寸)
                           Row()
                             .width('100%')
                             .height('100%')
                             .backgroundColor('#F0F0F0')
                             .border({ width: 1, color: '#CCCCCC', radius: 4 })
                         }
-                        .width('40%') // 加大宽度
-                        .height(110) // 与左侧内容高度匹配
+                        .width('40%')
+                        .height(110)
                       }
                     }
 
                     // 名称
                     GroupContainer({ title: '名称' }) {
                       Column() {
-                        Row() {
-                          Text('自定义')
-                            .fontSize(14)
-                            .width(60)
-                          TextInput({ text: this.customName })
-                            .height(32)
-                            .fontSize(12)
-                            .layoutWeight(1)
-                            .border({ width: 1, color: '#CCCCCC', radius: 2 })
-                            .onChange((v) => this.customName = v)
-                        }.margin({ bottom: 8 })
-
-                        Row() {
-                          Text('产品名称')
-                            .fontSize(14)
-                            .width(60)
-                          TextInput({ text: this.productName })
-                            .height(32)
-                            .fontSize(12)
-                            .layoutWeight(1)
-                            .border({ width: 1, color: '#CCCCCC', radius: 2 })
-                            .onChange((v) => this.productName = v)
-                        }.margin({ bottom: 8 })
+                        this.LabeledInputShort('自定义', this.customName, (v) => this.customName = v)
+                        this.LabeledInputShort('产品名称', this.productName, (v) => this.productName = v)
 
                         Row() {
                           Checkbox({ name: 'display', group: 'display' })
@@ -545,12 +546,12 @@ export struct OutletDialog {
                             .height(16)
                           Text('显示名称')
                             .fontSize(14)
-                            .width(60)
+                            .width(40)
                             .margin({ left: 4 })
                           TextInput({ text: this.displayName })
                             .height(32)
                             .fontSize(12)
-                            .layoutWeight(1)
+                            .width(120)
                             .border({ width: 1, color: '#CCCCCC', radius: 2 })
                             .onChange((v) => this.displayName = v)
                         }
@@ -749,13 +750,24 @@ export struct OutletDialog {
   @Builder
   DataCell(row: number, col: number, value: string) {
     Row() {
-      Text(value).fontSize(14)
+      Text(value)
+        .fontSize(14)
+        .fontColor(
+          (this.selectedCell?.row === row && this.selectedCell?.col === col)
+          ? '#FFFFFF'
+          : '#333333'
+        )
+        .fontWeight(
+          (this.selectedCell?.row === row && this.selectedCell?.col === col)
+          ? FontWeight.Bold
+          : FontWeight.Normal
+        )
     }
     .width('25%')
     .height('100%')
     .backgroundColor(
       (this.selectedCell?.row === row && this.selectedCell?.col === col) 
-      ? '#2196F3' // 选中蓝
+      ? '#0A84FF'
       : '#FFFFFF'
     )
     .border({ 

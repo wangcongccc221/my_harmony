@@ -1392,10 +1392,10 @@ struct Page {
       if (event.keyCode === KeyCode.KEYCODE_CTRL_LEFT) {
         if (event.type === KeyType.Down) {
           AppStorage.setOrCreate('HOME_CTRL_PRESSED', true);
-          console.log('Home: 左CTRL键已按下（全局）');
+          3
         } else if (event.type === KeyType.Up) {
           AppStorage.setOrCreate('HOME_CTRL_PRESSED', false);
-          console.log('Home: 左CTRL键已释放（全局）');
+
         }
       }
       return false;

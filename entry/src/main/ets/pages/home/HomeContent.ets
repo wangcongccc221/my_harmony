@@ -7,7 +7,7 @@
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { KeyCode } from '@kit.InputKit';
 import { IBestSwitch } from '@ibestservices/ibest-ui'
-import { SwitchControl } from '../../components/ui/forms/SwitchControl'
+
 import { TableRow } from '../../components/layout/LevelTable'
 import { DataTablesTabBar } from './DataTablesTabBar'
 import { DragData } from '../../components/layout/DraggableGridTable'
@@ -498,53 +498,7 @@ export struct HomeContent {
   private buildMainContent() {
     Column() {
       // 设置开关区域（FSM切换已移至顶部状态栏）
-      Row() {
-        SwitchControl({ 
-          label: '设置1', 
-          isEnabled: $setting1Enabled, 
-          isLastEnabled: this.isLastEnabledSetting(0),
-          onToggle: () => { this.toggleSetting('设置1') } 
-        })
-        SwitchControl({ 
-          label: '设置2', 
-          isEnabled: $setting2Enabled, 
-          isLastEnabled: this.isLastEnabledSetting(1),
-          onToggle: () => { this.toggleSetting('设置2') } 
-        })
-        SwitchControl({ 
-          label: '设置3', 
-          isEnabled: $setting3Enabled, 
-          isLastEnabled: this.isLastEnabledSetting(2),
-          onToggle: () => { this.toggleSetting('设置3') } 
-        })
-        SwitchControl({ 
-          label: '设置4', 
-          isEnabled: $setting4Enabled, 
-          isLastEnabled: this.isLastEnabledSetting(3),
-          onToggle: () => { this.toggleSetting('设置4') } 
-        })
-      }
-      .key(`settings-${this.settingsRenderKey}`)
-      .width('100%')
-      .height('auto')
-      .justifyContent(FlexAlign.Start)
-      .alignItems(VerticalAlign.Center)
-      .padding({ top: '1%', left: '0.93%', right: '0.93%', bottom: '1%' })
-      .onAppear(() => {
-        // 使用多次延迟刷新确保布局完成
-        setTimeout(() => {
-          this.settingsRenderKey++
-          console.log('[HomeContent] 设置区域已显示，第一次刷新')
-        }, 50)
-        setTimeout(() => {
-          this.settingsRenderKey++
-          console.log('[HomeContent] 设置区域已显示，第二次刷新')
-        }, 300)
-        setTimeout(() => {
-          this.settingsRenderKey++
-          console.log('[HomeContent] 设置区域已显示，第三次刷新')
-        }, 600)
-      })
+
       // 主页信息卡片：分选速度 | 本批重量 | 本批个数 | 开始时间 | 分选程序 | 分选效率 | 平均重量 | 实时产量 | 间隔速度
       SortingInfoCard()
       .margin({ bottom: '1%' })
@@ -734,10 +688,10 @@ export struct HomeContent {
       if (event.keyCode === KeyCode.KEYCODE_CTRL_LEFT) {
         if (event.type === KeyType.Down) {
           AppStorage.setOrCreate('HOME_CTRL_PRESSED', true);
-          console.log('HomeContent: 左CTRL键已按下');
+
         } else if (event.type === KeyType.Up) {
           AppStorage.setOrCreate('HOME_CTRL_PRESSED', false);
-          console.log('HomeContent: 左CTRL键已释放');
+
         }
       }
       return false;

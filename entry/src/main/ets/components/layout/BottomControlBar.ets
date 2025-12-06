@@ -6,6 +6,7 @@
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import { StandardRoundButton } from '../ui/buttons/StandardRoundButton'
 import { FruitCupButton } from '../ui/buttons/FruitCupButton'
 
 @Component
@@ -79,20 +80,17 @@ export struct BottomControlBar {
           .alignSelf(ItemAlign.Center)
 
         // SCM按钮
-        Button('1')
-          .fontSize(18)  // 调大到18px
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().textColor)  // 使用主题文字颜色
-          .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-          .border({ width: 1, color: this.getCurrentTheme().borderColor })
-          .borderRadius(4)
-          .width(50)  // 增加宽度
-          .height(40)  // 增加高度
+        StandardRoundButton({
+            text: '1',
+            onClickAction: () => {
+              console.log('SCM按钮被点击')
+              // TODO: 后期添加SCM相关逻辑
+              if (this.onSCMClick) {
+                this.onSCMClick()
+              }
+            }
+        })
           .margin({ right: 16 })
-          .onClick(() => {
-            console.log('SCM按钮被点击')
-            // TODO: 后期添加SCM相关逻辑
-          })
 
         // 果杯标签
         Text('果杯:')

@@ -145,15 +145,22 @@ export struct GridTable {
     if (!this.enableDrag) {
       return
     }
-    
+
+    const isMulti = this.selectedCells.size > 1
+    AppStorage.set(StorageKeys.MULTI_SELECT_ACTIVE_KEY, isMulti)
+
+    if (!isMulti) {
+      // 单选或无选中：避免广播大对象，减少全局重绘
+      AppStorage.set(StorageKeys.MULTI_SELECT_CELLS_KEY, { cells: [], isActive: false })
+      return
+    }
+
     const selectedCellsArray: MultiSelectCell[] = []
-    
     this.selectedCells.forEach(cellId => {
       const parts = cellId.split('_')
       const rowIndex = Number(parts[0])
       const colIndex = Number(parts[1])
       const cellText = this.tableRows[rowIndex]?.[colIndex] || ''
-      
       selectedCellsArray.push({
         rowIndex: rowIndex,
         colIndex: colIndex,
@@ -162,15 +169,12 @@ export struct GridTable {
         cellId: cellId
       })
     })
-    
+
     const multiSelectState: MultiSelectState = {
       cells: selectedCellsArray,
-      isActive: selectedCellsArray.length > 0
+      isActive: true
     }
-    
     AppStorage.set(StorageKeys.MULTI_SELECT_CELLS_KEY, multiSelectState)
-    AppStorage.set(StorageKeys.MULTI_SELECT_ACTIVE_KEY, multiSelectState.isActive)
-    
   }
 
   /**
@@ -561,17 +565,25 @@ export struct GridTable {
   private buildTableCell(cellValue: string, rowIndex: number, colIndex: number) {
     Text(cellValue)
       .fontSize(16)
-      .fontColor(this.getCurrentTheme().textColor)
+      .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : this.getCurrentTheme().textColor)
+      .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Bold : FontWeight.Normal)
       .textAlign(TextAlign.Center)
       .layoutWeight(1)
       .height('100%')
-      .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? '#E3F2FD' : (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)) // 选中时高亮背景
+      .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? '#0A84FF' : (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor))
       .border({
-        width: { right: this.customBorderWidth, bottom: this.customBorderWidth },
-        color: this.isCellSelected(rowIndex, colIndex) ? '#2196F3' : this.getCurrentTheme().borderColor // 选中时蓝色边框
+        width: { 
+          right: this.isCellSelected(rowIndex, colIndex) ? Math.max(2, this.customBorderWidth) : this.customBorderWidth, 
+          bottom: this.isCellSelected(rowIndex, colIndex) ? Math.max(2, this.customBorderWidth) : this.customBorderWidth 
+        },
+        color: this.isCellSelected(rowIndex, colIndex) ? '#0A84FF' : this.getCurrentTheme().borderColor
       })
       .padding(2)
       .draggable(this.enableDrag && !this.isDragDisabledForCell(colIndex))
+      .onTouch(() => {
+        // 触摸立即反馈，避免Click手势识别延迟
+        this.toggleCellSelection(rowIndex, colIndex, cellValue)
+      })
       .onClick(() => {
         // 点击切换选中状态
         this.toggleCellSelection(rowIndex, colIndex, cellValue)
@@ -664,14 +676,18 @@ export struct GridTable {
   private buildRowDragCell(cellValue: string, rowIndex: number, colIndex: number) {
     Text(cellValue)
       .fontSize(16)
-      .fontColor(this.getCurrentTheme().textColor)
+      .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : this.getCurrentTheme().textColor)
+      .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Bold : FontWeight.Normal)
       .textAlign(TextAlign.Center)
       .layoutWeight(1)
       .height('100%')
-      .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? '#E3F2FD' : (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)) // 选中时高亮背景
+      .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? '#0A84FF' : (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor))
       .border({
-        width: { right: this.customBorderWidth, bottom: this.customBorderWidth },
-        color: this.isCellSelected(rowIndex, colIndex) ? '#2196F3' : this.getCurrentTheme().borderColor // 选中时蓝色边框
+        width: { 
+          right: this.isCellSelected(rowIndex, colIndex) ? Math.max(2, this.customBorderWidth) : this.customBorderWidth, 
+          bottom: this.isCellSelected(rowIndex, colIndex) ? Math.max(2, this.customBorderWidth) : this.customBorderWidth 
+        },
+        color: this.isCellSelected(rowIndex, colIndex) ? '#0A84FF' : this.getCurrentTheme().borderColor
       })
       .padding(2)
       .draggable(this.enableDrag)
