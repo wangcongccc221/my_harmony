@@ -141,6 +141,7 @@ export struct OutletDialog {
       Text(label)
         .fontSize(14)
         .fontColor('#333333')
+        .width(70) // 统一标签宽度
         .margin({ right: 8 })
       
       if (value !== undefined) {
@@ -149,7 +150,7 @@ export struct OutletDialog {
           .fontSize(11) // 调整字体大小，避免显示不全
           .padding({ top: 0, bottom: 0, left: 4, right: 4 }) // 移除垂直内边距，解决显示不全问题
           .border({ width: 1, color: '#CCCCCC', radius: 2 })
-          .layoutWeight(1)
+          .width(240) // 固定宽度
           .onChange((val) => {
              if (onValueChange) onValueChange(val)
           })
@@ -208,7 +209,7 @@ export struct OutletDialog {
         .value(value)
         .font({ size: 14 })
         .height(28)
-        .layoutWeight(1) // 统一使用权重填充
+        .width(240) // 固定宽度
         .onSelect(onSelect)
     }
     .margin({ bottom: 8 })
@@ -216,7 +217,7 @@ export struct OutletDialog {
   }
 
   @Builder
-  LabeledInputShort(label: string, value: number | string, onChange: (val: string) => void) {
+  LabeledInputShort(label: string, value: number | string, onChange: (val: string) => void, inputWidth?: number) {
     Row() {
       Text(label)
         .fontSize(14)
@@ -225,7 +226,8 @@ export struct OutletDialog {
       TextInput({ text: String(value) })
         .height(32)
         .fontSize(12)
-        .layoutWeight(1) // 统一使用权重填充
+        .width(inputWidth ? inputWidth : undefined)
+        .layoutWeight(inputWidth ? 0 : 1) // 有宽度则不使用权重
         .border({ width: 1, color: '#CCCCCC', radius: 2 })
         .onChange(onChange)
     }
@@ -243,7 +245,7 @@ export struct OutletDialog {
       TextInput({ text: String(value) })
         .height(32)
         .fontSize(12)
-        .layoutWeight(1) // 统一使用权重填充
+        .width(240) // 固定宽度
         .border({ width: 1, color: '#CCCCCC', radius: 2 })
         .onChange(onChange)
       Text(unit)
@@ -371,7 +373,7 @@ export struct OutletDialog {
                                   .fontSize(11)
                                   .padding({ top: 0, bottom: 0, left: 4, right: 4 }) // 移除垂直内边距
                                   .border({ width: 1, color: '#CCCCCC', radius: 2 })
-                                  .layoutWeight(1)
+                                  .width(240) // 固定宽度
                                   .onChange((val) => this.countValue = Number(val))
                               }
                               .layoutWeight(1)
@@ -409,7 +411,7 @@ export struct OutletDialog {
                         }
                       }
                     }
-                    .layoutWeight(6) // 60%
+                    .layoutWeight(8) // 调整为80%
                     .margin({ right: 8 })
 
                     // 贴标
@@ -423,7 +425,7 @@ export struct OutletDialog {
                         }
                       }
                     }
-                    .layoutWeight(4) // 40%
+                    .layoutWeight(2) // 调整为20%
                   }
                   .width('100%')
                   .alignItems(VerticalAlign.Top)
@@ -502,7 +504,7 @@ export struct OutletDialog {
                       Column() {
                         this.LabeledSelectShort('规格', this.spec, SPEC_OPTIONS, (index, value) => this.spec = value)
                         this.LabeledInputWithUnitShort('净重', this.netWeight, 'g', (v) => this.netWeight = Number(v))
-                        this.LabeledInputShort('尺寸', this.dimensions, (v) => this.dimensions = v)
+                        this.LabeledInputShort('尺寸', this.dimensions, (v) => this.dimensions = v, 240)
                       }
                       .layoutWeight(1)
                       .margin({ right: 10 })
