@@ -7,6 +7,7 @@ import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../u
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { ProcessingRecord } from './core/ProcessingDataManager'
+import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
 
 @Component
 export struct ProcessingDataTable {
@@ -16,6 +17,7 @@ export struct ProcessingDataTable {
   @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
   @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
+  @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0  // 监听语言变化，触发 UI 更新
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return resolveTheme(this.consumedTheme)
   }
@@ -25,32 +27,36 @@ export struct ProcessingDataTable {
       // 固定表头（Grid）
       Grid() {
         GridItem() {
-          Text('加工时间')
+          Text(t('加工时间', '加工时间'))
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
             .textAlign(TextAlign.Center)
+            .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
         }
         GridItem() {
-          Text('结束时间')
+          Text(t('结束时间', '结束时间'))
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
             .textAlign(TextAlign.Center)
+            .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
         }
         GridItem() {
-          Text('加工品种')
+          Text(t('加工品种', '加工品种'))
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
             .textAlign(TextAlign.Center)
+            .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
         }
         GridItem() {
-          Text('总重量(吨)')
+          Text(t('总重量(吨)', '总重量(吨)'))
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
             .textAlign(TextAlign.Center)
+            .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
         }
       }
       .columnsTemplate('1fr 1fr 1fr 1fr')

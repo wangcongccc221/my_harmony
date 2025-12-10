@@ -11,6 +11,7 @@
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../../utils/theme/useOmniTheme'
+import { I18N_VERSION_KEY } from '../../../utils/i18n/I18nManager'
 
 // 位置接口定义
 interface Position {
@@ -35,6 +36,7 @@ export struct FloatingWindow {
   // 主题变化监听
   @StorageLink(OMNI_THEME_KEY) @Watch('onThemeChange') consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
   @StorageLink(OMNI_THEME_VERSION_KEY) @Watch('onThemeChange') themeVersion: number = 0
+  @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0  // 监听语言变化，触发 UI 更新
 
   // 获取当前主题配置
   private getCurrentTheme(): ExtendedOmniThemeStyle {
@@ -59,6 +61,7 @@ export struct FloatingWindow {
                 .fontWeight(FontWeight.Bold)
                 .fontColor(this.getCurrentTheme().textColor)
                 .layoutWeight(1)
+                .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
               
               // 关闭按钮
               Button() {
@@ -91,6 +94,7 @@ export struct FloatingWindow {
           // 点击悬浮窗内容时不关闭悬浮窗
           // 在HarmonyOS中，事件不会自动冒泡到父组件
         })
+        .hitTestBehavior(HitTestMode.Default)  // 确保可以接收点击事件
         .width(this.windowWidth)
         .height(this.windowHeight)
         .backgroundColor(this.getCurrentTheme().surfaceColor) // 使用不透明的主题色

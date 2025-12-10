@@ -628,8 +628,9 @@ struct Page {
     this.translations = next
   }
 
-  private updateTranslationValue(index: number, value: string): void {
-    if (index < 0 || index >= this.translations.length) return
+  private updateTranslationValue(originalKey: string, value: string): void {
+    const index = this.translations.findIndex(item => item.originalKey === originalKey)
+    if (index === -1) return
     const next: TranslationItem[] = [...this.translations]
     const updated: TranslationItem = { key: next[index].key, originalKey: next[index].originalKey, value }
     next[index] = updated
@@ -756,6 +757,7 @@ struct Page {
   }
 
   // 构建出口Tab内容
+  @Builder
   @Builder
   private buildExportTabContent(): void {
     Text(t('出口管理', '出口管理'))
@@ -1100,139 +1102,134 @@ struct Page {
         .onClick(() => {
           this.showTranslationEditor = false
         })
+        .transition(TransitionEffect.OPACITY.animation({ duration: 300 }))
 
-      // 内容
+      // 内容卡片 - 调整为与工程设置对话框一致的大小
       Column() {
-        Row() {
-          Text('✏️ 翻译管理')
-            .fontSize(26)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
-            .layoutWeight(1)
-
-          Button() {
-            Text('×')
-              .fontSize(28)
-              .fontColor(this.getCurrentTheme().textColor)
-          }
-          .width(32)
-          .height(32)
-          .backgroundColor(Color.Transparent)
-          .onClick(() => {
-            this.showTranslationEditor = false
-          })
-        }
-        .width('100%')
-        .padding({ left: 20, right: 20, top: 16, bottom: 12 })
-        .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
-
-        // 使用说明
-        Text(t('在右侧"翻译文本"列填写您的翻译，留空则显示原始中文。', '在右侧"翻译文本"列填写您的翻译，留空则显示原始中文。'))
-          .fontSize(14)
-          .fontColor(this.getCurrentTheme().subTextColor)
-          .padding({ left: 20, right: 20, top: 12, bottom: 8 })
-
-        // 搜索
-        Row() {
-          Text('🔍')
-            .fontSize(20)
-            .margin({ right: 8 })
-          TextInput({ placeholder: t('搜索', '搜索') + '...', text: this.translationFilter })
-            .layoutWeight(1)
-            .height(36)
-            .onChange((v: string) => { this.translationFilter = v })
-        }
-        .width('100%')
-        .padding({ left: 20, right: 20, bottom: 8 })
-
-        // 列表标题
-        Row() {
-          Text(t('原始文本', '原始文本'))
-            .fontSize(15)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
-            .layoutWeight(1)
-            .padding({ left: 12 })
-          Text(t('翻译文本', '翻译文本'))
-            .fontSize(15)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
-            .layoutWeight(1)
-            .padding({ left: 12 })
-        }
-        .width('100%')
-        .padding({ left: 8, right: 8, top: 8, bottom: 8 })
-        .backgroundColor(this.getCurrentTheme().primary + '20')
-
-        // 列表
-        Scroll() {
-          Column() {
-            ForEach(this.filteredTranslations(), (item: TranslationItem, index: number) => {
-              Row() {
-                // 原始文本（只读）
-                Text(item.key)
-                  .fontSize(15)
-                  .fontColor(this.getCurrentTheme().textColor)
-                  .layoutWeight(1)
-                  .padding({ left: 12, right: 8 })
-                  .maxLines(1)
-                  .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-                // 翻译文本（可编辑）
-                TextInput({ text: item.value, placeholder: t('输入翻译', '输入翻译') + '...' })
-                  .layoutWeight(1)
-                  .height(36)
-                  .fontSize(14)
-                  .backgroundColor(this.getCurrentTheme().backgroundColor)
-                  .onChange((v: string) => this.updateTranslationValue(index, v))
-              }
-              .width('100%')
-              .padding({ left: 8, right: 16, top: 8, bottom: 8 })
-              .backgroundColor(index % 2 === 0 ? this.getCurrentTheme().surfaceColor : this.getCurrentTheme().backgroundColor)
-            }, (item: TranslationItem) => item.key)
-          }
-          .width('100%')
-          .padding({ bottom: 12 })
-        }
-        .width('100%')
-        .height(400)
-        .scrollable(ScrollDirection.Vertical)
-        .scrollBar(BarState.Auto)
-
-        // 底部按钮
+        // 顶部导航栏区域
         Row() {
           Button(t('取消', '取消'))
-            .layoutWeight(1)
-            .height(46)
-            .borderRadius(10)
-            .border({ width: 1, color: this.getCurrentTheme().borderColor })
-            .backgroundColor(this.getCurrentTheme().backgroundColor)
-            .fontColor(this.getCurrentTheme().textColor)
+            .fontSize(16)
+            .fontColor(this.getCurrentTheme().primary)
+            .backgroundColor(Color.Transparent)
             .onClick(() => { this.showTranslationEditor = false })
-
-          Button(t('保存', '保存'))
+          
+          Text(t('翻译管理', '翻译管理'))
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getCurrentTheme().textColor)
             .layoutWeight(1)
-            .height(46)
-            .margin({ left: 12 })
-            .borderRadius(10)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .fontColor(Color.White)
-            .onClick(() => this.saveTranslations())
+            .textAlign(TextAlign.Center)
+          
+          Button(t('保存', '保存'))
+            .fontSize(16)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getCurrentTheme().primary)
+            .backgroundColor(Color.Transparent)
+            .onClick(() => {
+              this.saveTranslations()
+            })
         }
         .width('100%')
-        .padding({ left: 20, right: 20, top: 12, bottom: 16 })
+        .height(50)
+        .padding({ left: 16, right: 16 })
+        .border({ width: { bottom: 0.5 }, color: this.getCurrentTheme().borderColor }) // 细分割线
+
+        // 搜索栏区域
+        Column() {
+          Row() {
+            Text('🔍')
+              .fontSize(16)
+              .fontColor('#8E8E93') // iOS 系统灰色
+              .margin({ right: 6, left: 8 })
+            
+            TextInput({ placeholder: t('搜索', '搜索'), text: this.translationFilter })
+              .layoutWeight(1)
+              .height('100%')
+              .fontSize(16)
+              .backgroundColor(Color.Transparent)
+              .placeholderColor('#8E8E93')
+              .caretColor(this.getCurrentTheme().primary)
+              .fontColor(this.getCurrentTheme().textColor)
+              .onChange((v: string) => { this.translationFilter = v })
+              
+            if (this.translationFilter) {
+               Button() {
+                  // iOS 风格清除按钮
+                  Stack() {
+                    Circle({ width: 18, height: 18 }).fill('#8E8E93')
+                    Text('×').fontSize(14).fontColor(Color.White).fontWeight(FontWeight.Bold).margin({ bottom: 1 })
+                  }.alignContent(Alignment.Center)
+               }
+               .width(30)
+               .height(30)
+               .backgroundColor(Color.Transparent)
+               .onClick(() => { this.translationFilter = '' })
+            }
+          }
+          .width('100%')
+          .height(36) // iOS 搜索框标准高度
+          .backgroundColor('#1F767680') // 浅灰色背景
+          .borderRadius(10)
+        }
+        .padding({ left: 16, right: 16, top: 10, bottom: 10 })
+
+        // 提示文本
+        Text(t('在右侧填写翻译，留空则显示原始中文。', '在右侧填写翻译，留空则显示原始中文。'))
+            .fontSize(13)
+            .fontColor('#8E8E93')
+            .width('100%')
+            .padding({ left: 16, right: 16, bottom: 8 })
+            .textAlign(TextAlign.Start)
+
+        // 列表
+        List() {
+            ForEach(this.filteredTranslations(), (item: TranslationItem, index: number) => {
+              ListItem() {
+                Row() {
+                  // 原始文本（只读）
+                  Text(item.key)
+                    .fontSize(16) // 标准正文大小
+                    .fontColor(this.getCurrentTheme().textColor)
+                    .layoutWeight(1)
+                    .padding({ right: 16 })
+                    .maxLines(2)
+                    .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+                  // 翻译文本（可编辑）
+                  TextInput({ text: item.value, placeholder: t('输入翻译', '输入翻译') })
+                    .layoutWeight(1.2) // 给输入框更多空间
+                    .height(40)
+                    .fontSize(16)
+                    .textAlign(TextAlign.End) // 靠右对齐，类似 iOS 设置项
+                    .fontColor(this.getCurrentTheme().primary) // 翻译内容使用主色高亮
+                    .placeholderColor('#C7C7CC')
+                    .backgroundColor(Color.Transparent) // 透明背景
+                    .padding({ right: 0 })
+                    .onChange((v: string) => this.updateTranslationValue(item.originalKey, v))
+                }
+                .width('100%')
+                .padding({ top: 8, bottom: 8, right: 16 }) // iOS 列表项标准内边距
+              }
+              .padding({ left: 16 })
+            }, (item: TranslationItem) => item.key)
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .scrollBar(BarState.Auto)
+        .divider({ strokeWidth: 0.5, color: '#C6C6C8', startMargin: 16, endMargin: 0 }) // 列表分割线
       }
-      .width('90%')
-      .constraintSize({ maxWidth: 600, maxHeight: 800 })
+      .width('85%') // 与工程设置对话框宽度一致
+      .height('90%') // 与工程设置对话框高度一致
       .backgroundColor(this.getCurrentTheme().surfaceColor)
-      .borderRadius(12)
+      .borderRadius(12) // 圆角一致
       .shadow({
         radius: 20,
         color: 'rgba(0, 0, 0, 0.1)',
         offsetX: 0,
         offsetY: 4
-      })
-      .alignSelf(ItemAlign.Center)
+      }) // 阴影一致
+      .transition(TransitionEffect.move(TransitionEdge.BOTTOM).animation({ duration: 350, curve: Curve.Friction })) // 底部滑入动画
     }
     .width('100%')
     .height('100%')
@@ -1373,19 +1370,21 @@ struct Page {
     .border({ width: 1, color: this.getCurrentTheme().borderColor })
     .borderRadius(8)
     .onClick(() => {
-      console.log('悬浮窗按钮被点击:', originalKey)
+      console.log('悬浮窗按钮被点击:', originalKey, '类型:', typeof originalKey)
       if (originalKey === '主题切换') {
         this.selectedTheme = this.consumedThemeType // 初始化选中主题为当前主题
         this.showThemeSelector = true
       } else if (originalKey === '工程设置') {
         this.showEngineeringSettings()
       } else if (originalKey === '出口清空') {
+        console.log('执行出口清空操作...')
         this.handleExportClear()
       } else if (originalKey === '语言') {
         this.openLanguageSelector()
       } else if (originalKey === '翻译管理') {
         this.openTranslationEditor()
       } else {
+        console.log('未匹配的按钮:', originalKey)
         this.omniUIUtils.showInfo(t('已点击', '已点击') + t(originalKey, originalKey))
       }
     })
@@ -2129,26 +2128,33 @@ struct Page {
             .backgroundColor(this.getCurrentTheme().surfaceColor)
             .borderRadius(8)
             .margin({ bottom: 16 })
+            .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
 
-            // Tab内容区域
-            if (this.floatingWindowTitle === t('更多设置', '更多设置')) {
-              if (this.selectedFloatingTab === 'export') {
-                this.buildExportTabContent()
-              } else if (this.selectedFloatingTab === 'settings') {
-                this.buildSettingsTabContent()
-              } else if (this.selectedFloatingTab === 'help') {
-                this.buildHelpTabContent()
+            // Tab内容区域（依赖 i18nVersion 确保语言变化时重新渲染）
+            Column() {
+              if (this.floatingWindowTitle === t('更多设置', '更多设置')) {
+                if (this.selectedFloatingTab === 'export') {
+                  this.buildExportTabContent()
+                } else if (this.selectedFloatingTab === 'settings') {
+                  this.buildSettingsTabContent()
+                } else if (this.selectedFloatingTab === 'help') {
+                  this.buildHelpTabContent()
+                }
+              } else {
+                // 其他页面的简单内容
+                Text(this.floatingWindowContent)
+                  .fontSize(14)
+                  .fontColor(this.getCurrentTheme().textColor)
+                  .lineHeight(24)
+                  .padding(16)
+                  .width('100%')
+                  .textAlign(TextAlign.Start)
               }
-            } else {
-              // 其他页面的简单内容
-              Text(this.floatingWindowContent)
-                .fontSize(14)
-                .fontColor(this.getCurrentTheme().textColor)
-                .lineHeight(24)
-                .padding(16)
-                .width('100%')
-                .textAlign(TextAlign.Start)
             }
+            .width('100%')
+            .layoutWeight(1)
+            .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
+            .hitTestBehavior(HitTestMode.Default)  // 确保可以接收点击事件
           }
           .width('100%')
           .height('100%')

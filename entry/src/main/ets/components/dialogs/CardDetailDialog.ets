@@ -115,26 +115,45 @@ export struct CardDetailDialog {
         Column()
           .width('100%')
           .height('100%')
-          .backgroundColor('rgba(0, 0, 0, 0.5)')
+          .backgroundColor('rgba(0, 0, 0, 0.3)')
+          .backgroundBlurStyle(BlurStyle.Regular)
           .onClick(() => {
             if (this.onCancel) {
               this.onCancel()
             }
           })
+          .transition(TransitionEffect.OPACITY.animation({ duration: 300 }))
         
-        // 对话框内容
+        // 对话框内容 - Page Sheet 风格
         Column() {
-          // 标题栏
+          // 顶部导航栏
           Row() {
+            Button('关闭')
+              .fontSize(16)
+              .fontColor(this.getCurrentTheme().primary)
+              .backgroundColor(Color.Transparent)
+              .onClick(() => {
+                if (this.onCancel) this.onCancel()
+              })
+            
             Text(`${this.cardNumber}号卡片详情`)
               .fontSize(18)
               .fontWeight(FontWeight.Bold)
               .fontColor(this.getCurrentTheme().textColor)
               .layoutWeight(1)
+              .textAlign(TextAlign.Center)
+            
+            // 占位，保持标题居中
+            Button('关闭')
+              .fontSize(16)
+              .fontColor(Color.Transparent)
+              .backgroundColor(Color.Transparent)
+              .enabled(false)
           }
           .width('100%')
-          .padding({ left: '0.93%', right: '0.93%', top: '1.04%', bottom: '1.04%' })
-          .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+          .height(50)
+          .padding({ left: 16, right: 16 })
+          .border({ width: { bottom: 0.5 }, color: this.getCurrentTheme().borderColor })
 
           // 内容区域
           Scroll() {
@@ -144,50 +163,30 @@ export struct CardDetailDialog {
 
               // 统计信息卡片
               this.buildStatisticsInfoCard()
-
-              // 数据列表卡片 (已移除)
             }
             .width('100%')
-            .padding({ left: '0.93%', right: '0.93%', top: '1.39%', bottom: '1.39%' })
+            .padding({ left: 16, right: 16, top: 16, bottom: 16 })
           }
           .width('100%')
           .layoutWeight(1)
           .scrollable(ScrollDirection.Vertical)
           .scrollBar(BarState.Auto)
           .scrollBarColor(this.getCurrentTheme().borderColor)
-          .scrollBarWidth(6)
+          .scrollBarWidth(4)
           .edgeEffect(EdgeEffect.Spring)
-
-          // 底部按钮栏
-          DialogButtons({
-            confirmText: '确认',
-            cancelText: '取消',
-            showCancel: true,
-            confirmDisabled: false,
-            onConfirm: () => {
-              if (this.onConfirm) {
-                this.onConfirm()
-              }
-            },
-            onCancel: () => {
-              if (this.onCancel) {
-                this.onCancel()
-              }
-            }
-          })
-          .width('100%')
-          .padding({ left: '0.93%', right: '0.93%', top: '0%', bottom: '1.39%' })
         }
-        .width('85%')
-        .constraintSize({ maxHeight: '80%' })
+        .width('100%')
+        .height('60%') // 半屏高度，类似 Page Sheet
         .backgroundColor(this.getCurrentTheme().surfaceColor)
-        .borderRadius(12)
-        .shadow({ radius: 20, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 4 })
-        .alignSelf(ItemAlign.Center)
+        .borderRadius({ topLeft: 16, topRight: 16 }) // 只有顶部圆角
+        .shadow({ radius: 20, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: -4 })
+        .alignSelf(ItemAlign.End) // 底部对齐
+        .transition(TransitionEffect.move(TransitionEdge.BOTTOM).animation({ duration: 350, curve: Curve.Friction }))
       }
       .width('100%')
       .height('100%')
-      .alignContent(Alignment.Center)
+      .alignContent(Alignment.Bottom) // 内容底部对齐
+      .zIndex(5000)
     }
   }
 
@@ -198,24 +197,23 @@ export struct CardDetailDialog {
   private buildBasicInfoCard() {
     Column() {
       Text('基本信息')
-        .fontSize(16)
+        .fontSize(14)
         .fontWeight(FontWeight.Medium)
-        .fontColor(this.getCurrentTheme().textColor)
-        .margin({ bottom: '1.04%' })
+        .fontColor(this.getCurrentTheme().subTextColor)
+        .margin({ bottom: 8, left: 4 })
       
       Column() {
-        this.buildInfoRow('卡片编号', `${this.cardNumber}`)
-        this.buildInfoRow('卡片ID', this.cardData?.id || '-')
-        this.buildInfoRow('数据数量', `${this.getDataCount()}`)
+        this.buildInfoRow('卡片编号', `${this.cardNumber}`, true)
+        this.buildInfoRow('卡片ID', this.cardData?.id || '-', true)
+        this.buildInfoRow('数据数量', `${this.getDataCount()}`, false)
       }
       .width('100%')
+      .backgroundColor(this.getCurrentTheme().backgroundColor)
+      .borderRadius(10)
+      .padding({ left: 16 }) // 左侧内边距，用于分割线
     }
     .width('100%')
-    .padding({ left: '0.93%', right: '0.93%', top: '1.39%', bottom: '1.39%' })
-    .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
-    .borderRadius(8)
-    .border({ width: 1, color: this.getCurrentTheme().borderColor })
-    .margin({ bottom: '1.39%' })
+    .margin({ bottom: 20 })
   }
 
   /**
@@ -225,45 +223,46 @@ export struct CardDetailDialog {
   private buildStatisticsInfoCard() {
     Column() {
       Text('统计信息')
-        .fontSize(16)
+        .fontSize(14)
         .fontWeight(FontWeight.Medium)
-        .fontColor(this.getCurrentTheme().textColor)
-        .margin({ bottom: '1.04%' })
+        .fontColor(this.getCurrentTheme().subTextColor)
+        .margin({ bottom: 8, left: 4 })
       
       Column() {
-        this.buildInfoRow('数据总和', `${this.getDataSum()}`)
-        this.buildInfoRow('平均值', this.getDataAverage())
-        this.buildInfoRow('最大值', `${this.getDataMax()}`)
-        this.buildInfoRow('最小值', `${this.getDataMin()}`)
+        this.buildInfoRow('数据总和', `${this.getDataSum()}`, true)
+        this.buildInfoRow('平均值', this.getDataAverage(), true)
+        this.buildInfoRow('最大值', `${this.getDataMax()}`, true)
+        this.buildInfoRow('最小值', `${this.getDataMin()}`, false)
       }
       .width('100%')
+      .backgroundColor(this.getCurrentTheme().backgroundColor)
+      .borderRadius(10)
+      .padding({ left: 16 })
     }
     .width('100%')
-    .padding({ left: '0.93%', right: '0.93%', top: '1.39%', bottom: '1.39%' })
-    .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
-    .borderRadius(8)
-    .border({ width: 1, color: this.getCurrentTheme().borderColor })
-    .margin({ bottom: '1.39%' })
+    .margin({ bottom: 20 })
   }
 
   /**
    * 构建信息行
    */
   @Builder
-  private buildInfoRow(label: string, value: string) {
+  private buildInfoRow(label: string, value: string, showDivider: boolean) {
     Row() {
-      Text(`${label}：`)
-        .fontSize(14)
-        .fontColor(this.getCurrentTheme().subTextColor)
-        .width('5.56%')
-      Text(value)
-        .fontSize(14)
-        .fontWeight(FontWeight.Medium)
+      Text(label)
+        .fontSize(16)
         .fontColor(this.getCurrentTheme().textColor)
         .layoutWeight(1)
+      
+      Text(value)
+        .fontSize(16)
+        .fontColor(this.getCurrentTheme().subTextColor)
     }
     .width('100%')
-    .margin({ bottom: '0.69%' })
+    .height(44)
+    .padding({ right: 16 })
+    .alignItems(VerticalAlign.Center)
+    .border(showDivider ? { width: { bottom: 0.5 }, color: this.getCurrentTheme().borderColor } : undefined)
   }
 
   /**

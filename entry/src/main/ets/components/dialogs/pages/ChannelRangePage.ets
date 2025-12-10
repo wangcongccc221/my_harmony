@@ -6,49 +6,57 @@
 
 import { ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../../utils/theme/ThemeUtils'
+import { t, I18N_VERSION_KEY } from '../../../utils/i18n/I18nManager'
 
 @Component
 export struct ChannelRangePage {
+  @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0  // 监听语言变化，触发 UI 更新
+
   private resolveTheme(): ExtendedOmniThemeStyle {
     return getCurrentTheme()
   }
 
   build() {
     Column() {
-      Text('通道范围设置')
+      Text(t('通道范围设置', '通道范围设置'))
         .fontSize(24)  // 标题字体调大到24px
         .fontWeight(FontWeight.Bold)
         .fontColor(this.resolveTheme().textColor)
         .margin({ bottom: 20 })
+        .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
 
       // 通道范围设置内容
       Column() {
-        Text('这里显示通道范围相关的设置内容')
+        Text(t('这里显示通道范围相关的设置内容', '这里显示通道范围相关的设置内容'))
           .fontSize(18)  // 描述文字字体调大到18px
           .fontColor(this.resolveTheme().subTextColor)
           .textAlign(TextAlign.Center)
           .margin({ bottom: 16 })
+          .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
 
         // 示例设置项
         Row() {
-          Text('通道数量:')
+          Text(t('通道数量', '通道数量') + ':')
             .fontSize(18)  // 标签字体调大到18px
             .fontColor(this.resolveTheme().textColor)
             .width(80)
+            .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
           
-          Text('16个')
+          Text('16' + t('个', '个'))
             .fontSize(18)  // 值字体调大到18px
             .fontColor(this.resolveTheme().primary)
+            .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
         }
         .width('100%')
         .justifyContent(FlexAlign.SpaceBetween)
         .padding({ top: 8, bottom: 8 })
 
         Row() {
-          Text('检测范围:')
+          Text(t('检测范围', '检测范围') + ':')
             .fontSize(18)  // 标签字体调大到18px
             .fontColor(this.resolveTheme().textColor)
             .width(80)
+            .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
           
           Text('50-200mm')
             .fontSize(18)  // 值字体调大到18px
@@ -59,10 +67,11 @@ export struct ChannelRangePage {
         .padding({ top: 8, bottom: 8 })
 
         Row() {
-          Text('精度等级:')
+          Text(t('精度等级', '精度等级') + ':')
             .fontSize(18)  // 标签字体调大到18px
             .fontColor(this.resolveTheme().textColor)
             .width(80)
+            .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
           
           Text('±0.5mm')
             .fontSize(18)  // 值字体调大到18px

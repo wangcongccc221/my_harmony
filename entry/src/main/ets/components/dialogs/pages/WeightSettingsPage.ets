@@ -8,10 +8,12 @@ import { ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../../utils/theme/ThemeUtils'
 import { IBestButton } from '@ibestservices/ibest-ui'
 import { FormInputField } from '../../ui/forms/FormInputField'
+import { t, I18N_VERSION_KEY } from '../../../utils/i18n/I18nManager'
 
 @Component
 export struct WeightSettingsPage {
   @State private theme: ExtendedOmniThemeStyle = getCurrentTheme()
+  @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0  // 监听语言变化，触发 UI 更新
   @State private workingStatusCode: number = 0
   @State private globalTargetWeight: number = 150
   @State private globalTolerance: number = 5
@@ -38,7 +40,7 @@ export struct WeightSettingsPage {
         Row() {
           FormInputField({
             config: {
-              label: '工作状态',
+              label: t('工作状态', '工作状态'),
               value: this.workingStatusCode,
               minValue: 0,
               maxValue: 10,
@@ -57,7 +59,7 @@ export struct WeightSettingsPage {
 
           // 复位按钮（矩形）- 与输入框垂直对齐
           IBestButton({
-            text: '复位',
+            text: t('复位', '复位'),
             type: 'primary'
           })
             .width(80)  // 宽度80px
@@ -77,7 +79,7 @@ export struct WeightSettingsPage {
           // 全局参数卡片
           Column() {
             // 卡片标题 - 放在边框上
-            Text('全局参数')
+            Text(t('全局参数', '全局参数'))
               .fontSize(18)  // 标题字体
               .fontWeight(FontWeight.Medium)
               .fontColor(this.theme.textColor)
@@ -85,13 +87,14 @@ export struct WeightSettingsPage {
               .padding({ left: 12, right: 12, top: 4, bottom: 4 })
               .margin({ bottom: -8 })  // 负边距让标题"浮"在边框上
               .alignSelf(ItemAlign.Start)
+              .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
             
             // 卡片内容区域
             Column() {
               Row() {
                 FormInputField({
                   config: {
-                    label: '目标重量',
+                    label: t('目标重量', '目标重量'),
                     value: this.globalTargetWeight,
                     unit: 'g',
                     minValue: 0,
@@ -105,7 +108,7 @@ export struct WeightSettingsPage {
 
                 FormInputField({
                   config: {
-                    label: '重量公差',
+                    label: t('重量公差', '重量公差'),
                     value: this.globalTolerance,
                     unit: 'g',
                     minValue: 0,
@@ -122,7 +125,7 @@ export struct WeightSettingsPage {
               Row() {
                 FormInputField({
                   config: {
-                    label: '最大载重',
+                    label: t('最大载重', '最大载重'),
                     value: this.globalMaxLoad,
                     unit: 'g',
                     minValue: 0,
@@ -136,7 +139,7 @@ export struct WeightSettingsPage {
 
                 FormInputField({
                   config: {
-                    label: '最小重量',
+                    label: t('最小重量', '最小重量'),
                     value: this.globalMinWeight,
                     unit: 'g',
                     minValue: 0,
@@ -163,7 +166,7 @@ export struct WeightSettingsPage {
           // 通道参数卡片
           Column() {
             // 卡片标题 - 放在边框上
-            Text('通道参数')
+            Text(t('通道参数', '通道参数'))
               .fontSize(18)  // 标题字体
               .fontWeight(FontWeight.Medium)
               .fontColor(this.theme.textColor)
@@ -171,13 +174,14 @@ export struct WeightSettingsPage {
               .padding({ left: 12, right: 12, top: 4, bottom: 4 })
               .margin({ bottom: -8 })  // 负边距让标题"浮"在边框上
               .alignSelf(ItemAlign.Start)
+              .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
             
             // 卡片内容区域
             Column() {
               Row() {
                 FormInputField({
                   config: {
-                    label: '增益',
+                    label: t('增益', '增益'),
                     value: this.channelGain,
                     unit: '%',
                     minValue: 0,
@@ -191,7 +195,7 @@ export struct WeightSettingsPage {
 
                 FormInputField({
                   config: {
-                    label: '偏移',
+                    label: t('偏移', '偏移'),
                     value: this.channelOffset,
                     unit: 'g',
                     minValue: -500,
@@ -208,7 +212,7 @@ export struct WeightSettingsPage {
               Row() {
                 FormInputField({
                   config: {
-                    label: '平滑系数',
+                    label: t('平滑系数', '平滑系数'),
                     value: this.channelSmoothing,
                     minValue: 0,
                     maxValue: 10
@@ -221,7 +225,7 @@ export struct WeightSettingsPage {
 
                 FormInputField({
                   config: {
-                    label: '报警阈值',
+                    label: t('报警阈值', '报警阈值'),
                     value: this.channelAlarmThreshold,
                     unit: 'g',
                     minValue: 0,
@@ -251,7 +255,7 @@ export struct WeightSettingsPage {
         // 重量参数卡片
         Column() {
           // 卡片标题 - 放在边框上
-          Text('重量参数')
+          Text(t('重量参数', '重量参数'))
             .fontSize(18)  // 标题字体
             .fontWeight(FontWeight.Medium)
             .fontColor(this.theme.textColor)
@@ -259,14 +263,15 @@ export struct WeightSettingsPage {
             .padding({ left: 12, right: 12, top: 4, bottom: 4 })
             .margin({ bottom: -8 })  // 负边距让标题"浮"在边框上
             .alignSelf(ItemAlign.Start)
+            .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
           
           // 卡片内容区域
           Column() {
             Row() {
               FormInputField({
                 config: {
-                  label: '毛重',
-                  value: this.grossWeight,
+                  label: t('毛重', '毛重'),
+                    value: this.grossWeight,
                   unit: 'kg',
                   minValue: 0,
                   maxValue: 10000
@@ -279,8 +284,8 @@ export struct WeightSettingsPage {
 
               FormInputField({
                 config: {
-                  label: '皮重',
-                  value: this.tareWeight,
+                  label: t('皮重', '皮重'),
+                    value: this.tareWeight,
                   unit: 'kg',
                   minValue: 0,
                   maxValue: 1000
@@ -296,8 +301,8 @@ export struct WeightSettingsPage {
             Row() {
               FormInputField({
                 config: {
-                  label: '净重',
-                  value: this.netWeight,
+                  label: t('净重', '净重'),
+                    value: this.netWeight,
                   unit: 'kg',
                   minValue: 0,
                   maxValue: 10000
@@ -310,8 +315,8 @@ export struct WeightSettingsPage {
 
               FormInputField({
                 config: {
-                  label: '平均重量',
-                  value: this.averageWeight,
+                  label: t('平均重量', '平均重量'),
+                    value: this.averageWeight,
                   unit: 'g',
                   minValue: 0,
                   maxValue: 5000
@@ -348,19 +353,20 @@ export struct WeightSettingsPage {
         // 内部大卡片 - 包含表格
         Column() {
           // 表格标题
-          Text('重量数据表格')
+          Text(t('重量数据表格', '重量数据表格'))
             .fontSize(20)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.theme.textColor)
             .margin({ bottom: 16 })
+            .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
           
           // 简化表格
           Column() {
             // 表头
             Row() {
-              Text('车号').fontSize(16).fontWeight(FontWeight.Medium).width('20%').textAlign(TextAlign.Center).border({ width: 1, color: this.theme.borderColor }).padding(8)
-              Text('果重G').fontSize(16).fontWeight(FontWeight.Medium).width('20%').textAlign(TextAlign.Center).border({ width: 1, color: this.theme.borderColor }).padding(8)
-              Text('车重G').fontSize(16).fontWeight(FontWeight.Medium).width('20%').textAlign(TextAlign.Center).border({ width: 1, color: this.theme.borderColor }).padding(8)
+              Text(t('车号', '车号')).fontSize(16).fontWeight(FontWeight.Medium).width('20%').textAlign(TextAlign.Center).border({ width: 1, color: this.theme.borderColor }).padding(8).opacity(this.i18nVersion >= 0 ? 1 : 1)
+              Text(t('果重G', '果重G')).fontSize(16).fontWeight(FontWeight.Medium).width('20%').textAlign(TextAlign.Center).border({ width: 1, color: this.theme.borderColor }).padding(8).opacity(this.i18nVersion >= 0 ? 1 : 1)
+              Text(t('车重G', '车重G')).fontSize(16).fontWeight(FontWeight.Medium).width('20%').textAlign(TextAlign.Center).border({ width: 1, color: this.theme.borderColor }).padding(8).opacity(this.i18nVersion >= 0 ? 1 : 1)
               Text('AD0').fontSize(16).fontWeight(FontWeight.Medium).width('20%').textAlign(TextAlign.Center).border({ width: 1, color: this.theme.borderColor }).padding(8)
               Text('AD1').fontSize(16).fontWeight(FontWeight.Medium).width('20%').textAlign(TextAlign.Center).border({ width: 1, color: this.theme.borderColor }).padding(8)
             }

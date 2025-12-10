@@ -16,12 +16,14 @@ import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../
 import { ProcessingRecordCard } from './ProcessingRecordCard'
 import { ActionButtonsCard, ButtonConfig } from './ActionButtonsCard'
 import { ProcessingDataManager, ProcessingRecord } from './core/ProcessingDataManager'
+import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
 
 @Component
 export struct EndProcessingContent {
   @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
   @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
+  @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0  // 监听语言变化，触发 UI 更新
   private dataManager = ProcessingDataManager.getInstance()
   @State private processingRecords: ProcessingRecord[] = []
   @State private dataRefreshKey: number = 0
@@ -73,21 +75,22 @@ export struct EndProcessingContent {
    * 获取操作按钮配置
    */
   private getActionButtons(): ButtonConfig[] {
+    const _version = this.i18nVersion  // 依赖 i18nVersion 确保语言变化时重新计算
     return [
       {
-        text: '是',
+        text: t('是', '是'),
         onClick: () => {
           console.log('是按钮被点击')
         }
       },
       {
-        text: '否',
+        text: t('否', '否'),
         onClick: () => {
           console.log('否按钮被点击')
         }
       },
       {
-        text: '取消',
+        text: t('取消', '取消'),
         onClick: () => {
           console.log('取消按钮被点击')
         }
@@ -106,13 +109,14 @@ export struct EndProcessingContent {
     Column() {
       // 加工记录卡片
       ProcessingRecordCard({
-        title: '加工记录',
+        title: t('加工记录', '加工记录'),
         data: this.getProcessingData(),
         onRowClick: (record: ProcessingRecord) => {
           this.handleRowClick(record)
         }
       })
       .height('90%')
+      .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
 
       // 操作按钮卡片
       ActionButtonsCard({
