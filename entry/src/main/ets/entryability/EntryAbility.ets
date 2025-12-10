@@ -19,6 +19,7 @@ import { ProcessingHistory } from '../database/models/ProcessingHistory';
 import { FruitInfo } from '../database/models/FruitInfo';
 import { GradeInfo } from '../database/models/GradeInfo';
 import { ExportInfo } from '../database/models/ExportInfo';
+import { I18nManager } from '../utils/i18n/I18nManager';
 // import { taskPoolExecuteInsert, taskPoolExecuteQuery, taskPoolExecuteUpdate, taskPoolExecuteDelete } from '../database/examples/taskpool'; // 文件已删除
 
 const DOMAIN = 0x0000;
@@ -35,6 +36,13 @@ export default class EntryAbility extends UIAbility {
     this.copyResourceFiles();
     this.initNetworkOptimizer();
     this.initHttpServer();
+    // 初始化自定义翻译（JSON 模式）
+    I18nManager.getInstance().init(this.context).catch((e: Error | object | string) => {
+      const reason = typeof e === 'string'
+        ? e
+        : (e instanceof Error ? e.message : JSON.stringify(e));
+      hilog.warn(DOMAIN, 'EntryAbility', `I18n 初始化失败: ${reason}`);
+    });
   }
 
   onDestroy(): void {

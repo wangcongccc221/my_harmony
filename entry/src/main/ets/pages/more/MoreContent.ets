@@ -11,6 +11,8 @@ import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../
 import { useOmniTheme } from '../../utils/theme/useOmniTheme'
 import { OmniUIUtils } from '../../utils/helpers/OmniUIUtils'
 import { EngineeringSettingsDialog } from '../../components/dialogs/EngineeringSettingsDialog'
+import { I18nManager, t } from '../../utils/i18n/I18nManager'
+import GlobalStore from '../../database/orm/model/GlobalStore'
 
 // 设置项接口
 interface SettingItem {
@@ -18,6 +20,12 @@ interface SettingItem {
   title: string
   subtitle: string
   onClick?: () => void
+}
+
+// 翻译项接口
+interface TranslationItem {
+  key: string
+  value: string
 }
 
 @Component
@@ -30,6 +38,13 @@ export struct MoreContent {
   @State showThemeSelector: boolean = false
   @State selectedTheme: OmniThemeType = OmniThemeType.BLUE
   @State showEngineeringSettingsDialog: boolean = false
+  @State showLanguageSelector: boolean = false
+  @State currentLanguage: string = '中文'
+  @State showTranslationEditor: boolean = false
+  @State translationFilter: string = ''
+  @State newTranslationKey: string = ''
+  @State newTranslationValue: string = ''
+  @State translations: TranslationItem[] = []
 
   // 设置项配置
   private settingItems: SettingItem[] = [
@@ -85,6 +100,103 @@ export struct MoreContent {
     this.omniUIUtils.showInfo('已取消工程设置')
     this.showEngineeringSettingsDialog = false
   }
+  //
+
+  // 语言编辑入口
+  private async openTranslationEditor(): Promise<void> {
+    try {
+      console.log('openTranslationEditor: start')
+      const mgr = I18nManager.getInstance()
+      if (!mgr.isInitialized()) {
+        if (!GlobalStore.context) {
+          console.warn('openTranslationEditor: GlobalStore.context is undefined')
+          this.omniUIUtils.showError('翻译初始化失败：上下文未就绪')
+          return
+        }
+        await mgr.init(GlobalStore.context)
+      } else {
+        await mgr.reload()
+      }
+      const all = mgr.getAllTranslations()
+      const arr: TranslationItem[] = []
+      Object.keys(all).forEach((k) => {
+        const item: TranslationItem = { key: k, value: all[k] }
+        arr.push(item)
+      })
+      this.translations = arr
+      console.log(`openTranslationEditor: loaded translations ${this.translations.length}`)
+      this.showTranslationEditor = true
+      this.omniUIUtils.showInfo('已打开语言编辑')
+    } catch (e) {
+      console.error('openTranslationEditor failed', e)
+      this.omniUIUtils.showError(`翻译加载失败: ${e instanceof Error ? e.message : JSON.stringify(e)}`)
+    }
+  }
+
+  private updateTranslationKey(index: number, value: string): void {
+    if (index < 0 || index >= this.translations.length) return
+    const next: TranslationItem[] = [...this.translations]
+    const updated: TranslationItem = { key: value, value: next[index].value }
+    next[index] = updated
+    this.translations = next
+  }
+
+  private updateTranslationValue(index: number, value: string): void {
+    if (index < 0 || index >= this.translations.length) return
+    const next: TranslationItem[] = [...this.translations]
+    const updated: TranslationItem = { key: next[index].key, value }
+    next[index] = updated
+    this.translations = next
+  }
+
+  private removeTranslation(index: number): void {
+    if (index < 0 || index >= this.translations.length) return
+    const next: TranslationItem[] = [...this.translations]
+    next.splice(index, 1)
+    this.translations = next
+  }
+
+  private addTranslation(): void {
+    if (!this.newTranslationKey || this.newTranslationKey.trim().length === 0) {
+      this.omniUIUtils.showInfo('请输入翻译键')
+      return
+    }
+    const next: TranslationItem[] = [...this.translations]
+    const item: TranslationItem = { key: this.newTranslationKey.trim(), value: this.newTranslationValue ?? '' }
+    next.push(item)
+    this.translations = next
+    this.newTranslationKey = ''
+    this.newTranslationValue = ''
+  }
+
+  private filteredTranslations(): TranslationItem[] {
+    if (!this.translationFilter || this.translationFilter.trim().length === 0) {
+      return this.translations
+    }
+    const keyword = this.translationFilter.trim().toLowerCase()
+    return this.translations.filter((item) => {
+      return item.key.toLowerCase().includes(keyword) || (item.value ?? '').toLowerCase().includes(keyword)
+    })
+  }
+
+  private async saveTranslations(): Promise<void> {
+    try {
+      const mgr = I18nManager.getInstance()
+      const record: Record<string, string> = {}
+      this.translations.forEach((item) => {
+        if (item.key && item.key.trim().length > 0) {
+          record[item.key.trim()] = item.value ?? ''
+        }
+      })
+      mgr.replaceAll(record)
+      await mgr.save()
+      this.omniUIUtils.showSuccess(t('翻译已保存', '翻译已保存'))
+      this.showTranslationEditor = false
+    } catch (e) {
+      this.omniUIUtils.showError(t('保存失败', '保存失败'))
+      console.error('saveTranslations failed', e)
+    }
+  }
 
   @State private selectedTab: string = '出口'
 
@@ -135,6 +247,16 @@ export struct MoreContent {
             this.handleEngineeringSettingsCancel()
           }
         })
+      }
+
+      // 语言选择弹窗
+      if (this.showLanguageSelector) {
+        this.buildLanguageSelectorDialog()
+      }
+
+      // 翻译编辑弹窗
+      if (this.showTranslationEditor) {
+        this.buildTranslationEditorDialog()
       }
     }
     .width('100%')
@@ -220,7 +342,7 @@ export struct MoreContent {
 
   // 构建帮助功能项
   @Builder
-  buildHelpItem(icon: string, title: string, subtitle: string): void {
+  buildHelpItem(icon: string, title: string, subtitle: string, onClick?: () => void): void {
     Row() {
       // 图标
       Text(icon)
@@ -253,7 +375,9 @@ export struct MoreContent {
     .padding({ left: 20, right: 20, top: 16, bottom: 16 })
     .onClick(() => {
       console.log('Help item clicked:', title)
-      // 这里可以添加具体的功能处理逻辑
+      if (onClick) {
+        onClick()
+      }
     })
 
     // 分割线（最后一项不显示）
@@ -562,7 +686,12 @@ export struct MoreContent {
         this.buildHelpItem('🔌', '关闭IPM', '关闭IPM服务')
         this.buildHelpItem('📋', '分选日志', '查看分选操作日志')
         this.buildHelpItem('ℹ️', '关于', '查看系统信息')
-        this.buildHelpItem('🌐', '语言', '切换系统语言')
+        this.buildHelpItem('🌐', '语言', '切换系统语言', () => {
+          this.showLanguageSelector = true
+        })
+        this.buildHelpItem('✏️', '翻译管理', '编辑自定义翻译', () => {
+          this.openTranslationEditor()
+        })
         this.buildHelpItem('🚪', '退出', '退出系统')
         this.buildHelpItem('👤', '用户切换', '切换用户账户')
       }
@@ -574,5 +703,280 @@ export struct MoreContent {
     }
     .width('100%')
     .alignItems(HorizontalAlign.Start)
+  }
+
+  // 语言选择相关方法
+  private selectLanguage(lang: string): void {
+    this.currentLanguage = lang
+    if (lang === '中文') {
+      // 清空翻译，使用原始中文
+      I18nManager.getInstance().replaceAll({})
+      I18nManager.getInstance().save()
+      this.omniUIUtils.showSuccess('已切换到中文')
+    } else if (lang === '自定义') {
+      // 使用用户自定义翻译
+      this.omniUIUtils.showSuccess('已切换到自定义翻译')
+    }
+    this.showLanguageSelector = false
+  }
+
+  // 语言选择弹窗
+  @Builder
+  buildLanguageSelectorDialog(): void {
+    Stack() {
+      // 遮罩
+      Column()
+        .width('100%')
+        .height('100%')
+        .backgroundColor('rgba(0, 0, 0, 0.5)')
+        .onClick(() => {
+          this.showLanguageSelector = false
+        })
+
+      // 内容
+      Column() {
+        // 标题
+        Row() {
+          Text('🌐 选择语言')
+            .fontSize(24)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getCurrentTheme().textColor)
+            .layoutWeight(1)
+
+          Button() {
+            Text('×')
+              .fontSize(28)
+              .fontColor(this.getCurrentTheme().textColor)
+          }
+          .width(32)
+          .height(32)
+          .backgroundColor(Color.Transparent)
+          .onClick(() => {
+            this.showLanguageSelector = false
+          })
+        }
+        .width('100%')
+        .padding({ left: 20, right: 20, top: 16, bottom: 12 })
+        .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+
+        // 说明
+        Text('选择界面显示语言。选择"自定义"后，可通过"翻译管理"编辑翻译内容。')
+          .fontSize(14)
+          .fontColor(this.getCurrentTheme().subTextColor)
+          .padding({ left: 20, right: 20, top: 12, bottom: 12 })
+
+        // 语言选项
+        Column() {
+          this.buildLanguageOption('🇨🇳', '中文', '使用原始中文界面')
+          this.buildLanguageOption('✏️', '自定义', '使用您编辑的翻译')
+        }
+        .width('100%')
+        .padding({ left: 20, right: 20, bottom: 20 })
+      }
+      .width('85%')
+      .constraintSize({ maxWidth: 400 })
+      .backgroundColor(this.getCurrentTheme().surfaceColor)
+      .borderRadius(12)
+      .shadow({
+        radius: 20,
+        color: 'rgba(0, 0, 0, 0.1)',
+        offsetX: 0,
+        offsetY: 4
+      })
+      .alignSelf(ItemAlign.Center)
+    }
+    .width('100%')
+    .height('100%')
+    .alignContent(Alignment.Center)
+  }
+
+  // 构建语言选项
+  @Builder
+  buildLanguageOption(icon: string, lang: string, desc: string): void {
+    Row() {
+      Text(icon)
+        .fontSize(28)
+        .margin({ right: 12 })
+
+      Column() {
+        Text(lang)
+          .fontSize(18)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCurrentTheme().textColor)
+        Text(desc)
+          .fontSize(13)
+          .fontColor(this.getCurrentTheme().subTextColor)
+          .margin({ top: 2 })
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      if (this.currentLanguage === lang) {
+        Text('✓')
+          .fontSize(20)
+          .fontColor(this.getCurrentTheme().primary)
+          .fontWeight(FontWeight.Bold)
+      }
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+    .backgroundColor(this.currentLanguage === lang ? this.getCurrentTheme().primary + '15' : Color.Transparent)
+    .borderRadius(10)
+    .border({ width: this.currentLanguage === lang ? 2 : 1, color: this.currentLanguage === lang ? this.getCurrentTheme().primary : this.getCurrentTheme().borderColor })
+    .margin({ bottom: 10 })
+    .onClick(() => {
+      this.selectLanguage(lang)
+    })
+  }
+
+  // 翻译编辑弹窗
+  @Builder
+  buildTranslationEditorDialog(): void {
+    Stack() {
+      // 遮罩
+      Column()
+        .width('100%')
+        .height('100%')
+        .backgroundColor('rgba(0, 0, 0, 0.5)')
+        .onClick(() => {
+          this.showTranslationEditor = false
+        })
+
+      // 内容
+      Column() {
+        Row() {
+          Text('✏️ 翻译管理')
+            .fontSize(26)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getCurrentTheme().textColor)
+            .layoutWeight(1)
+
+          Button() {
+            Text('×')
+              .fontSize(28)
+              .fontColor(this.getCurrentTheme().textColor)
+          }
+          .width(32)
+          .height(32)
+          .backgroundColor(Color.Transparent)
+          .onClick(() => {
+            this.showTranslationEditor = false
+          })
+        }
+        .width('100%')
+        .padding({ left: 20, right: 20, top: 16, bottom: 12 })
+        .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+
+        // 使用说明
+        Text('在右侧"翻译文本"列填写您的翻译，留空则显示原始中文。')
+          .fontSize(14)
+          .fontColor(this.getCurrentTheme().subTextColor)
+          .padding({ left: 20, right: 20, top: 12, bottom: 8 })
+
+        // 搜索
+        Row() {
+          Text('🔍')
+            .fontSize(20)
+            .margin({ right: 8 })
+          TextInput({ placeholder: '搜索...', text: this.translationFilter })
+            .layoutWeight(1)
+            .height(36)
+            .onChange((v: string) => { this.translationFilter = v })
+        }
+        .width('100%')
+        .padding({ left: 20, right: 20, bottom: 8 })
+
+        // 列表标题
+        Row() {
+          Text('原始文本')
+            .fontSize(15)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getCurrentTheme().textColor)
+            .layoutWeight(1)
+            .padding({ left: 12 })
+          Text('翻译文本')
+            .fontSize(15)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getCurrentTheme().textColor)
+            .layoutWeight(1)
+            .padding({ left: 12 })
+        }
+        .width('100%')
+        .padding({ left: 8, right: 8, top: 8, bottom: 8 })
+        .backgroundColor(this.getCurrentTheme().primary + '20')
+
+        // 列表
+        Scroll() {
+          Column() {
+            ForEach(this.filteredTranslations(), (item: TranslationItem, index: number) => {
+              Row() {
+                // 原始文本（只读）
+                Text(item.key)
+                  .fontSize(15)
+                  .fontColor(this.getCurrentTheme().textColor)
+                  .layoutWeight(1)
+                  .padding({ left: 12, right: 8 })
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+                // 翻译文本（可编辑）
+                TextInput({ text: item.value, placeholder: '输入翻译...' })
+                  .layoutWeight(1)
+                  .height(36)
+                  .fontSize(14)
+                  .backgroundColor(this.getCurrentTheme().backgroundColor)
+                  .onChange((v: string) => this.updateTranslationValue(index, v))
+              }
+              .width('100%')
+              .padding({ left: 8, right: 16, top: 8, bottom: 8 })
+              .backgroundColor(index % 2 === 0 ? this.getCurrentTheme().surfaceColor : this.getCurrentTheme().backgroundColor)
+            }, (item: TranslationItem) => item.key)
+          }
+          .width('100%')
+          .padding({ bottom: 12 })
+        }
+        .width('100%')
+        .height(400)
+        .scrollable(ScrollDirection.Vertical)
+        .scrollBar(BarState.Auto)
+
+        // 底部按钮
+        Row() {
+          Button(t('取消', '取消'))
+            .layoutWeight(1)
+            .height(46)
+            .borderRadius(10)
+            .border({ width: 1, color: this.getCurrentTheme().borderColor })
+            .backgroundColor(this.getCurrentTheme().backgroundColor)
+            .fontColor(this.getCurrentTheme().textColor)
+            .onClick(() => { this.showTranslationEditor = false })
+
+          Button(t('保存', '保存'))
+            .layoutWeight(1)
+            .height(46)
+            .margin({ left: 12 })
+            .borderRadius(10)
+            .backgroundColor(this.getCurrentTheme().primary)
+            .fontColor(Color.White)
+            .onClick(() => this.saveTranslations())
+        }
+        .width('100%')
+        .padding({ left: 20, right: 20, top: 12, bottom: 16 })
+      }
+      .width('90%')
+      .constraintSize({ maxWidth: 600, maxHeight: 800 })
+      .backgroundColor(this.getCurrentTheme().surfaceColor)
+      .borderRadius(12)
+      .shadow({
+        radius: 20,
+        color: 'rgba(0, 0, 0, 0.1)',
+        offsetX: 0,
+        offsetY: 4
+      })
+      .alignSelf(ItemAlign.Center)
+    }
+    .width('100%')
+    .height('100%')
+    .alignContent(Alignment.Center)
   }
 }
