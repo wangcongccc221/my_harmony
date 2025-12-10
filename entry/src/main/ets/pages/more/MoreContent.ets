@@ -1063,16 +1063,16 @@ export struct MoreContent {
   @Builder
   buildTranslationEditorDialog(): void {
     Stack() {
-      // 遮罩
+      // 遮罩 - Apple Design风格，更柔和的背景模糊
       Column()
         .width('100%')
         .height('100%')
-        .backgroundColor('rgba(0, 0, 0, 0.3)') // 更淡的遮罩
+        .backgroundColor('rgba(0, 0, 0, 0.4)') // Apple Design标准遮罩透明度
         .backgroundBlurStyle(BlurStyle.Regular) // 全屏模糊背景
         .onClick(() => {
           this.showTranslationEditor = false
         })
-        .transition(TransitionEffect.OPACITY.animation({ duration: 300 }))
+        .transition(TransitionEffect.OPACITY.animation({ duration: 300, curve: Curve.EaseOut }))
 
       // 内容卡片 - 类似 iPad 的 Page Sheet 风格
       Column() {
@@ -1144,13 +1144,38 @@ export struct MoreContent {
         }
         .padding({ left: 16, right: 16, top: 10, bottom: 10 })
 
-        // 提示文本
-        Text(t('在右侧填写翻译，留空则显示原始中文。', '在右侧填写翻译，留空则显示原始中文。'))
+        // 表头区域 - Apple Design风格优化版
+        Row() {
+          // 原始语言列标题
+          Text(t('原始语言', '原始语言'))
             .fontSize(13)
-            .fontColor('#8E8E93')
-            .width('100%')
-            .padding({ left: 16, right: 16, bottom: 8 })
-            .textAlign(TextAlign.Start)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#8E8E93') // iOS系统灰色
+            .layoutWeight(1)
+            .padding({ left: 16, right: 12 })
+          
+          // 中间分隔线
+          Divider()
+            .vertical(true)
+            .strokeWidth(0.5)
+            .color('#C6C6C8')
+            .height(20)
+            .margin({ left: 4, right: 4 })
+          
+          // 修改的语言列标题
+          Text(t('修改的语言', '修改的语言'))
+            .fontSize(13)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#8E8E93') // iOS系统灰色
+            .layoutWeight(1.2)
+            .padding({ left: 12, right: 16 })
+        }
+        .width('100%')
+        .height(40) // 稍微增加高度，更舒适
+        .backgroundColor('#F2F2F7') // iOS浅灰背景
+        .border({ width: { bottom: 0.5 }, color: '#C6C6C8' }) // 底部细分割线
+        .padding({ top: 6, bottom: 6 }) // 垂直内边距
+        .margin({ bottom: 2 }) // 与列表的间距
 
         // 列表
         List() {
@@ -1162,24 +1187,33 @@ export struct MoreContent {
                     .fontSize(17) // 标准正文大小
                     .fontColor(this.getCurrentTheme().textColor)
                     .layoutWeight(1)
-                    .padding({ right: 16 })
-                    .maxLines(2)
-                    .textOverflow({ overflow: TextOverflow.Ellipsis })
+                    .padding({ right: 12 })
+                    .maxLines(3) // 允许更多行以支持换行
+                    .textAlign(TextAlign.Start) // 左对齐，更易读
+
+                  // 中间分隔线
+                  Divider()
+                    .vertical(true)
+                    .strokeWidth(0.5)
+                    .color('#E5E5EA') // 更淡的分隔线
+                    .height(28)
+                    .margin({ left: 4, right: 4 })
 
                   // 翻译文本（可编辑）
                   TextInput({ text: item.value, placeholder: t('输入翻译', '输入翻译') })
                     .layoutWeight(1.2) // 给输入框更多空间
                     .height(44)
                     .fontSize(17)
-                    .textAlign(TextAlign.End) // 靠右对齐，类似 iOS 设置项
-                    .fontColor(this.getCurrentTheme().primary) // 翻译内容使用主色高亮
+                    .textAlign(TextAlign.Start) // 改为左对齐，更符合输入习惯
+                    .fontColor(this.getCurrentTheme().textColor) // 使用正常文字颜色
                     .placeholderColor('#C7C7CC')
-                    .backgroundColor(Color.Transparent) // 透明背景
-                    .padding({ right: 0 })
+                    .backgroundColor('#F9F9F9') // 浅灰背景，区分可编辑区域
+                    .borderRadius(8) // 圆角输入框
+                    .padding({ left: 12, right: 12, top: 8, bottom: 8 })
                     .onChange((v: string) => this.updateTranslationValue(item.originalKey, v))
                 }
                 .width('100%')
-                .padding({ top: 11, bottom: 11, right: 16 }) // iOS 列表项标准内边距
+                .padding({ top: 14, bottom: 14, right: 16 }) // 增加垂直内边距，更舒适
               }
               .padding({ left: 16 })
             }, (item: TranslationItem) => item.key)
@@ -1192,14 +1226,14 @@ export struct MoreContent {
       .width('85%') // 与工程设置对话框宽度一致
       .height('90%') // 与工程设置对话框高度一致
       .backgroundColor(this.getCurrentTheme().surfaceColor)
-      .borderRadius(12) // 圆角一致
+      .borderRadius(16) // Apple Design风格，更大的圆角
       .shadow({
-        radius: 20,
-        color: 'rgba(0, 0, 0, 0.1)',
+        radius: 30,
+        color: 'rgba(0, 0, 0, 0.15)',
         offsetX: 0,
-        offsetY: 4
-      }) // 阴影一致
-      .transition(TransitionEffect.move(TransitionEdge.BOTTOM).animation({ duration: 350, curve: Curve.Friction })) // 底部滑入动画
+        offsetY: 8
+      }) // Apple Design风格，更柔和的阴影
+      .transition(TransitionEffect.move(TransitionEdge.BOTTOM).animation({ duration: 350, curve: Curve.EaseOut })) // 更流畅的动画
     }
     .width('100%')
     .height('100%')

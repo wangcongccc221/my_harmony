@@ -106,6 +106,8 @@
   "在右侧\"翻译文本\"列填写您的翻译，留空则显示原始中文。": "Fill in your translation in the \"Translation Text\" column on the right. Leave blank to display original Chinese.",
   "原始文本": "Original Text",
   "翻译文本": "Translation Text",
+  "原始语言": "Original Language",
+  "修改的语言": "Translation",
   "请输入语言名称（如：English、日本語、Español）": "Please enter language name (e.g.: English, 日本語, Español)",
   "姓名": "Name",
   "修改个人信息": "Edit Personal Information",
