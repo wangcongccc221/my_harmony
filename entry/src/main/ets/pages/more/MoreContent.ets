@@ -26,8 +26,9 @@ interface SettingItem {
 
 // 翻译项接口
 interface TranslationItem {
-  key: string
-  value: string
+  key: string  // 显示文本（当前语言的翻译或中文键）
+  originalKey: string  // 原始中文键（用于保存）
+  value: string  // 用户编辑的翻译文本
 }
 
 // 翻译记录类型
@@ -127,7 +128,11 @@ export struct MoreContent {
         await mgr.init(GlobalStore.context)
       }
 
-      // 从默认模板文件加载所有字段；若沙箱不存在或为空，回落到 rawfile 再同步到沙箱
+      // 获取当前语言
+      const currentLang = mgr.getCurrentLanguage()
+      console.log(`[MoreContent] Current language: ${currentLang}`)
+
+      // 从默认模板文件加载所有字段（中文键）
       const appCtx = GlobalStore.context.getApplicationContext?.() ?? GlobalStore.context
       const filesDir = appCtx.filesDir
       const defaultTemplatePath = `${filesDir}/i18n/translations.default.json`
@@ -172,18 +177,56 @@ export struct MoreContent {
         }
       }
 
+      // 加载当前语言的翻译（作为原始文本）
+      let currentLangTranslations = new Map<string, string>()
+      if (currentLang !== '中文') {
+        const currentLangPath = `${filesDir}/i18n/${currentLang}.json`
+        console.log(`[MoreContent] Loading current language translations from: ${currentLangPath}`)
+        try {
+          if (fs.statSync(currentLangPath).size > 0) {
+            const file = fs.openSync(currentLangPath, fs.OpenMode.READ_ONLY)
+            const stat = fs.statSync(currentLangPath)
+            const dataBuffer = new ArrayBuffer(stat.size)
+            fs.readSync(file.fd, dataBuffer)
+            fs.closeSync(file.fd)
+            const u8 = new Uint8Array(dataBuffer)
+            const buf = buffer.from(u8.buffer)
+            const langContent = buf.toString('utf-8')
+            // 使用 JSON.parse 的 reviver 函数解析 JSON 到 Map
+            JSON.parse(langContent, (key: string, value: string | number | boolean | null): string | number | boolean | null => {
+              if (key !== '' && value !== undefined && value !== null) {
+                currentLangTranslations.set(key, String(value))
+              }
+              return value
+            })
+            console.log(`[MoreContent] Loaded ${currentLangTranslations.size} translations from current language`)
+          }
+        } catch (e) {
+          console.warn(`[MoreContent] Failed to load current language translations: ${JSON.stringify(e)}`)
+        }
+      }
+
       let arr: TranslationItem[] = []
       if (content) {
         try {
-          const parsed = JSON.parse(content) as TranslationRecord
-          const keys = Object.keys(parsed)
-          for (let i = 0; i < keys.length; i++) {
-            const k = keys[i]
-            const v = parsed[k]
-            const val = v !== undefined && v !== null ? String(v) : ''
-            const item: TranslationItem = { key: k, value: val }
+          // 先解析为 Map 以便访问值
+          const templateMap = new Map<string, string>()
+          JSON.parse(content, (key: string, value: string | number | boolean | null): string | number | boolean | null => {
+            if (key !== '' && value !== undefined && value !== null) {
+              templateMap.set(key, String(value))
+            }
+            return value
+          })
+          
+          // 遍历 Map 构建 TranslationItem 数组
+          templateMap.forEach((val: string, k: string) => {
+            // 如果当前语言不是中文，使用当前语言的翻译作为显示文本；否则使用中文键
+            const displayText = currentLang !== '中文' && currentLangTranslations.has(k) 
+              ? currentLangTranslations.get(k) ?? k 
+              : k
+            const item: TranslationItem = { key: displayText, originalKey: k, value: val }
             arr.push(item)
-          }
+          })
           console.log(`[MoreContent] Loaded ${arr.length} template entries`)
         } catch (e) {
           console.error(`[MoreContent] Failed to parse template content: ${JSON.stringify(e)}`)
@@ -204,7 +247,7 @@ export struct MoreContent {
   private updateTranslationKey(index: number, value: string): void {
     if (index < 0 || index >= this.translations.length) return
     const next: TranslationItem[] = [...this.translations]
-    const updated: TranslationItem = { key: value, value: next[index].value }
+    const updated: TranslationItem = { key: value, originalKey: next[index].originalKey, value: next[index].value }
     next[index] = updated
     this.translations = next
   }
@@ -212,7 +255,7 @@ export struct MoreContent {
   private updateTranslationValue(index: number, value: string): void {
     if (index < 0 || index >= this.translations.length) return
     const next: TranslationItem[] = [...this.translations]
-    const updated: TranslationItem = { key: next[index].key, value }
+    const updated: TranslationItem = { key: next[index].key, originalKey: next[index].originalKey, value }
     next[index] = updated
     this.translations = next
   }
@@ -243,7 +286,9 @@ export struct MoreContent {
     }
     const keyword = this.translationFilter.trim().toLowerCase()
     return this.translations.filter((item) => {
-      return item.key.toLowerCase().includes(keyword) || (item.value ?? '').toLowerCase().includes(keyword)
+      return item.key.toLowerCase().includes(keyword) || 
+             item.originalKey.toLowerCase().includes(keyword) || 
+             (item.value ?? '').toLowerCase().includes(keyword)
     })
   }
 
@@ -270,15 +315,16 @@ export struct MoreContent {
 
     try {
       const mgr = I18nManager.getInstance()
-      const record: Record<string, string> = {}
+      const map = new Map<string, string>()
       this.translations.forEach((item) => {
-        if (item.key && item.key.trim().length > 0) {
-          record[item.key.trim()] = item.value ?? ''
+        // 使用 originalKey 作为保存的键（原始中文键）
+        if (item.originalKey && item.originalKey.trim().length > 0) {
+          map.set(item.originalKey.trim(), item.value ?? '')
         }
       })
-      console.log(`[MoreContent] Prepared ${Object.keys(record).length} translations to save`)
+      console.log(`[MoreContent] Prepared ${map.size} translations to save`)
       
-      await mgr.saveLanguage(langName, record)
+      await mgr.saveLanguage(langName, map)
       this.omniUIUtils.showSuccess(`翻译已保存为：${langName}`)
       this.showTranslationEditor = false
       
