@@ -11,8 +11,10 @@ import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../
 import { useOmniTheme } from '../../utils/theme/useOmniTheme'
 import { OmniUIUtils } from '../../utils/helpers/OmniUIUtils'
 import { EngineeringSettingsDialog } from '../../components/dialogs/EngineeringSettingsDialog'
-import { I18nManager, t } from '../../utils/i18n/I18nManager'
+import { I18nManager, t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
 import GlobalStore from '../../database/orm/model/GlobalStore'
+import { fileIo as fs } from '@kit.CoreFileKit'
+import { buffer } from '@kit.ArkTS'
 
 // 设置项接口
 interface SettingItem {
@@ -28,11 +30,15 @@ interface TranslationItem {
   value: string
 }
 
+// 翻译记录类型
+type TranslationRecord = Record<string, string>
+
 @Component
 export struct MoreContent {
   @StorageLink(OMNI_THEME_KEY) @Watch('onThemeChange') consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
   @StorageLink(OMNI_THEME_TYPE_KEY) @Watch('onThemeChange') consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
   @StorageLink(OMNI_THEME_VERSION_KEY) @Watch('onThemeChange') themeVersion: number = 0
+  @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0  // 监听语言变化，触发 UI 更新
   private omniThemeManager = OmniThemeManager.getInstance()
   private omniUIUtils = OmniUIUtils.getInstance()
   @State showThemeSelector: boolean = false
@@ -40,11 +46,15 @@ export struct MoreContent {
   @State showEngineeringSettingsDialog: boolean = false
   @State showLanguageSelector: boolean = false
   @State currentLanguage: string = '中文'
+  @State availableLanguages: string[] = []
+  @State selectedLanguageTemp: string = '中文'  // 临时选中的语言（用于确认）
   @State showTranslationEditor: boolean = false
   @State translationFilter: string = ''
   @State newTranslationKey: string = ''
   @State newTranslationValue: string = ''
   @State translations: TranslationItem[] = []
+  @State showLanguageNameDialog: boolean = false
+  @State languageNameInput: string = ''
 
   // 设置项配置
   private settingItems: SettingItem[] = [
@@ -104,32 +114,90 @@ export struct MoreContent {
 
   // 语言编辑入口
   private async openTranslationEditor(): Promise<void> {
+    console.log('[MoreContent] openTranslationEditor: start')
     try {
-      console.log('openTranslationEditor: start')
+      if (!GlobalStore.context) {
+        console.error('[MoreContent] GlobalStore.context is not available')
+        this.omniUIUtils.showError('翻译初始化失败：上下文未就绪')
+        return
+      }
       const mgr = I18nManager.getInstance()
       if (!mgr.isInitialized()) {
-        if (!GlobalStore.context) {
-          console.warn('openTranslationEditor: GlobalStore.context is undefined')
-          this.omniUIUtils.showError('翻译初始化失败：上下文未就绪')
-          return
-        }
+        console.log('[MoreContent] I18nManager not initialized, initializing...')
         await mgr.init(GlobalStore.context)
-      } else {
-        await mgr.reload()
       }
-      const all = mgr.getAllTranslations()
-      const arr: TranslationItem[] = []
-      Object.keys(all).forEach((k) => {
-        const item: TranslationItem = { key: k, value: all[k] }
-        arr.push(item)
-      })
+
+      // 从默认模板文件加载所有字段；若沙箱不存在或为空，回落到 rawfile 再同步到沙箱
+      const appCtx = GlobalStore.context.getApplicationContext?.() ?? GlobalStore.context
+      const filesDir = appCtx.filesDir
+      const defaultTemplatePath = `${filesDir}/i18n/translations.default.json`
+      console.log(`[MoreContent] Loading default template from: ${defaultTemplatePath}`)
+
+      let content: string | undefined = undefined
+
+      // 优先读取沙箱文件
+      try {
+        const stat = fs.statSync(defaultTemplatePath)
+        if (stat.size > 0) {
+          const file = fs.openSync(defaultTemplatePath, fs.OpenMode.READ_ONLY)
+          const dataBuffer = new ArrayBuffer(stat.size)
+          fs.readSync(file.fd, dataBuffer)
+          fs.closeSync(file.fd)
+          const u8 = new Uint8Array(dataBuffer)
+          const buf = buffer.from(u8.buffer)
+          content = buf.toString('utf-8')
+          console.log(`[MoreContent] Sandbox template size: ${stat.size} bytes`)
+        } else {
+          console.warn('[MoreContent] Sandbox template empty, fallback to rawfile')
+        }
+      } catch (e) {
+        console.warn(`[MoreContent] Sandbox template missing, fallback to rawfile: ${JSON.stringify(e)}`)
+      }
+
+      // 如果沙箱不存在/为空，读取 rawfile 并写回沙箱
+      if (!content) {
+        try {
+          const rawBytes: Uint8Array = appCtx.resourceManager.getRawFileContentSync('file/translations.default.json')
+          const rawBuf = buffer.from(rawBytes.buffer)
+          content = rawBuf.toString('utf-8')
+          console.log('[MoreContent] Loaded template from rawfile')
+          // 同步到沙箱，便于后续编辑
+          const bufToSave = buffer.from(content, 'utf-8')
+          const f = fs.openSync(defaultTemplatePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE | fs.OpenMode.TRUNC)
+          fs.writeSync(f.fd, bufToSave.buffer)
+          fs.closeSync(f.fd)
+          console.log('[MoreContent] Synced rawfile template to sandbox')
+        } catch (e) {
+          console.error(`[MoreContent] Failed to load template from rawfile: ${JSON.stringify(e)}`)
+        }
+      }
+
+      let arr: TranslationItem[] = []
+      if (content) {
+        try {
+          const parsed = JSON.parse(content) as TranslationRecord
+          const keys = Object.keys(parsed)
+          for (let i = 0; i < keys.length; i++) {
+            const k = keys[i]
+            const v = parsed[k]
+            const val = v !== undefined && v !== null ? String(v) : ''
+            const item: TranslationItem = { key: k, value: val }
+            arr.push(item)
+          }
+          console.log(`[MoreContent] Loaded ${arr.length} template entries`)
+        } catch (e) {
+          console.error(`[MoreContent] Failed to parse template content: ${JSON.stringify(e)}`)
+        }
+      } else {
+        console.warn('[MoreContent] No template content available, using empty list')
+      }
+
       this.translations = arr
-      console.log(`openTranslationEditor: loaded translations ${this.translations.length}`)
+      console.log(`[MoreContent] openTranslationEditor: loaded ${this.translations.length} items`)
       this.showTranslationEditor = true
-      this.omniUIUtils.showInfo('已打开语言编辑')
     } catch (e) {
-      console.error('openTranslationEditor failed', e)
-      this.omniUIUtils.showError(`翻译加载失败: ${e instanceof Error ? e.message : JSON.stringify(e)}`)
+      console.error('[MoreContent] openTranslationEditor failed', e)
+      this.omniUIUtils.showError(`翻译加载失败: ${JSON.stringify(e)}`)
     }
   }
 
@@ -180,6 +248,26 @@ export struct MoreContent {
   }
 
   private async saveTranslations(): Promise<void> {
+    console.log('[MoreContent] saveTranslations: opening language name dialog')
+    this.languageNameInput = ''
+    this.showLanguageNameDialog = true
+  }
+
+  private async confirmSaveLanguage(): Promise<void> {
+    const langName = this.languageNameInput.trim()
+    if (!langName || langName.length === 0) {
+      this.omniUIUtils.showInfo('请输入语言名称')
+      return
+    }
+
+    if (!/^[a-zA-Z0-9_\u4e00-\u9fa5]+$/.test(langName)) {
+      this.omniUIUtils.showError('语言名称只能包含字母、数字、下划线和中文')
+      return
+    }
+
+    console.log(`[MoreContent] Saving translations as language: ${langName}`)
+    this.showLanguageNameDialog = false
+
     try {
       const mgr = I18nManager.getInstance()
       const record: Record<string, string> = {}
@@ -188,13 +276,33 @@ export struct MoreContent {
           record[item.key.trim()] = item.value ?? ''
         }
       })
-      mgr.replaceAll(record)
-      await mgr.save()
-      this.omniUIUtils.showSuccess(t('翻译已保存', '翻译已保存'))
+      console.log(`[MoreContent] Prepared ${Object.keys(record).length} translations to save`)
+      
+      await mgr.saveLanguage(langName, record)
+      this.omniUIUtils.showSuccess(`翻译已保存为：${langName}`)
       this.showTranslationEditor = false
+      
+      // 刷新可用语言列表
+      await this.refreshAvailableLanguages()
     } catch (e) {
-      this.omniUIUtils.showError(t('保存失败', '保存失败'))
-      console.error('saveTranslations failed', e)
+      console.error('[MoreContent] saveTranslations failed', e)
+      this.omniUIUtils.showError(`保存失败: ${JSON.stringify(e)}`)
+    }
+  }
+
+  private async refreshAvailableLanguages(): Promise<void> {
+    console.log('[MoreContent] Refreshing available languages')
+    try {
+      const mgr = I18nManager.getInstance()
+      if (!mgr.isInitialized() && GlobalStore.context) {
+        await mgr.init(GlobalStore.context)
+      }
+      const languages = mgr.listLanguageFiles()
+      this.availableLanguages = languages
+      console.log(`[MoreContent] Available languages: ${JSON.stringify(languages)}`)
+    } catch (e) {
+      console.error('[MoreContent] Failed to refresh languages:', e)
+      this.availableLanguages = []
     }
   }
 
@@ -258,6 +366,11 @@ export struct MoreContent {
       if (this.showTranslationEditor) {
         this.buildTranslationEditorDialog()
       }
+
+      // 语言名称输入对话框
+      if (this.showLanguageNameDialog) {
+        this.buildLanguageNameDialog()
+      }
     }
     .width('100%')
     .height('100%')
@@ -314,7 +427,7 @@ export struct MoreContent {
   @Builder
   buildSettingsContent(): void {
     Column() {
-      Text('系统设置')
+      Text(t('系统设置', '系统设置'))
         .fontSize(32)  // 字体调大到32px，更有气势！
         .fontWeight(FontWeight.Bold)
         .fontColor(this.getCurrentTheme().textColor)
@@ -686,7 +799,10 @@ export struct MoreContent {
         this.buildHelpItem('🔌', '关闭IPM', '关闭IPM服务')
         this.buildHelpItem('📋', '分选日志', '查看分选操作日志')
         this.buildHelpItem('ℹ️', '关于', '查看系统信息')
-        this.buildHelpItem('🌐', '语言', '切换系统语言', () => {
+        this.buildHelpItem('🌐', '语言', '切换系统语言', async () => {
+          console.log('[MoreContent] Opening language selector')
+          await this.refreshAvailableLanguages()
+          this.selectedLanguageTemp = this.currentLanguage  // 初始化临时选中为当前语言
           this.showLanguageSelector = true
         })
         this.buildHelpItem('✏️', '翻译管理', '编辑自定义翻译', () => {
@@ -706,18 +822,35 @@ export struct MoreContent {
   }
 
   // 语言选择相关方法
-  private selectLanguage(lang: string): void {
+  private selectLanguageTemp(lang: string): void {
+    // 临时选中语言（不立即切换）
+    this.selectedLanguageTemp = lang
+    console.log(`[MoreContent] Temporarily selected language: ${lang}`)
+  }
+
+  private async confirmLanguageSelection(): Promise<void> {
+    // 确认选择语言
+    const lang = this.selectedLanguageTemp
+    console.log(`[MoreContent] Confirming language selection: ${lang}`)
     this.currentLanguage = lang
-    if (lang === '中文') {
-      // 清空翻译，使用原始中文
-      I18nManager.getInstance().replaceAll({})
-      I18nManager.getInstance().save()
-      this.omniUIUtils.showSuccess('已切换到中文')
-    } else if (lang === '自定义') {
-      // 使用用户自定义翻译
-      this.omniUIUtils.showSuccess('已切换到自定义翻译')
+    
+    try {
+      const mgr = I18nManager.getInstance()
+      await mgr.setLanguage(lang)
+      this.omniUIUtils.showSuccess(`已切换到：${lang}`)
+    } catch (e) {
+      console.error(`[MoreContent] Failed to set language ${lang}:`, e)
+      this.omniUIUtils.showError(`切换语言失败: ${JSON.stringify(e)}`)
     }
+    
     this.showLanguageSelector = false
+  }
+
+  private cancelLanguageSelection(): void {
+    // 取消选择，恢复原状态
+    this.selectedLanguageTemp = this.currentLanguage
+    this.showLanguageSelector = false
+    console.log('[MoreContent] Language selection cancelled')
   }
 
   // 语言选择弹窗
@@ -766,12 +899,46 @@ export struct MoreContent {
           .padding({ left: 20, right: 20, top: 12, bottom: 12 })
 
         // 语言选项
-        Column() {
-          this.buildLanguageOption('🇨🇳', '中文', '使用原始中文界面')
-          this.buildLanguageOption('✏️', '自定义', '使用您编辑的翻译')
+        Scroll() {
+          Column() {
+            // 中文选项（固定）
+            this.buildLanguageOption('🇨🇳', '中文', '使用原始中文界面', '中文')
+            
+            // 动态显示扫描到的语言文件
+            ForEach(this.availableLanguages, (lang: string) => {
+              this.buildLanguageOption('📄', lang, `使用 ${lang} 翻译`, lang)
+            }, (lang: string) => lang)
+          }
+          .width('100%')
+          .padding({ left: 20, right: 20, bottom: 20 })
         }
         .width('100%')
-        .padding({ left: 20, right: 20, bottom: 20 })
+        .height(300)
+        .scrollable(ScrollDirection.Vertical)
+        .scrollBar(BarState.Auto)
+
+        // 底部按钮
+        Row() {
+          Button('取消')
+            .layoutWeight(1)
+            .height(44)
+            .borderRadius(10)
+            .border({ width: 1, color: this.getCurrentTheme().borderColor })
+            .backgroundColor(this.getCurrentTheme().backgroundColor)
+            .fontColor(this.getCurrentTheme().textColor)
+            .onClick(() => this.cancelLanguageSelection())
+
+          Button('确认')
+            .layoutWeight(1)
+            .height(44)
+            .margin({ left: 12 })
+            .borderRadius(10)
+            .backgroundColor(this.getCurrentTheme().primary)
+            .fontColor(Color.White)
+            .onClick(() => this.confirmLanguageSelection())
+        }
+        .width('100%')
+        .padding({ left: 20, right: 20, top: 12, bottom: 16 })
       }
       .width('85%')
       .constraintSize({ maxWidth: 400 })
@@ -792,7 +959,7 @@ export struct MoreContent {
 
   // 构建语言选项
   @Builder
-  buildLanguageOption(icon: string, lang: string, desc: string): void {
+  buildLanguageOption(icon: string, lang: string, desc: string, langValue: string): void {
     Row() {
       Text(icon)
         .fontSize(28)
@@ -811,7 +978,7 @@ export struct MoreContent {
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
 
-      if (this.currentLanguage === lang) {
+      if (this.selectedLanguageTemp === langValue) {
         Text('✓')
           .fontSize(20)
           .fontColor(this.getCurrentTheme().primary)
@@ -820,12 +987,15 @@ export struct MoreContent {
     }
     .width('100%')
     .padding({ left: 16, right: 16, top: 14, bottom: 14 })
-    .backgroundColor(this.currentLanguage === lang ? this.getCurrentTheme().primary + '15' : Color.Transparent)
+    .backgroundColor(this.selectedLanguageTemp === langValue ? this.getCurrentTheme().primary + '15' : Color.Transparent)
     .borderRadius(10)
-    .border({ width: this.currentLanguage === lang ? 2 : 1, color: this.currentLanguage === lang ? this.getCurrentTheme().primary : this.getCurrentTheme().borderColor })
+    .border({ 
+      width: this.selectedLanguageTemp === langValue ? 2 : 1, 
+      color: this.selectedLanguageTemp === langValue ? this.getCurrentTheme().primary : this.getCurrentTheme().borderColor 
+    })
     .margin({ bottom: 10 })
     .onClick(() => {
-      this.selectLanguage(lang)
+      this.selectLanguageTemp(langValue)
     })
   }
 
@@ -978,5 +1148,108 @@ export struct MoreContent {
     .width('100%')
     .height('100%')
     .alignContent(Alignment.Center)
+  }
+
+  // 语言名称输入对话框
+  @Builder
+  buildLanguageNameDialog(): void {
+    Stack() {
+      // 遮罩
+      Column()
+        .width('100%')
+        .height('100%')
+        .backgroundColor('rgba(0, 0, 0, 0.5)')
+        .onClick(() => {
+          this.showLanguageNameDialog = false
+        })
+
+      // 内容
+      Column() {
+        // 标题
+        Row() {
+          Text('💾 保存翻译')
+            .fontSize(22)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getCurrentTheme().textColor)
+            .layoutWeight(1)
+
+          Button() {
+            Text('×')
+              .fontSize(28)
+              .fontColor(this.getCurrentTheme().textColor)
+          }
+          .width(32)
+          .height(32)
+          .backgroundColor(Color.Transparent)
+          .onClick(() => {
+            this.showLanguageNameDialog = false
+          })
+        }
+        .width('100%')
+        .padding({ left: 20, right: 20, top: 16, bottom: 12 })
+        .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+
+        // 说明
+        Text('请输入语言名称（如：English、日本語、Español）')
+          .fontSize(14)
+          .fontColor(this.getCurrentTheme().subTextColor)
+          .padding({ left: 20, right: 20, top: 16, bottom: 8 })
+
+        // 输入框
+        TextInput({ 
+          text: this.languageNameInput, 
+          placeholder: '例如：English' 
+        })
+          .width('100%')
+          .height(44)
+          .fontSize(16)
+          .margin({ left: 20, right: 20, top: 8, bottom: 20 })
+          .backgroundColor(this.getCurrentTheme().backgroundColor)
+          .onChange((v: string) => {
+            this.languageNameInput = v
+          })
+
+        // 底部按钮
+        Row() {
+          Button('取消')
+            .layoutWeight(1)
+            .height(44)
+            .borderRadius(10)
+            .border({ width: 1, color: this.getCurrentTheme().borderColor })
+            .backgroundColor(this.getCurrentTheme().backgroundColor)
+            .fontColor(this.getCurrentTheme().textColor)
+            .onClick(() => {
+              this.showLanguageNameDialog = false
+            })
+
+          Button('保存')
+            .layoutWeight(1)
+            .height(44)
+            .margin({ left: 12 })
+            .borderRadius(10)
+            .backgroundColor(this.getCurrentTheme().primary)
+            .fontColor(Color.White)
+            .onClick(() => this.confirmSaveLanguage())
+        }
+        .width('100%')
+        .padding({ left: 20, right: 20, bottom: 16 })
+      }
+      .width('85%')
+      .constraintSize({ maxWidth: 400 })
+      .backgroundColor(this.getCurrentTheme().surfaceColor)
+      .borderRadius(12)
+      .shadow({
+        radius: 20,
+        color: 'rgba(0, 0, 0, 0.1)',
+        offsetX: 0,
+        offsetY: 4
+      })
+      .alignSelf(ItemAlign.Center)
+    }
+    .width('100%')
+    .height('100%')
+    .alignContent(Alignment.Center)
+    .position({ x: 0, y: 0 })
+    .zIndex(5000)
   }
 }

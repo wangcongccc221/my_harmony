@@ -12,6 +12,7 @@ import { OmniTabBar, TabConfig, TabBarDirection } from '../ui/layout/OmniTabBar'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
 
 @Component
 export struct LeftNavigationTabBar {
@@ -20,6 +21,7 @@ export struct LeftNavigationTabBar {
   @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
   @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
+  @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0  // 监听语言变化，触发 UI 更新
   
   // 提供主题给子组件
   @Provide providedTheme: ExtendedOmniThemeStyle = this.consumedTheme
@@ -44,20 +46,22 @@ export struct LeftNavigationTabBar {
     return getCurrentTheme(this.consumedTheme)
   }
 
-  // 获取导航Tab配置
+  // 获取导航Tab配置（依赖 i18nVersion 确保语言变化时重新计算）
   private getNavigationTabs(): TabConfig[] {
+    // 引用 i18nVersion 确保语言变化时重新计算
+    const _version = this.i18nVersion
     return [
-      { key: 'home', label: '主页' },
-      { key: 'quality', label: '品质' },
-      { key: 'level', label: '等级' },
-      { key: 'fruit', label: '水果信息' },
-      { key: 'load', label: '载入程序' },
-      { key: 'save', label: '保存程序' },
-      { key: 'history', label: '历史加工' },
-      { key: 'realtime', label: '实时统计' },
-      { key: 'end', label: '结束加工' },
-      { key: 'print', label: '打印' },
-      { key: 'more', label: '更多' }
+      { key: 'home', label: t('主页', '主页') },
+      { key: 'quality', label: t('品质', '品质') },
+      { key: 'level', label: t('等级', '等级') },
+      { key: 'fruit', label: t('水果信息', '水果信息') },
+      { key: 'load', label: t('载入程序', '载入程序') },
+      { key: 'save', label: t('保存程序', '保存程序') },
+      { key: 'history', label: t('历史加工', '历史加工') },
+      { key: 'realtime', label: t('实时统计', '实时统计') },
+      { key: 'end', label: t('结束加工', '结束加工') },
+      { key: 'print', label: t('打印', '打印') },
+      { key: 'more', label: t('更多', '更多') }
     ]
   }
 
@@ -79,13 +83,14 @@ export struct LeftNavigationTabBar {
   @Builder
   private buildPrintSubButtons() {
     Column() {
-      // 子按钮1：打印报告
+      // 子按钮1：打印报告（引用 i18nVersion 确保语言变化时重新构建）
       Button() {
-        Text('打印报告')
+        Text(t('打印报告', '打印报告'))
           .fontSize(12)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.resolveTheme().textColor)
       }
+      .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 触发重建
       .width('85%')
       .height(40)
       .margin({ bottom: 6, left: 16, right: 16 })
@@ -104,13 +109,14 @@ export struct LeftNavigationTabBar {
         }
       })
 
-      // 子按钮2：打印标签
+      // 子按钮2：打印标签（引用 i18nVersion 确保语言变化时重新构建）
       Button() {
-        Text('打印标签')
+        Text(t('打印标签', '打印标签'))
           .fontSize(12)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.resolveTheme().textColor)
       }
+      .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 触发重建
       .width('85%')
       .height(40)
       .margin({ bottom: 8, left: 16, right: 16 })
@@ -139,7 +145,7 @@ export struct LeftNavigationTabBar {
 
   build() {
     Column() {
-      // TabBar导航
+      // TabBar导航（引用 i18nVersion 确保语言变化时重新构建）
       OmniTabBar({
         tabs: this.getNavigationTabs(),
         selectedTab: this.currentPage,
@@ -149,6 +155,7 @@ export struct LeftNavigationTabBar {
           this.handlePageChange(tabKey)
         }
       })
+      .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 触发重建
       
       // 打印子按钮（如果显示）
       if (this.showPrintSubButtons) {
