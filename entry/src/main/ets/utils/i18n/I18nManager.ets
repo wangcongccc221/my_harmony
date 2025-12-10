@@ -64,26 +64,56 @@ export class I18nManager {
     this.ensureDirectory(this.i18nDir)
     console.log(`[${TAG}] I18n directory: ${this.i18nDir}`)
 
-    // 若目录为空，尝试从 rawfile 拷贝默认模板
-    const files = this.listLanguageFiles()
-    if (files.length === 0) {
-      console.log(`[${TAG}] No language files found, copying default template...`)
+    // 拷贝默认模板（如果不存在）
+    const defaultTemplatePath = `${this.i18nDir}/translations.default.json`
+    if (!this.fileExists(defaultTemplatePath)) {
+      console.log(`[${TAG}] Default template not found, copying...`)
       try {
         await copyRawFileToSandbox(context, 'file/translations.default.json', 'i18n', 'translations.default.json', true, this.i18nDir)
         console.log(`[${TAG}] Default template copied successfully`)
       } catch (e) {
         console.warn(`[${TAG}] Failed to copy default template: ${JSON.stringify(e)}`)
-        // 创建空文件作为模板
-        await this.writeFile(`${this.i18nDir}/translations.default.json`, '{}')
+        await this.writeFile(defaultTemplatePath, '{}')
+      }
+    }
+
+    // 自动复制 English.json（如果不存在）
+    const englishPath = `${this.i18nDir}/English.json`
+    if (!this.fileExists(englishPath)) {
+      console.log(`[${TAG}] English.json not found, copying from rawfile...`)
+      try {
+        await copyRawFileToSandbox(context, 'file/English.json', 'i18n', 'English.json', true, this.i18nDir)
+        console.log(`[${TAG}] English.json copied successfully`)
+      } catch (e) {
+        console.warn(`[${TAG}] Failed to copy English.json: ${JSON.stringify(e)}`)
+      }
+    }
+
+    // 读取保存的语言设置
+    const savedLanguage = AppStorage.get(I18N_LANGUAGE_KEY) as string
+    if (savedLanguage && savedLanguage !== '中文') {
+      console.log(`[${TAG}] Found saved language: ${savedLanguage}, loading...`)
+      this.currentLanguage = savedLanguage
+      // 加载保存的语言
+      const langPath = `${this.i18nDir}/${savedLanguage}.json`
+      if (this.fileExists(langPath)) {
+        await this.loadLanguageFile(langPath)
+        console.log(`[${TAG}] Loaded saved language: ${savedLanguage}`)
+      } else {
+        console.warn(`[${TAG}] Saved language file not found: ${langPath}, using 中文`)
+        this.currentLanguage = '中文'
+        this.translations.clear()
       }
     } else {
-      console.log(`[${TAG}] Found ${files.length} existing language files`)
+      console.log(`[${TAG}] No saved language found, using default: 中文`)
+      this.currentLanguage = '中文'
+      this.translations.clear()
     }
 
     // 初始化 AppStorage
     AppStorage.setOrCreate(I18N_LANGUAGE_KEY, this.currentLanguage)
     AppStorage.setOrCreate(I18N_VERSION_KEY, 0)
-    console.log(`[${TAG}] AppStorage initialized`)
+    console.log(`[${TAG}] AppStorage initialized with language: ${this.currentLanguage}`)
 
     this.initialized = true
     console.log(`[${TAG}] Initialization completed`)
@@ -125,12 +155,12 @@ export class I18nManager {
       await this.loadLanguageFile(filePath)
     }
 
-    // 更新 AppStorage 并触发 UI 更新
+    // 更新 AppStorage 并触发 UI 更新（保存语言设置）
     AppStorage.set(I18N_LANGUAGE_KEY, lang)
     const prevVersion = AppStorage.get(I18N_VERSION_KEY) as number
     const newVersion = (typeof prevVersion === 'number' ? prevVersion : 0) + 1
     AppStorage.set(I18N_VERSION_KEY, newVersion)
-    console.log(`[${TAG}] Language updated in AppStorage, version: ${newVersion}`)
+    console.log(`[${TAG}] Language updated in AppStorage, version: ${newVersion}, saved language: ${lang}`)
   }
 
   /**

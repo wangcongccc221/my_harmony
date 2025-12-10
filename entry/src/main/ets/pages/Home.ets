@@ -168,6 +168,16 @@ struct Page {
     this.omniThemeManager.init()
     // 初始化 Ctrl 多选状态
     AppStorage.setOrCreate('HOME_CTRL_PRESSED', false)
+    
+    // 同步当前语言（从 I18nManager 或 AppStorage 读取）
+    const mgr = I18nManager.getInstance()
+    if (mgr.isInitialized()) {
+      const savedLang = AppStorage.get(I18N_LANGUAGE_KEY) as string
+      if (savedLang) {
+        this.currentLanguage = savedLang
+        console.log(`[Home] aboutToAppear: synced language to ${savedLang}`)
+      }
+    }
   }
   
   
@@ -526,7 +536,11 @@ struct Page {
             const displayText = currentLang !== '中文' && currentLangTranslations.has(k) 
               ? currentLangTranslations.get(k) ?? k 
               : k
-            const item: TranslationItem = { key: displayText, originalKey: k, value: val }
+            // 如果当前语言不是中文，使用当前语言的翻译作为初始值；否则使用空字符串
+            const initialValue = currentLang !== '中文' && currentLangTranslations.has(k)
+              ? currentLangTranslations.get(k) ?? ''
+              : ''
+            const item: TranslationItem = { key: displayText, originalKey: k, value: initialValue }
             arr.push(item)
           })
           console.log(`[Home] Loaded ${arr.length} template entries`)

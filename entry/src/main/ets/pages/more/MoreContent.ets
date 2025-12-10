@@ -11,7 +11,7 @@ import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../
 import { useOmniTheme } from '../../utils/theme/useOmniTheme'
 import { OmniUIUtils } from '../../utils/helpers/OmniUIUtils'
 import { EngineeringSettingsDialog } from '../../components/dialogs/EngineeringSettingsDialog'
-import { I18nManager, t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
+import { I18nManager, t, I18N_VERSION_KEY, I18N_LANGUAGE_KEY } from '../../utils/i18n/I18nManager'
 import GlobalStore from '../../database/orm/model/GlobalStore'
 import { fileIo as fs } from '@kit.CoreFileKit'
 import { buffer } from '@kit.ArkTS'
@@ -224,7 +224,11 @@ export struct MoreContent {
             const displayText = currentLang !== '中文' && currentLangTranslations.has(k) 
               ? currentLangTranslations.get(k) ?? k 
               : k
-            const item: TranslationItem = { key: displayText, originalKey: k, value: val }
+            // 如果当前语言不是中文，使用当前语言的翻译作为初始值；否则使用空字符串
+            const initialValue = currentLang !== '中文' && currentLangTranslations.has(k)
+              ? currentLangTranslations.get(k) ?? ''
+              : ''
+            const item: TranslationItem = { key: displayText, originalKey: k, value: initialValue }
             arr.push(item)
           })
           console.log(`[MoreContent] Loaded ${arr.length} template entries`)
@@ -847,6 +851,12 @@ export struct MoreContent {
         this.buildHelpItem('ℹ️', '关于', '查看系统信息')
         this.buildHelpItem('🌐', '语言', '切换系统语言', async () => {
           console.log('[MoreContent] Opening language selector')
+          // 同步当前语言（从 AppStorage 读取）
+          const savedLang = AppStorage.get(I18N_LANGUAGE_KEY) as string
+          if (savedLang) {
+            this.currentLanguage = savedLang
+            console.log(`[MoreContent] Synced language to ${savedLang}`)
+          }
           await this.refreshAvailableLanguages()
           this.selectedLanguageTemp = this.currentLanguage  // 初始化临时选中为当前语言
           this.showLanguageSelector = true
