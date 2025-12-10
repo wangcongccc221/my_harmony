@@ -3,6 +3,7 @@ import { Context } from '@kit.AbilityKit'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 import { buffer } from '@kit.ArkTS'
 import { copyRawFileToSandbox } from '../FileUtils'
+import { preferences } from '@kit.ArkData'
 
 const TAG = 'I18nManager'
 const DOMAIN = 0x0000
@@ -41,6 +42,7 @@ export class I18nManager {
   private currentLanguage: string = '中文' // 当前选择的语言
   private translations: Map<string, string> = new Map()
   private initialized: boolean = false
+  private preferencesStore?: preferences.Preferences
 
   static getInstance(): I18nManager {
     return I18nManager.instance
@@ -89,8 +91,44 @@ export class I18nManager {
       }
     }
 
-    // 读取保存的语言设置
-    const savedLanguage = AppStorage.get(I18N_LANGUAGE_KEY) as string
+    // 初始化 Preferences 存储（持久化）
+    try {
+      this.preferencesStore = await preferences.getPreferences(context, 'i18n_settings')
+      console.log(`[${TAG}] Preferences store initialized`)
+    } catch (e) {
+      console.warn(`[${TAG}] Failed to initialize Preferences: ${JSON.stringify(e)}`)
+    }
+
+    // 从 Preferences 读取保存的语言设置（持久化存储）
+    let savedLanguage: string | undefined
+    if (this.preferencesStore) {
+      try {
+        savedLanguage = await this.preferencesStore.get(I18N_LANGUAGE_KEY, '中文') as string
+        console.log(`[${TAG}] Read saved language from Preferences: ${savedLanguage}`)
+      } catch (e) {
+        console.warn(`[${TAG}] Failed to read language from Preferences: ${JSON.stringify(e)}`)
+      }
+    }
+
+    // 如果 Preferences 中没有，尝试从 AppStorage 读取（向后兼容）
+    if (!savedLanguage || savedLanguage === '中文') {
+      const appStorageLang = AppStorage.get(I18N_LANGUAGE_KEY) as string
+      if (appStorageLang && appStorageLang !== '中文') {
+        savedLanguage = appStorageLang
+        console.log(`[${TAG}] Read saved language from AppStorage: ${savedLanguage}`)
+        // 同步到 Preferences
+        if (this.preferencesStore) {
+          try {
+            await this.preferencesStore.put(I18N_LANGUAGE_KEY, savedLanguage)
+            await this.preferencesStore.flush()
+            console.log(`[${TAG}] Synced language to Preferences: ${savedLanguage}`)
+          } catch (e) {
+            console.warn(`[${TAG}] Failed to sync language to Preferences: ${JSON.stringify(e)}`)
+          }
+        }
+      }
+    }
+
     if (savedLanguage && savedLanguage !== '中文') {
       console.log(`[${TAG}] Found saved language: ${savedLanguage}, loading...`)
       this.currentLanguage = savedLanguage
@@ -155,11 +193,33 @@ export class I18nManager {
       await this.loadLanguageFile(filePath)
     }
 
-    // 更新 AppStorage 并触发 UI 更新（保存语言设置）
+    // 更新 AppStorage 并触发 UI 更新
     AppStorage.set(I18N_LANGUAGE_KEY, lang)
     const prevVersion = AppStorage.get(I18N_VERSION_KEY) as number
     const newVersion = (typeof prevVersion === 'number' ? prevVersion : 0) + 1
     AppStorage.set(I18N_VERSION_KEY, newVersion)
+
+    // 保存到 Preferences（持久化存储，应用重启后仍然有效）
+    if (this.preferencesStore) {
+      try {
+        await this.preferencesStore.put(I18N_LANGUAGE_KEY, lang)
+        await this.preferencesStore.flush()
+        console.log(`[${TAG}] Saved language to Preferences: ${lang}`)
+      } catch (e) {
+        console.warn(`[${TAG}] Failed to save language to Preferences: ${JSON.stringify(e)}`)
+      }
+    }
+
+    // 保存到 Preferences（持久化存储）
+    if (this.preferencesStore) {
+      try {
+        await this.preferencesStore.put(I18N_LANGUAGE_KEY, lang)
+        await this.preferencesStore.flush()
+        console.log(`[${TAG}] Saved language to Preferences: ${lang}`)
+      } catch (e) {
+        console.warn(`[${TAG}] Failed to save language to Preferences: ${JSON.stringify(e)}`)
+      }
+    }
     console.log(`[${TAG}] Language updated in AppStorage, version: ${newVersion}, saved language: ${lang}`)
   }
 

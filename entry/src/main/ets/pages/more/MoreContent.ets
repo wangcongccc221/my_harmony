@@ -57,20 +57,23 @@ export struct MoreContent {
   @State showLanguageNameDialog: boolean = false
   @State languageNameInput: string = ''
 
-  // 设置项配置
-  private settingItems: SettingItem[] = [
-    { icon: '⚙️', title: '工程设置', subtitle: '工程参数配置', onClick: () => this.showEngineeringSettings() },
-    { icon: '📱', title: '设备信息', subtitle: '查看设备详细信息' },
-    { icon: '🗑️', title: '数据清零', subtitle: '清空所有数据' },
-    { icon: '🔧', title: '配置设置', subtitle: '系统配置管理' },
-    { icon: '👤', title: '用户设置', subtitle: '用户账户管理' },
-    { icon: '⬇️', title: '下载配置', subtitle: '下载配置文件' },
-    { icon: '⚠️', title: '故障信息', subtitle: '查看故障记录' },
-    { icon: '🔌', title: '电器故障设置', subtitle: '电器故障配置' },
-    { icon: '🏷️', title: '贴标设置', subtitle: '标签打印设置' },
-    { icon: '🛠️', title: '系统故障设置', subtitle: '系统故障配置' },
-    { icon: '🔄', title: '复位掉果杯', subtitle: '重置掉果杯状态' }
-  ]
+  // 设置项配置（依赖 i18nVersion 确保语言变化时重新计算）
+  private getSettingItems(): SettingItem[] {
+    const _version = this.i18nVersion
+    return [
+      { icon: '⚙️', title: '工程设置', subtitle: '工程参数配置', onClick: () => this.showEngineeringSettings() },
+      { icon: '📱', title: '设备信息', subtitle: '查看设备详细信息' },
+      { icon: '🗑️', title: '数据清零', subtitle: '清空所有数据' },
+      { icon: '🔧', title: '配置设置', subtitle: '系统配置管理' },
+      { icon: '👤', title: '用户设置', subtitle: '用户账户管理' },
+      { icon: '⬇️', title: '下载配置', subtitle: '下载配置文件' },
+      { icon: '⚠️', title: '故障信息', subtitle: '查看故障记录' },
+      { icon: '🔌', title: '电器故障设置', subtitle: '电器故障配置' },
+      { icon: '🏷️', title: '贴标设置', subtitle: '标签打印设置' },
+      { icon: '🛠️', title: '系统故障设置', subtitle: '系统故障配置' },
+      { icon: '🔄', title: '复位掉果杯', subtitle: '重置掉果杯状态' }
+    ]
+  }
 
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return resolveTheme(this.consumedTheme)
@@ -103,12 +106,12 @@ export struct MoreContent {
   }
 
   private handleEngineeringSettingsConfirm(): void {
-    this.omniUIUtils.showSuccess('工程设置已保存')
+    this.omniUIUtils.showSuccess(t('工程设置已保存', '工程设置已保存'))
     this.showEngineeringSettingsDialog = false
   }
 
   private handleEngineeringSettingsCancel(): void {
-    this.omniUIUtils.showInfo('已取消工程设置')
+    this.omniUIUtils.showInfo(t('已取消工程设置', '已取消工程设置'))
     this.showEngineeringSettingsDialog = false
   }
   //
@@ -119,7 +122,7 @@ export struct MoreContent {
     try {
       if (!GlobalStore.context) {
         console.error('[MoreContent] GlobalStore.context is not available')
-        this.omniUIUtils.showError('翻译初始化失败：上下文未就绪')
+        this.omniUIUtils.showError(t('翻译初始化失败：上下文未就绪', '翻译初始化失败：上下文未就绪'))
         return
       }
       const mgr = I18nManager.getInstance()
@@ -244,7 +247,7 @@ export struct MoreContent {
       this.showTranslationEditor = true
     } catch (e) {
       console.error('[MoreContent] openTranslationEditor failed', e)
-      this.omniUIUtils.showError(`翻译加载失败: ${JSON.stringify(e)}`)
+      this.omniUIUtils.showError(t('翻译加载失败', '翻译加载失败') + ': ' + JSON.stringify(e))
     }
   }
 
@@ -273,7 +276,7 @@ export struct MoreContent {
 
   private addTranslation(): void {
     if (!this.newTranslationKey || this.newTranslationKey.trim().length === 0) {
-      this.omniUIUtils.showInfo('请输入翻译键')
+      this.omniUIUtils.showInfo(t('请输入翻译键', '请输入翻译键'))
       return
     }
     const next: TranslationItem[] = [...this.translations]
@@ -305,7 +308,7 @@ export struct MoreContent {
   private async confirmSaveLanguage(): Promise<void> {
     const langName = this.languageNameInput.trim()
     if (!langName || langName.length === 0) {
-      this.omniUIUtils.showInfo('请输入语言名称')
+      this.omniUIUtils.showInfo(t('请输入语言名称', '请输入语言名称'))
       return
     }
 
@@ -329,14 +332,14 @@ export struct MoreContent {
       console.log(`[MoreContent] Prepared ${map.size} translations to save`)
       
       await mgr.saveLanguage(langName, map)
-      this.omniUIUtils.showSuccess(`翻译已保存为：${langName}`)
+      this.omniUIUtils.showSuccess(t('翻译已保存为：{0}', '翻译已保存为：{0}').replace('{0}', langName))
       this.showTranslationEditor = false
       
       // 刷新可用语言列表
       await this.refreshAvailableLanguages()
     } catch (e) {
       console.error('[MoreContent] saveTranslations failed', e)
-      this.omniUIUtils.showError(`保存失败: ${JSON.stringify(e)}`)
+      this.omniUIUtils.showError(t('保存失败', '保存失败') + ': ' + JSON.stringify(e))
     }
   }
 
@@ -445,7 +448,7 @@ export struct MoreContent {
   @Builder
   buildExportContent(): void {
     Column() {
-      Text('出口管理')
+      Text(t('出口管理', '出口管理'))
         .fontSize(32)  // 字体调大到32px，更有气势！
         .fontWeight(FontWeight.Bold)
         .fontColor(this.getCurrentTheme().textColor)
@@ -489,7 +492,7 @@ export struct MoreContent {
 
       // 设置项列表
       Column() {
-        ForEach(this.settingItems, (item: SettingItem) => {
+        ForEach(this.getSettingItems(), (item: SettingItem) => {
           this.buildSettingItem(item.icon, item.title, item.subtitle, item.onClick)
         })
       }
@@ -514,13 +517,13 @@ export struct MoreContent {
 
       // 文字内容
       Column() {
-        Text(title)
+        Text(t(title, title))
           .fontSize(26)  // 标题字体调大到26px，更有气势！
           .fontWeight(FontWeight.Medium)
           .fontColor(this.getCurrentTheme().textColor)
           .alignSelf(ItemAlign.Start)
 
-        Text(subtitle)
+        Text(t(subtitle, subtitle))
           .fontSize(22)  // 副标题字体调大到22px，更有气势！
           .fontColor(this.getCurrentTheme().subTextColor)
           .alignSelf(ItemAlign.Start)
@@ -561,13 +564,13 @@ export struct MoreContent {
 
       // 文字内容
       Column() {
-        Text(title)
+        Text(t(title, title))
           .fontSize(26)  // 标题字体调大到26px，更有气势！
           .fontWeight(FontWeight.Medium)
           .fontColor(this.getCurrentTheme().textColor)
           .alignSelf(ItemAlign.Start)
 
-        Text(subtitle)
+        Text(t(subtitle, subtitle))
           .fontSize(22)  // 副标题字体调大到22px，更有气势！
           .fontColor(this.getCurrentTheme().subTextColor)
           .alignSelf(ItemAlign.Start)
@@ -606,13 +609,13 @@ export struct MoreContent {
 
       // 文字内容
       Column() {
-        Text(title)
+        Text(t(title, title))
           .fontSize(26)  // 标题字体调大到26px，更有气势！
           .fontWeight(FontWeight.Medium)
           .fontColor(this.getCurrentTheme().textColor)
           .alignSelf(ItemAlign.Start)
 
-        Text(subtitle)
+        Text(t(subtitle, subtitle))
           .fontSize(22)  // 副标题字体调大到22px，更有气势！
           .fontColor(this.getCurrentTheme().subTextColor)
           .alignSelf(ItemAlign.Start)
@@ -646,7 +649,7 @@ export struct MoreContent {
   @Builder
   buildThemeSwitchButton(): void {
     Column() {
-      Text('主题设置')
+      Text(t('主题设置', '主题设置'))
         .fontSize(26)  // 字体调大到26px，更有气势！
         .fontWeight(FontWeight.Medium)
         .fontColor(this.getCurrentTheme().textColor)
@@ -661,11 +664,11 @@ export struct MoreContent {
             .margin({ right: 12 })
           
           Column() {
-            Text('切换主题')
+            Text(t('切换主题', '切换主题'))
               .fontSize(26)  // 字体调大到26px，更有气势！
               .fontWeight(FontWeight.Medium)
               .fontColor('#FFFFFF')
-            Text('点击选择主题颜色')
+            Text(t('点击选择主题颜色', '点击选择主题颜色'))
               .fontSize(22)  // 字体调大到22px，更有气势！
               .fontColor('#FFFFFF')
               .opacity(0.8)
@@ -707,7 +710,7 @@ export struct MoreContent {
       Column() {
         // 标题栏
         Row() {
-          Text('选择主题')
+          Text(t('选择主题', '选择主题'))
             .fontSize(30)  // 字体调大到30px，更有气势！
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().textColor)
@@ -833,7 +836,7 @@ export struct MoreContent {
   @Builder
   buildHelpContent(): void {
     Column() {
-      Text('帮助支持')
+      Text(t('帮助支持', '帮助支持'))
         .fontSize(32)  // 字体调大到32px，更有气势！
         .fontWeight(FontWeight.Bold)
         .fontColor(this.getCurrentTheme().textColor)
@@ -949,7 +952,7 @@ export struct MoreContent {
         .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
 
         // 说明
-        Text('选择界面显示语言。选择"自定义"后，可通过"翻译管理"编辑翻译内容。')
+        Text(t('选择界面显示语言。选择"自定义"后，可通过"翻译管理"编辑翻译内容。', '选择界面显示语言。选择"自定义"后，可通过"翻译管理"编辑翻译内容。'))
           .fontSize(14)
           .fontColor(this.getCurrentTheme().subTextColor)
           .padding({ left: 20, right: 20, top: 12, bottom: 12 })
@@ -958,11 +961,11 @@ export struct MoreContent {
         Scroll() {
           Column() {
             // 中文选项（固定）
-            this.buildLanguageOption('🇨🇳', '中文', '使用原始中文界面', '中文')
+            this.buildLanguageOption('🇨🇳', t('中文', '中文'), t('使用原始中文界面', '使用原始中文界面'), '中文')
             
             // 动态显示扫描到的语言文件
             ForEach(this.availableLanguages, (lang: string) => {
-              this.buildLanguageOption('📄', lang, `使用 ${lang} 翻译`, lang)
+              this.buildLanguageOption('📄', lang, t('使用 {0} 翻译', '使用 {0} 翻译').replace('{0}', lang), lang)
             }, (lang: string) => lang)
           }
           .width('100%')
@@ -975,7 +978,7 @@ export struct MoreContent {
 
         // 底部按钮
         Row() {
-          Button('取消')
+          Button(t('取消', '取消'))
             .layoutWeight(1)
             .height(44)
             .borderRadius(10)
@@ -984,7 +987,7 @@ export struct MoreContent {
             .fontColor(this.getCurrentTheme().textColor)
             .onClick(() => this.cancelLanguageSelection())
 
-          Button('确认')
+          Button(t('确认', '确认'))
             .layoutWeight(1)
             .height(44)
             .margin({ left: 12 })
@@ -1094,7 +1097,7 @@ export struct MoreContent {
         .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
 
         // 使用说明
-        Text('在右侧"翻译文本"列填写您的翻译，留空则显示原始中文。')
+        Text(t('在右侧"翻译文本"列填写您的翻译，留空则显示原始中文。', '在右侧"翻译文本"列填写您的翻译，留空则显示原始中文。'))
           .fontSize(14)
           .fontColor(this.getCurrentTheme().subTextColor)
           .padding({ left: 20, right: 20, top: 12, bottom: 8 })
@@ -1104,7 +1107,7 @@ export struct MoreContent {
           Text('🔍')
             .fontSize(20)
             .margin({ right: 8 })
-          TextInput({ placeholder: '搜索...', text: this.translationFilter })
+          TextInput({ placeholder: t('搜索', '搜索') + '...', text: this.translationFilter })
             .layoutWeight(1)
             .height(36)
             .onChange((v: string) => { this.translationFilter = v })
@@ -1114,13 +1117,13 @@ export struct MoreContent {
 
         // 列表标题
         Row() {
-          Text('原始文本')
+          Text(t('原始文本', '原始文本'))
             .fontSize(15)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().textColor)
             .layoutWeight(1)
             .padding({ left: 12 })
-          Text('翻译文本')
+          Text(t('翻译文本', '翻译文本'))
             .fontSize(15)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().textColor)
@@ -1146,7 +1149,7 @@ export struct MoreContent {
                   .textOverflow({ overflow: TextOverflow.Ellipsis })
 
                 // 翻译文本（可编辑）
-                TextInput({ text: item.value, placeholder: '输入翻译...' })
+                TextInput({ text: item.value, placeholder: t('输入翻译', '输入翻译') + '...' })
                   .layoutWeight(1)
                   .height(36)
                   .fontSize(14)
@@ -1246,7 +1249,7 @@ export struct MoreContent {
         .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
 
         // 说明
-        Text('请输入语言名称（如：English、日本語、Español）')
+        Text(t('请输入语言名称（如：English、日本語、Español）', '请输入语言名称（如：English、日本語、Español）'))
           .fontSize(14)
           .fontColor(this.getCurrentTheme().subTextColor)
           .padding({ left: 20, right: 20, top: 16, bottom: 8 })
@@ -1254,7 +1257,7 @@ export struct MoreContent {
         // 输入框
         TextInput({ 
           text: this.languageNameInput, 
-          placeholder: '例如：English' 
+          placeholder: t('请输入语言名称（如：English、日本語、Español）', '请输入语言名称（如：English、日本語、Español）') 
         })
           .width('100%')
           .height(44)

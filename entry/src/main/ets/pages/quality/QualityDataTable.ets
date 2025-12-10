@@ -39,6 +39,7 @@ import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../u
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { QualityLevelData, CustomComponentConfig, CustomComponentType } from './QualityConstants'
+import { t } from '../../utils/i18n/I18nManager'
 
 /**
  * 品质页面数据表格组件
@@ -200,7 +201,7 @@ export struct QualityDataTable {
   @Builder
   private buildTableHeader() {
     Row() {
-      Text('等级名称')
+      Text(t('等级名称', '等级名称'))
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.getCurrentTheme().textColor)
@@ -214,7 +215,7 @@ export struct QualityDataTable {
         .height(60)
         .color(this.getCurrentTheme().borderColor)
 
-      Text('颜色等级')
+      Text(t('颜色等级', '颜色等级'))
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.getCurrentTheme().textColor)
@@ -228,7 +229,7 @@ export struct QualityDataTable {
         .height(60)
         .color(this.getCurrentTheme().borderColor)
 
-      Text('糖度等级')
+      Text(t('糖度等级', '糖度等级'))
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.getCurrentTheme().textColor)
@@ -289,7 +290,7 @@ export struct QualityDataTable {
       .alignItems(VerticalAlign.Center)
     } else if (config.type === CustomComponentType.INPUT) {
       // 输入框组件
-      TextInput({ placeholder: config.placeholder ?? '请输入' })
+      TextInput({ placeholder: config.placeholder ?? t('请输入', '请输入') })
         .fontSize(16)
         .fontColor(this.getCurrentTheme().textColor)
         .backgroundColor(this.getCurrentTheme().surfaceColor)

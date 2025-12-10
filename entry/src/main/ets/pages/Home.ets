@@ -226,7 +226,7 @@ struct Page {
       'level': (): void => { this.currentPage = 'level' },
       'history': (): void => { this.currentPage = 'history' },
       'end': (): void => { this.currentPage = 'end' },
-      'more': (): void => this.displayFloatingWindow('更多设置', '这里是更多设置和系统配置。\n\n• 系统设置\n• 用户管理\n• 数据备份\n• 系统维护'),
+      'more': (): void => this.displayFloatingWindow(t('更多设置', '更多设置'), t('这里是更多设置和系统配置。\\n\\n• 系统设置\\n• 用户管理\\n• 数据备份\\n• 系统维护', '这里是更多设置和系统配置。\\n\\n• 系统设置\\n• 用户管理\\n• 数据备份\\n• 系统维护')),
       // 默认处理：正常页面切换
       'default': (): void => { this.currentPage = this.currentPage }
     }
@@ -263,7 +263,7 @@ struct Page {
 
   // 处理水果信息对话框取消
   private handleFruitInfoCancel(): void {
-    this.omniUIUtils.showInfo('已取消查看水果信息')
+    this.omniUIUtils.showInfo(t('已取消查看水果信息', '已取消查看水果信息'))
     this.showFruitInfoDialog = false
   }
 
@@ -280,7 +280,7 @@ struct Page {
 
   // 处理载入程序对话框取消
   private handleLoadProgramCancel(): void {
-    this.omniUIUtils.showInfo('已取消载入程序')
+    this.omniUIUtils.showInfo(t('已取消载入程序', '已取消载入程序'))
     this.showLoadProgramDialog = false
   }
 
@@ -299,7 +299,7 @@ struct Page {
 
   // 处理保存程序对话框取消
   private handleSaveProgramCancel(): void {
-    this.omniUIUtils.showInfo('已取消保存程序')
+    this.omniUIUtils.showInfo(t('已取消保存程序', '已取消保存程序'))
     this.showSaveProgramDialog = false
   }
 
@@ -310,14 +310,14 @@ struct Page {
 
   // 处理分选状态对话框确认
   private handleSortingStatusConfirm(isNormal: boolean): void {
-    const statusText = isNormal ? '正常分选' : '异常分选'
+    const statusText = isNormal ? t('正常分选', '正常分选') : t('异常分选', '异常分选')
     this.omniUIUtils.showInfo(`分选状态已设置为：${statusText}`)
     this.showSortingStatusDialog = false
   }
 
   // 处理分选状态对话框取消
   private handleSortingStatusCancel(): void {
-    this.omniUIUtils.showInfo('已取消分选状态设置')
+    this.omniUIUtils.showInfo(t('已取消分选状态设置', '已取消分选状态设置'))
     this.showSortingStatusDialog = false
   }
 
@@ -361,12 +361,12 @@ struct Page {
   }
 
   private handleEngineeringSettingsConfirm(): void {
-    this.omniUIUtils.showSuccess('工程设置已保存')
+    this.omniUIUtils.showSuccess(t('工程设置已保存', '工程设置已保存'))
     this.showEngineeringSettingsDialog = false
   }
 
   private handleEngineeringSettingsCancel(): void {
-    this.omniUIUtils.showInfo('已取消工程设置')
+    this.omniUIUtils.showInfo(t('已取消工程设置', '已取消工程设置'))
     this.showEngineeringSettingsDialog = false
   }
 
@@ -431,7 +431,7 @@ struct Page {
     try {
       if (!GlobalStore.context) {
         console.error('[Home] GlobalStore.context is not available')
-        this.omniUIUtils.showError('翻译初始化失败：上下文未就绪')
+        this.omniUIUtils.showError(t('翻译初始化失败：上下文未就绪', '翻译初始化失败：上下文未就绪'))
         return
       }
       const mgr = I18nManager.getInstance()
@@ -452,7 +452,19 @@ struct Page {
 
       let content: string | undefined = undefined
 
-      // 优先读取沙箱文件
+      // 优先读取 rawfile 中的最新版本，确保字段完整
+      let rawfileContent: string | undefined = undefined
+      try {
+        const rawBytes: Uint8Array = appCtx.resourceManager.getRawFileContentSync('file/translations.default.json')
+        const rawBuf = buffer.from(rawBytes.buffer)
+        rawfileContent = rawBuf.toString('utf-8')
+        console.log('[Home] Loaded template from rawfile')
+      } catch (e) {
+        console.error(`[Home] Failed to load template from rawfile: ${JSON.stringify(e)}`)
+      }
+
+      // 读取沙箱文件（如果存在）
+      let sandboxContent: string | undefined = undefined
       try {
         const stat = fs.statSync(defaultTemplatePath)
         if (stat.size > 0) {
@@ -462,30 +474,78 @@ struct Page {
           fs.closeSync(file.fd)
           const u8 = new Uint8Array(dataBuffer)
           const buf = buffer.from(u8.buffer)
-          content = buf.toString('utf-8')
+          sandboxContent = buf.toString('utf-8')
           console.log(`[Home] Sandbox template size: ${stat.size} bytes`)
-        } else {
-          console.warn('[Home] Sandbox template empty, fallback to rawfile')
         }
       } catch (e) {
-        console.warn(`[Home] Sandbox template missing, fallback to rawfile: ${JSON.stringify(e)}`)
+        console.warn(`[Home] Sandbox template missing: ${JSON.stringify(e)}`)
       }
 
-      // 如果沙箱不存在/为空，读取 rawfile 并写回沙箱
-      if (!content) {
+      // 比较字段数量，使用字段更多的版本
+      let rawfileCount = 0
+      let sandboxCount = 0
+      
+      if (rawfileContent) {
         try {
-          const rawBytes: Uint8Array = appCtx.resourceManager.getRawFileContentSync('file/translations.default.json')
-          const rawBuf = buffer.from(rawBytes.buffer)
-          content = rawBuf.toString('utf-8')
-          console.log('[Home] Loaded template from rawfile')
-          // 同步到沙箱，便于后续编辑
+          const rawfileMap = new Map<string, string>()
+          JSON.parse(rawfileContent, (key: string, value: string | number | boolean | null): string | number | boolean | null => {
+            if (key !== '' && value !== undefined && value !== null) {
+              rawfileMap.set(key, String(value))
+            }
+            return value
+          })
+          rawfileCount = rawfileMap.size
+          console.log(`[Home] Rawfile has ${rawfileCount} fields`)
+        } catch (e) {
+          console.warn(`[Home] Failed to parse rawfile: ${JSON.stringify(e)}`)
+        }
+      }
+
+      if (sandboxContent) {
+        try {
+          const sandboxMap = new Map<string, string>()
+          JSON.parse(sandboxContent, (key: string, value: string | number | boolean | null): string | number | boolean | null => {
+            if (key !== '' && value !== undefined && value !== null) {
+              sandboxMap.set(key, String(value))
+            }
+            return value
+          })
+          sandboxCount = sandboxMap.size
+          console.log(`[Home] Sandbox has ${sandboxCount} fields`)
+        } catch (e) {
+          console.warn(`[Home] Failed to parse sandbox: ${JSON.stringify(e)}`)
+        }
+      }
+
+      // 使用字段更多的版本，优先使用 rawfile（如果字段数相同或更多）
+      if (rawfileContent && rawfileCount >= sandboxCount) {
+        content = rawfileContent
+        console.log(`[Home] Using rawfile template (${rawfileCount} fields)`)
+        // 同步到沙箱
+        try {
           const bufToSave = buffer.from(content, 'utf-8')
           const f = fs.openSync(defaultTemplatePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE | fs.OpenMode.TRUNC)
           fs.writeSync(f.fd, bufToSave.buffer)
           fs.closeSync(f.fd)
           console.log('[Home] Synced rawfile template to sandbox')
         } catch (e) {
-          console.error(`[Home] Failed to load template from rawfile: ${JSON.stringify(e)}`)
+          console.warn(`[Home] Failed to sync to sandbox: ${JSON.stringify(e)}`)
+        }
+      } else if (sandboxContent) {
+        content = sandboxContent
+        console.log(`[Home] Using sandbox template (${sandboxCount} fields)`)
+      } else if (rawfileContent) {
+        content = rawfileContent
+        console.log(`[Home] Using rawfile template (${rawfileCount} fields) as fallback`)
+        // 同步到沙箱
+        try {
+          const bufToSave = buffer.from(content, 'utf-8')
+          const f = fs.openSync(defaultTemplatePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE | fs.OpenMode.TRUNC)
+          fs.writeSync(f.fd, bufToSave.buffer)
+          fs.closeSync(f.fd)
+          console.log('[Home] Synced rawfile template to sandbox')
+        } catch (e) {
+          console.warn(`[Home] Failed to sync to sandbox: ${JSON.stringify(e)}`)
         }
       }
 
@@ -556,7 +616,7 @@ struct Page {
       this.showTranslationEditor = true
     } catch (e) {
       console.error('[Home] openTranslationEditor failed', e)
-      this.omniUIUtils.showError(`翻译加载失败: ${JSON.stringify(e)}`)
+      this.omniUIUtils.showError(t('翻译加载失败', '翻译加载失败') + ': ' + JSON.stringify(e))
     }
   }
 
@@ -585,7 +645,7 @@ struct Page {
 
   private addTranslation(): void {
     if (!this.newTranslationKey || this.newTranslationKey.trim().length === 0) {
-      this.omniUIUtils.showInfo('请输入翻译键')
+      this.omniUIUtils.showInfo(t('请输入翻译键', '请输入翻译键'))
       return
     }
     const next: TranslationItem[] = [...this.translations]
@@ -621,7 +681,7 @@ struct Page {
   private async confirmSaveLanguage(): Promise<void> {
     const langName = this.languageNameInput.trim()
     if (!langName || langName.length === 0) {
-      this.omniUIUtils.showInfo('请输入语言名称')
+      this.omniUIUtils.showInfo(t('请输入语言名称', '请输入语言名称'))
       return
     }
 
@@ -646,14 +706,14 @@ struct Page {
       console.log(`[Home] Prepared ${map.size} translations to save`)
       
       await mgr.saveLanguage(langName, map)
-      this.omniUIUtils.showSuccess(`翻译已保存为：${langName}`)
+      this.omniUIUtils.showSuccess(t('翻译已保存为：{0}', '翻译已保存为：{0}').replace('{0}', langName))
       this.showTranslationEditor = false
       
       // 刷新可用语言列表
       await this.refreshAvailableLanguages()
     } catch (e) {
       console.error('[Home] saveTranslations failed', e)
-      this.omniUIUtils.showError(`保存失败: ${JSON.stringify(e)}`)
+      this.omniUIUtils.showError(t('保存失败', '保存失败') + ': ' + JSON.stringify(e))
     }
   }
 
@@ -665,16 +725,16 @@ struct Page {
     const liquidCardsAreaRef: LiquidCardsArea | null = AppStorage.get('LIQUID_CARDS_AREA_REF') as LiquidCardsArea | null
     if (liquidCardsAreaRef) {
       liquidCardsAreaRef.clearAllCardData()
-      this.omniUIUtils.showSuccess('清空成功！')//提示弹窗
+      this.omniUIUtils.showSuccess(t('清空成功！', '清空成功！'))//提示弹窗
       // 显示系统对话框，确保用户可见
       AlertDialog.show({
-        title: '提示',
-        message: '清空成功！',
-        confirm: { value: '确定', action: () => {} }
+        title: t('提示', '提示'),
+        message: t('清空成功！', '清空成功！'),
+        confirm: { value: t('确定', '确定'), action: () => {} }
       })
     } else {
       console.error('液体卡片区域引用为空，无法清空数据')
-      this.omniUIUtils.showError('清空失败：液体卡片区域未初始化')
+      this.omniUIUtils.showError(t('清空失败：液体卡片区域未初始化', '清空失败：液体卡片区域未初始化'))
     }
   }
 
@@ -698,7 +758,7 @@ struct Page {
   // 构建出口Tab内容
   @Builder
   private buildExportTabContent(): void {
-    Text('出口管理')
+    Text(t('出口管理', '出口管理'))
       .fontSize(18)
       .fontWeight(FontWeight.Bold)
       .fontColor(this.getCurrentTheme().textColor)
@@ -756,7 +816,7 @@ struct Page {
   // 构建帮助Tab内容
   @Builder
   private buildHelpTabContent(): void {
-    Text('帮助支持')
+    Text(t('帮助支持', '帮助支持'))
       .fontSize(18)
       .fontWeight(FontWeight.Bold)
       .fontColor(this.getCurrentTheme().textColor)
@@ -799,7 +859,7 @@ struct Page {
       // 主题选择器内容
       Column() {
         // 标题
-        Text('选择主题')
+        Text(t('选择主题', '选择主题'))
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.getCurrentTheme().textColor)
@@ -920,7 +980,7 @@ struct Page {
         .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
 
         // 说明
-        Text('选择界面显示语言。选择"自定义"后，可通过"翻译管理"编辑翻译内容。')
+        Text(t('选择界面显示语言。选择"自定义"后，可通过"翻译管理"编辑翻译内容。', '选择界面显示语言。选择"自定义"后，可通过"翻译管理"编辑翻译内容。'))
           .fontSize(14)
           .fontColor(this.getCurrentTheme().subTextColor)
           .padding({ left: 20, right: 20, top: 12, bottom: 12 })
@@ -929,11 +989,11 @@ struct Page {
         Scroll() {
           Column() {
             // 中文选项（固定）
-            this.buildLanguageOption('🇨🇳', '中文', '使用原始中文界面', '中文')
+            this.buildLanguageOption('🇨🇳', t('中文', '中文'), t('使用原始中文界面', '使用原始中文界面'), '中文')
             
             // 动态显示扫描到的语言文件
             ForEach(this.availableLanguages, (lang: string) => {
-              this.buildLanguageOption('📄', lang, `使用 ${lang} 翻译`, lang)
+              this.buildLanguageOption('📄', lang, t('使用 {0} 翻译', '使用 {0} 翻译').replace('{0}', lang), lang)
             }, (lang: string) => lang)
           }
           .width('100%')
@@ -946,7 +1006,7 @@ struct Page {
 
         // 底部按钮
         Row() {
-          Button('取消')
+          Button(t('取消', '取消'))
             .layoutWeight(1)
             .height(44)
             .borderRadius(10)
@@ -955,7 +1015,7 @@ struct Page {
             .fontColor(this.getCurrentTheme().textColor)
             .onClick(() => this.cancelLanguageSelection())
 
-          Button('确认')
+          Button(t('确认', '确认'))
             .layoutWeight(1)
             .height(44)
             .margin({ left: 12 })
@@ -1067,7 +1127,7 @@ struct Page {
         .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
 
         // 使用说明
-        Text('在右侧"翻译文本"列填写您的翻译，留空则显示原始中文。')
+        Text(t('在右侧"翻译文本"列填写您的翻译，留空则显示原始中文。', '在右侧"翻译文本"列填写您的翻译，留空则显示原始中文。'))
           .fontSize(14)
           .fontColor(this.getCurrentTheme().subTextColor)
           .padding({ left: 20, right: 20, top: 12, bottom: 8 })
@@ -1077,7 +1137,7 @@ struct Page {
           Text('🔍')
             .fontSize(20)
             .margin({ right: 8 })
-          TextInput({ placeholder: '搜索...', text: this.translationFilter })
+          TextInput({ placeholder: t('搜索', '搜索') + '...', text: this.translationFilter })
             .layoutWeight(1)
             .height(36)
             .onChange((v: string) => { this.translationFilter = v })
@@ -1087,13 +1147,13 @@ struct Page {
 
         // 列表标题
         Row() {
-          Text('原始文本')
+          Text(t('原始文本', '原始文本'))
             .fontSize(15)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().textColor)
             .layoutWeight(1)
             .padding({ left: 12 })
-          Text('翻译文本')
+          Text(t('翻译文本', '翻译文本'))
             .fontSize(15)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().textColor)
@@ -1119,7 +1179,7 @@ struct Page {
                   .textOverflow({ overflow: TextOverflow.Ellipsis })
 
                 // 翻译文本（可编辑）
-                TextInput({ text: item.value, placeholder: '输入翻译...' })
+                TextInput({ text: item.value, placeholder: t('输入翻译', '输入翻译') + '...' })
                   .layoutWeight(1)
                   .height(36)
                   .fontSize(14)
@@ -1221,7 +1281,7 @@ struct Page {
         .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
 
         // 说明
-        Text('请输入语言名称（如：English、日本語、Español）')
+        Text(t('请输入语言名称（如：English、日本語、Español）', '请输入语言名称（如：English、日本語、Español）'))
           .fontSize(14)
           .fontColor(this.getCurrentTheme().subTextColor)
           .padding({ left: 20, right: 20, top: 16, bottom: 8 })
@@ -1229,7 +1289,7 @@ struct Page {
         // 输入框
         TextInput({ 
           text: this.languageNameInput, 
-          placeholder: '例如：English' 
+          placeholder: t('请输入语言名称（如：English、日本語、Español）', '请输入语言名称（如：English、日本語、Español）') 
         })
           .width('100%')
           .height(44)
@@ -1242,7 +1302,7 @@ struct Page {
 
         // 底部按钮
         Row() {
-          Button('取消')
+          Button(t('取消', '取消'))
             .layoutWeight(1)
             .height(44)
             .borderRadius(10)
@@ -1253,7 +1313,7 @@ struct Page {
               this.showLanguageNameDialog = false
             })
 
-          Button('保存')
+          Button(t('保存', '保存'))
             .layoutWeight(1)
             .height(44)
             .margin({ left: 12 })
@@ -1285,15 +1345,16 @@ struct Page {
   }
 
   // 构建悬浮窗按钮
+  // title 参数应该是原始中文键（用于逻辑判断），显示时会自动翻译
   @Builder
-  private buildFloatingButton(icon: string, title: string): void {
+  private buildFloatingButton(icon: string, originalKey: string): void {
     Button() {
       Column() {
         Text(icon)
           .fontSize(32)
           .margin({ bottom: 8 })
         
-        Text(title)
+        Text(t(originalKey, originalKey))
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.getCurrentTheme().textColor)
@@ -1312,20 +1373,20 @@ struct Page {
     .border({ width: 1, color: this.getCurrentTheme().borderColor })
     .borderRadius(8)
     .onClick(() => {
-      console.log('悬浮窗按钮被点击:', title)
-      if (title === '主题切换') {
+      console.log('悬浮窗按钮被点击:', originalKey)
+      if (originalKey === '主题切换') {
         this.selectedTheme = this.consumedThemeType // 初始化选中主题为当前主题
         this.showThemeSelector = true
-      } else if (title === '工程设置') {
+      } else if (originalKey === '工程设置') {
         this.showEngineeringSettings()
-      } else if (title === '出口清空') {
+      } else if (originalKey === '出口清空') {
         this.handleExportClear()
-      } else if (title === '语言') {
+      } else if (originalKey === '语言') {
         this.openLanguageSelector()
-      } else if (title === '翻译管理') {
+      } else if (originalKey === '翻译管理') {
         this.openTranslationEditor()
       } else {
-        this.omniUIUtils.showInfo(`已点击${title}`)
+        this.omniUIUtils.showInfo(t('已点击', '已点击') + t(originalKey, originalKey))
       }
     })
   }
@@ -1486,7 +1547,7 @@ struct Page {
     if (this.showPrintSubButtons) {
       Column() {
         // 子按钮1：打印报告
-        Button('打印报告')
+        Button(t('打印报告', '打印报告'))
           .width('70%')
           .height(36)
           .margin({ bottom: 4, left: 20, right: 20 })
@@ -1500,11 +1561,11 @@ struct Page {
           })
           .borderRadius(0)
           .onClick(() => {
-            this.handlePrintSubButtonClick('打印报告')
+            this.handlePrintSubButtonClick(t('打印报告', '打印报告'))
           })
 
         // 子按钮2：打印标签
-        Button('打印标签')
+        Button(t('打印标签', '打印标签'))
           .width('70%')
           .height(36)
           .margin({ left: 20, right: 20 })
@@ -1518,7 +1579,7 @@ struct Page {
           })
           .borderRadius(0)
           .onClick(() => {
-            this.handlePrintSubButtonClick('打印标签')
+            this.handlePrintSubButtonClick(t('打印标签', '打印标签'))
           })
       }
       .width('100%')
@@ -1534,7 +1595,7 @@ struct Page {
     Stack() {
       Column() {
         Row() {
-          Text(this.quickDialogTitle || '提示')
+          Text(this.quickDialogTitle || t('提示', '提示'))
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().textColor)
@@ -1542,7 +1603,7 @@ struct Page {
           
           // 右上角：上一个/下一个按钮
           Row() {
-            Button('上一个')
+            Button(t('上一个', '上一个'))
               .fontSize(12)
               .fontColor(this.getCurrentTheme().textColor)
               .backgroundColor(this.getCurrentTheme().backgroundColor)
@@ -1551,7 +1612,7 @@ struct Page {
               .padding({ left: 12, right: 12, top: 6, bottom: 6 })
               .onClick(() => { this.navigateQuickDialog(-1) })
 
-            Button('下一个')
+            Button(t('下一个', '下一个'))
               .fontSize(12)
               .fontColor(this.getCurrentTheme().textColor)
               .backgroundColor(this.getCurrentTheme().backgroundColor)
@@ -1576,7 +1637,7 @@ struct Page {
           Blank()
           
           Row() {
-            Button('取消')
+            Button(t('取消', '取消'))
               .fontSize(14)
               .fontColor(this.getCurrentTheme().textColor)
               .backgroundColor(this.getCurrentTheme().backgroundColor)
@@ -1585,7 +1646,7 @@ struct Page {
               .padding({ left: 20, right: 20, top: 10, bottom: 10 })
               .onClick(() => { this.quickDialogVisible = false })
 
-            Button('确认')
+            Button(t('确认', '确认'))
               .fontSize(14)
               .fontColor(Color.White)
               .backgroundColor(this.getThemePrimaryColor())
@@ -1596,7 +1657,7 @@ struct Page {
                 if (this.quickDialogConfirm) {
                   this.quickDialogConfirm()
                 } else {
-                  this.omniUIUtils.showSuccess('已确认')
+                  this.omniUIUtils.showSuccess(t('已确认', '已确认'))
                 }
                 this.quickDialogVisible = false
               })
@@ -1732,11 +1793,11 @@ struct Page {
         RealtimeStatsDialog({
           isVisible: this.showRealtimeDialog,
           onConfirm: (_stats) => {
-            this.omniUIUtils.showInfo('已确认实时统计')
+            this.omniUIUtils.showInfo(t('已确认实时统计', '已确认实时统计'))
             this.showRealtimeDialog = false
           },
           onCancel: () => {
-            this.omniUIUtils.showInfo('已取消查看实时统计')
+            this.omniUIUtils.showInfo(t('已取消查看实时统计', '已取消查看实时统计'))
             this.showRealtimeDialog = false
           }
         })
@@ -1787,7 +1848,7 @@ struct Page {
             Column() {
             // 标题
             Row() {
-              Text('修改个人信息')
+              Text(t('修改个人信息', '修改个人信息'))
                 .fontSize(22)
                 .fontWeight(FontWeight.Bold)
                 .fontColor(this.getCurrentTheme().textColor)
@@ -1800,7 +1861,7 @@ struct Page {
             Column() {
               // 当前头像和姓名预览
               Row() {
-                Text('当前设置：')
+                Text(t('当前设置：', '当前设置：'))
                   .fontSize(20)
                   .fontColor(this.getCurrentTheme().textColor)
                   .margin({ right: 12 })
@@ -1823,7 +1884,7 @@ struct Page {
 
               // 头像选择
               Column() {
-                Text('选择头像：')
+                Text(t('选择头像：', '选择头像：'))
                   .fontSize(20)
                   .fontColor(this.getCurrentTheme().textColor)
                   .alignSelf(ItemAlign.Start)
@@ -1863,14 +1924,14 @@ struct Page {
 
               // 姓名输入框
               Row() {
-                Text('姓名设置：')
+                Text(t('姓名设置：', '姓名设置：'))
                   .fontSize(20)
                   .fontColor(this.getCurrentTheme().textColor)
                   .margin({ right: 12 })
                 
                 TextInput({ 
                   text: this.tempUserLabel, 
-                  placeholder: '请输入显示标签' 
+                  placeholder: t('请输入显示标签', '请输入显示标签') 
                 })
                   .fontSize(18)
                   .fontColor(this.getCurrentTheme().textColor)
@@ -1890,7 +1951,7 @@ struct Page {
 
             // 底部操作按钮
             Row() {
-              Button('取消')
+              Button(t('取消', '取消'))
                 .fontSize(18)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(this.getCurrentTheme().textColor)
@@ -1903,7 +1964,7 @@ struct Page {
                   AppStorage.set('EDIT_USER_LABEL_VISIBLE', false) 
                 })
 
-              Button('确认')
+              Button(t('确认', '确认'))
                 .fontSize(18)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(Color.White)
@@ -2059,9 +2120,9 @@ struct Page {
           Column() {
             // Tab导航栏
             Row() {
-              this.buildFloatingTabButton('出口', 'export')
-              this.buildFloatingTabButton('设置', 'settings')
-              this.buildFloatingTabButton('帮助', 'help')
+              this.buildFloatingTabButton(t('出口', '出口'), 'export')
+              this.buildFloatingTabButton(t('设置', '设置'), 'settings')
+              this.buildFloatingTabButton(t('帮助', '帮助'), 'help')
             }
             .width('100%')
             .height('3.47%')
@@ -2070,7 +2131,7 @@ struct Page {
             .margin({ bottom: 16 })
 
             // Tab内容区域
-            if (this.floatingWindowTitle === '更多设置') {
+            if (this.floatingWindowTitle === t('更多设置', '更多设置')) {
               if (this.selectedFloatingTab === 'export') {
                 this.buildExportTabContent()
               } else if (this.selectedFloatingTab === 'settings') {

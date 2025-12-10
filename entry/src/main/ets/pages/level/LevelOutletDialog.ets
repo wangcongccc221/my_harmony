@@ -41,6 +41,7 @@
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import { t } from '../../utils/i18n/I18nManager'
 
 /**
  * 出口设置对话框组件
@@ -247,7 +248,7 @@ export struct LevelOutletDialog {
         // 对话框内容
         Column() {
           // 标题
-          Text('出口设置')
+          Text(t('出口设置', '出口设置'))
             .fontSize(24)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().textColor)

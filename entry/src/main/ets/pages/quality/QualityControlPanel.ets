@@ -41,6 +41,7 @@ import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { LEVEL_COUNT_OPTIONS } from './QualityConstants'
 import { GlobalLevelCountManager } from '../../utils/managers/GlobalLevelCountManager'
+import { t } from '../../utils/i18n/I18nManager'
 
 /**
  * 品质页面控制面板组件
@@ -357,7 +358,7 @@ export struct QualityControlPanel {
     Column() {
       Row() {
         // 等级数量标签
-        Text('等级数量:')
+        Text(t('等级数量:', '等级数量:'))
           .fontSize(24)
           .fontColor(this.getCurrentTheme().textColor)
           .margin({ right: 8 })

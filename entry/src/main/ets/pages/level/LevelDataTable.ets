@@ -42,6 +42,7 @@ import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../u
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY, useOmniTheme } from '../../utils/theme/useOmniTheme'
 import { LevelData, StatisticsData, TABLE_COUNT_OPTIONS, DEFAULT_LEVEL_DATA } from './LevelConstants'
+import { t } from '../../utils/i18n/I18nManager'
 
 /**
  * 统计表格数据项接口
@@ -551,7 +552,7 @@ export struct LevelDataTable {
   buildLevelTableHeader() {
     Row() {
       // 等级名称列
-      Text('等级名称')
+      Text(t('等级名称', '等级名称'))
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.getCurrentTheme().textColor)
@@ -562,7 +563,7 @@ export struct LevelDataTable {
       Divider().vertical(true).height(30).color(this.getCurrentTheme().borderColor)
 
       // 最小重量列
-      Text('最小重量（克）')
+      Text(t('最小重量（克）', '最小重量（克）'))
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.getCurrentTheme().textColor)
@@ -573,7 +574,7 @@ export struct LevelDataTable {
       Divider().vertical(true).height(30).color(this.getCurrentTheme().borderColor)
 
       // 装箱量列
-      Text('装箱量（克）')
+      Text(t('装箱量（克）', '装箱量（克）'))
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.getCurrentTheme().textColor)
@@ -1008,7 +1009,7 @@ export struct LevelDataTable {
         Column() {
           Row() {
             // 等级数量标签
-            Text('等级数量:')
+            Text(t('等级数量:', '等级数量:'))
               .fontSize(24)
               .fontColor(this.getCurrentTheme().textColor)
               .margin({ right: 8 })

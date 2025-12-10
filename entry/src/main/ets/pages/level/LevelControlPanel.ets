@@ -50,6 +50,7 @@ import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../u
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY, useOmniTheme } from '../../utils/theme/useOmniTheme'
 import { FRUIT_TYPES, SORTING_STANDARDS, UNIT_OPTIONS } from './LevelConstants'
+import { t } from '../../utils/i18n/I18nManager'
 
 /**
  * Select选项接口
@@ -302,7 +303,7 @@ export struct LevelControlPanel {
     Column() {
       // ==================== 水果表单卡片 ====================
       Column() {
-        Text('水果')
+        Text(t('水果', '水果'))
           .fontSize(22)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.getCurrentTheme().textColor)
@@ -311,7 +312,7 @@ export struct LevelControlPanel {
 
         // 种类选择行
         Row() {
-          Text('种类:')
+          Text(t('种类:', '种类:'))
             .fontSize(18)
             .fontColor(this.getCurrentTheme().textColor)
             .margin({ right: 8 })
@@ -349,7 +350,7 @@ export struct LevelControlPanel {
 
       // 出口报警卡片
       Column() {
-        Text('出口报警')
+        Text(t('出口报警', '出口报警'))
           .fontSize(20)  // 标题字体优化到20px
           .fontWeight(FontWeight.Bold)
           .fontColor(this.getCurrentTheme().textColor)
@@ -358,7 +359,7 @@ export struct LevelControlPanel {
 
         // 出口阀值输入行
         Row() {
-          Text('出口阀值:')
+          Text(t('出口阀值:', '出口阀值:'))
             .fontSize(18)  // 标签字体优化到18px
             .fontColor(this.getCurrentTheme().textColor)
             .margin({ right: 2 })
@@ -408,7 +409,7 @@ export struct LevelControlPanel {
 
       // 分选标准卡片
       Column() {
-        Text('分选标准')
+        Text(t('分选标准', '分选标准'))
           .fontSize(20)  // 标题字体优化到20px
           .fontWeight(FontWeight.Bold)
           .fontColor(this.getCurrentTheme().textColor)
@@ -430,7 +431,7 @@ export struct LevelControlPanel {
                   this.updateStandards('尺寸', isChecked)
                 })
 
-              Text('尺寸')
+              Text(t('尺寸', '尺寸'))
                 .fontSize(22)  // 复选框标签字体调大到22px
                 .fontColor(this.getCurrentTheme().textColor)
             }
@@ -448,7 +449,7 @@ export struct LevelControlPanel {
                   this.updateStandards('重量', isChecked)
                 })
 
-              Text('重量')
+              Text(t('重量', '重量'))
                 .fontSize(22)  // 复选框标签字体调大到22px
                 .fontColor(this.getCurrentTheme().textColor)
             }
@@ -471,7 +472,7 @@ export struct LevelControlPanel {
                   this.updateStandards('直径', isChecked)
                 })
 
-              Text('直径')
+              Text(t('直径', '直径'))
                 .fontSize(22)  // 复选框标签字体调大到22px
                 .fontColor(this.getCurrentTheme().textColor)
             }
@@ -489,7 +490,7 @@ export struct LevelControlPanel {
                   this.updateStandards('面积', isChecked)
                 })
 
-              Text('面积')
+              Text(t('面积', '面积'))
                 .fontSize(22)  // 复选框标签字体调大到22px
                 .fontColor(this.getCurrentTheme().textColor)
             }
@@ -507,7 +508,7 @@ export struct LevelControlPanel {
                   this.updateStandards('体积', isChecked)
                 })
 
-              Text('体积')
+              Text(t('体积', '体积'))
                 .fontSize(22)  // 复选框标签字体调大到22px
                 .fontColor(this.getCurrentTheme().textColor)
             }
@@ -530,7 +531,7 @@ export struct LevelControlPanel {
 
       // 计算每箱单位卡片
       Column() {
-        Text('计算每箱单位')
+        Text(t('计算每箱单位', '计算每箱单位'))
           .fontSize(20)  // 标题字体优化到20px
           .fontWeight(FontWeight.Bold)
           .fontColor(this.getCurrentTheme().textColor)
@@ -548,7 +549,7 @@ export struct LevelControlPanel {
                   this.onUnitChange('gram')
                 }
               })
-            Text('克')
+            Text(t('克', '克'))
               .fontSize(22)  // 单选按钮标签字体调大到22px
               .fontColor(this.getCurrentTheme().textColor)
               .margin({ left: 4 })
@@ -565,7 +566,7 @@ export struct LevelControlPanel {
                   this.onUnitChange('piece')
                 }
               })
-            Text('个')
+            Text(t('个', '个'))
               .fontSize(22)  // 单选按钮标签字体调大到22px
               .fontColor(this.getCurrentTheme().textColor)
               .margin({ left: 4 })
@@ -587,7 +588,7 @@ export struct LevelControlPanel {
 
       // 装箱量卡片
       Column() {
-        Text('装箱量')
+        Text(t('装箱量', '装箱量'))
           .fontSize(22)  // 标题字体增大到22px，与其它标题一致
           .fontWeight(FontWeight.Bold)
           .fontColor(this.getCurrentTheme().textColor)
@@ -596,7 +597,7 @@ export struct LevelControlPanel {
 
         // 装箱重量1
         Row() {
-          Text('装箱重量1:')
+          Text(t('装箱重量1:', '装箱重量1:'))
             .fontSize(20)  // 标签字体增大到20px
             .fontColor(this.getCurrentTheme().textColor)
             .margin({ right: 2 })
@@ -619,7 +620,7 @@ export struct LevelControlPanel {
               }
             })
 
-          Text('公斤')
+          Text(t('公斤', '公斤'))
             .fontSize(22)  // 单位标签字体调大到22px
             .fontColor(this.getCurrentTheme().textColor)
             .margin({ left: 4 })
@@ -630,7 +631,7 @@ export struct LevelControlPanel {
 
         // 装箱重量2
         Row() {
-          Text('装箱重量2:')
+          Text(t('装箱重量2:', '装箱重量2:'))
             .fontSize(20)  // 标签字体增大到20px
             .fontColor(this.getCurrentTheme().textColor)
             .margin({ right: 2 })
@@ -653,7 +654,7 @@ export struct LevelControlPanel {
               }
             })
 
-          Text('公斤')
+          Text(t('公斤', '公斤'))
             .fontSize(22)  // 单位标签字体调大到22px
             .fontColor(this.getCurrentTheme().textColor)
             .margin({ left: 4 })

@@ -8,6 +8,7 @@ import { DraggableGridTable, DragData } from '../../components/layout/DraggableG
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
 import { ChartComponent, ChartComponentParams, ChartData } from '../../components/ChartComponent'
 import { BarChart } from '../../components/charts/BarChart'
 import { OmniTabBar, TabConfig, TabBarDirection } from '../../components/ui/layout/OmniTabBar'
@@ -62,6 +63,7 @@ export struct DataTablesTabBar {
   @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
   @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
+  @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0  // 监听语言变化，触发 UI 更新
   
   // 提供主题给子组件
   @Provide providedTheme: ExtendedOmniThemeStyle = this.consumedTheme
@@ -393,15 +395,18 @@ export struct DataTablesTabBar {
     }
   }
 
-  // Tab配置
-  private tabConfig: TabConfig[] = [
-    { key: '等级表', label: '等级表' },
-    { key: '等级统计表', label: '等级统计表' },
-    { key: '加工曲线', label: '加工曲线' },
-    { key: '加工柱状图', label: '加工柱状图' },
-    { key: '动态装箱', label: '动态装箱' },
-    { key: '成品', label: '成品' }
-  ]
+  // Tab配置（依赖 i18nVersion 确保语言变化时重新计算）
+  private getTabConfig(): TabConfig[] {
+    const _version = this.i18nVersion
+    return [
+      { key: '等级表', label: t('等级表', '等级表') },
+      { key: '等级统计表', label: t('等级统计表', '等级统计表') },
+      { key: '加工曲线', label: t('加工曲线', '加工曲线') },
+      { key: '加工柱状图', label: t('加工柱状图', '加工柱状图') },
+      { key: '动态装箱', label: t('动态装箱', '动态装箱') },
+      { key: '成品', label: t('成品', '成品') }
+    ]
+  }
 
   // 处理Tab切换
   private handleTabChange(tabKey: string) {
@@ -437,8 +442,8 @@ export struct DataTablesTabBar {
           GridTable({
             tableName: '等级表',
             tableRows: this.levelTableData,
-            tableTitle: '等级表',
-            headerTitles: ['等级', '30', '20', '10', '0'],
+            tableTitle: t('等级表', '等级表'),
+            headerTitles: [t('等级', '等级'), '30', '20', '10', '0'],
             tableWidth: '100%',
             maxHeight: '72%', // 等级表最大高度改为65%
             enableDrag: true,
@@ -453,8 +458,8 @@ export struct DataTablesTabBar {
           GridTable({
             tableName: '容器表',
             tableRows: this.containerTableData,
-            tableTitle: '容器表',
-            headerTitles: ['容器名称', '分选标准', '容器规格', '容器等级'],
+            tableTitle: t('容器表', '容器表'),
+            headerTitles: [t('容器名称', '容器名称'), t('分选标准', '分选标准'), t('容器规格', '容器规格'), t('容器等级', '容器等级')],
             tableWidth: '100%',
             maxHeight: '72%',
             enableDrag: true,
@@ -474,8 +479,8 @@ export struct DataTablesTabBar {
         GridTable({
           tableName: '等级统计表',
           tableRows: this.statisticsTableData,
-          tableTitle: '等级统计表',
-          headerTitles: ['等级', '重量', '出口', '个数', '占比', '重量2', '占比2', '箱数', '占比3', '箱重', '平均'],
+          tableTitle: t('等级统计表', '等级统计表'),
+          headerTitles: [t('等级', '等级'), t('重量', '重量'), t('出口', '出口'), t('个数', '个数'), t('占比', '占比'), t('重量2', '重量2'), t('占比2', '占比2'), t('箱数', '箱数'), t('占比3', '占比3'), t('箱重', '箱重'), t('平均', '平均')],
           tableWidth: '100%',
           maxHeight: '72%',
           enableDrag: false,    // 拖拽设置
@@ -530,14 +535,14 @@ export struct DataTablesTabBar {
       } else if (this.selectedTab === '加工柱状图') {
         // 使用新的 Canvas 并列柱状图组件
         BarChart({
-          title: '加工柱状图',
+          title: t('加工柱状图', '加工柱状图'),
           chartHeight: 380
         })
       } else if (this.selectedTab === '动态装箱') {
         // 使用Grid组件显示动态装箱表格（带卡片包裹）
         Column() {
           SectionTitle({
-            title: '动态装箱',
+            title: t('动态装箱', '动态装箱'),
             titleFontSize: 16,
             titleFontWeight: FontWeight.Medium,
             titleMargin: { bottom: 4 },
@@ -548,7 +553,7 @@ export struct DataTablesTabBar {
           Column() {
             Grid() {
             // 表头
-            ForEach(['出口', '流水码', '装箱规格', '等级', '箱数', '纸箱规格', '纸箱净重', '箱数/分'], (title: string, index: number) => {
+            ForEach([t('出口', '出口'), t('流水码', '流水码'), t('装箱规格', '装箱规格'), t('等级', '等级'), t('箱数', '箱数'), t('纸箱规格', '纸箱规格'), t('纸箱净重', '纸箱净重'), t('箱数/分', '箱数/分')], (title: string, index: number) => {
               GridItem() {
                 TableHeaderCell({
                   text: title,
@@ -600,7 +605,7 @@ export struct DataTablesTabBar {
         // 使用Grid组件显示成品表格（带卡片包裹）
         Column() {
           SectionTitle({
-            title: '成品',
+            title: t('成品', '成品'),
             titleFontSize: 16,
             titleFontWeight: FontWeight.Medium,
             titleMargin: { bottom: 4 },
@@ -611,7 +616,7 @@ export struct DataTablesTabBar {
           Column() {
             Grid() {
             // 表头
-            ForEach(['成品码', '出口', '流水码', '容器名称', '等级', '包装时间', '纸箱规格', '纸箱净重'], (title: string, index: number) => {
+            ForEach([t('成品码', '成品码'), t('出口', '出口'), t('流水码', '流水码'), t('容器名称', '容器名称'), t('等级', '等级'), t('包装时间', '包装时间'), t('纸箱规格', '纸箱规格'), t('纸箱净重', '纸箱净重')], (title: string, index: number) => {
               GridItem() {
                 TableHeaderCell({
                   text: title,
@@ -669,7 +674,7 @@ export struct DataTablesTabBar {
     Column() {
       // TabBar导航
       OmniTabBar({
-        tabs: this.tabConfig,
+        tabs: this.getTabConfig(),
         selectedTab: this.selectedTab,
         layoutDirection: TabBarDirection.HORIZONTAL,
         showSeparator: false,
@@ -677,6 +682,7 @@ export struct DataTablesTabBar {
           this.handleTabChange(tabKey)
         }
       })
+        .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
       
       // 内容区域
       this.buildContent()

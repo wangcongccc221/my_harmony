@@ -47,6 +47,7 @@
  */
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
 
 /**
  * 分选信息卡片组件结构体
@@ -69,6 +70,8 @@ import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/Omni
  */
 @Component
 export struct SortingInfoCard {
+  @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0  // 监听语言变化，触发 UI 更新
+
   /**
    * 分拣速度
    * 
@@ -199,12 +202,13 @@ export struct SortingInfoCard {
   build() {
     Column() {
       // ==================== 卡片标题 ====================
-      Text('当前分选信息')
+      Text(t('当前分选信息', '当前分选信息'))
         .fontSize(16)                                    // 字体大小（与等级表标题一致）
         .fontWeight(FontWeight.Medium)                   // 字体粗细（与等级表标题一致）
         .fontColor(this.getCurrentTheme().textColor)     // 文字颜色（主题色）
         .alignSelf(ItemAlign.Start)                      // 左对齐
         .margin({ bottom: 8 })                          // 底部边距（增加间距）
+        .opacity(this.i18nVersion >= 0 ? 1 : 1)          // 引用 i18nVersion 确保语言变化时重新渲染
 
       // ==================== 信息内容区域 ====================
       // 内容一行布局（九个项目，按百分比等分，每项约11.11%）
@@ -219,12 +223,13 @@ export struct SortingInfoCard {
         this.buildInfoItem('实时产量', () => this.realTimeOutput, 11.11)   // 实时产量信息项（保持自动模拟）
         this.buildInfoItem('间隔速度', () => this.intervalSpeed, 11.11)   // 间隔速度信息项（保持自动模拟）
       }
+        .opacity(this.i18nVersion >= 0 ? 1 : 1)          // 引用 i18nVersion 确保语言变化时重新渲染
       .width('100%')                                     // 宽度100%
       .justifyContent(FlexAlign.Start)                   // 左对齐
       .alignItems(VerticalAlign.Center)                  // 垂直居中
     }
     .width('100%')                                       // 宽度100%
-    .height('12%')                                       // 信息卡片占12%
+    // 移除固定高度，允许根据内容自动调整高度（适应换行文本）
     .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)  // 背景色（主题控制背景色或表面色）
     .border({ width: 1, color: this.getCurrentTheme().borderColor })  // 边框（1px主题边框色）
     .borderRadius(12)                                    // 圆角12px
@@ -257,14 +262,15 @@ export struct SortingInfoCard {
    * - 左对齐排列
    */
   @Builder
-  private buildInfoItem(label: string, valueGetter: () => string, widthPercent?: number) {
+  private buildInfoItem(originalKey: string, valueGetter: () => string, widthPercent?: number) {
     Column() {
       // ==================== 信息标签 ====================
-      Text(label)
+      Text(t(originalKey, originalKey))
         .fontSize(16)                                    // 字体大小（加大到16px）
         .fontWeight(FontWeight.Bold)                    // 字体粗细（加粗）
         .fontColor(this.getCurrentTheme().subTextColor ?? '#888888')  // 标签颜色（主题副文字色或灰色）
         .margin({ bottom: 12 })                         // 底部边距（增加间距，让标签和数据分离）
+        .opacity(this.i18nVersion >= 0 ? 1 : 1)          // 引用 i18nVersion 确保语言变化时重新渲染
 
       // ==================== 信息数值 ====================
       // 将数值和单位分开显示
