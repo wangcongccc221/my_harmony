@@ -6,6 +6,9 @@ import { IBestAvatar, IBestButton } from '@ibestservices/ibest-ui'
 // 已移除自定义对话框
 import common from '@ohos.app.ability.common'
 import { MinimizeAppUtil } from '../../utils/window/MinimizeAppUtil'
+import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
+import { AnimatedCloseButton } from '../ui/buttons/AnimatedCloseButton'
+import { AnimatedMinimizeButton } from '../ui/buttons/AnimatedMinimizeButton'
 
 /**
  * 顶部状态栏组件（精简版，无个人信息/头像/对话框）
@@ -31,7 +34,8 @@ export struct TopStatusBar {
   @Prop selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
   onFSMChange?: (fsm: 'FSM1' | 'FSM2') => void
   
-  // 实时时间状态
+  // 实时时间状态（两行显示）
+  @State private currentDate: string = ''
   @State private currentTime: string = ''
   private timeTimer: number | null = null
   
@@ -113,7 +117,10 @@ export struct TopStatusBar {
     const hh = String(now.getHours()).padStart(2, '0')
     const mm = String(now.getMinutes()).padStart(2, '0')
     const ss = String(now.getSeconds()).padStart(2, '0')
-    this.currentTime = `${y}-${m}-${d} ${hh}:${mm}:${ss}`
+    // 第一行：日期
+    this.currentDate = `${y}-${m}-${d}`
+    // 第二行：时间
+    this.currentTime = `${hh}:${mm}:${ss}`
   }
 
   /**
@@ -168,6 +175,7 @@ export struct TopStatusBar {
           .height('100%')
           .objectFit(ImageFit.Contain)
           .margin({ left: '0.5%', right: '1%' })
+          .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：圆角
       }
       .alignItems(VerticalAlign.Center)
 
@@ -176,97 +184,111 @@ export struct TopStatusBar {
         Column() {
           Row() {
             Text('production')
-              .fontSize(16)  // 调大到16px
+              .fontSize(14) // Apple风格：统一字体大小
+              .fontWeight(FontWeight.Medium) // Apple风格：Medium
               .fontColor(this.getCurrentTheme().subTextColor)
             Text('(Ton/h)')
-              .fontSize(16)  // 调大到16px
+              .fontSize(12) // Apple风格：更小的单位字体
               .fontColor(this.getCurrentTheme().subTextColor)
-              .margin({ left: 2 })
+              .opacity(0.7) // Apple风格：更柔和的透明度
+              .margin({ left: 4 })
           }
           .alignItems(VerticalAlign.Center)
           Text(this.productionTonPerHour)
-            .fontSize(18)  // 调大到18px
+            .fontSize(18)  // 保持数值字体大小
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().textColor)
-            .margin({ top: 2 })
+            .margin({ top: 4 })
         }
         .alignItems(HorizontalAlign.Start)
-        .margin({ right: 12 })
+        .margin({ right: AppleDesignStyle.SPACING_MEDIUM }) // Apple风格：统一间距
 
-        Row() {}
-          .width('0.2%')
+        Divider()
+          .vertical(true)
+          .strokeWidth(AppleDesignStyle.BORDER_WIDTH_THIN) // Apple风格：细边框
+          .color(this.getCurrentTheme().borderColor)
           .height('60%')
-          .backgroundColor(this.getCurrentTheme().borderColor)
+          .opacity(0.5) // Apple风格：半透明
           .margin({ left: '1%', right: '1%' })
 
         Column() {
           Row() {
             Text('SumWeight')
-              .fontSize(16)  // 调大到16px
+              .fontSize(14)
+              .fontWeight(FontWeight.Medium)
               .fontColor(this.getCurrentTheme().subTextColor)
             Text('(Ton)')
-              .fontSize(16)  // 调大到16px
+              .fontSize(12)
               .fontColor(this.getCurrentTheme().subTextColor)
-              .margin({ left: 2 })
+              .opacity(0.7)
+              .margin({ left: 4 })
           }
           .alignItems(VerticalAlign.Center)
           Text(this.sumWeightTon)
-            .fontSize(18)  // 调大到18px
+            .fontSize(18)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().textColor)
-            .margin({ top: 2 })
+            .margin({ top: 4 })
         }
         .alignItems(HorizontalAlign.Start)
-        .margin({ right: 12 })
+        .margin({ right: AppleDesignStyle.SPACING_MEDIUM })
 
-        Row() {}
-          .width('0.2%')
+        Divider()
+          .vertical(true)
+          .strokeWidth(AppleDesignStyle.BORDER_WIDTH_THIN) // Apple风格：细边框
+          .color(this.getCurrentTheme().borderColor)
           .height('60%')
-          .backgroundColor(this.getCurrentTheme().borderColor)
+          .opacity(0.5) // Apple风格：半透明
           .margin({ left: '1%', right: '1%' })
 
         Column() {
           Row() {
             Text('SumCounts')
-              .fontSize(16)  // 调大到16px
+              .fontSize(14)
+              .fontWeight(FontWeight.Medium)
               .fontColor(this.getCurrentTheme().subTextColor)
             Text('(PCS)')
-              .fontSize(16)  // 调大到16px
+              .fontSize(12)
               .fontColor(this.getCurrentTheme().subTextColor)
-              .margin({ left: 2 })
+              .opacity(0.7)
+              .margin({ left: 4 })
           }
           .alignItems(VerticalAlign.Center)
           Text(this.sumCounts)
-            .fontSize(18)  // 调大到18px
+            .fontSize(18)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().textColor)
-            .margin({ top: 2 })
+            .margin({ top: 4 })
         }
         .alignItems(HorizontalAlign.Start)
-        .margin({ right: 12 })
+        .margin({ right: AppleDesignStyle.SPACING_MEDIUM })
 
-        Row() {}
-          .width('0.2%')
+        Divider()
+          .vertical(true)
+          .strokeWidth(AppleDesignStyle.BORDER_WIDTH_THIN) // Apple风格：细边框
+          .color(this.getCurrentTheme().borderColor)
           .height('60%')
-          .backgroundColor(this.getCurrentTheme().borderColor)
+          .opacity(0.5) // Apple风格：半透明
           .margin({ left: '1%', right: '1%' })
 
         Column() {
           Row() {
             Text('Avg')
-              .fontSize(16)  // 调大到16px
+              .fontSize(14)
+              .fontWeight(FontWeight.Medium)
               .fontColor(this.getCurrentTheme().subTextColor)
             Text('(g)')
-              .fontSize(16)  // 调大到16px
+              .fontSize(12)
               .fontColor(this.getCurrentTheme().subTextColor)
-              .margin({ left: 2 })
+              .opacity(0.7)
+              .margin({ left: 4 })
           }
           .alignItems(VerticalAlign.Center)
           Text(this.avgGram)
-            .fontSize(18)  // 调大到18px
+            .fontSize(18)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().textColor)
-            .margin({ top: 2 })
+            .margin({ top: 4 })
         }
         .alignItems(HorizontalAlign.Start)
       }
@@ -274,47 +296,55 @@ export struct TopStatusBar {
       .margin({ right: '1.5%' })
 
       // 状态文本与告警提示
-      Row() {
+      Row({ space: AppleDesignStyle.SPACING_MEDIUM }) { // Apple风格：统一间距
         // TCP连接状态显示
         if (this.tcpConnected) {
           Text('设备连接正常')
-            .fontSize(16)  // 调大到16px
-            .fontColor('#34A853')
-            .margin({ right: 12 })
+            .fontSize(14) // Apple风格：统一字体大小
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.getCurrentTheme().primary) // 使用主题色替代硬编码
+            .padding({ left: AppleDesignStyle.SPACING_SMALL, right: AppleDesignStyle.SPACING_SMALL, top: AppleDesignStyle.SPACING_XS, bottom: AppleDesignStyle.SPACING_XS })
+            .backgroundColor(this.getCurrentTheme().primary + '15') // Apple风格：15%透明度背景
+            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
         } else {
           Text('设备故障，请排查')
-            .fontSize(16)  // 调大到16px
-            .fontColor('#D93025')
-            .margin({ right: 12 })
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#FF3B30') // Apple标准错误红色
+            .padding({ left: AppleDesignStyle.SPACING_SMALL, right: AppleDesignStyle.SPACING_SMALL, top: AppleDesignStyle.SPACING_XS, bottom: AppleDesignStyle.SPACING_XS })
+            .backgroundColor('#FF3B3015')
+            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
         }
         
         Text(this.statusText)
-          .fontSize(16)  // 调大到16px
+          .fontSize(14)
           .fontColor(this.getCurrentTheme().subTextColor)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
+      .alignItems(VerticalAlign.Center)
       .height('40%')
-      .margin({ right: '1%' })
+      .margin({ right: AppleDesignStyle.SPACING_LARGE })
 
       // 客户公司 LOGO + 农场名称 + 分选种类（放在状态区与FSM切换之间）
-      Row() {
+      Row({ space: AppleDesignStyle.SPACING_SMALL }) {
         Image(this.customerLogoUrl && this.customerLogoUrl.length > 0 ? this.customerLogoUrl : $r('app.media.customer_logo'))
           .width('4%')
           .height('70%')
           .objectFit(ImageFit.Contain)
-          .borderRadius(6)
-          .margin({ right: '0.6%' })
+          .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：圆角
+          .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+          .margin({ right: AppleDesignStyle.SPACING_SMALL })
 
-        Column() {
+        Column({ space: 2 }) {
           Text(this.farmName && this.farmName.length > 0 ? this.farmName : '— 农场 —')
-            .fontSize(16)
+            .fontSize(14) // Apple风格：统一字体大小
             .fontWeight(FontWeight.Medium)
             .fontColor(this.getCurrentTheme().textColor)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
           Text(this.fruitType && this.fruitType.length > 0 ? this.fruitType : '— 分选种类 —')
-            .fontSize(14)
+            .fontSize(12) // Apple风格：更小的副标题字体
             .fontColor(this.getCurrentTheme().subTextColor)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -323,12 +353,13 @@ export struct TopStatusBar {
       }
       .alignItems(VerticalAlign.Center)
       .width('auto')
-      .margin({ right: '1%' })
+      .margin({ right: AppleDesignStyle.SPACING_LARGE })
 
-      Blank().layoutWeight(1)
+      // 使用固定宽度的空白，而不是layoutWeight，减少中间空白
+      Blank().width(40)
 
       // 个人信息区域：FSM切换 + 头像 + 姓名/管理员
-      Row() {
+      Row({ space: AppleDesignStyle.SPACING_MEDIUM }) {
         // FSM切换按钮
         CompactFsmToggle({
           selectedFSM: this.selectedFSM,
@@ -338,14 +369,13 @@ export struct TopStatusBar {
             }
           }
         })
-        .margin({ left: 15, right: 8 })
 
         // 头像和用户信息
-        Row() {
+        Row({ space: AppleDesignStyle.SPACING_SMALL }) {
           IBestAvatar({
             src: AppStorage.get('SELECTED_AVATAR_URL') || 'https://img1.baidu.com/it/u=700838104,4078529388&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=500',
             defaultAvatar: $r('app.media.default_avatar'),
-            avatarSize: 40,
+            avatarSize: 36, // Apple风格：稍微小一点
             shape: 'circle',
             onAvatarClick: () => {
               AppStorage.setOrCreate('TEMP_USER_LABEL', this.userLabel)
@@ -353,16 +383,15 @@ export struct TopStatusBar {
             }
           })
 
-          Column() {
+          Column({ space: 2 }) {
             Text(this.userLabel)
-              .fontSize(18)  // 调大到18px
+              .fontSize(13) // Apple风格：统一字体大小
               .fontColor(this.getCurrentTheme().subTextColor)
             Text('管理员')
-              .fontSize(18)  // 调大到18px
+              .fontSize(14)
               .fontWeight(FontWeight.Medium)
               .fontColor(this.getCurrentTheme().textColor)
           }
-          .margin({ left: '1%' })
           .alignItems(HorizontalAlign.Start)
           .onClick(() => {
             AppStorage.setOrCreate('TEMP_USER_LABEL', this.userLabel)
@@ -372,26 +401,32 @@ export struct TopStatusBar {
         .alignItems(VerticalAlign.Center)
       }
       .alignItems(VerticalAlign.Center)
-      .margin({ right: 8 })
+      .margin({ right: AppleDesignStyle.SPACING_MEDIUM })
 
-      Text(this.currentTime)
-        .fontSize(16)  // 调大到16px
-        .fontColor(this.getCurrentTheme().subTextColor)
-        .margin({ right: 8 })
+      // 时间显示（两行：日期+时间）
+      Column({ space: 2 }) {
+        Text(this.currentDate)
+          .fontSize(12) // 日期字体稍小
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCurrentTheme().subTextColor)
+        Text(this.currentTime)
+          .fontSize(14) // 时间字体稍大，更突出
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.getCurrentTheme().textColor)
+      }
+      .alignItems(HorizontalAlign.End) // 右对齐
+      .margin({ right: AppleDesignStyle.SPACING_MEDIUM })
 
-      // 右上角窗口控制（使用 iBest 方形按钮包裹 'X'）
-      Row() {
-        IBestButton({
-          text: '—',
-          type: 'default',
-          onBtnClick: () => { this.minimizeApp() }
+      // 右上角窗口控制 - Vue 动画效果
+      Row({ space: AppleDesignStyle.SPACING_SMALL }) {
+        // 最小化按钮 - Vue 动画效果
+        AnimatedMinimizeButton({
+          onClickHandler: () => { this.minimizeApp() }
         })
-          .margin({ right: 4 })
 
-        IBestButton({
-          text: 'X',
-          type: 'default',
-          onBtnClick: () => { this.closeApp() }
+        // 关闭按钮 - Vue 动画效果
+        AnimatedCloseButton({
+          onClickHandler: () => { this.closeApp() }
         })
       }
 
@@ -399,9 +434,10 @@ export struct TopStatusBar {
     }
     .width('100%')
     .height('8%')
-    .padding({ left: '0.5%', right: 8 })
+    .padding({ left: AppleDesignStyle.SPACING_LARGE, right: AppleDesignStyle.SPACING_LARGE, top: AppleDesignStyle.SPACING_MEDIUM, bottom: AppleDesignStyle.SPACING_MEDIUM }) // Apple风格：统一内边距
     .backgroundColor(this.getCurrentTheme().surfaceColor)
-    .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+    .border({ width: { bottom: AppleDesignStyle.BORDER_WIDTH_THIN }, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+    .shadow(AppleDesignStyle.getShadowSmall()) // Apple风格：柔和阴影
   }
 
 }
