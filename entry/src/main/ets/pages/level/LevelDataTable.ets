@@ -43,6 +43,7 @@ import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY, useOmniTheme } from '../../utils/theme/useOmniTheme'
 import { LevelData, StatisticsData, TABLE_COUNT_OPTIONS, DEFAULT_LEVEL_DATA } from './LevelConstants'
 import { t } from '../../utils/i18n/I18nManager'
+import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 
 /**
  * 统计表格数据项接口
@@ -640,30 +641,36 @@ export struct LevelDataTable {
         // +/- 按钮区域
         if (this.showAddRemoveButtons[index]) {
           Row() {
-            // + 按钮
+            // + 按钮 - Apple Design风格
             Button() {
               Text('+')
                 .fontSize(14)
-                .fontColor(this.getCurrentTheme().textColor)
+                .fontWeight(FontWeight.Medium) // Apple风格：Medium字重
+                .fontColor(Color.White)
             }
             .width(24)
             .height(24)
             .backgroundColor(this.getCurrentTheme().primary)
-            .borderRadius(12)
+            .borderRadius(AppleDesignStyle.BORDER_RADIUS_CIRCLE) // Apple风格：圆形按钮
+            .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.2)')) // Apple风格：柔和阴影
+            .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅过渡
             .onClick(() => {
               this.addNewRow(index)
             })
 
-            // - 按钮
+            // - 按钮 - Apple Design风格
             Button() {
               Text('-')
                 .fontSize(14)
-                .fontColor(this.getCurrentTheme().textColor)
+                .fontWeight(FontWeight.Medium) // Apple风格：Medium字重
+                .fontColor(Color.White)
             }
             .width(24)
             .height(24)
             .backgroundColor('#FF5722')
-            .borderRadius(12)
+            .borderRadius(AppleDesignStyle.BORDER_RADIUS_CIRCLE) // Apple风格：圆形按钮
+            .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.2)')) // Apple风格：柔和阴影
+            .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅过渡
             .margin({ left: 4 })
             .onClick(() => {
               this.removeRow(index)
@@ -1074,9 +1081,9 @@ export struct LevelDataTable {
         .width('100%')
         .padding(16)
         .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-        .borderRadius(12)
-        .shadow({ radius: 8, color: 'rgba(0,0,0,0.15)', offsetY: 2 })
+        .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+        .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // Apple风格：中等圆角
+        .shadow(AppleDesignStyle.getShadowMedium('rgba(0, 0, 0, 0.12)')) // Apple风格：柔和阴影
         .margin({ bottom: 16 })
         
         // 等级表格：使用List+ListItem实现
@@ -1111,17 +1118,17 @@ export struct LevelDataTable {
         })
         .width('100%')
         .layoutWeight(1)
-        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-        .borderRadius(8)
+        .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+        .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
         .backgroundColor(this.getCurrentTheme().surfaceColor)
       }
       .width('100%')
       .height('70%')
       .padding(16)
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-      .border({ width: 1, color: this.getCurrentTheme().borderColor })
-      .borderRadius(10)
-      .shadow({ radius: 10, color: 'rgba(0,0,0,0.08)', offsetY: 2 })
+      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // Apple风格：中等圆角
+      .shadow(AppleDesignStyle.getShadowMedium('rgba(0, 0, 0, 0.1)')) // Apple风格：柔和阴影
       .margin({ bottom: 16 })
 
       // 统计表格卡片：使用Grid组件实现的表格

@@ -33,6 +33,7 @@
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 import { QualityStateManager } from './core/QualityStateManager'
 import { QualityDataManager } from './core/QualityDataManager'
 import { QualityEventHandler } from './core/QualityEventHandler'
@@ -514,7 +515,7 @@ export struct QualityContent {
       // ==================== 悬浮按钮 ====================
       if (this.showFloatingButtons) {
         Column() {
-          // 确认按钮
+          // 确认按钮 - Apple Design风格
           Button('确认')
             .width(80)
             .height(50)
@@ -522,19 +523,16 @@ export struct QualityContent {
             .fontWeight(FontWeight.Medium)
             .fontColor(Color.White)
             .backgroundColor(this.getCurrentTheme().primary)
-            .borderRadius(25)
-            .shadow({ radius: 8, color: 'rgba(0,0,0,0.15)', offsetY: 4 })
-            .animation({
-              duration: 300,
-              curve: Curve.EaseInOut
-            })
+            .borderRadius(AppleDesignStyle.BORDER_RADIUS_LARGE) // Apple风格：大圆角
+            .shadow(AppleDesignStyle.getShadowMedium('rgba(0, 0, 0, 0.15)')) // Apple风格：柔和阴影
+            .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅过渡
             .onClick(() => {
               const first = this.stateManager.getQualityLevels()[0]
               this.eventHandler.onDataUpdate(first, -1)
               console.log('品质页面：确认操作')
             })
 
-          // 取消按钮
+          // 取消按钮 - Apple Design风格
           Button('取消')
             .width(80)
             .height(50)
@@ -542,14 +540,11 @@ export struct QualityContent {
             .fontWeight(FontWeight.Medium)
             .fontColor(this.getCurrentTheme().textColor)
             .backgroundColor(Color.Transparent)
-            .border({ width: 1, color: this.getCurrentTheme().borderColor })
-            .borderRadius(25)
-            .shadow({ radius: 8, color: 'rgba(0,0,0,0.15)', offsetY: 4 })
+            .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+            .borderRadius(AppleDesignStyle.BORDER_RADIUS_LARGE) // Apple风格：大圆角
+            .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.1)')) // Apple风格：柔和阴影
             .margin({ top: 12 })
-            .animation({
-              duration: 300,
-              curve: Curve.EaseInOut
-            })
+            .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅过渡
             .onClick(() => {
               this.eventHandler.onDataReset()
               console.log('品质页面：取消操作')

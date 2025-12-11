@@ -39,6 +39,7 @@
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 import { LEVEL_COUNT_OPTIONS } from './QualityConstants'
 import { GlobalLevelCountManager } from '../../utils/managers/GlobalLevelCountManager'
 import { t } from '../../utils/i18n/I18nManager'
@@ -374,8 +375,8 @@ export struct QualityControlPanel {
           .font({ size: 22 })
           .fontColor(this.getCurrentTheme().textColor)
           .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-          .border({ width: 1, color: this.getCurrentTheme().borderColor })
-          .borderRadius(6)
+          .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+          .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
           .padding({ left: 8, right: 8, top: 4, bottom: 4 })
           .width('30%')
           .margin({ right: 8 })

@@ -408,9 +408,9 @@ export struct ThreeLayerCard {
     .width(this.cardWidth)
     .height(this.cardHeight)
     .backgroundColor(Color.Transparent) // 透明背景
-    .borderRadius(8)
-    .border({ width: 1, color: UseCardLogic.getCardColors().cardBorder })
-    .shadow({ radius: 4, color: UseCardLogic.getCardColors().cardShadow, offsetX: 0, offsetY: 2 })
+    .borderRadius(12) // Apple风格：中等圆角
+    .border({ width: 0.5, color: UseCardLogic.getCardColors().cardBorder }) // Apple风格：细边框
+    .shadow({ radius: 8, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 2 }) // Apple风格：柔和阴影
     .clip(true) // 裁剪子组件
     .onClick(() => {
       this.onCardDrop?.(this.cardData)

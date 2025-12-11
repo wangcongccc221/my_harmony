@@ -783,8 +783,9 @@ export struct OutletDialog {
         .width('90%')
         .height('90%')
         .backgroundColor(this.getCurrentTheme().surfaceColor) // 面板背景
-        .borderRadius(20) // 更大的圆角
-        .shadow({ radius: 40, color: 'rgba(0,0,0,0.2)', offsetY: 10 }) // 更深的阴影
+        .borderRadius(20) // Apple风格：大圆角
+        .shadow({ radius: 30, color: 'rgba(0, 0, 0, 0.15)', offsetX: 0, offsetY: 8 }) // Apple风格：柔和阴影
+        .transition(TransitionEffect.OPACITY.animation({ duration: 300, curve: Curve.EaseOut })) // Apple风格：流畅动画
       }
       .width('100%')
       .height('100%')

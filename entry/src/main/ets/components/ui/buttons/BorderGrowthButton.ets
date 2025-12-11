@@ -5,9 +5,11 @@
  * - 常态：透明背景，主题色文字，仅底部有主题色边框
  * - Hover：鼠标悬停时边框从底部向上生长，离开时缩回
  * - Click：点击时触发回调
+ * Apple Design 风格优化：更柔和的动画、圆角效果
  */
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
+import { AppleDesignStyle } from '../../../utils/theme/AppleDesignStyle'
 
 @Component
 export struct BorderGrowthButton {
@@ -40,9 +42,10 @@ export struct BorderGrowthButton {
 
   private onActiveChange() {
     // 状态变为激活时，展开边框；变为非激活时，收缩边框
+    // Apple风格：使用更柔和的动画
     animateTo({
-      duration: 500,
-      curve: Curve.FastOutSlowIn,
+      duration: 300,  // Apple风格：标准动画时长
+      curve: Curve.EaseOut,  // Apple风格：缓出曲线
     }, () => {
       this.borderGrowth = this.isActive ? 1 : 0;
     });
@@ -72,12 +75,12 @@ export struct BorderGrowthButton {
 
   build() {
     Stack({ alignContent: Alignment.Center }) {
-      // 文字层
+      // 文字层 - Apple风格优化
       Text(this.text)
         .fontSize(16)
-        .fontWeight(700)
+        .fontWeight(this.isActive ? FontWeight.Medium : FontWeight.Normal) // Apple风格：激活时Medium，否则Normal（HarmonyOS不支持SemiBold）
         .fontColor(this.getTextColor())
-        .letterSpacing(1.5)
+        .letterSpacing(0.5) // Apple风格：减少字间距，更紧凑
       
       // 边框层 - 使用 Column 和 Row 来绘制边框
       Column() {
@@ -132,11 +135,10 @@ export struct BorderGrowthButton {
       if (isHover) {
         console.info('[BorderGrowthButton] 鼠标进入 - 开始边框生长动画');
         // 鼠标悬停 - 边框向上生长
-        // 使用自定义贝塞尔曲线，让动画更丝滑
+        // Apple风格：使用更柔和的动画曲线
         animateTo({
-          duration: 500,  // 稍微延长到 0.5 秒，让动画更流畅
-          curve: Curve.FastOutSlowIn,  // 快进慢出，更自然
-          // 或使用自定义贝塞尔曲线：curves.cubicBezierCurve(0.25, 0.1, 0.25, 1)
+          duration: 300,  // Apple风格：标准动画时长
+          curve: Curve.EaseOut,  // Apple风格：缓出曲线，更自然
         }, () => {
           this.borderGrowth = 1;
           console.info(`[BorderGrowthButton] 边框生长完成，borderGrowth = ${this.borderGrowth}`);
@@ -145,8 +147,8 @@ export struct BorderGrowthButton {
         console.info('[BorderGrowthButton] 鼠标离开 - 开始边框缩回动画');
         // 鼠标离开 - 边框缩回
         animateTo({
-          duration: 250,  // 稍微延长缩回时间，避免太突兀
-          curve: Curve.FastOutSlowIn,  // 使用相同曲线保持一致性
+          duration: 200,  // Apple风格：快速缩回
+          curve: Curve.EaseIn,  // Apple风格：缓入曲线
         }, () => {
           this.borderGrowth = 0;
           console.info(`[BorderGrowthButton] 边框缩回完成，borderGrowth = ${this.borderGrowth}`);

@@ -2,9 +2,11 @@
  * 分选状态选择对话框组件
  * 功能：选择正常分选或异常分选状态
  * 用途：在点击分选状态按钮时弹出
+ * Apple Design 风格优化：柔和的圆角、阴影效果
  */
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 
 // 通道数据接口
 interface ChannelData {
@@ -147,19 +149,15 @@ export struct SortingStatusDialog {
         }
         .width('100%')
         .margin({ top: 16, bottom: 16 })
-        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-        .borderRadius(6)
+        .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+        .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
       }
       .width(400)
       .backgroundColor(this.getCurrentTheme().surfaceColor)
-      .borderRadius(12)
-      .border({ width: 1, color: this.getCurrentTheme().borderColor })
-      .shadow({
-        radius: 12,
-        color: 'rgba(0, 0, 0, 0.15)',
-        offsetX: 0,
-        offsetY: 4
-      })
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_LARGE) // Apple风格：大圆角
+      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+      .shadow(AppleDesignStyle.getShadowMedium('rgba(0, 0, 0, 0.12)')) // Apple风格：柔和阴影
+      .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅动画
       .zIndex(1000) // 确保在最上层
       .position({ x: 20, y: '100%' }) // 定位在底部控制栏上方
       .translate({ y: -200 }) // 向上偏移200px，显示在按钮上方

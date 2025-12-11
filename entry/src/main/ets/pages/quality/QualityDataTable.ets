@@ -38,6 +38,7 @@
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 import { QualityLevelData, CustomComponentConfig, CustomComponentType } from './QualityConstants'
 import { t } from '../../utils/i18n/I18nManager'
 
@@ -266,7 +267,7 @@ export struct QualityDataTable {
         .fontWeight(FontWeight.Medium)
         .fontColor(this.getCurrentTheme().textColor)
         .backgroundColor(this.getCurrentTheme().primary)
-        .borderRadius(8)
+        .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
         .padding({ left: 12, right: 12, top: 6, bottom: 6 })
         .enabled(config.enabled ?? true)
         .onClick(() => {
@@ -294,8 +295,8 @@ export struct QualityDataTable {
         .fontSize(16)
         .fontColor(this.getCurrentTheme().textColor)
         .backgroundColor(this.getCurrentTheme().surfaceColor)
-        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-        .borderRadius(6)
+        .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+        .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
         .padding({ left: 8, right: 8, top: 6, bottom: 6 })
         .onChange((value: string) => {
           console.log(`输入框变化: ${config.label}, 值: ${value}, 等级: ${data.levelName}`)
@@ -307,8 +308,8 @@ export struct QualityDataTable {
         .fontSize(16)
         .fontColor(this.getCurrentTheme().textColor)
         .backgroundColor(this.getCurrentTheme().surfaceColor)
-        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-        .borderRadius(6)
+        .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+        .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
         .padding({ left: 8, right: 8, top: 6, bottom: 6 })
         .onClick(() => {
           console.log(`下拉选择: ${config.label}, 当前值: ${config.value}, 等级: ${data.levelName}`)

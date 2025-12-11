@@ -1,3 +1,5 @@
+import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
+
 @Component
 export struct LiquidCard {
   /**
@@ -64,10 +66,10 @@ export struct LiquidCard {
             .width(30)
             .height(30)
             .backgroundColor(this.mainColor)
-            .borderRadius(6)
+            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
             .fontColor(Color.White)
             .fontSize(14)
-            .fontWeight(FontWeight.Bold)
+            .fontWeight(FontWeight.Medium) // Apple风格：使用Medium而非Bold
             .textAlign(TextAlign.Center)
             .lineHeight(30)
         }
@@ -82,13 +84,13 @@ export struct LiquidCard {
       Row() {
         Text(`${this.serialNumber}`)
           .fontSize(20)
-          .fontWeight(FontWeight.Bold)
+          .fontWeight(FontWeight.Medium) // Apple风格：使用Medium（HarmonyOS不支持SemiBold）
           .fontColor('#222222')
         Blank().layoutWeight(1)
         Text(`${this.clampPercent(this.percent)}%`)
           .fontSize(16)
-          .fontWeight(FontWeight.Bold)
-          .今晚去哪里威fontColor(this.mainColor)
+          .fontWeight(FontWeight.Medium) // Apple风格：使用Medium
+          .fontColor(this.mainColor)
       }
       .width('100%')
       .height(24)
@@ -111,7 +113,7 @@ export struct LiquidCard {
           .height(`${this.clampPercent(this.percent)}%`)
           .backgroundColor(this.mainColor)
           .opacity(0.9)
-          .borderRadius({ bottomLeft: 12, bottomRight: 12 })
+          .borderRadius({ bottomLeft: AppleDesignStyle.BORDER_RADIUS_MEDIUM, bottomRight: AppleDesignStyle.BORDER_RADIUS_MEDIUM }) // Apple风格：中等圆角
       }
       .width('100%')
       .layoutWeight(1)
@@ -121,8 +123,8 @@ export struct LiquidCard {
     .width(this.cardWidth)
     .height(this.cardHeight)
     .backgroundColor(Color.White)
-    .borderRadius(12)
-    .shadow({ radius: 10, color: 'rgba(0,0,0,0.12)', offsetX: 0, offsetY: 4 })
+    .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // Apple风格：中等圆角12px
+    .shadow(AppleDesignStyle.getShadowMedium('rgba(0, 0, 0, 0.12)')) // Apple风格：柔和阴影
     .clip(true)
   }
 }

@@ -13,6 +13,7 @@ import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../u
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
+import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 
 @Component
 export struct LeftNavigationTabBar {
@@ -99,10 +100,12 @@ export struct LeftNavigationTabBar {
       .fontColor(this.resolveTheme().textColor)
       .backgroundColor(this.resolveTheme().surfaceColor)
       .border({ 
-        width: 1, 
+        width: AppleDesignStyle.BORDER_WIDTH_THIN, // Apple风格：细边框
         color: this.resolveTheme().borderColor 
       })
-      .borderRadius(8)
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
+      .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.08)')) // Apple风格：柔和阴影
+      .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅过渡动画
       .onClick(() => {
         if (this.onPrintSubButtonClick) {
           this.onPrintSubButtonClick('打印报告')
@@ -125,10 +128,12 @@ export struct LeftNavigationTabBar {
       .fontColor(this.resolveTheme().textColor)
       .backgroundColor(this.resolveTheme().surfaceColor)
       .border({ 
-        width: 1, 
+        width: AppleDesignStyle.BORDER_WIDTH_THIN, // Apple风格：细边框
         color: this.resolveTheme().borderColor 
       })
-      .borderRadius(8)
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
+      .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.08)')) // Apple风格：柔和阴影
+      .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅过渡动画
       .onClick(() => {
         if (this.onPrintSubButtonClick) {
           this.onPrintSubButtonClick('打印标签')

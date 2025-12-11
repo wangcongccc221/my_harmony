@@ -17,6 +17,7 @@ import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../.
 import { getCurrentTheme } from '../../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../../utils/theme/useOmniTheme'
 import { BorderGrowthButton } from '../buttons/BorderGrowthButton'
+import { AppleDesignStyle } from '../../../utils/theme/AppleDesignStyle'
 
 // Tab配置接口
 export interface TabConfig {
@@ -84,7 +85,8 @@ export struct OmniTabBar {
     .width('100%')
     .height(50)
     .backgroundColor(this.resolveTheme().surfaceColor)
-    .borderRadius(12)
+    .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // Apple风格：中等圆角
+    .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.08)')) // Apple风格：柔和阴影
     .margin({ left: 16, right: 16, top: 16, bottom: 8 })
     .padding({ left: 20 })
     .justifyContent(FlexAlign.Start)
@@ -111,7 +113,8 @@ export struct OmniTabBar {
     .width('100%')
     .height('100%')
     .backgroundColor(this.resolveTheme().surfaceColor)
-    .borderRadius(12)
+    .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // Apple风格：中等圆角
+    .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.08)')) // Apple风格：柔和阴影
     .padding({ top: 16, bottom: 16 }) // 改为内边距，移除左右外边距以修正居中偏移
     .justifyContent(FlexAlign.Start)
     .alignItems(HorizontalAlign.Center)

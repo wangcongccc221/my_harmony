@@ -1,5 +1,6 @@
 import { OmniUIUtils } from '../../../utils/helpers/OmniUIUtils'
 import { getCurrentTheme } from '../../../utils/theme/ThemeUtils'
+import { AppleDesignStyle } from '../../../utils/theme/AppleDesignStyle'
 
 @Component
 export struct RectButton {
@@ -12,17 +13,18 @@ export struct RectButton {
   @Prop isActive: boolean = false
   enableClickFeedback: boolean = true
   onTap: () => void = () => {}
-  // 可选：自定义圆角像素。不传则按 min(width,height)/2 自动胶囊化
+  // 可选：自定义圆角像素。不传则按 Apple Design 风格自动设置
   borderRadiusPx?: number
 
   @State private isPressed: boolean = false
 
   build() {
-    // 纯矩形按钮，无圆角
+    // Apple Design 风格按钮
     Column() {
       Text(this.text)
         .fontSize(this.fontSizePx)
         .fontColor(this.isActive ? Color.White : getCurrentTheme().textColor)
+        .fontWeight(this.isActive ? FontWeight.Medium : FontWeight.Regular) // Apple风格：激活时加粗
         .textAlign(TextAlign.Center)
         .maxLines(1)
     }
@@ -33,8 +35,13 @@ export struct RectButton {
     .backgroundColor(this.isActive
       ? getCurrentTheme().primary
       : (this.isPressed ? getCurrentTheme().borderColor : getCurrentTheme().surfaceColor))
-    .border({ width: 1, color: this.isActive ? getCurrentTheme().primary : getCurrentTheme().borderColor })
-    .borderRadius(this.borderRadiusPx !== undefined ? this.borderRadiusPx : Math.floor(Math.min(this.widthPx, this.heightPx) / 2))
+    .border({ 
+      width: this.isActive ? 0 : AppleDesignStyle.BORDER_WIDTH_THIN, // Apple风格：激活时无边框
+      color: this.isActive ? Color.Transparent : getCurrentTheme().borderColor 
+    })
+    .borderRadius(this.borderRadiusPx !== undefined ? this.borderRadiusPx : AppleDesignStyle.BORDER_RADIUS_MEDIUM) // Apple风格：中等圆角
+    .shadow(this.isActive ? AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.12)') : undefined) // Apple风格：激活时添加柔和阴影
+    .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅过渡动画
     .margin({ left: this.marginLeftPx, right: this.marginRightPx })
     .opacity(this.isPressed ? 0.9 : 1)
     .onTouch((event) => {
