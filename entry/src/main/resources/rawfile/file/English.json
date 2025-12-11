@@ -323,5 +323,12 @@
   "重量、颜色、大小": "Weight, Color, Size",
   "质量标准": "Quality Standard",
   "A级标准": "Grade A Standard",
-  "这里显示水果信息相关的设置内容": "Fruit information settings content will be displayed here"
+  "这里显示水果信息相关的设置内容": "Fruit information settings content will be displayed here",
+  "总条目": "Total Items",
+  "已翻译": "Translated",
+  "完成度": "Progress",
+  "重翻译": "Re-translated",
+  "使用JSON格式存储": "Using JSON Format Storage",
+  "便于版本控制和团队协作": "Easy for version control and team collaboration",
+  "输入翻译": "Enter translation"
 }

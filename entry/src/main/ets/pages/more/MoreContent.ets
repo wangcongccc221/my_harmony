@@ -61,18 +61,18 @@ export struct MoreContent {
   private getSettingItems(): SettingItem[] {
     const _version = this.i18nVersion
     return [
-      { icon: '⚙️', title: '工程设置', subtitle: '工程参数配置', onClick: () => this.showEngineeringSettings() },
-      { icon: '📱', title: '设备信息', subtitle: '查看设备详细信息' },
-      { icon: '🗑️', title: '数据清零', subtitle: '清空所有数据' },
-      { icon: '🔧', title: '配置设置', subtitle: '系统配置管理' },
-      { icon: '👤', title: '用户设置', subtitle: '用户账户管理' },
-      { icon: '⬇️', title: '下载配置', subtitle: '下载配置文件' },
-      { icon: '⚠️', title: '故障信息', subtitle: '查看故障记录' },
-      { icon: '🔌', title: '电器故障设置', subtitle: '电器故障配置' },
-      { icon: '🏷️', title: '贴标设置', subtitle: '标签打印设置' },
-      { icon: '🛠️', title: '系统故障设置', subtitle: '系统故障配置' },
-      { icon: '🔄', title: '复位掉果杯', subtitle: '重置掉果杯状态' }
-    ]
+    { icon: '⚙️', title: '工程设置', subtitle: '工程参数配置', onClick: () => this.showEngineeringSettings() },
+    { icon: '📱', title: '设备信息', subtitle: '查看设备详细信息' },
+    { icon: '🗑️', title: '数据清零', subtitle: '清空所有数据' },
+    { icon: '🔧', title: '配置设置', subtitle: '系统配置管理' },
+    { icon: '👤', title: '用户设置', subtitle: '用户账户管理' },
+    { icon: '⬇️', title: '下载配置', subtitle: '下载配置文件' },
+    { icon: '⚠️', title: '故障信息', subtitle: '查看故障记录' },
+    { icon: '🔌', title: '电器故障设置', subtitle: '电器故障配置' },
+    { icon: '🏷️', title: '贴标设置', subtitle: '标签打印设置' },
+    { icon: '🛠️', title: '系统故障设置', subtitle: '系统故障配置' },
+    { icon: '🔄', title: '复位掉果杯', subtitle: '重置掉果杯状态' }
+  ]
   }
 
   getCurrentTheme(): ExtendedOmniThemeStyle {
@@ -298,6 +298,34 @@ export struct MoreContent {
              item.originalKey.toLowerCase().includes(keyword) || 
              (item.value ?? '').toLowerCase().includes(keyword)
     })
+  }
+
+  /**
+   * 获取总条目数
+   */
+  private getTotalCount(): number {
+    return this.translations.length
+  }
+
+  /**
+   * 获取已翻译条目数
+   */
+  private getTranslatedCount(): number {
+    return this.translations.filter((item) => {
+      return item.value && item.value.trim().length > 0
+    }).length
+  }
+
+  /**
+   * 获取翻译进度百分比
+   */
+  private getTranslationProgress(): number {
+    const total = this.getTotalCount()
+    if (total === 0) {
+      return 0
+    }
+    const translated = this.getTranslatedCount()
+    return Math.round((translated / total) * 100)
   }
 
   private async saveTranslations(): Promise<void> {
@@ -931,32 +959,32 @@ export struct MoreContent {
         // 标题
         Row() {
           Text('🌐 选择语言')
-            .fontSize(24)
+            .fontSize(26)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().textColor)
             .layoutWeight(1)
 
           Button() {
             Text('×')
-              .fontSize(28)
+              .fontSize(32)
               .fontColor(this.getCurrentTheme().textColor)
           }
-          .width(32)
-          .height(32)
+          .width(40)
+          .height(40)
           .backgroundColor(Color.Transparent)
           .onClick(() => {
             this.showLanguageSelector = false
           })
         }
         .width('100%')
-        .padding({ left: 20, right: 20, top: 16, bottom: 12 })
+        .padding({ left: 28, right: 28, top: 24, bottom: 20 })
         .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
 
         // 说明
         Text(t('选择界面显示语言。选择"自定义"后，可通过"翻译管理"编辑翻译内容。', '选择界面显示语言。选择"自定义"后，可通过"翻译管理"编辑翻译内容。'))
-          .fontSize(14)
+          .fontSize(16)
           .fontColor(this.getCurrentTheme().subTextColor)
-          .padding({ left: 20, right: 20, top: 12, bottom: 12 })
+          .padding({ left: 28, right: 28, top: 16, bottom: 16 })
 
         // 语言选项
         Scroll() {
@@ -970,10 +998,10 @@ export struct MoreContent {
             }, (lang: string) => lang)
           }
           .width('100%')
-          .padding({ left: 20, right: 20, bottom: 20 })
+          .padding({ left: 28, right: 28, bottom: 24 })
         }
         .width('100%')
-        .height(300)
+        .layoutWeight(1)
         .scrollable(ScrollDirection.Vertical)
         .scrollBar(BarState.Auto)
 
@@ -981,8 +1009,9 @@ export struct MoreContent {
         Row() {
           Button(t('取消', '取消'))
             .layoutWeight(1)
-            .height(44)
-            .borderRadius(10)
+            .height(52)
+            .fontSize(17)
+            .borderRadius(12)
             .border({ width: 1, color: this.getCurrentTheme().borderColor })
             .backgroundColor(this.getCurrentTheme().backgroundColor)
             .fontColor(this.getCurrentTheme().textColor)
@@ -990,18 +1019,21 @@ export struct MoreContent {
 
           Button(t('确认', '确认'))
             .layoutWeight(1)
-            .height(44)
-            .margin({ left: 12 })
-            .borderRadius(10)
+            .height(52)
+            .fontSize(17)
+            .fontWeight(FontWeight.Bold)
+            .margin({ left: 16 })
+            .borderRadius(12)
             .backgroundColor(this.getCurrentTheme().primary)
             .fontColor(Color.White)
             .onClick(() => this.confirmLanguageSelection())
         }
         .width('100%')
-        .padding({ left: 20, right: 20, top: 12, bottom: 16 })
+        .padding({ left: 28, right: 28, top: 16, bottom: 24 })
       }
-      .width('85%')
-      .constraintSize({ maxWidth: 400 })
+      .width('80%')
+      .constraintSize({ maxWidth: 800, minWidth: 500 })
+      .height('85%')
       .backgroundColor(this.getCurrentTheme().surfaceColor)
       .borderRadius(12)
       .shadow({
@@ -1022,38 +1054,38 @@ export struct MoreContent {
   buildLanguageOption(icon: string, lang: string, desc: string, langValue: string): void {
     Row() {
       Text(icon)
-        .fontSize(28)
-        .margin({ right: 12 })
+        .fontSize(32)
+        .margin({ right: 16 })
 
       Column() {
         Text(lang)
-          .fontSize(18)
+          .fontSize(20)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.getCurrentTheme().textColor)
         Text(desc)
-          .fontSize(13)
+          .fontSize(15)
           .fontColor(this.getCurrentTheme().subTextColor)
-          .margin({ top: 2 })
+          .margin({ top: 4 })
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
 
       if (this.selectedLanguageTemp === langValue) {
         Text('✓')
-          .fontSize(20)
+          .fontSize(24)
           .fontColor(this.getCurrentTheme().primary)
           .fontWeight(FontWeight.Bold)
       }
     }
     .width('100%')
-    .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+    .padding({ left: 20, right: 20, top: 18, bottom: 18 })
     .backgroundColor(this.selectedLanguageTemp === langValue ? this.getCurrentTheme().primary + '15' : Color.Transparent)
-    .borderRadius(10)
+    .borderRadius(12)
     .border({ 
       width: this.selectedLanguageTemp === langValue ? 2 : 1, 
       color: this.selectedLanguageTemp === langValue ? this.getCurrentTheme().primary : this.getCurrentTheme().borderColor 
     })
-    .margin({ bottom: 10 })
+    .margin({ bottom: 12 })
     .onClick(() => {
       this.selectLanguageTemp(langValue)
     })
@@ -1105,6 +1137,46 @@ export struct MoreContent {
         .padding({ left: 16, right: 16 })
         .border({ width: { bottom: 0.5 }, color: this.getCurrentTheme().borderColor }) // 细分割线
 
+        // 统计信息卡片 - 专业展示（左右分布）
+        Row() {
+          // 总条目数（左侧）
+          Column() {
+            Text(`${this.getTotalCount()}`)
+              .fontSize(20)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#007AFF')
+            Text(t('总条目', '总条目'))
+              .fontSize(12)
+              .fontColor('#8E8E93')
+              .margin({ top: 4 })
+          }
+          .layoutWeight(1)
+          .alignItems(HorizontalAlign.Start)
+          .padding({ top: 12, bottom: 12, left: 20 })
+          
+          Blank()
+          
+          // 重翻译数（右侧）
+          Column() {
+            Text(`${this.getTranslatedCount()}`)
+              .fontSize(20)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#34C759')
+            Text(t('重翻译', '重翻译'))
+              .fontSize(12)
+              .fontColor('#8E8E93')
+              .margin({ top: 4 })
+          }
+          .layoutWeight(1)
+          .alignItems(HorizontalAlign.End)
+          .padding({ top: 12, bottom: 12, right: 20 })
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.SpaceBetween)
+        .backgroundColor('#F2F2F7')
+        .borderRadius(12)
+        .margin({ left: 16, right: 16, top: 8, bottom: 8 })
+        
         // 搜索栏区域
         Column() {
           Row() {
@@ -1142,7 +1214,7 @@ export struct MoreContent {
           .backgroundColor('#1F767680') // 浅灰色背景
           .borderRadius(10)
         }
-        .padding({ left: 16, right: 16, top: 10, bottom: 10 })
+        .padding({ left: 16, right: 16, top: 0, bottom: 10 })
 
         // 表头区域 - Apple Design风格优化版
         Row() {
@@ -1260,32 +1332,32 @@ export struct MoreContent {
         // 标题
         Row() {
           Text('💾 保存翻译')
-            .fontSize(22)
+            .fontSize(24)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().textColor)
             .layoutWeight(1)
 
           Button() {
             Text('×')
-              .fontSize(28)
+              .fontSize(32)
               .fontColor(this.getCurrentTheme().textColor)
           }
-          .width(32)
-          .height(32)
+          .width(40)
+          .height(40)
           .backgroundColor(Color.Transparent)
           .onClick(() => {
             this.showLanguageNameDialog = false
           })
         }
         .width('100%')
-        .padding({ left: 20, right: 20, top: 16, bottom: 12 })
+        .padding({ left: 28, right: 28, top: 24, bottom: 20 })
         .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
 
         // 说明
         Text(t('请输入语言名称（如：English、日本語、Español）', '请输入语言名称（如：English、日本語、Español）'))
-          .fontSize(14)
+          .fontSize(16)
           .fontColor(this.getCurrentTheme().subTextColor)
-          .padding({ left: 20, right: 20, top: 16, bottom: 8 })
+          .padding({ left: 28, right: 28, top: 20, bottom: 12 })
 
         // 输入框
         TextInput({ 
@@ -1293,10 +1365,12 @@ export struct MoreContent {
           placeholder: t('请输入语言名称（如：English、日本語、Español）', '请输入语言名称（如：English、日本語、Español）') 
         })
           .width('100%')
-          .height(44)
-          .fontSize(16)
-          .margin({ left: 20, right: 20, top: 8, bottom: 20 })
+          .height(56)
+          .fontSize(18)
+          .margin({ left: 28, right: 28, top: 12, bottom: 28 })
+          .padding({ left: 16, right: 16 })
           .backgroundColor(this.getCurrentTheme().backgroundColor)
+          .borderRadius(12)
           .onChange((v: string) => {
             this.languageNameInput = v
           })
@@ -1305,8 +1379,9 @@ export struct MoreContent {
         Row() {
           Button('取消')
             .layoutWeight(1)
-            .height(44)
-            .borderRadius(10)
+            .height(52)
+            .fontSize(17)
+            .borderRadius(12)
             .border({ width: 1, color: this.getCurrentTheme().borderColor })
             .backgroundColor(this.getCurrentTheme().backgroundColor)
             .fontColor(this.getCurrentTheme().textColor)
@@ -1316,18 +1391,21 @@ export struct MoreContent {
 
           Button('保存')
             .layoutWeight(1)
-            .height(44)
-            .margin({ left: 12 })
-            .borderRadius(10)
+            .height(52)
+            .fontSize(17)
+            .fontWeight(FontWeight.Bold)
+            .margin({ left: 16 })
+            .borderRadius(12)
             .backgroundColor(this.getCurrentTheme().primary)
             .fontColor(Color.White)
             .onClick(() => this.confirmSaveLanguage())
         }
         .width('100%')
-        .padding({ left: 20, right: 20, bottom: 16 })
+        .padding({ left: 28, right: 28, bottom: 24 })
       }
-      .width('85%')
-      .constraintSize({ maxWidth: 400 })
+      .width('80%')
+      .constraintSize({ maxWidth: 800, minWidth: 500 })
+      .height('85%')
       .backgroundColor(this.getCurrentTheme().surfaceColor)
       .borderRadius(12)
       .shadow({
