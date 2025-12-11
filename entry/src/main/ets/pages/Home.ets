@@ -1827,11 +1827,11 @@ struct Page {
               this.sideBarStatus = !this.sideBarStatus
             }
           })
-          .position({ x: this.sideBarStatus ? 120 : 5, y: '50%' })
+          .position({ x: this.sideBarStatus ? 150 : 5, y: '50%' })
           .translate({ y: -20 })
           .zIndex(10) // 确保在最上层
         }
-        .width(this.sideBarStatus ? 150 : 50)
+        .width(this.sideBarStatus ? 180 : 50)
         .height('100%')
         // .padding({ left: 8, right: 8, top: 8, bottom: 8 })
         .backgroundColor(this.sideBarStatus ? this.getNavBgForCurrentPage() : this.getCurrentTheme().backgroundColor)

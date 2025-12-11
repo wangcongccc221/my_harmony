@@ -16,6 +16,7 @@
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../../utils/theme/useOmniTheme'
+import { BorderGrowthButton } from '../buttons/BorderGrowthButton'
 
 // Tab配置接口
 export interface TabConfig {
@@ -111,78 +112,101 @@ export struct OmniTabBar {
     .height('100%')
     .backgroundColor(this.resolveTheme().surfaceColor)
     .borderRadius(12)
-    .margin({ left: 16, right: 16, top: 16, bottom: 16 })
+    .padding({ top: 16, bottom: 16 }) // 改为内边距，移除左右外边距以修正居中偏移
     .justifyContent(FlexAlign.Start)
-    .alignItems(HorizontalAlign.Start)
+    .alignItems(HorizontalAlign.Center)
   }
 
   // 构建单个Tab
   @Builder
   private buildTab(tab: TabConfig) {
-    Button() {
-      Row() {
-        // 图标（如果有）
-        if (tab.icon) {
-          Image(tab.icon)
-            .width(this.layoutDirection === TabBarDirection.VERTICAL ? 20 : 16)
-            .height(this.layoutDirection === TabBarDirection.VERTICAL ? 20 : 16)
-            .fillColor(this.selectedTab === tab.key ? this.resolveTheme().primary : this.resolveTheme().textColor)
-            .margin({ right: 8 })
+    // 垂直布局时使用BorderGrowthButton
+    if (this.layoutDirection === TabBarDirection.VERTICAL) {
+      BorderGrowthButton({
+        text: tab.label,
+        buttonWidth: 120, // 使用固定宽度，确保左右对称
+        buttonHeight: 48, // 保持原有高度
+        isActive: this.selectedTab === tab.key,
+        onClickCallback: () => {
+          if (!tab.disabled && this.onTabClick) {
+            this.onTabClick(tab.key)
+          }
         }
-        
-        // 文字
-        Text(tab.label)
-          .fontSize(this.layoutDirection === TabBarDirection.VERTICAL ? 16 : 14)
-          .fontWeight(this.selectedTab === tab.key ? FontWeight.Bold : FontWeight.Normal)
-          .fontColor(tab.disabled ? this.resolveTheme().textColor + '60' : 
-                    (this.selectedTab === tab.key ? this.resolveTheme().primary : this.resolveTheme().textColor))
-        
-        // 徽章（如果有）
-        if (tab.badge) {
-          Text(tab.badge)
-            .fontSize(10)
-            .fontColor(Color.White)
-            .backgroundColor('#FF4444')
-            .borderRadius(8)
-            .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-            .margin({ left: 4 })
+      })
+      .opacity(tab.disabled ? 0.4 : 1)
+      .enabled(!tab.disabled)
+      .margin({ 
+        top: 15,
+        bottom: 15,
+        left: 0,
+        right: 0
+      })
+      .alignSelf(ItemAlign.Center) // 确保按钮在父容器中居中
+    } else {
+      // 水平布局保持原有样式
+      Button() {
+        Row() {
+          // 图标（如果有）
+          if (tab.icon) {
+            Image(tab.icon)
+              .width(16)
+              .height(16)
+              .fillColor(this.selectedTab === tab.key ? this.resolveTheme().primary : this.resolveTheme().textColor)
+              .margin({ right: 8 })
+          }
+          
+          // 文字
+          Text(tab.label)
+            .fontSize(14)
+            .fontWeight(this.selectedTab === tab.key ? FontWeight.Bold : FontWeight.Normal)
+            .fontColor(tab.disabled ? this.resolveTheme().textColor + '60' : 
+                      (this.selectedTab === tab.key ? this.resolveTheme().primary : this.resolveTheme().textColor))
+          
+          // 徽章（如果有）
+          if (tab.badge) {
+            Text(tab.badge)
+              .fontSize(10)
+              .fontColor(Color.White)
+              .backgroundColor('#FF4444')
+              .borderRadius(8)
+              .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+              .margin({ left: 4 })
+          }
         }
+        .justifyContent(FlexAlign.Center)
+        .alignItems(VerticalAlign.Center)
       }
-      .justifyContent(FlexAlign.Center)
-      .alignItems(VerticalAlign.Center)
+      .width('auto')
+      .height(36)
+      .backgroundColor(tab.disabled ? this.resolveTheme().surfaceColor + '40' :
+                      (this.selectedTab === tab.key ? this.resolveTheme().primary + '15' : Color.Transparent))
+      .borderRadius(8)
+      .border({ 
+        width: 1, 
+        color: tab.disabled ? this.resolveTheme().borderColor + '40' :
+               (this.selectedTab === tab.key ? this.resolveTheme().primary : this.resolveTheme().borderColor)
+      })
+      .padding({ 
+        left: 10, 
+        right: 10, 
+        top: 6, 
+        bottom: 6 
+      })
+      .margin({ 
+        left: 6, 
+        right: 6
+      })
+      .enabled(!tab.disabled)
+      .onClick(() => {
+        if (!tab.disabled && this.onTabClick) {
+          this.onTabClick(tab.key)
+        }
+      })
+      .animation({
+        duration: 200,
+        curve: Curve.EaseInOut
+      })
     }
-    .width(this.layoutDirection === TabBarDirection.VERTICAL ? '90%' : 'auto')
-    .height(this.layoutDirection === TabBarDirection.VERTICAL ? 48 : 36)
-    .backgroundColor(tab.disabled ? this.resolveTheme().surfaceColor + '40' :
-                    (this.selectedTab === tab.key ? this.resolveTheme().primary + '15' : Color.Transparent))
-    .borderRadius(8)
-    .border({ 
-      width: 1, 
-      color: tab.disabled ? this.resolveTheme().borderColor + '40' :
-             (this.selectedTab === tab.key ? this.resolveTheme().primary : this.resolveTheme().borderColor)
-    })
-    .padding({ 
-      left: this.layoutDirection === TabBarDirection.VERTICAL ? 12 : 10, 
-      right: this.layoutDirection === TabBarDirection.VERTICAL ? 12 : 10, 
-      top: this.layoutDirection === TabBarDirection.VERTICAL ? 8 : 6, 
-      bottom: this.layoutDirection === TabBarDirection.VERTICAL ? 8 : 6 
-    })
-    .margin({ 
-      left: this.layoutDirection === TabBarDirection.VERTICAL ? 0 : 6, 
-      right: this.layoutDirection === TabBarDirection.VERTICAL ? 0 : 6,
-      top: this.layoutDirection === TabBarDirection.VERTICAL ? 15 : 0,
-      bottom: this.layoutDirection === TabBarDirection.VERTICAL ? 15 : 0  //左边导航栏按钮间距
-    })
-    .enabled(!tab.disabled)
-    .onClick(() => {
-      if (!tab.disabled && this.onTabClick) {
-        this.onTabClick(tab.key)
-      }
-    })
-    .animation({
-      duration: 200,
-      curve: Curve.EaseInOut
-    })
   }
 
   build() {
