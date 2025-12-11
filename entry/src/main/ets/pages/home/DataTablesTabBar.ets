@@ -18,6 +18,7 @@ import { TableHeaderCell } from '../../components/ui/tables/TableHeaderCell'
 import { TableCell } from '../../components/ui/tables/TableCell'
 import { CardContainer } from '../../components/ui/layout/CardContainer'
 import { SectionTitle } from '../../components/ui/layout/SectionTitle'
+import { ThreeDButton } from '../../components/ui/buttons/ThreeDButton'
 
 // 图表颜色配置接口
 interface ChartColors {
@@ -672,17 +673,27 @@ export struct DataTablesTabBar {
 
   build() {
     Column() {
-      // TabBar导航
-      OmniTabBar({
-        tabs: this.getTabConfig(),
-        selectedTab: this.selectedTab,
-        layoutDirection: TabBarDirection.HORIZONTAL,
-        showSeparator: false,
-        onTabClick: (tabKey: string) => {
-          this.handleTabChange(tabKey)
+      // Custom ThreeDButton TabBar
+      Scroll() {
+        Row({ space: 12 }) {
+          ForEach(this.getTabConfig(), (tab: TabConfig) => {
+            ThreeDButton({
+              text: tab.label,
+              isSelected: this.selectedTab === tab.key,
+              onClickCallback: () => {
+                this.handleTabChange(tab.key)
+              }
+            })
+            .width(140) // Fixed width for consistent look, or auto
+            .height(48)
+          })
         }
-      })
-        .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
+        .padding({ left: 16, right: 16, top: 16, bottom: 8 })
+      }
+      .scrollable(ScrollDirection.Horizontal)
+      .scrollBar(BarState.Off)
+      .width('100%')
+      .align(Alignment.Start) // 确保内容靠左对齐
       
       // 内容区域
       this.buildContent()
