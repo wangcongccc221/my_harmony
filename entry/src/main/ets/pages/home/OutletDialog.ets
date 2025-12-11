@@ -36,6 +36,10 @@ struct GroupContainer {
 
   @Builder defaultContent() {}
 
+  private getCurrentTheme(): ExtendedOmniThemeStyle {
+    return OmniThemeManager.getInstance().getCurrentTheme()
+  }
+
   build() {
     Column() {
       // 标题（嵌入在边框线上，通过定位实现，或者简单的内部标题）
@@ -47,13 +51,13 @@ struct GroupContainer {
         .width('100%')
         .margin({ top: 10 })
         .padding({ top: 15, bottom: 10, left: 10, right: 10 })
-        .border({ width: 1, color: '#CCCCCC', radius: 4 })
+        .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 4 })
         
         // 标题背景遮盖
         Text(this.title)
           .fontSize(14)
-          .fontColor('#666666')
-          .backgroundColor('#FFFFFF') // 假设背景是白色
+          .fontColor(this.getCurrentTheme().subTextColor)
+          .backgroundColor(this.getCurrentTheme().surfaceColor)
           .padding({ left: 4, right: 4 })
           .margin({ left: 10, top: 0 })
           .height(20)
@@ -140,7 +144,7 @@ export struct OutletDialog {
       
       Text(label)
         .fontSize(14)
-        .fontColor('#333333')
+        .fontColor(this.getCurrentTheme().textColor)
         .width(70) // 统一标签宽度
         .margin({ right: 8 })
       
@@ -149,7 +153,7 @@ export struct OutletDialog {
           .height(24)
           .fontSize(11) // 调整字体大小，避免显示不全
           .padding({ top: 0, bottom: 0, left: 4, right: 4 }) // 移除垂直内边距，解决显示不全问题
-          .border({ width: 1, color: '#CCCCCC', radius: 2 })
+          .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
           .width(240) // 固定宽度
           .onChange((val) => {
              if (onValueChange) onValueChange(val)
@@ -158,7 +162,7 @@ export struct OutletDialog {
         if (unit) {
           Text(unit)
             .fontSize(14)
-            .fontColor('#333333')
+            .fontColor(this.getCurrentTheme().textColor)
             .margin({ left: 4 })
         }
       }
@@ -173,7 +177,7 @@ export struct OutletDialog {
     Row() {
       Text(label)
         .fontSize(14)
-        .fontColor('#333333')
+        .fontColor(this.getCurrentTheme().textColor)
         .margin({ right: 8 })
         .width(70) // 统一标签宽度
       
@@ -181,14 +185,14 @@ export struct OutletDialog {
         .height(24)
         .fontSize(11)
         .padding({ top: 0, bottom: 0, left: 4, right: 4 }) // 移除垂直内边距
-        .border({ width: 1, color: '#CCCCCC', radius: 2 })
+        .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
         .width(240) // 固定宽度
         .onChange((val) => onValueChange(val))
       
       if (unit) {
         Text(unit)
           .fontSize(14)
-          .fontColor('#333333')
+          .fontColor(this.getCurrentTheme().textColor)
           .margin({ left: 4 })
       }
     }
@@ -227,7 +231,7 @@ export struct OutletDialog {
         .height(32)
         .fontSize(12)
         .width(inputWidth)
-        .border({ width: 1, color: '#CCCCCC', radius: 2 })
+        .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
         .onChange(onChange)
     }
     .margin({ bottom: 8 })
@@ -245,7 +249,7 @@ export struct OutletDialog {
         .height(32)
         .fontSize(12)
         .width(240) // 固定宽度
-        .border({ width: 1, color: '#CCCCCC', radius: 2 })
+        .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
         .onChange(onChange)
       Text(unit)
         .fontSize(14)
@@ -273,7 +277,7 @@ export struct OutletDialog {
           Row() {
             Text(`出口-${this.currentOutletIndex} 设置`)
               .fontSize(16)
-              .fontColor('#FFFFFF')
+              .fontColor(this.getCurrentTheme().textColor)
               .fontWeight(FontWeight.Medium)
             
             Blank()
@@ -281,14 +285,14 @@ export struct OutletDialog {
             // 关闭按钮
             Text('×')
               .fontSize(20)
-              .fontColor('#FFFFFF')
+              .fontColor(this.getCurrentTheme().textColor)
               .onClick(() => {
                 if (this.onCancel) this.onCancel()
               })
           }
           .width('100%')
           .height(32)
-          .backgroundColor('#555555') // 深灰色标题栏
+          .backgroundColor(this.getCurrentTheme().primary)
           .padding({ left: 10, right: 10 })
           .alignItems(VerticalAlign.Center)
 
@@ -364,14 +368,14 @@ export struct OutletDialog {
                                 
                                 Text('个数')
                                   .fontSize(14)
-                                  .fontColor('#333333')
+                                  .fontColor(this.getCurrentTheme().textColor)
                                   .margin({ right: 8 })
                                 
                                 TextInput({ text: String(this.countValue) })
                                   .height(24)
                                   .fontSize(11)
                                   .padding({ top: 0, bottom: 0, left: 4, right: 4 }) // 移除垂直内边距
-                                  .border({ width: 1, color: '#CCCCCC', radius: 2 })
+                                  .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
                                   .width(240) // 固定宽度
                                   .onChange((val) => this.countValue = Number(val))
                               }
@@ -382,14 +386,14 @@ export struct OutletDialog {
                               Column() {
                                 Text('禁用次数')
                                   .fontSize(12)
-                                  .fontColor('#333333')
+                                  .fontColor(this.getCurrentTheme().textColor)
                                   .margin({ bottom: 2 })
                                 
                                 TextInput({ text: String(this.disableCount) })
                                   .height(24)
                                   .fontSize(11)
                                   .padding({ top: 0, bottom: 0, left: 4, right: 4 }) // 移除垂直内边距
-                                  .border({ width: 1, color: '#CCCCCC', radius: 2 })
+                                  .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
                                   .width('100%')
                                   .onChange((val) => this.disableCount = Number(val))
                               }
@@ -455,7 +459,7 @@ export struct OutletDialog {
                           .height(32)
                           .fontSize(12)
                           .layoutWeight(1)
-                          .border({ width: 1, color: '#CCCCCC', radius: 2 })
+                          .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
                           .onChange((v) => this.delayTime = Number(v))
                         Text('s')
                           .fontSize(12)
@@ -469,7 +473,7 @@ export struct OutletDialog {
                           .height(32)
                           .fontSize(12)
                           .layoutWeight(1)
-                          .border({ width: 1, color: '#CCCCCC', radius: 2 })
+                          .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
                           .onChange((v) => this.durationTime = Number(v))
                         Text('s')
                           .fontSize(12)
@@ -512,8 +516,8 @@ export struct OutletDialog {
                         Row()
                           .width('100%')
                           .height('100%')
-                          .backgroundColor('#F0F0F0')
-                          .border({ width: 1, color: '#CCCCCC', radius: 4 })
+                          .backgroundColor(this.getCurrentTheme().backgroundColor)
+                          .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 4 })
                       }
                       .width('25%')
                       .height(110)
@@ -537,7 +541,7 @@ export struct OutletDialog {
                           .height(32)
                           .fontSize(12)
                           .layoutWeight(1) // 充满剩余空间
-                          .border({ width: 1, color: '#CCCCCC', radius: 2 })
+                          .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
                           .onChange((v) => this.customName = v)
                       }
                       .width('100%')
@@ -558,7 +562,7 @@ export struct OutletDialog {
                           .height(32)
                           .fontSize(12)
                           .layoutWeight(1) // 充满剩余空间
-                          .border({ width: 1, color: '#CCCCCC', radius: 2 })
+                          .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
                           .onChange((v) => this.productName = v)
                       }
                       .width('100%')
@@ -582,7 +586,7 @@ export struct OutletDialog {
                           .height(32)
                           .fontSize(12)
                           .layoutWeight(1) // 充满剩余空间
-                          .border({ width: 1, color: '#CCCCCC', radius: 2 })
+                          .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
                           .onChange((v) => this.displayName = v)
                       }
                       .width('100%')
@@ -593,7 +597,7 @@ export struct OutletDialog {
             }
             .width('100%')
             .height('100%')
-            .border({ width: 1, color: '#CCCCCC', radius: 8 }) // 左侧父类卡片边框
+            .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 8 }) // 左侧父类卡片边框
             .padding(10)
           }
           .width('40%') // 恢复为40%宽度
@@ -612,14 +616,14 @@ export struct OutletDialog {
                 tableWidth: '100%',
                 maxHeight: '100%', // 恢复最大高度限制，由LevelTable内部的constraintSize控制实际高度
                 enableDrag: false,
-                containerBg: '#FFFFFF',
+                containerBg: this.getCurrentTheme().surfaceColor,
                 fontSize: 14,
                 cellPadding: 4
               })
             }
             .width('100%')
             .height('100%')
-            .border({ width: 1, color: '#CCCCCC', radius: 8 }) // 与左侧一致的边框样式
+            .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 8 }) // 与左侧一致的边框样式
             .padding(10)
           }
           .width('60%')
@@ -632,15 +636,15 @@ export struct OutletDialog {
           .layoutWeight(1) // 内容区域自动填充高度
           .width('100%')
           .padding(10)
-          .backgroundColor('#FFFFFF')
+          .backgroundColor(this.getCurrentTheme().surfaceColor)
 
           // 底部按钮栏
           Row() {
             // 左侧：取消、确定
             Row() {
               Button('取消')
-                .backgroundColor('#E0E0E0')
-                .fontColor('#333333')
+                .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
+                .fontColor(this.getCurrentTheme().textColor)
                 .fontSize(14)
                 .height(32)
                 .margin({ right: 10 })
@@ -649,8 +653,8 @@ export struct OutletDialog {
                 })
               
               Button('确定')
-                .backgroundColor('#4CAF50') // 绿色
-                .fontColor('#FFFFFF')
+                .backgroundColor(this.getCurrentTheme().primary)
+                .fontColor(this.getCurrentTheme().textColor)
                 .fontSize(14)
                 .height(32)
                 .onClick(() => {
@@ -661,8 +665,8 @@ export struct OutletDialog {
             // 中间：上一个、下一个
             Row() {
               Button('上一个出口')
-                .backgroundColor('#4CAF50') // 绿色
-                .fontColor('#FFFFFF')
+                .backgroundColor(this.getCurrentTheme().primary)
+                .fontColor(this.getCurrentTheme().textColor)
                 .fontSize(14)
                 .height(32)
                 .margin({ right: 20 })
@@ -671,8 +675,8 @@ export struct OutletDialog {
                 })
 
               Button('下一个出口')
-                .backgroundColor('#4CAF50') // 绿色
-                .fontColor('#FFFFFF')
+                .backgroundColor(this.getCurrentTheme().primary)
+                .fontColor(this.getCurrentTheme().textColor)
                 .fontSize(14)
                 .height(32)
                 .onClick(() => {
@@ -684,19 +688,19 @@ export struct OutletDialog {
             Row() {
               // 常规 Toggle
               Row() {
-                Text('常规').fontSize(14).fontColor(this.isGeneral ? '#4CAF50' : '#333333')
+                Text('常规').fontSize(14).fontColor(this.isGeneral ? this.getCurrentTheme().primary : this.getCurrentTheme().textColor)
                 Toggle({ type: ToggleType.Switch, isOn: this.isGeneral })
                   .onChange((isOn) => this.isGeneral = isOn)
-                  .selectedColor('#4CAF50')
-                  .switchPointColor('#FFFFFF')
+                  .selectedColor(this.getCurrentTheme().primary)
+                  .switchPointColor(this.getCurrentTheme().surfaceColor)
                   .height(20)
                   .margin({ left: 5 })
               }
               .margin({ right: 20 })
 
               Button('缺箱')
-                .backgroundColor(this.isMissingBox ? '#FFA500' : '#E0E0E0')
-                .fontColor(this.isMissingBox ? '#FFFFFF' : '#333333')
+                .backgroundColor(this.isMissingBox ? '#FFA500' : (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor))
+                .fontColor(this.isMissingBox ? this.getCurrentTheme().surfaceColor : this.getCurrentTheme().textColor)
                 .fontSize(14)
                 .height(32)
                 .onClick(() => this.isMissingBox = !this.isMissingBox)
@@ -704,7 +708,7 @@ export struct OutletDialog {
           }
           .width('100%')
           .height(50)
-          .backgroundColor('#F0F0F0')
+          .backgroundColor(this.getCurrentTheme().backgroundColor)
           .padding({ left: 10, right: 10 })
           .alignItems(VerticalAlign.Center)
           .justifyContent(FlexAlign.SpaceBetween)
@@ -712,7 +716,7 @@ export struct OutletDialog {
         }
         .width('90%')
         .height('90%')
-        .backgroundColor('#FFFFFF')
+        .backgroundColor(this.getCurrentTheme().surfaceColor)
         .borderRadius(4)
         .shadow({ radius: 20, color: 'rgba(0,0,0,0.3)' })
       }

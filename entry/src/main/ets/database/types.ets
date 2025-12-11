@@ -30,6 +30,7 @@ export interface TestData {
 export interface ProcessingHistoryData {
   id?: number;
   ID?: number; // 模型基类返回的 ID 字段（大写）
+  CustomerID?: number;
   CustomerName?: string;
   FarmName?: string;
   FruitName?: string;
@@ -38,8 +39,18 @@ export interface ProcessingHistoryData {
   EndTime?: string;
   Weight?: number;
   Quantity?: number;
-  created_at?: string;
-  updated_at?: string;
+  BatchNo?: string;
+  OrderID?: number;
+  ProgramName?: string;
+  ChannelNum?: number;
+  ExportSum?: number;
+  QualityGradeSum?: number;
+  WeightOrSizeGradeSum?: number;
+  CompletedState?: string;
+  CreatedAt?: string; // 模型基类字段（大写）
+  UpdatedAt?: string; // 模型基类字段（大写）
+  created_at?: string; // 兼容小写
+  updated_at?: string; // 兼容小写
 }
 
 /**
@@ -64,6 +75,7 @@ export interface CreateTestRecordParams {
  * 创建历史加工记录的参数接口
  */
 export interface CreateProcessingHistoryParams {
+  customerID: number;
   customerName: string;
   farmName: string;
   fruitName: string;
@@ -72,6 +84,14 @@ export interface CreateProcessingHistoryParams {
   endTime?: string;  // 可选，未完成的任务可以不传
   weight: number;
   quantity: number;
+  batchNo?: string;
+  orderID?: number;
+  programName?: string;
+  channelNum?: number;
+  exportSum?: number;
+  qualityGradeSum?: number;
+  weightOrSizeGradeSum?: number;
+  completedState?: string;
 }
 
 /**

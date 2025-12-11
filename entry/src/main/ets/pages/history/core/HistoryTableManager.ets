@@ -59,6 +59,7 @@ export interface HistoryTableData {
 
 // 添加数据的接口
 export interface AddDataParams {
+  customerID?: number
   customerName: string
   farmName: string
   fruitName: string
@@ -67,10 +68,19 @@ export interface AddDataParams {
   endTime: string
   weight: number
   count: number
+  batchNo?: string
+  orderID?: number
+  programName?: string
+  channelNum?: number
+  exportSum?: number
+  qualityGradeSum?: number
+  weightOrSizeGradeSum?: number
+  completedState?: string
 }
 
 // 更新数据的接口
 export interface UpdateDataParams {
+  customerID?: number
   customerName?: string
   farmName?: string
   fruitName?: string
@@ -79,6 +89,14 @@ export interface UpdateDataParams {
   endTime?: string
   weight?: number
   count?: number
+  batchNo?: string
+  orderID?: number
+  programName?: string
+  channelNum?: number
+  exportSum?: number
+  qualityGradeSum?: number
+  weightOrSizeGradeSum?: number
+  completedState?: string
 }
 
 // 筛选参数接口
@@ -192,6 +210,7 @@ export class HistoryTableManager {
       }
       
       const values: relationalStore.ValuesBucket = {
+        customer_id: data.customerID ?? 0,
         customer_name: data.customerName,
         farm_name: data.farmName,
         fruit_name: data.fruitName,
@@ -199,8 +218,24 @@ export class HistoryTableManager {
         start_time: data.startTime,
         end_time: data.endTime,
         weight: data.weight,
-        quantity: data.count
+        quantity: data.count,
+        order_id: data.orderID ?? 0,
+        channel_num: data.channelNum ?? 0,
+        export_sum: data.exportSum ?? 0,
+        quality_grade_sum: data.qualityGradeSum ?? 0,
+        weight_or_size_grade_sum: data.weightOrSizeGradeSum ?? 0
       };
+      
+      // 只添加非 undefined 的可选字段
+      if (data.batchNo !== undefined) {
+        values['batch_no'] = data.batchNo;
+      }
+      if (data.programName !== undefined) {
+        values['program_name'] = data.programName;
+      }
+      if (data.completedState !== undefined) {
+        values['completed_state'] = data.completedState;
+      }
       
       await DatabaseQueueManager.insert(ctx, values);
       await this.loadDataFromDatabase()
@@ -248,6 +283,7 @@ export class HistoryTableManager {
       }
       
       const values: relationalStore.ValuesBucket = {};
+      if (newData.customerID !== undefined) values['customer_id'] = newData.customerID;
       if (newData.customerName !== undefined) values['customer_name'] = newData.customerName;
       if (newData.farmName !== undefined) values['farm_name'] = newData.farmName;
       if (newData.fruitName !== undefined) values['fruit_name'] = newData.fruitName;
@@ -256,6 +292,14 @@ export class HistoryTableManager {
       if (newData.endTime !== undefined) values['end_time'] = newData.endTime;
       if (newData.weight !== undefined) values['weight'] = newData.weight;
       if (newData.count !== undefined) values['quantity'] = newData.count;
+      if (newData.batchNo !== undefined) values['batch_no'] = newData.batchNo;
+      if (newData.orderID !== undefined) values['order_id'] = newData.orderID;
+      if (newData.programName !== undefined) values['program_name'] = newData.programName;
+      if (newData.channelNum !== undefined) values['channel_num'] = newData.channelNum;
+      if (newData.exportSum !== undefined) values['export_sum'] = newData.exportSum;
+      if (newData.qualityGradeSum !== undefined) values['quality_grade_sum'] = newData.qualityGradeSum;
+      if (newData.weightOrSizeGradeSum !== undefined) values['weight_or_size_grade_sum'] = newData.weightOrSizeGradeSum;
+      if (newData.completedState !== undefined) values['completed_state'] = newData.completedState;
       
       await DatabaseQueueManager.update(ctx, id, values);
       await this.loadDataFromDatabase()
