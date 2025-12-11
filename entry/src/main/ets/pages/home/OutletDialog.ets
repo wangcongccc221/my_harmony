@@ -233,7 +233,7 @@ export struct OutletDialog {
         .value(value)
         .font({ size: 14 })
         .height(36)
-        .width(240)
+        .layoutWeight(1) // 使用layoutWeight自动扩展宽度
         .onSelect(onSelect)
         // 注意：Select组件样式受限，尽量用外部容器美化
     }
@@ -251,7 +251,7 @@ export struct OutletDialog {
       TextInput({ text: String(value) })
         .height(36)
         .fontSize(14)
-        .width(inputWidth)
+        .layoutWeight(1) // 使用layoutWeight自动扩展宽度
         .backgroundColor('#F2F2F7')
         .borderRadius(10)
         .border({ width: 0 })
@@ -272,7 +272,7 @@ export struct OutletDialog {
       TextInput({ text: String(value) })
         .height(36)
         .fontSize(14)
-        .width(240)
+        .layoutWeight(1) // 使用layoutWeight自动扩展宽度
         .backgroundColor('#F2F2F7')
         .borderRadius(10)
         .border({ width: 0 })
@@ -335,7 +335,7 @@ export struct OutletDialog {
 
           // 内容区域
           Row() {
-            // 左侧列 (40%)
+            // 左侧列 (55%)
             Column() {
               // 左侧父容器卡片
               Scroll() {
@@ -456,7 +456,7 @@ export struct OutletDialog {
                           }
                         }
                       }
-                      .layoutWeight(3) // 调整为 3 (原8)
+                      .layoutWeight(7) // 装箱量70%
                       .margin({ right: 16 })
 
                       // 贴标
@@ -470,7 +470,7 @@ export struct OutletDialog {
                           }
                         }
                       }
-                      .layoutWeight(2) // 调整为 2 (原2)
+                      .layoutWeight(3) // 贴标30%
                     }
                     .width('100%')
                     .alignItems(VerticalAlign.Top)
@@ -555,9 +555,9 @@ export struct OutletDialog {
                         Column() {
                           this.LabeledSelectShort('规格', this.spec, SPEC_OPTIONS, (index, value) => this.spec = value)
                           this.LabeledInputWithUnitShort('净重', this.netWeight, 'g', (v) => this.netWeight = Number(v))
-                          this.LabeledInputShort('尺寸', this.dimensions, (v) => this.dimensions = v, 240)
+                          this.LabeledInputShort('尺寸', this.dimensions, (v) => this.dimensions = v, 300)
                         }
-                        .layoutWeight(1)
+                        .layoutWeight(2) // 增加左侧权重，让输入框有更多空间
                         .margin({ right: 16 })
 
                         Column() {
@@ -568,8 +568,8 @@ export struct OutletDialog {
                             .borderRadius(10)
                             .border({ width: 0.5, color: 'rgba(0,0,0,0.1)' })
                         }
-                        .width('25%')
-                        .height(110)
+                        .width('35%') // 从25%增加到35%，让占位符更大
+                        .height(140) // 增加高度从110到140
                       }
                     }
 
@@ -655,11 +655,11 @@ export struct OutletDialog {
               .scrollable(ScrollDirection.Vertical)
               .scrollBar(BarState.Auto)
             }
-            .width('40%') // 恢复为40%宽度
-            .height('100%')
+            .width('53%') // 左侧列宽度53%
+            .layoutWeight(1) // 使用 layoutWeight 自动填充可用高度
             .padding({ right: 8 })
 
-          // 右侧表格 (60%)
+          // 右侧表格 (45%)
           Column() {
             // 右侧父容器卡片
             Column() {
@@ -677,7 +677,7 @@ export struct OutletDialog {
               })
             }
             .width('100%')
-            .height('100%')
+            .layoutWeight(1) // 使用 layoutWeight 自动填充可用高度
             .backgroundColor('#FFFFFF') // 强制白色背景，消除黄色
             .borderRadius(16) // 更大的圆角
             .shadow({ radius: 10, color: 'rgba(0,0,0,0.05)', offsetY: 4 }) // 柔和阴影
@@ -685,10 +685,11 @@ export struct OutletDialog {
             .border({ width: 0.5, color: 'rgba(0,0,0,0.1)' })
             .padding(16) // 增加内边距
           }
-          .width('60%')
-          .height('100%')
+          .width('52%')
+          .layoutWeight(1) // 使用 layoutWeight 自动填充可用高度
           .padding({ left: 8 })
           .justifyContent(FlexAlign.Start)
+          .alignItems(HorizontalAlign.Start)
 
 
           }

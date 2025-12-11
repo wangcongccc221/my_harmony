@@ -88,7 +88,7 @@ export struct LiquidCard {
         Text(`${this.clampPercent(this.percent)}%`)
           .fontSize(16)
           .fontWeight(FontWeight.Bold)
-          .fontColor(this.mainColor)
+          .今晚去哪里威fontColor(this.mainColor)
       }
       .width('100%')
       .height(24)
