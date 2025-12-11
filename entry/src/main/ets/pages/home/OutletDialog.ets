@@ -34,7 +34,8 @@ struct GroupContainer {
   @Prop title: string = ''
   @BuilderParam content: () => void = this.defaultContent
 
-  @Builder defaultContent() {}
+  @Builder
+  defaultContent() {}
 
   private getCurrentTheme(): ExtendedOmniThemeStyle {
     return OmniThemeManager.getInstance().getCurrentTheme()
@@ -42,29 +43,35 @@ struct GroupContainer {
 
   build() {
     Column() {
-      // 标题（嵌入在边框线上，通过定位实现，或者简单的内部标题）
+      // 标题（Apple Style: 更柔和的标题展示）
       Stack({ alignContent: Alignment.TopStart }) {
-        // 边框容器
+        // 边框容器 (Apple Style: 更圆润的边框，更淡的颜色，磨砂玻璃感)
         Column() {
           this.content()
         }
         .width('100%')
-        .margin({ top: 10 })
-        .padding({ top: 15, bottom: 10, left: 10, right: 10 })
-        .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 4 })
+        .margin({ top: 12 })
+        .padding({ top: 20, bottom: 16, left: 16, right: 16 })
+        .backgroundColor('#FFFFFF') // 强制白色背景，避免使用主题色可能导致的黄色问题
+        .borderRadius(16) // 更大的圆角
+        .shadow({ radius: 10, color: 'rgba(0,0,0,0.05)', offsetY: 4 }) // 柔和阴影
+        // 移除显式边框，用阴影和背景色区分，或者使用极细的边框
+        .border({ width: 0.5, color: 'rgba(0,0,0,0.1)' }) 
         
-        // 标题背景遮盖
+        // 标题 (Apple Style: 放在左上角，更精致的字体)
         Text(this.title)
-          .fontSize(14)
-          .fontColor(this.getCurrentTheme().subTextColor)
-          .backgroundColor(this.getCurrentTheme().surfaceColor)
-          .padding({ left: 4, right: 4 })
-          .margin({ left: 10, top: 0 })
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#8E8E93') // 使用标准的灰色
+          .backgroundColor('#FFFFFF') // 强制白色背景
+          .padding({ left: 8, right: 8 })
+          .margin({ left: 16, top: 2 }) // 微调位置覆盖边框
           .height(20)
+          .borderRadius(4)
       }
       .width('100%')
     }
-    .margin({ bottom: 10 })
+    .margin({ bottom: 16 }) // 增加组间距
   }
 }
 
@@ -135,26 +142,34 @@ export struct OutletDialog {
   CheckboxInput(label: string, isChecked: boolean, onCheckChange: (val: boolean) => void, 
                 value?: number | string, onValueChange?: (val: string) => void, unit?: string) {
     Row() {
+      // Apple Style: 复选框样式（使用Toggle替代Checkbox，或者美化Checkbox）
+      // 这里暂时保留Checkbox但增加间距
       Checkbox({ name: label, group: 'group' })
         .select(isChecked)
         .onChange((val: boolean) => onCheckChange(val))
-        .width(16)
-        .height(16)
-        .margin({ right: 4 })
+        .width(20) // 稍大一点
+        .height(20)
+        .margin({ right: 8 })
+        .selectedColor(this.getCurrentTheme().primary) // 使用主题色
       
       Text(label)
-        .fontSize(14)
+        .fontSize(15) // 字体稍大
+        .fontWeight(FontWeight.Regular)
         .fontColor(this.getCurrentTheme().textColor)
-        .width(70) // 统一标签宽度
-        .margin({ right: 8 })
+        .width(70)
+        .margin({ right: 12 })
       
       if (value !== undefined) {
+        // Apple Style: 输入框样式
         TextInput({ text: String(value) })
-          .height(24)
-          .fontSize(11) // 调整字体大小，避免显示不全
-          .padding({ top: 0, bottom: 0, left: 4, right: 4 }) // 移除垂直内边距，解决显示不全问题
-          .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
-          .width(240) // 固定宽度
+          .height(36) // 更高的高度
+          .fontSize(14) // 更大的字体
+          .padding({ left: 12, right: 12 })
+          .backgroundColor('#F2F2F7') // Apple 风格浅灰背景
+          .borderRadius(10) // 圆角
+          .border({ width: 0 }) // 无边框
+          .layoutWeight(1) // 改为自适应宽度，避免溢出
+          .constraintSize({ minWidth: 100, maxWidth: 240 }) // 限制最大最小宽度
           .onChange((val) => {
              if (onValueChange) onValueChange(val)
           })
@@ -162,61 +177,67 @@ export struct OutletDialog {
         if (unit) {
           Text(unit)
             .fontSize(14)
-            .fontColor(this.getCurrentTheme().textColor)
-            .margin({ left: 4 })
+            .fontColor(this.getCurrentTheme().subTextColor) // 辅助文字颜色
+            .margin({ left: 8 })
         }
       }
     }
     .width('100%')
     .alignItems(VerticalAlign.Center)
-    .margin({ bottom: 8 })
+    .margin({ bottom: 12 }) // 增加间距
   }
 
   @Builder
   SimpleInput(label: string, value: number | string, onValueChange: (val: string) => void, unit?: string) {
     Row() {
       Text(label)
-        .fontSize(14)
+        .fontSize(15)
         .fontColor(this.getCurrentTheme().textColor)
-        .margin({ right: 8 })
-        .width(70) // 统一标签宽度
+        .margin({ right: 12 })
+        .width(70)
       
       TextInput({ text: String(value) })
-        .height(24)
-        .fontSize(11)
-        .padding({ top: 0, bottom: 0, left: 4, right: 4 }) // 移除垂直内边距
-        .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
-        .width(240) // 固定宽度
+        .height(36)
+        .fontSize(14)
+        .padding({ left: 12, right: 12 })
+        .backgroundColor('#F2F2F7')
+        .borderRadius(10)
+        .border({ width: 0 })
+        .layoutWeight(1) // 自适应宽度
+        .constraintSize({ minWidth: 100, maxWidth: 240 })
         .onChange((val) => onValueChange(val))
       
       if (unit) {
         Text(unit)
           .fontSize(14)
-          .fontColor(this.getCurrentTheme().textColor)
-          .margin({ left: 4 })
+          .fontColor(this.getCurrentTheme().subTextColor)
+          .margin({ left: 8 })
       }
     }
     .width('100%')
     .alignItems(VerticalAlign.Center)
-    .margin({ bottom: 8 })
+    .margin({ bottom: 12 })
   }
 
   @Builder
   LabeledSelectShort(label: string, value: string, options: SelectOption[], onSelect: (index: number, value: string) => void) {
     Row() {
       Text(label)
-        .fontSize(14)
-        .width(70) // 统一标签宽度
-        .margin({ right: 8 })
+        .fontSize(15)
+        .width(70)
+        .margin({ right: 12 })
+      
+      // Apple Style: Select 样式比较难完全自定义，尽量匹配
       Select(options)
         .selected(0)
         .value(value)
         .font({ size: 14 })
-        .height(28)
+        .height(36)
         .width(240)
         .onSelect(onSelect)
+        // 注意：Select组件样式受限，尽量用外部容器美化
     }
-    .margin({ bottom: 8 })
+    .margin({ bottom: 12 })
     .width('100%')
   }
 
@@ -224,17 +245,20 @@ export struct OutletDialog {
   LabeledInputShort(label: string, value: number | string, onChange: (val: string) => void, inputWidth: number = 240) {
     Row() {
       Text(label)
-        .fontSize(14)
-        .width(70) // 统一标签宽度
-        .margin({ right: 8 })
+        .fontSize(15)
+        .width(70)
+        .margin({ right: 12 })
       TextInput({ text: String(value) })
-        .height(32)
-        .fontSize(12)
+        .height(36)
+        .fontSize(14)
         .width(inputWidth)
-        .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
+        .backgroundColor('#F2F2F7')
+        .borderRadius(10)
+        .border({ width: 0 })
+        .padding({ left: 12, right: 12 })
         .onChange(onChange)
     }
-    .margin({ bottom: 8 })
+    .margin({ bottom: 12 })
     .width('100%')
   }
 
@@ -242,367 +266,398 @@ export struct OutletDialog {
   LabeledInputWithUnitShort(label: string, value: number | string, unit: string, onChange: (val: string) => void) {
     Row() {
       Text(label)
-        .fontSize(14)
-        .width(70) // 统一标签宽度
-        .margin({ right: 8 })
+        .fontSize(15)
+        .width(70)
+        .margin({ right: 12 })
       TextInput({ text: String(value) })
-        .height(32)
-        .fontSize(12)
-        .width(240) // 固定宽度
-        .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
+        .height(36)
+        .fontSize(14)
+        .width(240)
+        .backgroundColor('#F2F2F7')
+        .borderRadius(10)
+        .border({ width: 0 })
+        .padding({ left: 12, right: 12 })
         .onChange(onChange)
       Text(unit)
         .fontSize(14)
-        .margin({ left: 4 })
+        .fontColor(this.getCurrentTheme().subTextColor)
+        .margin({ left: 8 })
     }
-    .margin({ bottom: 8 })
+    .margin({ bottom: 12 })
     .width('100%')
   }
 
   build() {
     if (this.isVisible) {
       Stack() {
-        // 遮罩
+        // 遮罩 (Apple Style: 毛玻璃遮罩)
         Column()
           .width('100%')
           .height('100%')
-          .backgroundColor('rgba(0, 0, 0, 0.5)')
+          .backgroundColor('rgba(0, 0, 0, 0.2)') // 减淡遮罩颜色
+          .backdropBlur(10) // 全局背景模糊
           .onClick(() => {
             if (this.onCancel) this.onCancel()
           })
 
-        // 对话框主体
+        // 对话框主体 (Apple Style: 浮动面板)
         Column() {
           // 标题栏
           Row() {
             Text(`出口-${this.currentOutletIndex} 设置`)
-              .fontSize(16)
-              .fontColor(this.getCurrentTheme().textColor)
-              .fontWeight(FontWeight.Medium)
+              .fontSize(18) // 更大的标题
+              .fontColor(this.getCurrentTheme().textColor) // 使用普通文字颜色，而不是反白
+              .fontWeight(FontWeight.Bold)
             
             Blank()
             
-            // 关闭按钮
-            Text('×')
-              .fontSize(20)
-              .fontColor(this.getCurrentTheme().textColor)
-              .onClick(() => {
-                if (this.onCancel) this.onCancel()
-              })
+            // 关闭按钮 (Apple Style: 圆形灰色按钮)
+            Button() {
+              Text('×')
+                .fontSize(20)
+                .fontColor(this.getCurrentTheme().subTextColor)
+                .fontWeight(FontWeight.Regular)
+            }
+            .width(30)
+            .height(30)
+            .backgroundColor('#E5E5EA') // 浅灰背景
+            .borderRadius(15)
+            .onClick(() => {
+              if (this.onCancel) this.onCancel()
+            })
           }
           .width('100%')
-          .height(32)
-          .backgroundColor(this.getCurrentTheme().primary)
-          .padding({ left: 10, right: 10 })
+          .height(50) // 更高的标题栏
+          .backgroundColor('transparent') // 透明背景，通过父容器背景透出
+          .padding({ left: 20, right: 20 })
           .alignItems(VerticalAlign.Center)
+          .border({ width: { bottom: 0.5 }, color: 'rgba(0,0,0,0.1)' }) // 细分割线
 
           // 内容区域
           Row() {
             // 左侧列 (40%)
             Column() {
               // 左侧父容器卡片
-              Column() {
+              Scroll() {
                 Column() {
-                  // 第一行：装箱量 + 贴标
-                  Row() {
-                    // 装箱量
-                    Column() {
-                      GroupContainer({ title: '装箱量' }) {
-                        Column() {
-                          Row() {
-                            Text('出口模式')
-                              .fontSize(14)
-                              .margin({ right: 8 })
-                            Select([
-                              { value: '默认' }, 
-                              { value: '包装台' }, 
-                              { value: '自动装箱' }
-                            ])
-                              .selected(0)
-                              .value(this.exportMode)
-                              .font({ size: 14 })
-                              .height(28)
-                              .layoutWeight(1)
-                              .onSelect((index: number, value: string) => {
-                                this.exportMode = value
-                              })
-                          }
-                          .margin({ bottom: 8 })
-
-                          if (this.exportMode === '包装台') {
-                            // 包装台模式内容
+                  Column() {
+                    // 第一行：装箱量 + 贴标
+                    Row() {
+                      // 装箱量
+                      Column() {
+                        GroupContainer({ title: '装箱量' }) {
+                          Column() {
                             Row() {
-                              Text('流量模式')
-                                .fontSize(14)
-                                .margin({ right: 8 })
+                              Text('出口模式')
+                                .fontSize(15)
+                                .margin({ right: 12 })
                               Select([
-                                { value: '' }, 
-                                { value: '模式1' }, 
-                                { value: '模式2' }
+                                { value: '默认' }, 
+                                { value: '包装台' }, 
+                                { value: '自动装箱' }
                               ])
                                 .selected(0)
-                                .value(this.flowMode)
+                                .value(this.exportMode)
                                 .font({ size: 14 })
-                                .height(28)
+                                .height(36)
                                 .layoutWeight(1)
                                 .onSelect((index: number, value: string) => {
-                                  this.flowMode = value
+                                  this.exportMode = value
                                 })
                             }
-                            .margin({ bottom: 8 })
+                            .margin({ bottom: 12 })
 
-                            this.SimpleInput('个数', this.countValue, (v) => this.countValue = Number(v))
-                            this.SimpleInput('时间', this.packTime, (v) => this.packTime = Number(v), 's')
-
-                          } else if (this.exportMode === '自动装箱') {
-                            // 自动装箱模式内容（带禁用次数）
-                            Row() {
-                              // 个数 (复用 CheckboxInput 但宽度调整)
+                            if (this.exportMode === '包装台') {
+                              // 包装台模式内容
                               Row() {
-                                Checkbox({ name: '个数', group: 'group' })
-                                  .select(this.countChecked)
-                                  .onChange((val: boolean) => this.countChecked = val)
-                                  .width(16)
-                                  .height(16)
-                                  .margin({ right: 4 })
-                                
-                                Text('个数')
-                                  .fontSize(14)
-                                  .fontColor(this.getCurrentTheme().textColor)
-                                  .margin({ right: 8 })
-                                
-                                TextInput({ text: String(this.countValue) })
-                                  .height(24)
-                                  .fontSize(11)
-                                  .padding({ top: 0, bottom: 0, left: 4, right: 4 }) // 移除垂直内边距
-                                  .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
-                                  .width(240) // 固定宽度
-                                  .onChange((val) => this.countValue = Number(val))
+                                Text('流量模式')
+                                  .fontSize(15)
+                                  .margin({ right: 12 })
+                                Select([
+                                  { value: '' }, 
+                                  { value: '模式1' }, 
+                                  { value: '模式2' }
+                                ])
+                                  .selected(0)
+                                  .value(this.flowMode)
+                                  .font({ size: 14 })
+                                  .height(36)
+                                  .layoutWeight(1)
+                                  .onSelect((index: number, value: string) => {
+                                    this.flowMode = value
+                                  })
                               }
-                              .layoutWeight(1)
-                              .margin({ right: 10 })
+                              .margin({ bottom: 12 })
 
-                              // 禁用次数
-                              Column() {
-                                Text('禁用次数')
-                                  .fontSize(12)
-                                  .fontColor(this.getCurrentTheme().textColor)
-                                  .margin({ bottom: 2 })
-                                
-                                TextInput({ text: String(this.disableCount) })
-                                  .height(24)
-                                  .fontSize(11)
-                                  .padding({ top: 0, bottom: 0, left: 4, right: 4 }) // 移除垂直内边距
-                                  .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
-                                  .width('100%')
-                                  .onChange((val) => this.disableCount = Number(val))
+                              this.SimpleInput('个数', this.countValue, (v) => this.countValue = Number(v))
+                              this.SimpleInput('时间', this.packTime, (v) => this.packTime = Number(v), 's')
+
+                            } else if (this.exportMode === '自动装箱') {
+                              // 自动装箱模式内容（带禁用次数）
+                              Row() {
+                                // 个数 (复用 CheckboxInput 但宽度调整)
+                                Row() {
+                                  Checkbox({ name: '个数', group: 'group' })
+                                    .select(this.countChecked)
+                                    .onChange((val: boolean) => this.countChecked = val)
+                                    .width(20)
+                                    .height(20)
+                                    .margin({ right: 8 })
+                                  
+                                  Text('个数')
+                                    .fontSize(15)
+                                    .fontColor(this.getCurrentTheme().textColor)
+                                    .margin({ right: 12 })
+                                  
+                                  TextInput({ text: String(this.countValue) })
+                                    .height(36)
+                                    .fontSize(14)
+                                    .padding({ left: 12, right: 12 })
+                                    .backgroundColor('#F2F2F7')
+                                    .borderRadius(10)
+                                    .border({ width: 0 })
+                                    .width(240)
+                                    .onChange((val) => this.countValue = Number(val))
+                                }
+                                .layoutWeight(1)
+                                .margin({ right: 10 })
+
+                                // 禁用次数
+                                Column() {
+                                  Text('禁用次数')
+                                    .fontSize(13)
+                                    .fontColor(this.getCurrentTheme().subTextColor)
+                                    .margin({ bottom: 4 })
+                                  
+                                  TextInput({ text: String(this.disableCount) })
+                                    .height(36)
+                                    .fontSize(14)
+                                    .padding({ left: 12, right: 12 })
+                                    .backgroundColor('#F2F2F7')
+                                    .borderRadius(10)
+                                    .border({ width: 0 })
+                                    .width('100%')
+                                    .onChange((val) => this.disableCount = Number(val))
+                                }
+                                .width(80)
                               }
-                              .width(70)
+                              .width('100%')
+                              .alignItems(VerticalAlign.Center)
+                              .margin({ bottom: 12 })
+
+                              this.CheckboxInput('重量', this.weightChecked, (v) => this.weightChecked = v, this.weightValue, (v) => this.weightValue = Number(v), '克')
+                              this.CheckboxInput('体积', this.volumeChecked, (v) => this.volumeChecked = v, this.volumeValue, (v) => this.volumeValue = Number(v), '立方厘米')
+                            } else {
+                              // 默认模式内容（无禁用次数）
+                              this.CheckboxInput('个数', this.countChecked, (v) => this.countChecked = v, this.countValue, (v) => this.countValue = Number(v))
+                              this.CheckboxInput('重量', this.weightChecked, (v) => this.weightChecked = v, this.weightValue, (v) => this.weightValue = Number(v), '克')
+                              this.CheckboxInput('体积', this.volumeChecked, (v) => this.volumeChecked = v, this.volumeValue, (v) => this.volumeValue = Number(v), '立方厘米')
                             }
-                            .width('100%')
-                            .alignItems(VerticalAlign.Center)
-                            .margin({ bottom: 8 })
-
-                            this.CheckboxInput('重量', this.weightChecked, (v) => this.weightChecked = v, this.weightValue, (v) => this.weightValue = Number(v), '克')
-                            this.CheckboxInput('体积', this.volumeChecked, (v) => this.volumeChecked = v, this.volumeValue, (v) => this.volumeValue = Number(v), '立方厘米')
-                          } else {
-                            // 默认模式内容（无禁用次数）
-                            this.CheckboxInput('个数', this.countChecked, (v) => this.countChecked = v, this.countValue, (v) => this.countValue = Number(v))
-                            this.CheckboxInput('重量', this.weightChecked, (v) => this.weightChecked = v, this.weightValue, (v) => this.weightValue = Number(v), '克')
-                            this.CheckboxInput('体积', this.volumeChecked, (v) => this.volumeChecked = v, this.volumeValue, (v) => this.volumeValue = Number(v), '立方厘米')
                           }
                         }
                       }
-                    }
-                    .layoutWeight(8) // 调整为80%
-                    .margin({ right: 8 })
+                      .layoutWeight(3) // 调整为 3 (原8)
+                      .margin({ right: 16 })
 
-                    // 贴标
-                    Column() {
-                      GroupContainer({ title: '贴标' }) {
-                        Column() {
-                          this.CheckboxInput('贴标1', this.label1Checked, (v) => this.label1Checked = v)
-                          this.CheckboxInput('贴标2', this.label2Checked, (v) => this.label2Checked = v)
-                          this.CheckboxInput('贴标3', this.label3Checked, (v) => this.label3Checked = v)
-                          this.CheckboxInput('贴标4', this.label4Checked, (v) => this.label4Checked = v)
+                      // 贴标
+                      Column() {
+                        GroupContainer({ title: '贴标' }) {
+                          Column() {
+                            this.CheckboxInput('贴标1', this.label1Checked, (v) => this.label1Checked = v)
+                            this.CheckboxInput('贴标2', this.label2Checked, (v) => this.label2Checked = v)
+                            this.CheckboxInput('贴标3', this.label3Checked, (v) => this.label3Checked = v)
+                            this.CheckboxInput('贴标4', this.label4Checked, (v) => this.label4Checked = v)
+                          }
+                        }
+                      }
+                      .layoutWeight(2) // 调整为 2 (原2)
+                    }
+                    .width('100%')
+                    .alignItems(VerticalAlign.Top)
+
+                    // 电机
+                    GroupContainer({ title: '电机' }) {
+                      Column() {
+                        Row() {
+                          Text('使能模式')
+                            .fontSize(15)
+                            .margin({ right: 12 })
+                          Select([{ value: '装箱量' }, { value: '时间' }])
+                            .selected(0)
+                            .value(this.motorEnableMode)
+                            .font({ size: 14 })
+                            .height(36)
+                            .layoutWeight(1)
+                            .onSelect((index, value) => this.motorEnableMode = value)
+                        }
+                        .margin({ bottom: 12 })
+
+                        Row() {
+                          Text('延时时间')
+                            .fontSize(15)
+                            .width(70)
+                            .margin({ right: 12 })
+                          TextInput({ text: String(this.delayTime) })
+                            .height(36)
+                            .fontSize(14)
+                            .layoutWeight(1)
+                            .backgroundColor('#F2F2F7')
+                            .borderRadius(10)
+                            .border({ width: 0 })
+                            .onChange((v) => this.delayTime = Number(v))
+                          Text('s')
+                            .fontSize(14)
+                            .fontColor(this.getCurrentTheme().subTextColor)
+                            .margin({ left: 8, right: 16 })
+                          
+                          Text('持续时间')
+                            .fontSize(15)
+                            .width(70)
+                            .margin({ right: 12 })
+                          TextInput({ text: String(this.durationTime) })
+                            .height(36)
+                            .fontSize(14)
+                            .layoutWeight(1)
+                            .backgroundColor('#F2F2F7')
+                            .borderRadius(10)
+                            .border({ width: 0 })
+                            .onChange((v) => this.durationTime = Number(v))
+                          Text('s')
+                            .fontSize(14)
+                            .fontColor(this.getCurrentTheme().subTextColor)
+                            .margin({ left: 8 })
+                        }
+                        .width('100%')
+                      }
+                    }
+
+                    // 出口控制
+                    GroupContainer({ title: '出口控制' }) {
+                      Column() {
+                        Row() {
+                          Text('出口使能')
+                            .fontSize(15)
+                            .margin({ right: 12 })
+                          Select([{ value: '' }, { value: '开启' }, { value: '关闭' }])
+                            .selected(0)
+                            .value(this.outletEnable)
+                            .font({ size: 14 })
+                            .height(36)
+                            .layoutWeight(1)
+                            .onSelect((index, value) => this.outletEnable = value)
                         }
                       }
                     }
-                    .layoutWeight(2) // 调整为20%
-                  }
-                  .width('100%')
-                  .alignItems(VerticalAlign.Top)
 
-                  // 电机
-                  GroupContainer({ title: '电机' }) {
-                    Column() {
+                    // 出口规格
+                    GroupContainer({ title: '出口规格' }) {
                       Row() {
-                        Text('使能模式')
-                          .fontSize(14)
-                          .margin({ right: 8 })
-                        Select([{ value: '装箱量' }, { value: '时间' }])
-                          .selected(0)
-                          .value(this.motorEnableMode)
-                          .font({ size: 14 })
-                          .height(28)
-                          .layoutWeight(1)
-                          .onSelect((index, value) => this.motorEnableMode = value)
-                      }
-                      .margin({ bottom: 8 })
+                        Column() {
+                          this.LabeledSelectShort('规格', this.spec, SPEC_OPTIONS, (index, value) => this.spec = value)
+                          this.LabeledInputWithUnitShort('净重', this.netWeight, 'g', (v) => this.netWeight = Number(v))
+                          this.LabeledInputShort('尺寸', this.dimensions, (v) => this.dimensions = v, 240)
+                        }
+                        .layoutWeight(1)
+                        .margin({ right: 16 })
 
-                      Row() {
-                        Text('延时时间')
-                          .fontSize(13)
-                          .width(70)
-                          .margin({ right: 6 })
-                        TextInput({ text: String(this.delayTime) })
-                          .height(32)
-                          .fontSize(12)
-                          .layoutWeight(1)
-                          .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
-                          .onChange((v) => this.delayTime = Number(v))
-                        Text('s')
-                          .fontSize(12)
-                          .margin({ left: 4, right: 12 })
-                        
-                        Text('持续时间')
-                          .fontSize(13)
-                          .width(70)
-                          .margin({ right: 6 })
-                        TextInput({ text: String(this.durationTime) })
-                          .height(32)
-                          .fontSize(12)
-                          .layoutWeight(1)
-                          .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
-                          .onChange((v) => this.durationTime = Number(v))
-                        Text('s')
-                          .fontSize(12)
-                          .margin({ left: 4 })
-                      }
-                      .width('100%')
-                    }
-                  }
-
-                  // 出口控制
-                  GroupContainer({ title: '出口控制' }) {
-                    Column() {
-                      Row() {
-                        Text('出口使能')
-                          .fontSize(14)
-                          .margin({ right: 8 })
-                        Select([{ value: '' }, { value: '开启' }, { value: '关闭' }])
-                          .selected(0)
-                          .value(this.outletEnable)
-                          .font({ size: 14 })
-                          .height(28)
-                          .layoutWeight(1)
-                          .onSelect((index, value) => this.outletEnable = value)
+                        Column() {
+                          Row()
+                            .width('100%')
+                            .height('100%')
+                            .backgroundColor(this.getCurrentTheme().backgroundColor)
+                            .borderRadius(10)
+                            .border({ width: 0.5, color: 'rgba(0,0,0,0.1)' })
+                        }
+                        .width('25%')
+                        .height(110)
                       }
                     }
-                  }
 
-                  // 出口规格
-                  GroupContainer({ title: '出口规格' }) {
-                    Row() {
+                    // 名称
+                    GroupContainer({ title: '名称' }) {
                       Column() {
-                        this.LabeledSelectShort('规格', this.spec, SPEC_OPTIONS, (index, value) => this.spec = value)
-                        this.LabeledInputWithUnitShort('净重', this.netWeight, 'g', (v) => this.netWeight = Number(v))
-                        this.LabeledInputShort('尺寸', this.dimensions, (v) => this.dimensions = v, 240)
-                      }
-                      .layoutWeight(1)
-                      .margin({ right: 10 })
+                        // 自定义
+                        Row() {
+                          // 占位符，对齐复选框 (20 + 8 = 28)
+                          Row().width(28)
+                          
+                          Text('自定义')
+                            .fontSize(15)
+                            .width(70)
+                            .margin({ right: 12 })
+                          
+                          TextInput({ text: this.customName })
+                            .height(36)
+                            .fontSize(14)
+                            .layoutWeight(1) // 充满剩余空间
+                            .backgroundColor('#F2F2F7')
+                            .borderRadius(10)
+                            .border({ width: 0 })
+                            .onChange((v) => this.customName = v)
+                        }
+                        .width('100%')
+                        .alignItems(VerticalAlign.Center)
+                        .margin({ bottom: 12 })
 
-                      Column() {
-                        Row()
-                          .width('100%')
-                          .height('100%')
-                          .backgroundColor(this.getCurrentTheme().backgroundColor)
-                          .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 4 })
-                      }
-                      .width('25%')
-                      .height(110)
-                    }
-                  }
+                        // 产品名称
+                        Row() {
+                          // 占位符，对齐复选框
+                          Row().width(28)
 
-                  // 名称
-                  GroupContainer({ title: '名称' }) {
-                    Column() {
-                      // 自定义
-                      Row() {
-                        // 占位符，对齐复选框 (16 + 4 = 20)
-                        Row().width(20)
-                        
-                        Text('自定义')
-                          .fontSize(14)
-                          .width(70)
-                          .margin({ right: 8 })
-                        
-                        TextInput({ text: this.customName })
-                          .height(32)
-                          .fontSize(12)
-                          .layoutWeight(1) // 充满剩余空间
-                          .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
-                          .onChange((v) => this.customName = v)
-                      }
-                      .width('100%')
-                      .alignItems(VerticalAlign.Center)
-                      .margin({ bottom: 8 })
+                          Text('产品名称')
+                            .fontSize(15)
+                            .width(70)
+                            .margin({ right: 12 })
+                          
+                          TextInput({ text: this.productName })
+                            .height(36)
+                            .fontSize(14)
+                            .layoutWeight(1) // 充满剩余空间
+                            .backgroundColor('#F2F2F7')
+                            .borderRadius(10)
+                            .border({ width: 0 })
+                            .onChange((v) => this.productName = v)
+                        }
+                        .width('100%')
+                        .alignItems(VerticalAlign.Center)
+                        .margin({ bottom: 12 })
 
-                      // 产品名称
-                      Row() {
-                        // 占位符，对齐复选框
-                        Row().width(20)
-
-                        Text('产品名称')
-                          .fontSize(14)
-                          .width(70)
-                          .margin({ right: 8 })
-                        
-                        TextInput({ text: this.productName })
-                          .height(32)
-                          .fontSize(12)
-                          .layoutWeight(1) // 充满剩余空间
-                          .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
-                          .onChange((v) => this.productName = v)
+                        // 显示名称
+                        Row() {
+                          Checkbox({ name: 'display', group: 'display' })
+                            .select(this.displayNameChecked)
+                            .onChange((v) => this.displayNameChecked = v)
+                            .width(20)
+                            .height(20)
+                            .margin({ right: 8 })
+                          
+                          Text('显示名称')
+                            .fontSize(15)
+                            .width(70)
+                            .margin({ right: 12 })
+                          
+                          TextInput({ text: this.displayName })
+                            .height(36)
+                            .fontSize(14)
+                            .layoutWeight(1) // 充满剩余空间
+                            .backgroundColor('#F2F2F7')
+                            .borderRadius(10)
+                            .border({ width: 0 })
+                            .onChange((v) => this.displayName = v)
+                        }
+                        .width('100%')
+                        .alignItems(VerticalAlign.Center)
                       }
-                      .width('100%')
-                      .alignItems(VerticalAlign.Center)
-                      .margin({ bottom: 8 })
-
-                      // 显示名称
-                      Row() {
-                        Checkbox({ name: 'display', group: 'display' })
-                          .select(this.displayNameChecked)
-                          .onChange((v) => this.displayNameChecked = v)
-                          .width(16)
-                          .height(16)
-                        
-                        Text('显示名称')
-                          .fontSize(14)
-                          .width(70)
-                          .margin({ left: 4, right: 8 })
-                        
-                        TextInput({ text: this.displayName })
-                          .height(32)
-                          .fontSize(12)
-                          .layoutWeight(1) // 充满剩余空间
-                          .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 2 })
-                          .onChange((v) => this.displayName = v)
-                      }
-                      .width('100%')
-                      .alignItems(VerticalAlign.Center)
                     }
                   }
                 }
+              }
+              .scrollable(ScrollDirection.Vertical)
+              .scrollBar(BarState.Auto)
             }
-            .width('100%')
+            .width('40%') // 恢复为40%宽度
             .height('100%')
-            .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 8 }) // 左侧父类卡片边框
-            .padding(10)
-          }
-          .width('40%') // 恢复为40%宽度
-          .height('100%')
-          .padding({ right: 5 })
+            .padding({ right: 8 })
 
           // 右侧表格 (60%)
           Column() {
@@ -616,47 +671,53 @@ export struct OutletDialog {
                 tableWidth: '100%',
                 maxHeight: '100%', // 恢复最大高度限制，由LevelTable内部的constraintSize控制实际高度
                 enableDrag: false,
-                containerBg: this.getCurrentTheme().surfaceColor,
+                containerBg: this.getCurrentTheme().surfaceColor, // 背景色
                 fontSize: 14,
                 cellPadding: 4
               })
             }
             .width('100%')
             .height('100%')
-            .border({ width: 1, color: this.getCurrentTheme().borderColor, radius: 8 }) // 与左侧一致的边框样式
-            .padding(10)
+            .backgroundColor('#FFFFFF') // 强制白色背景，消除黄色
+            .borderRadius(16) // 更大的圆角
+            .shadow({ radius: 10, color: 'rgba(0,0,0,0.05)', offsetY: 4 }) // 柔和阴影
+            // 移除显式边框
+            .border({ width: 0.5, color: 'rgba(0,0,0,0.1)' })
+            .padding(16) // 增加内边距
           }
           .width('60%')
           .height('100%')
-          .padding({ left: 5 })
+          .padding({ left: 8 })
           .justifyContent(FlexAlign.Start)
 
 
           }
           .layoutWeight(1) // 内容区域自动填充高度
           .width('100%')
-          .padding(10)
-          .backgroundColor(this.getCurrentTheme().surfaceColor)
+          .padding(20) // 增加整体内边距
+          .backgroundColor('#F2F2F7') // Apple 风格背景色（浅灰）
 
           // 底部按钮栏
           Row() {
             // 左侧：取消、确定
             Row() {
               Button('取消')
-                .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
+                .backgroundColor('#E5E5EA') // 浅灰背景
                 .fontColor(this.getCurrentTheme().textColor)
-                .fontSize(14)
-                .height(32)
-                .margin({ right: 10 })
+                .fontSize(15)
+                .height(36) // 更高
+                .margin({ right: 12 })
+                .borderRadius(18) // 圆角
                 .onClick(() => {
                   if (this.onCancel) this.onCancel()
                 })
               
               Button('确定')
                 .backgroundColor(this.getCurrentTheme().primary)
-                .fontColor(this.getCurrentTheme().textColor)
-                .fontSize(14)
-                .height(32)
+                .fontColor(Color.White)
+                .fontSize(15)
+                .height(36)
+                .borderRadius(18)
                 .onClick(() => {
                   if (this.onConfirm) this.onConfirm()
                 })
@@ -665,20 +726,22 @@ export struct OutletDialog {
             // 中间：上一个、下一个
             Row() {
               Button('上一个出口')
-                .backgroundColor(this.getCurrentTheme().primary)
-                .fontColor(this.getCurrentTheme().textColor)
-                .fontSize(14)
-                .height(32)
+                .backgroundColor('#E5E5EA') // 浅灰背景 (原 Primary)
+                .fontColor(this.getCurrentTheme().textColor) // 深色文字
+                .fontSize(15)
+                .height(36)
                 .margin({ right: 20 })
+                .borderRadius(18)
                 .onClick(() => {
                   if (this.onPrevious) this.onPrevious()
                 })
 
               Button('下一个出口')
-                .backgroundColor(this.getCurrentTheme().primary)
-                .fontColor(this.getCurrentTheme().textColor)
-                .fontSize(14)
-                .height(32)
+                .backgroundColor('#E5E5EA') // 浅灰背景 (原 Primary)
+                .fontColor(this.getCurrentTheme().textColor) // 深色文字
+                .fontSize(15)
+                .height(36)
+                .borderRadius(18)
                 .onClick(() => {
                   if (this.onNext) this.onNext()
                 })
@@ -688,37 +751,39 @@ export struct OutletDialog {
             Row() {
               // 常规 Toggle
               Row() {
-                Text('常规').fontSize(14).fontColor(this.isGeneral ? this.getCurrentTheme().primary : this.getCurrentTheme().textColor)
+                Text('常规').fontSize(15).fontColor(this.isGeneral ? this.getCurrentTheme().primary : this.getCurrentTheme().textColor)
                 Toggle({ type: ToggleType.Switch, isOn: this.isGeneral })
                   .onChange((isOn) => this.isGeneral = isOn)
                   .selectedColor(this.getCurrentTheme().primary)
-                  .switchPointColor(this.getCurrentTheme().surfaceColor)
-                  .height(20)
-                  .margin({ left: 5 })
+                  .switchPointColor(Color.White)
+                  .height(24)
+                  .margin({ left: 8 })
               }
               .margin({ right: 20 })
 
               Button('缺箱')
-                .backgroundColor(this.isMissingBox ? '#FFA500' : (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor))
-                .fontColor(this.isMissingBox ? this.getCurrentTheme().surfaceColor : this.getCurrentTheme().textColor)
-                .fontSize(14)
-                .height(32)
+                .backgroundColor(this.isMissingBox ? '#FF9500' : '#E5E5EA') // Apple Orange
+                .fontColor(this.isMissingBox ? Color.White : this.getCurrentTheme().textColor)
+                .fontSize(15)
+                .height(36)
+                .borderRadius(18)
                 .onClick(() => this.isMissingBox = !this.isMissingBox)
             }
           }
           .width('100%')
-          .height(50)
-          .backgroundColor(this.getCurrentTheme().backgroundColor)
-          .padding({ left: 10, right: 10 })
+          .height(60) // 更高
+          .backgroundColor('transparent') // 透明背景
+          .padding({ left: 20, right: 20 })
           .alignItems(VerticalAlign.Center)
           .justifyContent(FlexAlign.SpaceBetween)
+          .border({ width: { top: 0.5 }, color: 'rgba(0,0,0,0.1)' })
 
         }
         .width('90%')
         .height('90%')
-        .backgroundColor(this.getCurrentTheme().surfaceColor)
-        .borderRadius(4)
-        .shadow({ radius: 20, color: 'rgba(0,0,0,0.3)' })
+        .backgroundColor(this.getCurrentTheme().surfaceColor) // 面板背景
+        .borderRadius(20) // 更大的圆角
+        .shadow({ radius: 40, color: 'rgba(0,0,0,0.2)', offsetY: 10 }) // 更深的阴影
       }
       .width('100%')
       .height('100%')
@@ -726,6 +791,4 @@ export struct OutletDialog {
       .zIndex(9999) // 确保最上层
     }
   }
-
-
 }

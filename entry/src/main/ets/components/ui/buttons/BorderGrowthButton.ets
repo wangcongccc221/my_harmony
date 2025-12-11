@@ -21,11 +21,32 @@ export struct BorderGrowthButton {
   @Prop buttonWidth: number | string = 200;
   @Prop buttonHeight: number = 50;
   
-  // 是否选中状态
-  @Prop isActive: boolean = false;
+  // 移除@Prop装饰器，因为在上面已经重新定义了
+  // @Prop isActive: boolean = false;
   
   // 边框状态：控制边框生长动画
   @State private borderGrowth: number = 0; // 0 = 仅底部，1 = 完整边框
+  
+  aboutToAppear() {
+    // 如果是激活状态，初始化为全边框
+    if (this.isActive) {
+      this.borderGrowth = 1;
+    }
+  }
+
+  // 监听isActive变化
+  @Watch('onActiveChange')
+  @Prop isActive: boolean = false;
+
+  private onActiveChange() {
+    // 状态变为激活时，展开边框；变为非激活时，收缩边框
+    animateTo({
+      duration: 500,
+      curve: Curve.FastOutSlowIn,
+    }, () => {
+      this.borderGrowth = this.isActive ? 1 : 0;
+    });
+  }
   
   // 获取当前主题
   private getCurrentTheme(): ExtendedOmniThemeStyle {
@@ -103,6 +124,11 @@ export struct BorderGrowthButton {
     .onHover((isHover: boolean, event: HoverEvent) => {
       console.info(`[BorderGrowthButton] onHover triggered! isHover: ${isHover}`);
       
+      // 如果已经是激活状态，则忽略Hover效果（保持常亮）
+      if (this.isActive) {
+        return;
+      }
+
       if (isHover) {
         console.info('[BorderGrowthButton] 鼠标进入 - 开始边框生长动画');
         // 鼠标悬停 - 边框向上生长
