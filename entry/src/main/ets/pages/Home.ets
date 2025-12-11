@@ -19,6 +19,7 @@ import { getCurrentTheme as resolveTheme } from '../utils/theme/ThemeUtils'
 import { NavigationUtils } from '../utils/helpers/NavigationUtils'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../utils/theme/OmniThemeManager'
 import { useOmniTheme, OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../utils/theme/useOmniTheme'
+import { AppleDesignStyle } from '../utils/theme/AppleDesignStyle'
 import { OmniUIInit } from '../utils/helpers/OmniUIInit'
 import { OmniUIUtils } from '../utils/helpers/OmniUIUtils'
 // 导入 IBest-UI 组件
@@ -771,14 +772,15 @@ struct Page {
   @Builder
   private buildFloatingTabButton(title: string, tabKey: string): void {
     Button(title)
-      .fontSize(14)
-      .fontWeight(this.selectedFloatingTab === tabKey ? FontWeight.Bold : FontWeight.Normal)
+      .fontSize(15) // Apple风格：合理字体
+      .fontWeight(this.selectedFloatingTab === tabKey ? FontWeight.Medium : FontWeight.Normal) // Apple风格：Medium而非Bold
       .fontColor(this.selectedFloatingTab === tabKey ? this.getCurrentTheme().primary : this.getCurrentTheme().textColor)
-      .backgroundColor(this.selectedFloatingTab === tabKey ? this.getCurrentTheme().primary + '20' : Color.Transparent)
-      .borderRadius(6)
-      .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-      .layoutWeight(1)
-      .margin({ left: 4, right: 4 })
+      .backgroundColor(this.selectedFloatingTab === tabKey ? this.getCurrentTheme().primary + '15' : Color.Transparent) // Apple风格：更柔和的背景色
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角(8px)
+      .padding({ left: 20, right: 20, top: 12, bottom: 12 }) // 增加左右padding，确保文字完整显示
+      .layoutWeight(1) // 平均分配宽度
+      .height('100%') // 填满父容器高度
+      .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅过渡动画
       .onClick(() => {
         this.selectedFloatingTab = tabKey
       })
@@ -790,10 +792,11 @@ struct Page {
   private buildExportTabContent(): void {
     Text(t('出口管理', '出口管理'))
       .fontSize(18)
-      .fontWeight(FontWeight.Bold)
+      .fontWeight(FontWeight.Medium) // Apple风格：Medium而非Bold
       .fontColor(this.getCurrentTheme().textColor)
-      .margin({ bottom: 16 })
+      .margin({ bottom: AppleDesignStyle.SPACING_LARGE }) // Apple风格：统一间距
       .alignSelf(ItemAlign.Start)
+      .padding({ left: AppleDesignStyle.SPACING_MEDIUM, right: AppleDesignStyle.SPACING_MEDIUM }) // Apple风格：统一内边距
 
     // 按钮网格 - 4列布局
     Grid() {
@@ -807,9 +810,10 @@ struct Page {
       GridItem() { this.buildFloatingButton('⚙️', '出口屏设置') }
     }
     .columnsTemplate('1fr 1fr 1fr 1fr')
-    .rowsGap(16)
-    .columnsGap(16)
+    .rowsGap(AppleDesignStyle.SPACING_MEDIUM) // Apple风格：统一间距
+    .columnsGap(AppleDesignStyle.SPACING_MEDIUM) // Apple风格：统一间距
     .width('100%')
+    .padding({ left: AppleDesignStyle.SPACING_MEDIUM, right: AppleDesignStyle.SPACING_MEDIUM, top: 0, bottom: AppleDesignStyle.SPACING_MEDIUM }) // Apple风格：统一内边距
   }
 
   // 构建设置Tab内容
@@ -838,9 +842,10 @@ struct Page {
       GridItem() { this.buildFloatingButton('🎨', '主题切换') }
     }
     .columnsTemplate('1fr 1fr 1fr 1fr')
-    .rowsGap(16)
-    .columnsGap(16)
+    .rowsGap(AppleDesignStyle.SPACING_MEDIUM) // Apple风格：统一间距
+    .columnsGap(AppleDesignStyle.SPACING_MEDIUM) // Apple风格：统一间距
     .width('100%')
+    .padding({ left: AppleDesignStyle.SPACING_MEDIUM, right: AppleDesignStyle.SPACING_MEDIUM, top: 0, bottom: AppleDesignStyle.SPACING_MEDIUM }) // Apple风格：统一内边距
   }
 
   // 构建帮助Tab内容
@@ -868,9 +873,10 @@ struct Page {
       GridItem() { this.buildFloatingButton('👨', '用户切换') }
     }
     .columnsTemplate('1fr 1fr 1fr 1fr')
-    .rowsGap(16)
-    .columnsGap(16)
+    .rowsGap(AppleDesignStyle.SPACING_MEDIUM) // Apple风格：统一间距
+    .columnsGap(AppleDesignStyle.SPACING_MEDIUM) // Apple风格：统一间距
     .width('100%')
+    .padding({ left: AppleDesignStyle.SPACING_MEDIUM, right: AppleDesignStyle.SPACING_MEDIUM, top: 0, bottom: AppleDesignStyle.SPACING_MEDIUM }) // Apple风格：统一内边距
   }
 
   // 构建主题选择器
@@ -1459,14 +1465,14 @@ struct Page {
   @Builder
   private buildFloatingButton(icon: string, originalKey: string): void {
     Button() {
-      Column() {
+      Column({ space: AppleDesignStyle.SPACING_XS }) { // Apple风格：统一间距
         Text(icon)
-          .fontSize(32)
-          .margin({ bottom: 8 })
+          .fontSize(28) // Apple风格：合理图标大小
+          .margin({ bottom: AppleDesignStyle.SPACING_XS })
         
         Text(t(originalKey, originalKey))
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
+          .fontSize(13) // Apple风格：合理字体
+          .fontWeight(FontWeight.Medium) // Apple风格：Medium
           .fontColor(this.getCurrentTheme().textColor)
           .textAlign(TextAlign.Center)
           .maxLines(2)
@@ -1478,10 +1484,12 @@ struct Page {
       .alignItems(HorizontalAlign.Center)
     }
     .width('100%')
-    .height(120)
+    .height(100) // Apple风格：合理按钮高度
     .backgroundColor(this.getCurrentTheme().surfaceColor)
-    .border({ width: 1, color: this.getCurrentTheme().borderColor })
-    .borderRadius(8)
+    .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+    .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角(8px)
+    .shadow(AppleDesignStyle.getShadowSmall()) // Apple风格：柔和阴影
+    .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅过渡动画
     .onClick(() => {
       console.log('悬浮窗按钮被点击:', originalKey, '类型:', typeof originalKey)
       if (originalKey === '主题切换') {
@@ -2231,16 +2239,17 @@ struct Page {
           // 悬浮窗内容 - 3个Tab的设置页面
           Column() {
             // Tab导航栏
-            Row() {
+            Row({ space: AppleDesignStyle.SPACING_XS }) {
               this.buildFloatingTabButton(t('出口', '出口'), 'export')
               this.buildFloatingTabButton(t('设置', '设置'), 'settings')
               this.buildFloatingTabButton(t('帮助', '帮助'), 'help')
             }
             .width('100%')
-            .height('3.47%')
+            .height(50) // 固定高度，确保有足够空间显示文字
             .backgroundColor(this.getCurrentTheme().surfaceColor)
-            .borderRadius(8)
-            .margin({ bottom: 16 })
+            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角(8px)
+            .margin({ bottom: AppleDesignStyle.SPACING_LARGE }) // Apple风格：统一间距
+            .padding({ left: AppleDesignStyle.SPACING_XS, right: AppleDesignStyle.SPACING_XS, top: AppleDesignStyle.SPACING_XS, bottom: AppleDesignStyle.SPACING_XS }) // Apple风格：统一内边距
             .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
 
             // Tab内容区域（依赖 i18nVersion 确保语言变化时重新渲染）

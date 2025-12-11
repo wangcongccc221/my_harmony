@@ -12,6 +12,7 @@
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../../utils/theme/useOmniTheme'
 import { I18N_VERSION_KEY } from '../../../utils/i18n/I18nManager'
+import { AppleDesignStyle } from '../../../utils/theme/AppleDesignStyle'
 
 // 位置接口定义
 interface Position {
@@ -57,8 +58,8 @@ export struct FloatingWindow {
           if (this.title) {
             Row() {
               Text(this.title)
-                .fontSize(18)
-                .fontWeight(FontWeight.Bold)
+                .fontSize(17) // Apple风格：合理字体
+                .fontWeight(FontWeight.Medium) // Apple风格：Medium而非Bold
                 .fontColor(this.getCurrentTheme().textColor)
                 .layoutWeight(1)
                 .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
@@ -66,14 +67,15 @@ export struct FloatingWindow {
               // 关闭按钮
               Button() {
                 Text('×')
-                  .fontSize(20)
-                  .fontWeight(FontWeight.Bold)
-                  .fontColor(this.getCurrentTheme().textColor)
+                  .fontSize(22) // Apple风格：合理字体
+                  .fontWeight(FontWeight.Normal) // Apple风格：Normal
+                  .fontColor(this.getCurrentTheme().subTextColor) // Apple风格：使用次要文字颜色
               }
-              .width(32)
-              .height(32)
+              .width(28) // Apple风格：合理按钮大小
+              .height(28)
               .backgroundColor(Color.Transparent)
-              .borderRadius(16)
+              .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
+              .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅过渡动画
               .onClick(() => {
                 if (this.onClose) {
                   this.onClose()
@@ -81,8 +83,8 @@ export struct FloatingWindow {
               })
             }
             .width('100%')
-            .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-            .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+            .padding({ left: AppleDesignStyle.SPACING_LARGE, right: AppleDesignStyle.SPACING_LARGE, top: AppleDesignStyle.SPACING_MEDIUM, bottom: AppleDesignStyle.SPACING_MEDIUM }) // Apple风格：统一间距
+            .border({ width: { bottom: AppleDesignStyle.BORDER_WIDTH_THIN }, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
           }
 
           // 内容区域
@@ -98,21 +100,13 @@ export struct FloatingWindow {
         .width(this.windowWidth)
         .height(this.windowHeight)
         .backgroundColor(this.getCurrentTheme().surfaceColor) // 使用不透明的主题色
-        .borderRadius(12)
-        .shadow({ 
-          radius: 20, 
-          color: 'rgba(0, 0, 0, 0.15)', 
-          offsetX: 0, 
-          offsetY: 8 
-        })
+        .borderRadius(AppleDesignStyle.BORDER_RADIUS_LARGE) // Apple风格：大圆角(16px)
+        .shadow(AppleDesignStyle.getShadowLarge()) // Apple风格：柔和阴影
         .position({ 
           x: this.windowPosition.x, 
           y: this.windowPosition.y 
         })
-        .animation({
-          duration: 300,
-          curve: Curve.EaseInOut
-        })
+        .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅过渡动画
       }
       .width('100%')
       .height('100%')

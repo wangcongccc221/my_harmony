@@ -77,6 +77,26 @@ export class AppleDesignStyle {
     }
   }
   
+  /**
+   * 双层阴影 - 创新效果，用于重要卡片
+   */
+  static getDoubleShadow(primaryColor: string = 'rgba(0, 0, 0, 0.12)', secondaryColor: string = 'rgba(0, 0, 0, 0.08)'): ShadowOptions[] {
+    return [
+      {
+        radius: 20,
+        color: primaryColor,
+        offsetX: 0,
+        offsetY: 6
+      },
+      {
+        radius: 10,
+        color: secondaryColor,
+        offsetX: 0,
+        offsetY: 2
+      }
+    ]
+  }
+  
   // ==================== 背景模糊配置 ====================
   // Apple Design 使用背景模糊效果（毛玻璃效果）
   
@@ -166,5 +186,30 @@ export class AppleDesignStyle {
   static getTransitionMove(edge: TransitionEdge = TransitionEdge.BOTTOM): TransitionEffect {
     return TransitionEffect.move(edge).animation({ duration: 350, curve: Curve.EaseOut })
   }
+  
+  // ==================== 创新样式配置 ====================
+  // 更现代的视觉效果
+  
+  /**
+   * 渐变背景色 - 用于卡片背景（浅色到透明）
+   */
+  static getGradientBackground(startColor: string, endColor: string = 'rgba(255, 255, 255, 0)'): ResourceColor {
+    // 注意：HarmonyOS中渐变需要使用LinearGradient，这里返回基础色
+    return startColor as ResourceColor
+  }
+  
+  /**
+   * 卡片内边距 - 合理的内边距
+   */
+  static readonly CARD_PADDING_SMALL: number = 12
+  static readonly CARD_PADDING_MEDIUM: number = 14
+  static readonly CARD_PADDING_LARGE: number = 16
+  
+  /**
+   * 卡片间距 - 合理的卡片间距
+   */
+  static readonly CARD_MARGIN_SMALL: number = 10
+  static readonly CARD_MARGIN_MEDIUM: number = 12
+  static readonly CARD_MARGIN_LARGE: number = 16
 }
 

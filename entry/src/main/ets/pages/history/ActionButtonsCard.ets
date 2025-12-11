@@ -20,6 +20,8 @@
 import { OmniThemeManager, ExtendedOmniThemeStyle, OmniThemeType } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
+import { ThreeDButton } from '../../components/ui/buttons/ThreeDButton'
 import { HistoryTableData } from './core/HistoryTableManager'
 import fs from '@ohos.file.fs'
 import common from '@ohos.app.ability.common'
@@ -341,104 +343,101 @@ export struct ActionButtonsCard {
     Stack() {
       Column() {
         // ==================== 上面4个按钮 ====================
-        Row() {
-          // 查询按钮
-          Button('查询')
-            .fontSize(16)
-            .fontColor(Color.White)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .borderRadius(6)
-            .height(40)
-            .layoutWeight(1)
-            .margin({ right: 4 })
-            .onClick(async () => {
-              await this.handleQuery()
+        Scroll() {
+          Row({ space: 12 }) {
+            // 查询按钮
+            ThreeDButton({
+              text: '查询',
+              isSelected: false,
+              onClickCallback: async () => {
+                await this.handleQuery()
+              }
             })
+            .width(140)
+            .height(48)
 
-          // 合并导出按钮
-          Button('合并导出')
-            .fontSize(16)
-            .fontColor(Color.White)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .borderRadius(6)
-            .height(40)
-            .layoutWeight(1)
-            .margin({ left: 2, right: 4 })
-            .onClick(async () => {
-              await this.handleMergeExport()
+            // 合并导出按钮
+            ThreeDButton({
+              text: '合并导出',
+              isSelected: false,
+              onClickCallback: async () => {
+                await this.handleMergeExport()
+              }
             })
+            .width(140)
+            .height(48)
 
-          // 报告按钮
-          Button('报告')
-            .fontSize(16)
-            .fontColor(Color.White)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .borderRadius(6)
-            .height(40)
-            .layoutWeight(1)
-            .margin({ left: 2, right: 4 })
-            .onClick(async () => {
-              await this.handleReport()
+            // 报告按钮
+            ThreeDButton({
+              text: '报告',
+              isSelected: false,
+              onClickCallback: async () => {
+                await this.handleReport()
+              }
             })
+            .width(140)
+            .height(48)
 
-          // 删除按钮
-          Button('删除')
-            .fontSize(16)
-            .fontColor(Color.White)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .borderRadius(6)
-            .height(40)
-            .layoutWeight(1)
-            .margin({ left: 2 })
-            .onClick(async () => {
-              await this.handleDelete()
+            // 删除按钮
+            ThreeDButton({
+              text: '删除',
+              isSelected: false,
+              onClickCallback: async () => {
+                await this.handleDelete()
+              }
             })
+            .width(140)
+            .height(48)
+          }
+          .padding({ left: 16, right: 16, top: 16, bottom: 8 })
         }
+        .scrollable(ScrollDirection.Horizontal)
+        .scrollBar(BarState.Off)
         .width('100%')
-        .margin({ bottom: 8 })
+        .align(Alignment.Start)
 
         // ==================== 下面3个按钮 ====================
-        Row() {
-          // 重置按钮
-          Button('重置')
-            .fontSize(16)
-            .fontColor(Color.White)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .borderRadius(6)
-            .height(40)
-            .layoutWeight(1)
-            .margin({ right: 4 })
-            .onClick(async () => {
-              await this.handleReset()
+        Scroll() {
+          Row({ space: 12 }) {
+            // 重置按钮
+            ThreeDButton({
+              text: '重置',
+              isSelected: false,
+              onClickCallback: async () => {
+                await this.handleReset()
+              }
             })
+            .width(140)
+            .height(48)
 
-          // 批量导出按钮
-          Button('批量导出')
-            .fontSize(16)
-            .fontColor(Color.White)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .borderRadius(6)
-            .height(40)
-            .layoutWeight(1)
-            .margin({ left: 2, right: 4 })
-            .onClick(async () => {
-              await this.handleBatchExport()
+            // 批量导出按钮
+            ThreeDButton({
+              text: '批量导出',
+              isSelected: false,
+              onClickCallback: async () => {
+                await this.handleBatchExport()
+              }
             })
+            .width(140)
+            .height(48)
 
-          // 等级合并导出按钮
-          Button('等级合并导出')
-            .fontSize(16)
-            .fontColor(Color.White)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .borderRadius(6)
-            .height(40)
-            .layoutWeight(1)
-            .margin({ left: 2 })
-            .onClick(async () => {
-              await this.handleLevelMergeExport()
+            // 等级合并导出按钮
+            ThreeDButton({
+              text: '等级合并导出',
+              isSelected: false,
+              onClickCallback: async () => {
+                await this.handleLevelMergeExport()
+              }
             })
+            .width(160) // 稍宽一点，因为文字较长
+            .height(48)
+          }
+          .padding({ left: 16, right: 16, top: 8, bottom: 16 })
         }
+        .scrollable(ScrollDirection.Horizontal)
+        .scrollBar(BarState.Off)
         .width('100%')
+        .align(Alignment.Start)
       }
       .width('100%')
       .height('auto')

@@ -27,6 +27,7 @@
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 import { DatePickerHelper } from '../../utils/helpers/DatePickerHelper'
 
 /**
@@ -172,10 +173,10 @@ export struct DateQueryCard {
     Column() {
       // ==================== 卡片标题 ====================
       Text('日期条件查询')
-        .fontSize(18)  // 调大到18px
-        .fontWeight(FontWeight.Bold)
+        .fontSize(18)  // 标题字体
+        .fontWeight(FontWeight.Medium) // Apple风格：Medium而非Bold
         .fontColor(this.getCurrentTheme().textColor)
-        .margin({ bottom: 4 })
+        .margin({ bottom: AppleDesignStyle.SPACING_XS }) // Apple风格：统一间距
         .alignSelf(ItemAlign.Start)
 
       // ==================== 开始日期 ====================
@@ -187,12 +188,12 @@ export struct DateQueryCard {
           .alignSelf(ItemAlign.Center)
 
         TextInput({ text: this.startDate, placeholder: '请选择开始日期' })
-          .fontSize(16)  // 调大到16px
+          .fontSize(16)  // 输入框字体
           .fontColor(this.getCurrentTheme().textColor)
           .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-          .border({ width: 1, color: this.getCurrentTheme().borderColor })
-          .borderRadius(4)
-          .padding({ left: 8, right: 30, top: 4, bottom: 4 })
+          .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+          .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
+          .padding({ left: AppleDesignStyle.SPACING_SMALL, right: 30, top: AppleDesignStyle.SPACING_XS, bottom: AppleDesignStyle.SPACING_XS }) // Apple风格：统一间距
           .layoutWeight(1)
           .enabled(false) // 设置为只读
 
@@ -218,12 +219,12 @@ export struct DateQueryCard {
           .alignSelf(ItemAlign.Center)
 
         TextInput({ text: this.endDate, placeholder: '请选择结束日期' })
-          .fontSize(16)  // 调大到16px
+          .fontSize(16)  // 输入框字体
           .fontColor(this.getCurrentTheme().textColor)
           .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-          .border({ width: 1, color: this.getCurrentTheme().borderColor })
-          .borderRadius(4)
-          .padding({ left: 8, right: 30, top: 4, bottom: 4 })
+          .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+          .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
+          .padding({ left: AppleDesignStyle.SPACING_SMALL, right: 30, top: AppleDesignStyle.SPACING_XS, bottom: AppleDesignStyle.SPACING_XS }) // Apple风格：统一间距
           .layoutWeight(1)
           .enabled(false) // 设置为只读
 
@@ -240,11 +241,11 @@ export struct DateQueryCard {
       .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .padding(6)
+    .padding(AppleDesignStyle.SPACING_SMALL) // Apple风格：统一间距
     .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-    .border({ width: 1, color: this.getCurrentTheme().borderColor })
-    .borderRadius(4)
-    .shadow({ radius: 2, color: 'rgba(0,0,0,0.1)', offsetY: 1 })
+    .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+    .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
+    .shadow(AppleDesignStyle.getShadowSmall()) // Apple风格：柔和阴影
     .alignItems(HorizontalAlign.Start)
   }
 }

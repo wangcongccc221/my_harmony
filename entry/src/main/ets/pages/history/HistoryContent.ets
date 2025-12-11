@@ -19,6 +19,7 @@
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 import { HistoryQueryPanel } from './HistoryQueryPanel'
 import { HistoryDataTable } from './HistoryDataTable'
 import { HistoryTableData, HistoryTableManager, FilterParams } from './core/HistoryTableManager'
@@ -808,12 +809,12 @@ export struct HistoryContent {
                   }
                   .width('100%')
                   .height('20%')
-                  .padding(8)
+                  .padding(AppleDesignStyle.SPACING_SMALL) // Apple风格：统一间距
                   .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                  .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                  .borderRadius(6)
-                  .shadow({ radius: 2, color: 'rgba(0,0,0,0.1)', offsetY: 1 })
-                  .margin({ top: 8, bottom: 8, left: 16, right: 16 })
+                  .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+                  .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // Apple风格：中等圆角
+                  .shadow(AppleDesignStyle.getShadowSmall()) // Apple风格：柔和阴影
+                  .margin({ top: AppleDesignStyle.SPACING_SMALL, bottom: AppleDesignStyle.SPACING_SMALL, left: AppleDesignStyle.SPACING_LARGE, right: AppleDesignStyle.SPACING_LARGE })
 
         // ==================== 数据表格区域 ====================
         // 使用条件渲染来强制刷新表格组件（当tableRefreshKey变化时重新创建组件）

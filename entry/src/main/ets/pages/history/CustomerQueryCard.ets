@@ -27,6 +27,7 @@
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 
 /**
  * 客户信息查询卡片组件结构体
@@ -126,10 +127,10 @@ export struct CustomerQueryCard {
     Column() {
       // ==================== 卡片标题 ====================
       Text('客户信息查询表')
-        .fontSize(18)  // 调大到18px
-        .fontWeight(FontWeight.Bold)
+        .fontSize(18)  // 标题字体
+        .fontWeight(FontWeight.Medium) // Apple风格：Medium而非Bold
         .fontColor(this.getCurrentTheme().textColor)
-        .margin({ bottom: 4 })
+        .margin({ bottom: AppleDesignStyle.SPACING_XS }) // Apple风格：统一间距
         .alignSelf(ItemAlign.Start)
 
       // ==================== 客户名称输入 ====================
@@ -141,12 +142,12 @@ export struct CustomerQueryCard {
           .alignSelf(ItemAlign.Center)
 
         TextInput({ placeholder: '请输入客户名称', text: this.customerNameValue })
-          .fontSize(16)  // 调大到16px
+          .fontSize(16)  // 输入框字体
           .fontColor(this.getCurrentTheme().textColor)
           .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-          .border({ width: 1, color: this.getCurrentTheme().borderColor })
-          .borderRadius(6)
-          .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+          .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+          .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
+          .padding({ left: AppleDesignStyle.SPACING_SMALL, right: AppleDesignStyle.SPACING_SMALL, top: AppleDesignStyle.SPACING_XS, bottom: AppleDesignStyle.SPACING_XS }) // Apple风格：统一间距
           .height(40)
           .layoutWeight(1)
           .onChange((value: string) => {
@@ -216,11 +217,11 @@ export struct CustomerQueryCard {
       .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .padding(6)
+    .padding(AppleDesignStyle.SPACING_SMALL) // Apple风格：统一间距
     .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-    .border({ width: 1, color: this.getCurrentTheme().borderColor })
-    .borderRadius(4)
-    .shadow({ radius: 2, color: 'rgba(0,0,0,0.1)', offsetY: 1 })
+    .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+    .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
+    .shadow(AppleDesignStyle.getShadowSmall()) // Apple风格：柔和阴影
     .alignItems(HorizontalAlign.Start)
   }
 }

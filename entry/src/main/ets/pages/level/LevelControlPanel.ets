@@ -305,10 +305,10 @@ export struct LevelControlPanel {
       // ==================== 水果表单卡片 ====================
       Column() {
         Text(t('水果', '水果'))
-          .fontSize(22)
+          .fontSize(20) // 合理字体
           .fontWeight(FontWeight.Medium) // Apple风格：Medium而非Bold
           .fontColor(this.getCurrentTheme().textColor)
-          .margin({ top: 0, bottom: 12 })
+          .margin({ top: 0, bottom: 10 }) // 合理间距
           .alignSelf(ItemAlign.Start)
 
         // 种类选择行
@@ -324,8 +324,8 @@ export struct LevelControlPanel {
             .font({ size: 18 })
             .fontColor(this.getCurrentTheme().textColor)
             .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-            .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
-            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
+            .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
+            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
             .padding({ left: 12, right: 12, top: 6, bottom: 6 })
             .layoutWeight(1)
             .constraintSize({ minWidth: 120, maxWidth: 220 })
@@ -341,21 +341,21 @@ export struct LevelControlPanel {
         .margin({ bottom: 3 })
       }
       .width('100%')
-      .padding(16)
+      .padding(AppleDesignStyle.CARD_PADDING_SMALL) // 合理内边距
       .backgroundColor(this.getCurrentTheme().surfaceColor)
-      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
-      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
-      .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.08)')) // Apple风格：柔和阴影
+      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
+      .shadow(AppleDesignStyle.getShadowSmall()) // 柔和阴影
       .alignItems(HorizontalAlign.Start)
-      .margin({ bottom: 12 })
+      .margin({ bottom: AppleDesignStyle.CARD_MARGIN_SMALL }) // 合理间距
 
       // 出口报警卡片
       Column() {
         Text(t('出口报警', '出口报警'))
-          .fontSize(20)  // 标题字体优化到20px
+          .fontSize(20)  // 合理字体
           .fontWeight(FontWeight.Medium) // Apple风格：Medium而非Bold
           .fontColor(this.getCurrentTheme().textColor)
-          .margin({ top: 0, bottom: 4 })
+          .margin({ top: 0, bottom: 8 }) // 合理间距
           .alignSelf(ItemAlign.Start)
 
         // 出口阀值输入行
@@ -371,8 +371,8 @@ export struct LevelControlPanel {
             .fontSize(16)  // 输入框字体优化到16px
             .fontColor(this.getCurrentTheme().textColor)
             .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-            .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
-            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
+            .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
+            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
             .padding({ left: 8, right: 8, top: 3, bottom: 3 })
             .layoutWeight(1)
             .constraintSize({ minWidth: 60, maxWidth: 140 })
@@ -400,13 +400,13 @@ export struct LevelControlPanel {
         .margin({ bottom: 3 })
       }
       .width('100%')
-      .padding(12)
-      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
-      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
-      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
-      .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.08)')) // Apple风格：柔和阴影
+      .padding(AppleDesignStyle.CARD_PADDING_SMALL) // 合理内边距
+      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
+      .shadow(AppleDesignStyle.getShadowSmall()) // 柔和阴影
       .alignItems(HorizontalAlign.Start)
-      .margin({ bottom: 20 })
+      .margin({ bottom: AppleDesignStyle.CARD_MARGIN_SMALL }) // 合理间距
 
       // 分选标准卡片
       Column() {
@@ -522,13 +522,13 @@ export struct LevelControlPanel {
         .alignItems(HorizontalAlign.Start)
       }
       .width('100%')
-      .padding(12)
-      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
-      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
-      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
-      .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.08)')) // Apple风格：柔和阴影
+      .padding(AppleDesignStyle.CARD_PADDING_SMALL) // 合理内边距
+      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
+      .shadow(AppleDesignStyle.getShadowSmall()) // 柔和阴影
       .alignItems(HorizontalAlign.Start)
-      .margin({ bottom: 12 })
+      .margin({ bottom: AppleDesignStyle.CARD_MARGIN_SMALL }) // 合理间距
 
       // 计算每箱单位卡片
       Column() {
@@ -579,13 +579,13 @@ export struct LevelControlPanel {
         .justifyContent(FlexAlign.Start)
       }
       .width('100%')
-      .padding(12)
-      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
-      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
-      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
-      .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.08)')) // Apple风格：柔和阴影
+      .padding(AppleDesignStyle.CARD_PADDING_SMALL) // 合理内边距
+      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
+      .shadow(AppleDesignStyle.getShadowSmall()) // 柔和阴影
       .alignItems(HorizontalAlign.Start)
-      .margin({ bottom: 12 })
+      .margin({ bottom: AppleDesignStyle.CARD_MARGIN_SMALL }) // 合理间距
 
       // 装箱量卡片
       Column() {
@@ -608,8 +608,8 @@ export struct LevelControlPanel {
             .fontSize(18)  // 输入框字体增大到18px
             .fontColor(this.getCurrentTheme().textColor)
             .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-            .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
-            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
+            .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
+            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
             .padding({ left: 8, right: 8, top: 3, bottom: 3 })
             .layoutWeight(1)
             .constraintSize({ minWidth: 60, maxWidth: 140 })
@@ -642,8 +642,8 @@ export struct LevelControlPanel {
             .fontSize(18)  // 输入框字体增大到18px
             .fontColor(this.getCurrentTheme().textColor)
             .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-            .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
-            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
+            .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
+            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
             .padding({ left: 8, right: 8, top: 3, bottom: 3 })
             .layoutWeight(1)
             .constraintSize({ minWidth: 60, maxWidth: 140 })
@@ -673,8 +673,8 @@ export struct LevelControlPanel {
             .fontWeight(FontWeight.Medium) // Apple风格：Medium字重
             .backgroundColor(this.getCurrentTheme().primary)
             .fontColor('#ffffff')
-            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
-            .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.15)')) // Apple风格：柔和阴影
+            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
+            .shadow(AppleDesignStyle.getShadowSmall()) // 柔和阴影
             .padding({ left: 10, right: 10, top: 4, bottom: 4 })
             .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅过渡
             .onClick(() => {
@@ -695,11 +695,11 @@ export struct LevelControlPanel {
     }
     .width('100%')
     .height('100%')
-    .padding(AppleDesignStyle.SPACING_SMALL) // Apple风格：统一间距
+    .padding(AppleDesignStyle.SPACING_SMALL) // 合理内边距
     .backgroundColor(this.getCurrentTheme().surfaceColor)
-    .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
-    .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // Apple风格：中等圆角
-    .shadow(AppleDesignStyle.getShadowMedium('rgba(0, 0, 0, 0.1)')) // Apple风格：柔和阴影
+    .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
+    .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // 合理圆角(12px)
+    .shadow(AppleDesignStyle.getShadowMedium()) // 柔和阴影
     .alignItems(HorizontalAlign.Start)
     .justifyContent(FlexAlign.Start)
   }

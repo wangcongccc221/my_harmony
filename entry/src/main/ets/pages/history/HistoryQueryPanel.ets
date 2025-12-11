@@ -16,6 +16,7 @@
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 import { DateQueryCard } from './DateQueryCard'
 import { CustomerQueryCard } from './CustomerQueryCard'
 import { ActionButtonsCard } from './ActionButtonsCard'
@@ -167,7 +168,7 @@ export struct HistoryQueryPanel {
         }
       })
       .width('25%')
-      .margin({ right: 8 })
+      .margin({ right: AppleDesignStyle.SPACING_SMALL }) // Apple风格：统一间距
 
       // ==================== 客户信息查询卡片 ====================
       CustomerQueryCard({
@@ -191,7 +192,7 @@ export struct HistoryQueryPanel {
         }
       })
       .width('30%')
-      .margin({ right: 8 })
+      .margin({ right: AppleDesignStyle.SPACING_SMALL }) // Apple风格：统一间距
 
       // ==================== 操作按钮卡片 ====================
       ActionButtonsCard({

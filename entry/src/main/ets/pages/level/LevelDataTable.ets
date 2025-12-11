@@ -1079,12 +1079,12 @@ export struct LevelDataTable {
           .justifyContent(FlexAlign.Start)
         }
         .width('100%')
-        .padding(16)
+        .padding(AppleDesignStyle.CARD_PADDING_SMALL) // 合理内边距
         .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-        .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
-        .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // Apple风格：中等圆角
-        .shadow(AppleDesignStyle.getShadowMedium('rgba(0, 0, 0, 0.12)')) // Apple风格：柔和阴影
-        .margin({ bottom: 16 })
+        .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
+        .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // 合理圆角(12px)
+        .shadow(AppleDesignStyle.getShadowMedium()) // 柔和阴影
+        .margin({ bottom: AppleDesignStyle.CARD_MARGIN_SMALL }) // 合理间距
         
         // 等级表格：使用List+ListItem实现
         Column() {
@@ -1118,18 +1118,18 @@ export struct LevelDataTable {
         })
         .width('100%')
         .layoutWeight(1)
-        .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
-        .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
+        .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
+        .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
         .backgroundColor(this.getCurrentTheme().surfaceColor)
       }
       .width('100%')
       .height('70%')
-      .padding(16)
+      .padding(AppleDesignStyle.CARD_PADDING_SMALL) // 合理内边距
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
-      .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // Apple风格：中等圆角
-      .shadow(AppleDesignStyle.getShadowMedium('rgba(0, 0, 0, 0.1)')) // Apple风格：柔和阴影
-      .margin({ bottom: 16 })
+      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // 合理圆角(12px)
+      .shadow(AppleDesignStyle.getShadowMedium()) // 柔和阴影
+      .margin({ bottom: AppleDesignStyle.CARD_MARGIN_SMALL }) // 合理间距
 
       // 统计表格卡片：使用Grid组件实现的表格
       Column() {
@@ -1176,17 +1176,17 @@ export struct LevelDataTable {
         }
         .width('100%')
         .height(280) // 总容器高度
-        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-        .borderRadius(8)
+        .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
+        .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
       }
       .width('100%')
       .height('30%')
-      .padding(16)
+      .padding(AppleDesignStyle.CARD_PADDING_SMALL) // 合理内边距
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-      .border({ width: 1, color: this.getCurrentTheme().borderColor })
-      .borderRadius(10)
-      .shadow({ radius: 10, color: 'rgba(0,0,0,0.08)', offsetY: 2 })
-      .margin({ bottom: 16 })
+      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // 合理圆角(12px)
+      .shadow(AppleDesignStyle.getShadowMedium()) // 柔和阴影
+      .margin({ bottom: AppleDesignStyle.CARD_MARGIN_SMALL }) // 合理间距
 
       .padding({ top: 8 })
       .backgroundColor('rgba(0,0,0,0)')

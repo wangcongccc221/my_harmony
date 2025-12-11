@@ -1,6 +1,7 @@
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 import { HistoryTableManager, HistoryTableData } from './core/HistoryTableManager'
 import { TableHeaderCell } from '../../components/ui/tables/TableHeaderCell'
 import { TableCell } from '../../components/ui/tables/TableCell'
@@ -342,10 +343,10 @@ export struct HistoryDataTable {
     Column() {
       // 表格标题
       Text('加工历史数据表')
-        .fontSize(20)  // 调大到20px
-        .fontWeight(FontWeight.Bold)
+        .fontSize(20)  // 标题字体
+        .fontWeight(FontWeight.Medium) // Apple风格：Medium而非Bold
         .fontColor(this.getCurrentTheme().textColor)
-        .margin({ bottom: 8 })
+        .margin({ bottom: AppleDesignStyle.SPACING_SMALL }) // Apple风格：统一间距
         .alignSelf(ItemAlign.Start)
 
       // 表格容器（Grid 实现）
@@ -371,7 +372,7 @@ export struct HistoryDataTable {
         .rowsGap(0)
         .width('100%')
         .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().controlBg)
-        .border({ width: 1, color: this.getCurrentTheme().borderColor })
+        .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
 
         // 可滚动数据区域（List + ListItem）
         List() {
@@ -486,21 +487,21 @@ export struct HistoryDataTable {
           }
         })
         .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-        .border({ width: 1, color: this.getCurrentTheme().borderColor })
-        .borderRadius(4)
+        .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+        .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
       }
       .width('100%')
       .height('70%')
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-      .border({ width: 1, color: this.getCurrentTheme().borderColor })
-      .borderRadius(4)
+      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
     }
     .width('100%')
-    .padding(12)
+    .padding(AppleDesignStyle.SPACING_MEDIUM) // Apple风格：统一间距
     .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-    .border({ width: 1, color: this.getCurrentTheme().borderColor })
-    .borderRadius(6)
-    .shadow({ radius: 2, color: 'rgba(0,0,0,0.1)', offsetY: 1 })
-    .margin({ top: 8, bottom: 8, left: 16, right: 16 })
+    .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
+    .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // Apple风格：中等圆角
+    .shadow(AppleDesignStyle.getShadowSmall()) // Apple风格：柔和阴影
+    .margin({ top: AppleDesignStyle.SPACING_SMALL, bottom: AppleDesignStyle.SPACING_SMALL, left: AppleDesignStyle.SPACING_LARGE, right: AppleDesignStyle.SPACING_LARGE })
   }
 }
