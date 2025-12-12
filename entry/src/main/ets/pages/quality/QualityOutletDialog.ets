@@ -40,6 +40,9 @@
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
+import { ThreeDButton } from '../../components/ui/buttons/ThreeDButton'
+
+// 确认 ThreeDButton 导入
 
 /**
  * 品质页面出口设置对话框组件
@@ -259,32 +262,32 @@ export struct QualityOutletDialog {
             
             // 右上角：上一个/下一个按钮
             Row() {
-              Button('上一个')
-                .fontSize(20)
-                .fontColor(this.getCurrentTheme().textColor)
-                .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
-                .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                .borderRadius(6)
-                .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-                .onClick(() => {
+              ThreeDButton({
+                text: '上一个',
+                isSelected: false,
+                buttonWidth: 100,
+                buttonHeight: 36,
+                fontSize: 20,
+                onClickCallback: () => {
                   if (this.onOutletSwitch) {
                     this.onOutletSwitch('previous')
                   }
-                })
+                }
+              })
+              .margin({ right: 8 })
 
-              Button('下一个')
-                .fontSize(20)
-                .fontColor(this.getCurrentTheme().textColor)
-                .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
-                .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                .borderRadius(6)
-                .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-                .margin({ left: 8 })
-                .onClick(() => {
+              ThreeDButton({
+                text: '下一个',
+                isSelected: false,
+                buttonWidth: 100,
+                buttonHeight: 36,
+                fontSize: 20,
+                onClickCallback: () => {
                   if (this.onOutletSwitch) {
                     this.onOutletSwitch('next')
                   }
-                })
+                }
+              })
             }
             .alignItems(VerticalAlign.Center)
           }
@@ -297,31 +300,32 @@ export struct QualityOutletDialog {
           Row() {
             Blank().layoutWeight(1)
             
-            Button('取消')
-              .fontSize(22)
-              .fontColor(this.getCurrentTheme().textColor)
-              .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
-              .border({ width: 1, color: this.getCurrentTheme().borderColor })
-              .borderRadius(8)
-              .padding({ left: 20, right: 20, top: 10, bottom: 10 })
-              .onClick(() => {
+            ThreeDButton({
+              text: '取消',
+              isSelected: false,
+              buttonWidth: 120,
+              buttonHeight: 48,
+              fontSize: 22,
+              onClickCallback: () => {
                 if (this.onOutletCancel) {
                   this.onOutletCancel()
                 }
-              })
+              }
+            })
+            .margin({ right: 10 })
 
-            Button('确认')
-              .fontSize(22)
-              .fontColor(Color.White)
-              .backgroundColor(this.getCurrentTheme().primary)
-              .borderRadius(8)
-              .padding({ left: 20, right: 20, top: 10, bottom: 10 })
-              .margin({ left: 10 })
-              .onClick(() => {
+            ThreeDButton({
+              text: '确认',
+              isSelected: false,
+              buttonWidth: 120,
+              buttonHeight: 48,
+              fontSize: 22,
+              onClickCallback: () => {
                 if (this.onOutletConfirm) {
                   this.onOutletConfirm()
                 }
-              })
+              }
+            })
           }
           .width('100%')
           .justifyContent(FlexAlign.End)

@@ -43,6 +43,7 @@ import { QualityOutletDialog } from './QualityOutletDialog'
 import { QualityLevelData } from './QualityConstants'
 import { DEFAULT_QUALITY_SETTINGS } from './QualityConstants'
 import { hilog } from '@kit.PerformanceAnalysisKit'
+import { ThreeDButton } from '../../components/ui/buttons/ThreeDButton'
 
 const DOMAIN = 0x0000
 const TAG = 'QualityContent'
@@ -515,40 +516,33 @@ export struct QualityContent {
       // ==================== 悬浮按钮 ====================
       if (this.showFloatingButtons) {
         Column() {
-          // 确认按钮 - Apple Design风格
-          Button('确认')
-            .width(80)
-            .height(50)
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(Color.White)
-            .backgroundColor(this.getCurrentTheme().primary)
-            .borderRadius(AppleDesignStyle.BORDER_RADIUS_LARGE) // Apple风格：大圆角
-            .shadow(AppleDesignStyle.getShadowMedium('rgba(0, 0, 0, 0.15)')) // Apple风格：柔和阴影
-            .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅过渡
-            .onClick(() => {
+          // 确认按钮 - ThreeDButton样式
+          ThreeDButton({
+            text: '确认',
+            isSelected: false,
+            buttonWidth: 80,
+            buttonHeight: 50,
+            fontSize: 16,
+            onClickCallback: () => {
               const first = this.stateManager.getQualityLevels()[0]
               this.eventHandler.onDataUpdate(first, -1)
               console.log('品质页面：确认操作')
-            })
+            }
+          })
 
-          // 取消按钮 - Apple Design风格
-          Button('取消')
-            .width(80)
-            .height(50)
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.getCurrentTheme().textColor)
-            .backgroundColor(Color.Transparent)
-            .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
-            .borderRadius(AppleDesignStyle.BORDER_RADIUS_LARGE) // Apple风格：大圆角
-            .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.1)')) // Apple风格：柔和阴影
-            .margin({ top: 12 })
-            .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅过渡
-            .onClick(() => {
+          // 取消按钮 - ThreeDButton样式
+          ThreeDButton({
+            text: '取消',
+            isSelected: false,
+            buttonWidth: 80,
+            buttonHeight: 50,
+            fontSize: 16,
+            onClickCallback: () => {
               this.eventHandler.onDataReset()
               console.log('品质页面：取消操作')
-            })
+            }
+          })
+          .margin({ top: 12 })
         }
         .position({ x: '100%', y: '50%' })
         .translate({ 

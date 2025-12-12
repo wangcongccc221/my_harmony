@@ -43,6 +43,7 @@ import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 import { LEVEL_COUNT_OPTIONS } from './QualityConstants'
 import { GlobalLevelCountManager } from '../../utils/managers/GlobalLevelCountManager'
 import { t } from '../../utils/i18n/I18nManager'
+import { ThreeDButton } from '../../components/ui/buttons/ThreeDButton'
 
 /**
  * 品质页面控制面板组件
@@ -409,33 +410,34 @@ export struct QualityControlPanel {
             }
           })
 
-        // 自动设定按钮
-        Button('自动设定')
-          .fontSize(22)
-          .backgroundColor(this.getCurrentTheme().primary)
-          .fontColor('#FFFFFF')
-          .borderRadius(8)
-          .padding({ left: 12, right: 12 })
-          .margin({ right: 6 })
-          .onClick(() => {
+        // 自动设定按钮 - ThreeDButton样式
+        ThreeDButton({
+          text: '自动设定',
+          isSelected: false,
+          buttonWidth: 120,
+          buttonHeight: 48,
+          fontSize: 22,
+          onClickCallback: () => {
             if (this.onAutoSet) {
               this.onAutoSet()
             }
-          })
+          }
+        })
+        .margin({ right: 6 })
 
-        // 设置参数按钮
-        Button('设置参数')
-          .fontSize(22)
-          .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
-          .fontColor(this.getCurrentTheme().textColor)
-          .border({ width: 1, color: this.getCurrentTheme().borderColor })
-          .borderRadius(8)
-          .padding({ left: 12, right: 12 })
-          .onClick(() => {
+        // 设置参数按钮 - ThreeDButton样式
+        ThreeDButton({
+          text: '设置参数',
+          isSelected: false,
+          buttonWidth: 120,
+          buttonHeight: 48,
+          fontSize: 22,
+          onClickCallback: () => {
             if (this.onSettingsClick) {
               this.onSettingsClick()
             }
-          })
+          }
+        })
       }
       .width('100%')
     }
