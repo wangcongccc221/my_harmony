@@ -555,7 +555,7 @@ export struct OutletDialog {
                         Column() {
                           this.LabeledSelectShort('规格', this.spec, SPEC_OPTIONS, (index, value) => this.spec = value)
                           this.LabeledInputWithUnitShort('净重', this.netWeight, 'g', (v) => this.netWeight = Number(v))
-                          this.LabeledInputShort('尺寸', this.dimensions, (v) => this.dimensions = v, 300)
+                          this.LabeledInputWithUnitShort('尺寸', this.dimensions, '', (v) => this.dimensions = v)
                         }
                         .layoutWeight(2) // 增加左侧权重，让输入框有更多空间
                         .margin({ right: 16 })
