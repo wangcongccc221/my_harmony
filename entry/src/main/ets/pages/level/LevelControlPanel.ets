@@ -304,394 +304,453 @@ export struct LevelControlPanel {
     Column() {
       // ==================== 水果表单卡片 ====================
       Column() {
-        Text(t('水果', '水果'))
-          .fontSize(20) // 合理字体
-          .fontWeight(FontWeight.Medium) // Apple风格：Medium而非Bold
-          .fontColor(this.getCurrentTheme().textColor)
-          .margin({ top: 0, bottom: 10 }) // 合理间距
-          .alignSelf(ItemAlign.Start)
-
-        // 种类选择行
+        // 标题区域（浅蓝色背景）
         Row() {
-          Text(t('种类:', '种类:'))
-            .fontSize(18)
-            .fontColor(this.getCurrentTheme().textColor)
-            .margin({ right: 8 })
-
-          // 下拉框
-          Select(FRUIT_TYPES.map(fruit => ({ value: fruit.value } as SelectOption)))
-            .selected(FRUIT_TYPES.findIndex(fruit => fruit.value === this.selectedFruit))
-            .font({ size: 18 })
-            .fontColor(this.getCurrentTheme().textColor)
-            .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-            .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
-            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
-            .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-            .layoutWeight(1)
-            .constraintSize({ minWidth: 120, maxWidth: 220 })
-            .height(36)
-            .onSelect((index: number, value: string) => {
-              if (this.onFruitChange) {
-                this.onFruitChange(value)
-              }
-            })
+          Text(t('水果', '水果'))
+            .fontSize(20)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(Color.White)
         }
         .width('100%')
-        .alignItems(VerticalAlign.Center)
-        .margin({ bottom: 3 })
-      }
-      .width('100%')
-      .padding(AppleDesignStyle.CARD_PADDING_SMALL) // 合理内边距
-      .backgroundColor(this.getCurrentTheme().surfaceColor)
-      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
-      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
-      .shadow(AppleDesignStyle.getShadowSmall()) // 柔和阴影
-      .alignItems(HorizontalAlign.Start)
-      .margin({ bottom: AppleDesignStyle.CARD_MARGIN_SMALL }) // 合理间距
+        .backgroundColor('#87CEEB') // 浅蓝色（天蓝色）
+        .borderRadius({ topLeft: 8, topRight: 8 })
+        .padding({ left: 12, right: 12, top: 10, bottom: 10 })
 
-      // 出口报警卡片
-      Column() {
-        Text(t('出口报警', '出口报警'))
-          .fontSize(20)  // 合理字体
-          .fontWeight(FontWeight.Medium) // Apple风格：Medium而非Bold
-          .fontColor(this.getCurrentTheme().textColor)
-          .margin({ top: 0, bottom: 8 }) // 合理间距
-          .alignSelf(ItemAlign.Start)
-
-        // 出口阀值输入行
-        Row() {
-          Text(t('出口阀值:', '出口阀值:'))
-            .fontSize(18)  // 标签字体优化到18px
-            .fontColor(this.getCurrentTheme().textColor)
-            .margin({ right: 2 })
-
-          // 数字输入框（0-100）
-          TextInput({ text: this.outletThreshold.toString() })
-            .type(InputType.Number)
-            .fontSize(16)  // 输入框字体优化到16px
-            .fontColor(this.getCurrentTheme().textColor)
-            .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-            .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
-            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
-            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-            .layoutWeight(1)
-            .constraintSize({ minWidth: 60, maxWidth: 140 })
-            .height(30)
-            .onChange((val: string) => {
-              let num = Number(val)
-              if (isNaN(num)) {
-                num = 0
-              }
-              if (num < 0) num = 0
-              if (num > 100) num = 100
-              if (this.onOutletThresholdChange) {
-                this.onOutletThresholdChange(num)
-              }
-            })
-
-          // %符号
-          Text('%')
-            .fontSize(18)  // 符号字体优化到18px
-            .fontColor(this.getCurrentTheme().textColor)
-            .margin({ left: 4 })
-        }
-        .width('100%')
-        .alignItems(VerticalAlign.Center)
-        .margin({ bottom: 3 })
-      }
-      .width('100%')
-      .padding(AppleDesignStyle.CARD_PADDING_SMALL) // 合理内边距
-      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
-      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
-      .shadow(AppleDesignStyle.getShadowSmall()) // 柔和阴影
-      .alignItems(HorizontalAlign.Start)
-      .margin({ bottom: AppleDesignStyle.CARD_MARGIN_SMALL }) // 合理间距
-
-      // 分选标准卡片
-      Column() {
-        Text(t('分选标准', '分选标准'))
-          .fontSize(20)  // 标题字体优化到20px
-          .fontWeight(FontWeight.Medium) // Apple风格：Medium而非Bold
-          .fontColor(this.getCurrentTheme().textColor)
-          .margin({ top: 0, bottom: 6 })
-          .alignSelf(ItemAlign.Start)
-
-        // 分选标准选项
+        // 内容区域（浅色背景）
         Column() {
-          // 第一行：尺寸和重量
+          // 种类选择行
           Row() {
-            // 尺寸复选框
-            Row() {
-              Checkbox({ name: '尺寸', group: 'standard' })
-                .select(this.selectedStandards.includes('尺寸'))
-                .width(14)
-                .height(14)
-                .margin({ right: 4 })
-                .onChange((isChecked: boolean) => {
-                  this.updateStandards('尺寸', isChecked)
-                })
+            Text(t('种类:', '种类:'))
+              .fontSize(18)
+              .fontColor(this.getCurrentTheme().textColor)
+              .margin({ right: 8 })
 
-              Text(t('尺寸', '尺寸'))
-                .fontSize(22)  // 复选框标签字体调大到22px
-                .fontColor(this.getCurrentTheme().textColor)
-            }
-            .layoutWeight(1)
-            .alignItems(VerticalAlign.Center)
-
-            // 重量复选框
-            Row() {
-              Checkbox({ name: '重量', group: 'standard' })
-                .select(this.selectedStandards.includes('重量'))
-                .width(14)
-                .height(14)
-                .margin({ right: 4 })
-                .onChange((isChecked: boolean) => {
-                  this.updateStandards('重量', isChecked)
-                })
-
-              Text(t('重量', '重量'))
-                .fontSize(22)  // 复选框标签字体调大到22px
-                .fontColor(this.getCurrentTheme().textColor)
-            }
-            .layoutWeight(1)
-            .alignItems(VerticalAlign.Center)
+            // 下拉框
+            Select(FRUIT_TYPES.map(fruit => ({ value: fruit.value } as SelectOption)))
+              .selected(FRUIT_TYPES.findIndex(fruit => fruit.value === this.selectedFruit))
+              .font({ size: 18 })
+              .fontColor(this.getCurrentTheme().textColor)
+              .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+              .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor })
+              .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
+              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+              .layoutWeight(1)
+              .constraintSize({ minWidth: 120, maxWidth: 220 })
+              .height(36)
+              .onSelect((index: number, value: string) => {
+                if (this.onFruitChange) {
+                  this.onFruitChange(value)
+                }
+              })
           }
           .width('100%')
+          .alignItems(VerticalAlign.Center)
           .margin({ bottom: 3 })
-
-          // 第二行：直径、面积、体积
-          Row() {
-            // 直径复选框
-            Row() {
-              Checkbox({ name: '直径', group: 'standard' })
-                .select(this.selectedStandards.includes('直径'))
-                .width(14)
-                .height(14)
-                .margin({ right: 4 })
-                .onChange((isChecked: boolean) => {
-                  this.updateStandards('直径', isChecked)
-                })
-
-              Text(t('直径', '直径'))
-                .fontSize(22)  // 复选框标签字体调大到22px
-                .fontColor(this.getCurrentTheme().textColor)
-            }
-            .layoutWeight(1)
-            .alignItems(VerticalAlign.Center)
-
-            // 面积复选框
-            Row() {
-              Checkbox({ name: '面积', group: 'standard' })
-                .select(this.selectedStandards.includes('面积'))
-                .width(14)
-                .height(14)
-                .margin({ right: 4 })
-                .onChange((isChecked: boolean) => {
-                  this.updateStandards('面积', isChecked)
-                })
-
-              Text(t('面积', '面积'))
-                .fontSize(22)  // 复选框标签字体调大到22px
-                .fontColor(this.getCurrentTheme().textColor)
-            }
-            .layoutWeight(1)
-            .alignItems(VerticalAlign.Center)
-
-            // 体积复选框
-            Row() {
-              Checkbox({ name: '体积', group: 'standard' })
-                .select(this.selectedStandards.includes('体积'))
-                .width(14)
-                .height(14)
-                .margin({ right: 4 })
-                .onChange((isChecked: boolean) => {
-                  this.updateStandards('体积', isChecked)
-                })
-
-              Text(t('体积', '体积'))
-                .fontSize(22)  // 复选框标签字体调大到22px
-                .fontColor(this.getCurrentTheme().textColor)
-            }
-            .layoutWeight(1)
-            .alignItems(VerticalAlign.Center)
-          }
-          .width('100%')
         }
         .width('100%')
+        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+        .borderRadius({ bottomLeft: 8, bottomRight: 8 })
+        .padding(AppleDesignStyle.CARD_PADDING_SMALL)
         .alignItems(HorizontalAlign.Start)
       }
       .width('100%')
-      .padding(AppleDesignStyle.CARD_PADDING_SMALL) // 合理内边距
-      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
-      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
-      .shadow(AppleDesignStyle.getShadowSmall()) // 柔和阴影
-      .alignItems(HorizontalAlign.Start)
-      .margin({ bottom: AppleDesignStyle.CARD_MARGIN_SMALL }) // 合理间距
+      .backgroundColor(Color.Transparent)
+      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor })
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
+      .shadow(AppleDesignStyle.getShadowSmall())
+      .clip(true)
+      .margin({ bottom: AppleDesignStyle.CARD_MARGIN_SMALL })
+
+      // 出口报警卡片
+      Column() {
+        // 标题区域（浅蓝色背景）
+        Row() {
+          Text(t('出口报警', '出口报警'))
+            .fontSize(20)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(Color.White)
+        }
+        .width('100%')
+        .backgroundColor('#87CEEB') // 浅蓝色（天蓝色）
+        .borderRadius({ topLeft: 8, topRight: 8 })
+        .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+
+        // 内容区域（浅色背景）
+        Column() {
+          // 出口阀值输入行
+          Row() {
+            Text(t('出口阀值:', '出口阀值:'))
+              .fontSize(18)
+              .fontColor(this.getCurrentTheme().textColor)
+              .margin({ right: 2 })
+
+            // 数字输入框（0-100）
+            TextInput({ text: this.outletThreshold.toString() })
+              .type(InputType.Number)
+              .fontSize(16)
+              .fontColor(this.getCurrentTheme().textColor)
+              .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+              .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor })
+              .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
+              .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+              .layoutWeight(1)
+              .constraintSize({ minWidth: 60, maxWidth: 140 })
+              .height(30)
+              .onChange((val: string) => {
+                let num = Number(val)
+                if (isNaN(num)) {
+                  num = 0
+                }
+                if (num < 0) num = 0
+                if (num > 100) num = 100
+                if (this.onOutletThresholdChange) {
+                  this.onOutletThresholdChange(num)
+                }
+              })
+
+            // %符号
+            Text('%')
+              .fontSize(18)
+              .fontColor(this.getCurrentTheme().textColor)
+              .margin({ left: 4 })
+          }
+          .width('100%')
+          .alignItems(VerticalAlign.Center)
+          .margin({ bottom: 3 })
+        }
+        .width('100%')
+        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+        .borderRadius({ bottomLeft: 8, bottomRight: 8 })
+        .padding(AppleDesignStyle.CARD_PADDING_SMALL)
+        .alignItems(HorizontalAlign.Start)
+      }
+      .width('100%')
+      .backgroundColor(Color.Transparent)
+      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor })
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
+      .shadow(AppleDesignStyle.getShadowSmall())
+      .clip(true)
+      .margin({ bottom: AppleDesignStyle.CARD_MARGIN_SMALL })
+
+      // 分选标准卡片
+      Column() {
+        // 标题区域（浅蓝色背景）
+        Row() {
+          Text(t('分选标准', '分选标准'))
+            .fontSize(20)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(Color.White)
+        }
+        .width('100%')
+        .backgroundColor('#87CEEB') // 浅蓝色（天蓝色）
+        .borderRadius({ topLeft: 8, topRight: 8 })
+        .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+
+        // 内容区域（浅色背景）
+        Column() {
+          // 分选标准选项
+          Column() {
+            // 第一行：尺寸和重量
+            Row() {
+              // 尺寸复选框
+              Row() {
+                Checkbox({ name: '尺寸', group: 'standard' })
+                  .select(this.selectedStandards.includes('尺寸'))
+                  .width(14)
+                  .height(14)
+                  .margin({ right: 4 })
+                  .onChange((isChecked: boolean) => {
+                    this.updateStandards('尺寸', isChecked)
+                  })
+
+                Text(t('尺寸', '尺寸'))
+                  .fontSize(22)
+                  .fontColor(this.getCurrentTheme().textColor)
+              }
+              .layoutWeight(1)
+              .alignItems(VerticalAlign.Center)
+
+              // 重量复选框
+              Row() {
+                Checkbox({ name: '重量', group: 'standard' })
+                  .select(this.selectedStandards.includes('重量'))
+                  .width(14)
+                  .height(14)
+                  .margin({ right: 4 })
+                  .onChange((isChecked: boolean) => {
+                    this.updateStandards('重量', isChecked)
+                  })
+
+                Text(t('重量', '重量'))
+                  .fontSize(22)
+                  .fontColor(this.getCurrentTheme().textColor)
+              }
+              .layoutWeight(1)
+              .alignItems(VerticalAlign.Center)
+            }
+            .width('100%')
+            .margin({ bottom: 3 })
+
+            // 第二行：直径、面积、体积
+            Row() {
+              // 直径复选框
+              Row() {
+                Checkbox({ name: '直径', group: 'standard' })
+                  .select(this.selectedStandards.includes('直径'))
+                  .width(14)
+                  .height(14)
+                  .margin({ right: 4 })
+                  .onChange((isChecked: boolean) => {
+                    this.updateStandards('直径', isChecked)
+                  })
+
+                Text(t('直径', '直径'))
+                  .fontSize(22)
+                  .fontColor(this.getCurrentTheme().textColor)
+              }
+              .layoutWeight(1)
+              .alignItems(VerticalAlign.Center)
+
+              // 面积复选框
+              Row() {
+                Checkbox({ name: '面积', group: 'standard' })
+                  .select(this.selectedStandards.includes('面积'))
+                  .width(14)
+                  .height(14)
+                  .margin({ right: 4 })
+                  .onChange((isChecked: boolean) => {
+                    this.updateStandards('面积', isChecked)
+                  })
+
+                Text(t('面积', '面积'))
+                  .fontSize(22)
+                  .fontColor(this.getCurrentTheme().textColor)
+              }
+              .layoutWeight(1)
+              .alignItems(VerticalAlign.Center)
+
+              // 体积复选框
+              Row() {
+                Checkbox({ name: '体积', group: 'standard' })
+                  .select(this.selectedStandards.includes('体积'))
+                  .width(14)
+                  .height(14)
+                  .margin({ right: 4 })
+                  .onChange((isChecked: boolean) => {
+                    this.updateStandards('体积', isChecked)
+                  })
+
+                Text(t('体积', '体积'))
+                  .fontSize(22)
+                  .fontColor(this.getCurrentTheme().textColor)
+              }
+              .layoutWeight(1)
+              .alignItems(VerticalAlign.Center)
+            }
+            .width('100%')
+          }
+          .width('100%')
+          .alignItems(HorizontalAlign.Start)
+        }
+        .width('100%')
+        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+        .borderRadius({ bottomLeft: 8, bottomRight: 8 })
+        .padding(AppleDesignStyle.CARD_PADDING_SMALL)
+      }
+      .width('100%')
+      .backgroundColor(Color.Transparent)
+      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor })
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
+      .shadow(AppleDesignStyle.getShadowSmall())
+      .clip(true)
+      .margin({ bottom: AppleDesignStyle.CARD_MARGIN_SMALL })
 
       // 计算每箱单位卡片
       Column() {
-        Text(t('计算每箱单位', '计算每箱单位'))
-          .fontSize(20)  // 标题字体优化到20px
-          .fontWeight(FontWeight.Medium) // Apple风格：Medium而非Bold
-          .fontColor(this.getCurrentTheme().textColor)
-          .margin({ top: 0, bottom: 4 })
-          .alignSelf(ItemAlign.Start)
-
-        // 单位选择单选按钮（横向排布）
+        // 标题区域（浅蓝色背景）
         Row() {
-          // 克选项
-          Row() {
-            Radio({ value: 'gram', group: 'unit' })
-              .checked(this.selectedUnit === 'gram')
-              .onChange((isChecked: boolean) => {
-                if (isChecked && this.onUnitChange) {
-                  this.onUnitChange('gram')
-                }
-              })
-            Text(t('克', '克'))
-              .fontSize(22)  // 单选按钮标签字体调大到22px
-              .fontColor(this.getCurrentTheme().textColor)
-              .margin({ left: 4 })
-          }
-          .alignItems(VerticalAlign.Center)
-          .margin({ right: 16 })
-
-          // 个选项
-          Row() {
-            Radio({ value: 'piece', group: 'unit' })
-              .checked(this.selectedUnit === 'piece')
-              .onChange((isChecked: boolean) => {
-                if (isChecked && this.onUnitChange) {
-                  this.onUnitChange('piece')
-                }
-              })
-            Text(t('个', '个'))
-              .fontSize(22)  // 单选按钮标签字体调大到22px
-              .fontColor(this.getCurrentTheme().textColor)
-              .margin({ left: 4 })
-          }
-          .alignItems(VerticalAlign.Center)
+          Text(t('计算每箱单位', '计算每箱单位'))
+            .fontSize(20)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(Color.White)
         }
         .width('100%')
-        .alignItems(VerticalAlign.Center)
-        .justifyContent(FlexAlign.Start)
+        .backgroundColor('#87CEEB') // 浅蓝色（天蓝色）
+        .borderRadius({ topLeft: 8, topRight: 8 })
+        .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+
+        // 内容区域（浅色背景）
+        Column() {
+          // 单位选择单选按钮（横向排布）
+          Row() {
+            // 克选项
+            Row() {
+              Radio({ value: 'gram', group: 'unit' })
+                .checked(this.selectedUnit === 'gram')
+                .onChange((isChecked: boolean) => {
+                  if (isChecked && this.onUnitChange) {
+                    this.onUnitChange('gram')
+                  }
+                })
+              Text(t('克', '克'))
+                .fontSize(22)
+                .fontColor(this.getCurrentTheme().textColor)
+                .margin({ left: 4 })
+            }
+            .alignItems(VerticalAlign.Center)
+            .margin({ right: 16 })
+
+            // 个选项
+            Row() {
+              Radio({ value: 'piece', group: 'unit' })
+                .checked(this.selectedUnit === 'piece')
+                .onChange((isChecked: boolean) => {
+                  if (isChecked && this.onUnitChange) {
+                    this.onUnitChange('piece')
+                  }
+                })
+              Text(t('个', '个'))
+                .fontSize(22)
+                .fontColor(this.getCurrentTheme().textColor)
+                .margin({ left: 4 })
+            }
+            .alignItems(VerticalAlign.Center)
+          }
+          .width('100%')
+          .alignItems(VerticalAlign.Center)
+          .justifyContent(FlexAlign.Start)
+        }
+        .width('100%')
+        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+        .borderRadius({ bottomLeft: 8, bottomRight: 8 })
+        .padding(AppleDesignStyle.CARD_PADDING_SMALL)
+        .alignItems(HorizontalAlign.Start)
       }
       .width('100%')
-      .padding(AppleDesignStyle.CARD_PADDING_SMALL) // 合理内边距
-      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
-      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
-      .shadow(AppleDesignStyle.getShadowSmall()) // 柔和阴影
-      .alignItems(HorizontalAlign.Start)
-      .margin({ bottom: AppleDesignStyle.CARD_MARGIN_SMALL }) // 合理间距
+      .backgroundColor(Color.Transparent)
+      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor })
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
+      .shadow(AppleDesignStyle.getShadowSmall())
+      .clip(true)
+      .margin({ bottom: AppleDesignStyle.CARD_MARGIN_SMALL })
 
       // 装箱量卡片
       Column() {
-        Text(t('装箱量', '装箱量'))
-          .fontSize(22)  // 标题字体增大到22px，与其它标题一致
-          .fontWeight(FontWeight.Medium) // Apple风格：Medium而非Bold
-          .fontColor(this.getCurrentTheme().textColor)
-          .margin({ top: 0, bottom: 4 })
-          .alignSelf(ItemAlign.Start)
-
-        // 装箱重量1
+        // 标题区域（浅蓝色背景）
         Row() {
-          Text(t('装箱重量1:', '装箱重量1:'))
-            .fontSize(20)  // 标签字体增大到20px
-            .fontColor(this.getCurrentTheme().textColor)
-            .margin({ right: 2 })
-
-          TextInput({ text: this.packingWeight1.toString() })
-            .type(InputType.Number)
-            .fontSize(18)  // 输入框字体增大到18px
-            .fontColor(this.getCurrentTheme().textColor)
-            .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-            .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
-            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
-            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-            .layoutWeight(1)
-            .constraintSize({ minWidth: 60, maxWidth: 140 })
-            .height(30)
-            .onChange((val: string) => {
-              const num = Number(val)
-              if (this.onPackingWeight1Change) {
-                this.onPackingWeight1Change(isNaN(num) ? 0 : num)
-              }
-            })
-
-          Text(t('公斤', '公斤'))
-            .fontSize(22)  // 单位标签字体调大到22px
-            .fontColor(this.getCurrentTheme().textColor)
-            .margin({ left: 4 })
+          Text(t('装箱量', '装箱量'))
+            .fontSize(22)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(Color.White)
         }
         .width('100%')
-        .alignItems(VerticalAlign.Center)
-        .margin({ bottom: 6 })
+        .backgroundColor('#87CEEB') // 浅蓝色（天蓝色）
+        .borderRadius({ topLeft: 8, topRight: 8 })
+        .padding({ left: 12, right: 12, top: 10, bottom: 10 })
 
-        // 装箱重量2
-        Row() {
-          Text(t('装箱重量2:', '装箱重量2:'))
-            .fontSize(20)  // 标签字体增大到20px
-            .fontColor(this.getCurrentTheme().textColor)
-            .margin({ right: 2 })
+        // 内容区域（浅色背景）
+        Column() {
+          // 装箱重量1
+          Row() {
+            Text(t('装箱重量1:', '装箱重量1:'))
+              .fontSize(20)
+              .fontColor(this.getCurrentTheme().textColor)
+              .margin({ right: 2 })
 
-          TextInput({ text: this.packingWeight2.toString() })
-            .type(InputType.Number)
-            .fontSize(18)  // 输入框字体增大到18px
-            .fontColor(this.getCurrentTheme().textColor)
-            .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-            .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
-            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
-            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-            .layoutWeight(1)
-            .constraintSize({ minWidth: 60, maxWidth: 140 })
-            .height(30)
-            .onChange((val: string) => {
-              const num = Number(val)
-              if (this.onPackingWeight2Change) {
-                this.onPackingWeight2Change(isNaN(num) ? 0 : num)
-              }
-            })
+            TextInput({ text: this.packingWeight1.toString() })
+              .type(InputType.Number)
+              .fontSize(18)
+              .fontColor(this.getCurrentTheme().textColor)
+              .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+              .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor })
+              .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
+              .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+              .layoutWeight(1)
+              .constraintSize({ minWidth: 60, maxWidth: 140 })
+              .height(30)
+              .onChange((val: string) => {
+                const num = Number(val)
+                if (this.onPackingWeight1Change) {
+                  this.onPackingWeight1Change(isNaN(num) ? 0 : num)
+                }
+              })
 
-          Text(t('公斤', '公斤'))
-            .fontSize(22)  // 单位标签字体调大到22px
-            .fontColor(this.getCurrentTheme().textColor)
-            .margin({ left: 4 })
+            Text(t('公斤', '公斤'))
+              .fontSize(22)
+              .fontColor(this.getCurrentTheme().textColor)
+              .margin({ left: 4 })
+          }
+          .width('100%')
+          .alignItems(VerticalAlign.Center)
+          .margin({ bottom: 6 })
+
+          // 装箱重量2
+          Row() {
+            Text(t('装箱重量2:', '装箱重量2:'))
+              .fontSize(20)
+              .fontColor(this.getCurrentTheme().textColor)
+              .margin({ right: 2 })
+
+            TextInput({ text: this.packingWeight2.toString() })
+              .type(InputType.Number)
+              .fontSize(18)
+              .fontColor(this.getCurrentTheme().textColor)
+              .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+              .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor })
+              .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
+              .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+              .layoutWeight(1)
+              .constraintSize({ minWidth: 60, maxWidth: 140 })
+              .height(30)
+              .onChange((val: string) => {
+                const num = Number(val)
+                if (this.onPackingWeight2Change) {
+                  this.onPackingWeight2Change(isNaN(num) ? 0 : num)
+                }
+              })
+
+            Text(t('公斤', '公斤'))
+              .fontSize(22)
+              .fontColor(this.getCurrentTheme().textColor)
+              .margin({ left: 4 })
+          }
+          .width('100%')
+          .alignItems(VerticalAlign.Center)
+          .margin({ bottom: 6 })
+
+          // 自动生成按钮
+          Row() {
+            Blank().layoutWeight(1)
+            Button('自动生成')
+              .height(28)
+              .fontSize(20)
+              .fontWeight(FontWeight.Medium)
+              .backgroundColor(this.getCurrentTheme().primary)
+              .fontColor('#ffffff')
+              .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
+              .shadow(AppleDesignStyle.getShadowSmall())
+              .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+              .transition(AppleDesignStyle.getTransitionNormal())
+              .onClick(() => {
+                if (this.onAutoGenerate) {
+                  this.onAutoGenerate()
+                }
+              })
+          }
+          .width('100%')
         }
         .width('100%')
-        .alignItems(VerticalAlign.Center)
-        .margin({ bottom: 6 })
-
-        // 自动生成按钮
-        Row() {
-          Blank().layoutWeight(1)
-          Button('自动生成')
-            .height(28)
-            .fontSize(20)  // 调整按钮字号以避免出界
-            .fontWeight(FontWeight.Medium) // Apple风格：Medium字重
-            .backgroundColor(this.getCurrentTheme().primary)
-            .fontColor('#ffffff')
-            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
-            .shadow(AppleDesignStyle.getShadowSmall()) // 柔和阴影
-            .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-            .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅过渡
-            .onClick(() => {
-              if (this.onAutoGenerate) {
-                this.onAutoGenerate()
-              }
-            })
-        }
-        .width('100%')
+        .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+        .borderRadius({ bottomLeft: 8, bottomRight: 8 })
+        .padding(12)
+        .alignItems(HorizontalAlign.Start)
       }
       .width('100%')
-      .padding(12)
-      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().backgroundColor)
-      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
-      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
-      .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.08)')) // Apple风格：柔和阴影
-      .alignItems(HorizontalAlign.Start)
+      .backgroundColor(Color.Transparent)
+      .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor })
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
+      .shadow(AppleDesignStyle.getShadowSmall())
+      .clip(true)
     }
     .width('100%')
     .height('100%')

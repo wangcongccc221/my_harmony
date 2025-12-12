@@ -7,8 +7,7 @@ import { IBestAvatar, IBestButton } from '@ibestservices/ibest-ui'
 import common from '@ohos.app.ability.common'
 import { MinimizeAppUtil } from '../../utils/window/MinimizeAppUtil'
 import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
-import { AnimatedCloseButton } from '../ui/buttons/AnimatedCloseButton'
-import { AnimatedMinimizeButton } from '../ui/buttons/AnimatedMinimizeButton'
+import { ThreeDButton } from '../ui/buttons/ThreeDButton'
 import { ProfileInfoBar } from './ProfileInfoBar'
 
 /**
@@ -357,8 +356,8 @@ export struct TopStatusBar {
       .width('auto')
       .margin({ right: AppleDesignStyle.SPACING_LARGE })
 
-      // 使用固定宽度的空白，而不是layoutWeight，减少中间空白
-      Blank().width(40)
+      // 使用弹性空白占据剩余空间，确保窗口控制按钮在最右边
+      Blank().layoutWeight(1)
 
       // 个人信息区域：FSM切换 + 个人信息栏
       Row({ space: AppleDesignStyle.SPACING_MEDIUM }) {
@@ -383,20 +382,35 @@ export struct TopStatusBar {
         })
       }
       .alignItems(VerticalAlign.Center)
-      .margin({ right: AppleDesignStyle.SPACING_MEDIUM })
+      .margin({ right: '1%' }) // 使用百分比间距
 
-      // 右上角窗口控制 - Vue 动画效果
+      // 右上角窗口控制按钮（固定在最右边，使用ThreeDButton组件）
       Row({ space: AppleDesignStyle.SPACING_SMALL }) {
-        // 最小化按钮 - Vue 动画效果
-        AnimatedMinimizeButton({
-          onClickHandler: () => { this.minimizeApp() }
+        // 最小化按钮 - 直接使用ThreeDButton组件
+        ThreeDButton({
+          text: '−',
+          isSelected: false,
+          buttonWidth: 40,
+          buttonHeight: 40,
+          fontSize: 20, // 适合小按钮的字体大小
+          onClickCallback: () => { 
+            this.minimizeApp() 
+          }
         })
 
-        // 关闭按钮 - Vue 动画效果
-        AnimatedCloseButton({
-          onClickHandler: () => { this.closeApp() }
+        // 关闭按钮 - 直接使用ThreeDButton组件
+        ThreeDButton({
+          text: '×',
+          isSelected: false,
+          buttonWidth: 40,
+          buttonHeight: 40,
+          fontSize: 20, // 适合小按钮的字体大小
+          onClickCallback: () => { 
+            this.closeApp() 
+          }
         })
       }
+      .margin({ right: '0.5%' }) // 使用百分比，确保在最右边且有适当间距
 
       // （对话框改为系统级 CustomDialogController 实现）
     }

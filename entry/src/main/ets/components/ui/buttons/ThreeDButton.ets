@@ -2,6 +2,9 @@
 export struct ThreeDButton {
   @Prop text: string
   @Prop isSelected: boolean
+  @Prop buttonWidth: number | string = 140 // 支持自定义宽度
+  @Prop buttonHeight: number = 48 // 支持自定义高度
+  @Prop fontSize: number = 17 // 支持自定义字体大小
   onClickCallback?: () => void
 
   @State isHovered: boolean = false
@@ -10,14 +13,14 @@ export struct ThreeDButton {
   build() {
     Button() {
       Text(this.text)
-        .fontSize(17)
+        .fontSize(this.fontSize)
         .fontColor(Color.White)
         .fontWeight(FontWeight.Medium)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .maxLines(1)
     }
-    .width(140) // px-6 ~ 24px * 2 + text width. Let's set a fixed width or auto
-    .height(48) // py-2 ~ 8px * 2 + text height
+    .width(typeof this.buttonWidth === 'string' ? this.buttonWidth : this.buttonWidth)
+    .height(this.buttonHeight)
     .type(ButtonType.Normal)
     .borderRadius(8) // rounded-lg
     .backgroundColor('#3b82f6') // bg-blue-500
