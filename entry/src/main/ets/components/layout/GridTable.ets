@@ -711,17 +711,16 @@ export struct GridTable {
 
   build() {
     Column() {
-      // ==================== 标题区域（主题色背景）====================
+      // ==================== 标题区域（无背景，使用深色文字与表头形成对比）====================
       Row() {
         Text(this.tableTitle)
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(Color.White)                          // 白色文字，在彩色背景上更清晰
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#1e3a5f')                            // 深蓝色文字，与表头形成对比
       }
       .width('100%')
-      .backgroundColor(this.getCurrentTheme().primary)     // 使用主题色作为标题背景
-      .borderRadius({ topLeft: 6, topRight: 6 })          // 顶部圆角（与卡片圆角匹配）
-      .padding({ left: 12, right: 12, top: 10, bottom: 10 })  // 内边距
+      .backgroundColor(Color.Transparent)                 // 透明背景
+      .padding({ left: 12, right: 12, top: 12, bottom: 8 })  // 内边距
 
       // ==================== 表格容器（浅色背景）====================
       Column() {
@@ -769,7 +768,7 @@ export struct GridTable {
       .alignItems(HorizontalAlign.Start)
       .backgroundColor(this.containerBg || (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor))  // 浅色背景
       .borderRadius({ bottomLeft: 6, bottomRight: 6 })    // 底部圆角（与卡片圆角匹配）
-      .padding(4)                                         // 内边距
+      .padding(0)                                         // 移除内边距，让表格紧贴卡片边框
     }
     .width(this.tableWidth)
     .backgroundColor(Color.Transparent)                   // 外层容器透明（实际背景由内层控制）

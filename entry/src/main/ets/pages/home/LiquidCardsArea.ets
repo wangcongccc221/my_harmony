@@ -405,7 +405,7 @@ export struct LiquidCardsArea {
       })
     }
     .width('100%')
-    .height('36%')
+    .height('100%')  // 占满父容器（由 HomeContent 控制实际高度）
   }
 
 }

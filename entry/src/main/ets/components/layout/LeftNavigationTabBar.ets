@@ -170,6 +170,6 @@ export struct LeftNavigationTabBar {
     .width('100%')
     .height('100%')
     .padding({ top: 20, bottom: 20 })
-    .backgroundColor(this.resolveTheme().surfaceColor)
+    .backgroundColor(this.resolveTheme().navBg ?? this.resolveTheme().backgroundColor)
   }
 }

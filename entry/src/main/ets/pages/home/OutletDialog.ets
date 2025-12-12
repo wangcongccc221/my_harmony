@@ -14,6 +14,7 @@
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { LevelTable, TableRow } from '../../components/layout/LevelTable'
+import { ThreeDButton } from '../../components/ui/buttons/ThreeDButton'
 
 // 定义数据接口
 
@@ -302,25 +303,25 @@ export struct OutletDialog {
 
         // 对话框主体 (Apple Style: 浮动面板)
         Column() {
-          // 标题栏
+          // 标题栏（与当前分选信息卡片样式一致）
           Row() {
             Text(`出口-${this.currentOutletIndex} 设置`)
               .fontSize(18) // 更大的标题
-              .fontColor(this.getCurrentTheme().textColor) // 使用普通文字颜色，而不是反白
+              .fontColor(Color.White) // 白色文字（在彩色背景上更清晰）
               .fontWeight(FontWeight.Bold)
-            
-            Blank()
+              .layoutWeight(1)
+              .textAlign(TextAlign.Center)
             
             // 关闭按钮 (Apple Style: 圆形灰色按钮)
             Button() {
               Text('×')
                 .fontSize(20)
-                .fontColor(this.getCurrentTheme().subTextColor)
+                .fontColor(Color.White) // 白色文字（在彩色背景上更清晰）
                 .fontWeight(FontWeight.Regular)
             }
             .width(30)
             .height(30)
-            .backgroundColor('#E5E5EA') // 浅灰背景
+            .backgroundColor(Color.Transparent) // 透明背景
             .borderRadius(15)
             .onClick(() => {
               if (this.onCancel) this.onCancel()
@@ -328,10 +329,10 @@ export struct OutletDialog {
           }
           .width('100%')
           .height(50) // 更高的标题栏
-          .backgroundColor('transparent') // 透明背景，通过父容器背景透出
+          .backgroundColor(this.getCurrentTheme().primary) // 使用主题色作为标题背景（与当前分选信息一致）
           .padding({ left: 20, right: 20 })
           .alignItems(VerticalAlign.Center)
-          .border({ width: { bottom: 0.5 }, color: 'rgba(0,0,0,0.1)' }) // 细分割线
+          .borderRadius({ topLeft: 20, topRight: 20 }) // 顶部圆角（与对话框圆角匹配）
 
           // 内容区域
           Row() {
@@ -702,50 +703,54 @@ export struct OutletDialog {
           Row() {
             // 左侧：取消、确定
             Row() {
-              Button('取消')
-                .backgroundColor('#E5E5EA') // 浅灰背景
-                .fontColor(this.getCurrentTheme().textColor)
-                .fontSize(15)
-                .height(36) // 更高
-                .margin({ right: 12 })
-                .borderRadius(18) // 圆角
-                .onClick(() => {
+              ThreeDButton({
+                text: '取消',
+                isSelected: false,
+                buttonWidth: 100,
+                buttonHeight: 36,
+                fontSize: 15,
+                onClickCallback: () => {
                   if (this.onCancel) this.onCancel()
-                })
+                }
+              })
+              .margin({ right: 12 })
               
-              Button('确定')
-                .backgroundColor(this.getCurrentTheme().primary)
-                .fontColor(Color.White)
-                .fontSize(15)
-                .height(36)
-                .borderRadius(18)
-                .onClick(() => {
+              ThreeDButton({
+                text: '确定',
+                isSelected: false,
+                buttonWidth: 100,
+                buttonHeight: 36,
+                fontSize: 15,
+                onClickCallback: () => {
                   if (this.onConfirm) this.onConfirm()
-                })
+                }
+              })
             }
 
             // 中间：上一个、下一个
             Row() {
-              Button('上一个出口')
-                .backgroundColor('#E5E5EA') // 浅灰背景 (原 Primary)
-                .fontColor(this.getCurrentTheme().textColor) // 深色文字
-                .fontSize(15)
-                .height(36)
-                .margin({ right: 20 })
-                .borderRadius(18)
-                .onClick(() => {
+              ThreeDButton({
+                text: '上一个出口',
+                isSelected: false,
+                buttonWidth: 120,
+                buttonHeight: 36,
+                fontSize: 15,
+                onClickCallback: () => {
                   if (this.onPrevious) this.onPrevious()
-                })
+                }
+              })
+              .margin({ right: 20 })
 
-              Button('下一个出口')
-                .backgroundColor('#E5E5EA') // 浅灰背景 (原 Primary)
-                .fontColor(this.getCurrentTheme().textColor) // 深色文字
-                .fontSize(15)
-                .height(36)
-                .borderRadius(18)
-                .onClick(() => {
+              ThreeDButton({
+                text: '下一个出口',
+                isSelected: false,
+                buttonWidth: 120,
+                buttonHeight: 36,
+                fontSize: 15,
+                onClickCallback: () => {
                   if (this.onNext) this.onNext()
-                })
+                }
+              })
             }
 
             // 右侧：常规、缺箱
@@ -762,13 +767,16 @@ export struct OutletDialog {
               }
               .margin({ right: 20 })
 
-              Button('缺箱')
-                .backgroundColor(this.isMissingBox ? '#FF9500' : '#E5E5EA') // Apple Orange
-                .fontColor(this.isMissingBox ? Color.White : this.getCurrentTheme().textColor)
-                .fontSize(15)
-                .height(36)
-                .borderRadius(18)
-                .onClick(() => this.isMissingBox = !this.isMissingBox)
+              ThreeDButton({
+                text: '缺箱',
+                isSelected: this.isMissingBox,
+                buttonWidth: 80,
+                buttonHeight: 36,
+                fontSize: 15,
+                onClickCallback: () => {
+                  this.isMissingBox = !this.isMissingBox
+                }
+              })
             }
           }
           .width('100%')

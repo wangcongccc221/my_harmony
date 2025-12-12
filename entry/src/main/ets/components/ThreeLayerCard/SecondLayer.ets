@@ -25,7 +25,7 @@ export struct SecondLayer {
 
       if (this.enableWave) {
         Text(`${this.waveHeightPercent}%`)
-          .fontSize(12)
+          .fontSize(14) // 从12px增大到14px，提升可读性
           .fontWeight(FontWeight.Bold)
           .fontColor(this.cardColors.wavePercentText)
       }

@@ -301,18 +301,18 @@ export struct TopStatusBar {
         // TCP连接状态显示
         if (this.tcpConnected) {
           Text('设备连接正常')
-            .fontSize(14) // Apple风格：统一字体大小
+            .fontSize(18) // 放大字体：从14改为18
             .fontWeight(FontWeight.Medium)
             .fontColor(this.getCurrentTheme().primary) // 使用主题色替代硬编码
-            .padding({ left: AppleDesignStyle.SPACING_SMALL, right: AppleDesignStyle.SPACING_SMALL, top: AppleDesignStyle.SPACING_XS, bottom: AppleDesignStyle.SPACING_XS })
+            .padding({ left: 12, right: 12, top: 8, bottom: 8 }) // 增大内边距
             .backgroundColor(this.getCurrentTheme().primary + '15') // Apple风格：15%透明度背景
             .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
         } else {
           Text('设备故障，请排查')
-            .fontSize(14)
+            .fontSize(18) // 放大字体：从14改为18
             .fontWeight(FontWeight.Medium)
             .fontColor('#FF3B30') // Apple标准错误红色
-            .padding({ left: AppleDesignStyle.SPACING_SMALL, right: AppleDesignStyle.SPACING_SMALL, top: AppleDesignStyle.SPACING_XS, bottom: AppleDesignStyle.SPACING_XS })
+            .padding({ left: 12, right: 12, top: 8, bottom: 8 }) // 增大内边距
             .backgroundColor('#FF3B3015')
             .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
         }
@@ -330,22 +330,22 @@ export struct TopStatusBar {
       // 客户公司 LOGO + 农场名称 + 分选种类（放在状态区与FSM切换之间）
       Row({ space: AppleDesignStyle.SPACING_SMALL }) {
         Image(this.customerLogoUrl && this.customerLogoUrl.length > 0 ? this.customerLogoUrl : $r('app.media.customer_logo'))
-          .width('4%')
-          .height('70%')
+          .width('5%') // 放大图标：从4%改为5%
+          .height('80%') // 放大图标：从70%改为80%
           .objectFit(ImageFit.Contain)
           .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：圆角
           .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
           .margin({ right: AppleDesignStyle.SPACING_SMALL })
 
-        Column({ space: 2 }) {
+        Column({ space: 4 }) {
           Text(this.farmName && this.farmName.length > 0 ? this.farmName : '— 农场 —')
-            .fontSize(14) // Apple风格：统一字体大小
+            .fontSize(18) // 放大字体：从14改为18
             .fontWeight(FontWeight.Medium)
             .fontColor(this.getCurrentTheme().textColor)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
           Text(this.fruitType && this.fruitType.length > 0 ? this.fruitType : '— 分选种类 —')
-            .fontSize(12) // Apple风格：更小的副标题字体
+            .fontSize(16) // 放大字体：从12改为16
             .fontColor(this.getCurrentTheme().subTextColor)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -416,8 +416,8 @@ export struct TopStatusBar {
     }
     .width('100%')
     .height('8%')
+    .backgroundColor(this.getCurrentTheme().headerColor ?? this.getCurrentTheme().backgroundColor)  // 顶部状态栏背景颜色
     .padding({ left: AppleDesignStyle.SPACING_LARGE, right: AppleDesignStyle.SPACING_LARGE, top: AppleDesignStyle.SPACING_MEDIUM, bottom: AppleDesignStyle.SPACING_MEDIUM }) // Apple风格：统一内边距
-    .backgroundColor(this.getCurrentTheme().surfaceColor)
     .border({ width: { bottom: AppleDesignStyle.BORDER_WIDTH_THIN }, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
     .shadow(AppleDesignStyle.getShadowSmall()) // Apple风格：柔和阴影
   }

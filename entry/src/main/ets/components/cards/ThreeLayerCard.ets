@@ -171,6 +171,13 @@ export struct ThreeLayerCard {
     return UseCardLogic.getCardIndex(this.cardData)
   }
 
+  // 判断卡片是否为空白格子（没有数据且不显示波浪图）
+  private isEmptyCard(): boolean {
+    const hasData = this.localChartData && this.localChartData.length > 0
+    const hasWave = this.enableWave
+    return !hasData && !hasWave
+  }
+
 
   /**
    * 处理SimpleDraggableCell的拖拽投放
@@ -407,7 +414,7 @@ export struct ThreeLayerCard {
     }
     .width(this.cardWidth)
     .height(this.cardHeight)
-    .backgroundColor(Color.Transparent) // 透明背景
+    .backgroundColor(this.isEmptyCard() ? '#f8fafc' : Color.Transparent) // 空白格子：极浅背景色，有数据的保持透明
     .borderRadius(12) // Apple风格：中等圆角
     .border({ width: 0.5, color: UseCardLogic.getCardColors().cardBorder }) // Apple风格：细边框
     .shadow({ radius: 8, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 2 }) // Apple风格：柔和阴影

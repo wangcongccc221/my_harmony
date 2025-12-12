@@ -467,60 +467,60 @@ const ELEGANT_PURPLE_THEME: ExtendedOmniThemeStyle = {
 
 // 专业蓝色主题配置 - 深蓝色专业配色方案
 const PROFESSIONAL_BLUE_THEME: ExtendedOmniThemeStyle = {
-  primary: '#1890FF',                    // 强调色：蓝色
-  primaryColorWithOpacity: (opacity: number) => `rgba(24, 144, 255, ${opacity})`,
+  primary: '#3b82f6',                    // 主强调色：亮蓝色
+  primaryColorWithOpacity: (opacity: number) => `rgba(59, 130, 246, ${opacity})`,
   fontSizeXs: 10,
   fontSizeSm: 12,
   fontSizeMd: 14,
   fontSizeLg: 16,
   fontSizeXl: 20,
-  backgroundColor: '#E6F3FF',             // 内容区背景：浅蓝色（更明显）
-  surfaceColor: '#F0F8FF',               // 卡片背景：浅蓝色
-  textColor: '#1E3A5F',                  // 主文字：深蓝色
-  subTextColor: '#4A6FA5',               // 副文字：中蓝色
-  borderColor: '#B3D9FF',                // 边框：浅蓝色
-  headerColor: '#2C4A6B',                // 顶部任务栏：中蓝色（比深蓝浅一点）
-  sectionBg: '#F0F8FF',                  // 分区背景：浅蓝色
-  sectionEmphasisBg: '#E6F3FF',          // 强调分区：更浅的蓝色
-  tableHeaderBg: '#1E3A5F',              // 表头：深蓝色
-  tableHeaderTextColor: '#FFFFFF',        // 表头文字：白色
-  tableRowAltBg: '#F8FBFF',              // 表格斑马纹：极浅蓝色
-  buttonBarBg: '#2C4A6B',                // 底部状态栏：中蓝色（与顶部一致）
-  buttonBarTextColor: '#FFFFFF',          // 底部状态栏文字：白色（在深色背景上清晰）
+  backgroundColor: '#E8F4FD',             // 整体背景：浅蓝色（清爽明亮）
+  surfaceColor: '#FFFFFF',               // 信息卡片背景：白色
+  textColor: '#1e3a5f',                  // 文字主色：深蓝色
+  subTextColor: '#64748b',               // 文字次色：中灰色
+  borderColor: '#cbd5e1',                // 信息卡片边框：浅灰蓝色
+  headerColor: '#E8F4FD',                // 顶部栏背景：浅蓝色
+  sectionBg: '#FFFFFF',                  // 分区背景：白色
+  sectionEmphasisBg: '#3b82f6',          // 标题栏背景：亮蓝色
+  tableHeaderBg: '#3b82f6',              // 表头背景：亮蓝色
+  tableHeaderTextColor: '#ffffff',        // 表头文字：白色
+  tableRowAltBg: '#f1f5f9',              // 表格行背景：极浅灰蓝色
+  buttonBarBg: '#E8F4FD',                // 底部栏背景：浅蓝色
+  buttonBarTextColor: '#1e3a5f',          // 底部栏文字：深蓝色
   // 布局分区配色
-  navBg: '#2C4A6B',                      // 左边导航栏：中蓝色（比深蓝浅一点）
-  pageBg: '#E6F3FF',                     // 主页背景：浅蓝色（更明显）
-  controlBg: '#F0F8FF',                  // 控件背景：浅蓝色
-  chartBg: '#F0F8FF',                    // 图表背景：浅蓝色
-  chartLineColor: '#1890FF',              // 图表线条：蓝色
+  navBg: '#E8F4FD',                      // 左边导航栏：浅蓝色
+  pageBg: '#E8F4FD',                     // 页面容器背景：浅蓝色
+  controlBg: '#FFFFFF',                  // 控件背景：白色
+  chartBg: '#FFFFFF',                    // 图表背景：白色
+  chartLineColor: '#3b82f6',              // 图表线条：亮蓝色
   
   // 三层卡片颜色配置
-  cardBorderColor: '#B3D9FF',            // 卡片边框：浅蓝色
-  cardNumberTextColor: '#1E3A5F',        // 卡片序号：深蓝色
-  cardWavePercentTextColor: '#4A6FA5',   // 波浪百分比：中蓝色
-  cardDataListTextColor: '#1E3A5F',      // 数据列表：深蓝色
-  cardWaveGradientLeft: 'rgba(24, 144, 255, 0.7)',   // 波浪渐变左：蓝色
-  cardWaveGradientMid: 'rgba(30, 58, 95, 0.8)',      // 波浪渐变中：深蓝色
-  cardWaveGradientRight: 'rgba(47, 79, 79, 0.9)',    // 波浪渐变右：深灰色
+  cardBorderColor: '#cbd5e1',            // 卡片边框：浅灰蓝色
+  cardNumberTextColor: '#1e3a5f',        // 卡片序号：深蓝色
+  cardWavePercentTextColor: '#3b82f6',   // 波浪百分比：亮蓝色
+  cardDataListTextColor: '#1e3a5f',      // 数据列表：深蓝色
+  cardWaveGradientLeft: 'rgba(59, 130, 246, 0.7)',   // 波浪渐变左：蓝色
+  cardWaveGradientMid: 'rgba(37, 99, 235, 0.8)',     // 波浪渐变中：深蓝色
+  cardWaveGradientRight: 'rgba(59, 130, 246, 0.7)',  // 波浪渐变右：蓝色
   
   // 页面细分导航背景（可选）
-  navBgHome: '#2C4A6B',                   // 主页导航：中蓝色
-  navBgLevel: '#2C4A6B',                  // 等级页导航：中蓝色
-  navBgQuality: '#2C4A6B',                // 品质页导航：中蓝色
-  navBgMore: '#2C4A6B',                   // 更多页导航：中蓝色
+  navBgHome: '#E8F4FD',                   // 主页导航：浅蓝色
+  navBgLevel: '#E8F4FD',                  // 等级页导航：浅蓝色
+  navBgQuality: '#E8F4FD',                // 品质页导航：浅蓝色
+  navBgMore: '#E8F4FD',                   // 更多页导航：浅蓝色
   
   // 等级页专属配色
-  levelSectionBg: '#F0F8FF',              // 等级页分区：浅蓝色
-  levelControlBg: '#E6F3FF',              // 等级页控件：更浅的蓝色
-  levelDialogBg: '#F0F8FF',               // 等级页弹窗：浅蓝色
+  levelSectionBg: '#FFFFFF',              // 等级页分区：白色
+  levelControlBg: '#FFFFFF',              // 等级页控件：白色
+  levelDialogBg: '#FFFFFF',               // 等级页弹窗：白色
   
   // FSM切换按钮专属配色
-  fsmToggleContainerBg: '#E6F3FF',        // FSM切换按钮容器：浅蓝色
-  fsmToggleButtonActiveBg: '#1890FF',     // FSM切换按钮激活：蓝色
-  fsmToggleButtonActiveTextColor: '#FFFFFF', // FSM切换按钮激活文字：白色
+  fsmToggleContainerBg: '#E8F4FD',        // FSM切换按钮容器：浅蓝色
+  fsmToggleButtonActiveBg: '#3b82f6',     // FSM切换按钮激活：亮蓝色
+  fsmToggleButtonActiveTextColor: '#ffffff', // FSM切换按钮激活文字：白色
   fsmToggleButtonInactiveBg: 'transparent', // FSM切换按钮非激活：透明
-  fsmToggleButtonInactiveTextColor: '#1E3A5F', // FSM切换按钮非激活文字：深蓝色
-  fsmToggleButtonBorderColor: '#B3D9FF'   // FSM切换按钮边框：浅蓝色
+  fsmToggleButtonInactiveTextColor: '#1e3a5f', // FSM切换按钮非激活文字：深蓝色
+  fsmToggleButtonBorderColor: '#cbd5e1'   // FSM切换按钮边框：浅灰蓝色
 }
 
 // 主题配置数据

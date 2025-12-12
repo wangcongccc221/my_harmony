@@ -201,11 +201,11 @@ export struct SortingInfoCard {
     Column() {
       // ==================== 标题区域（在卡片内部，有主题色背景）====================
       Row() {
-        Text(t('当前分选信息', '当前分选信息'))
+      Text(t('当前分选信息', '当前分选信息'))
           .fontSize(16)                                    // 字体大小
           .fontWeight(FontWeight.Medium)                   // 字体粗细
           .fontColor(Color.White)                          // 文字颜色（白色，在彩色背景上更清晰）
-          .opacity(this.i18nVersion >= 0 ? 1 : 1)          // 引用 i18nVersion 确保语言变化时重新渲染
+        .opacity(this.i18nVersion >= 0 ? 1 : 1)          // 引用 i18nVersion 确保语言变化时重新渲染
       }
       .width('100%')                                       // 宽度100%
       .backgroundColor(this.getCurrentTheme().primary)     // 使用主题色作为标题背景
@@ -223,8 +223,8 @@ export struct SortingInfoCard {
         this.buildInfoItem('平均重量', () => this.avgWeight, 11.11)       // 平均重量信息项
         this.buildInfoItem('实时产量', () => this.realTimeOutput, 11.11)   // 实时产量信息项
         this.buildInfoItem('间隔速度', () => this.intervalSpeed, 11.11)   // 间隔速度信息项
-      }
-      .width('100%')                                       // 宽度100%
+    }
+    .width('100%')                                       // 宽度100%
       .justifyContent(FlexAlign.Start)                     // 左对齐
       .alignItems(VerticalAlign.Center)                    // 垂直居中
       .opacity(this.i18nVersion >= 0 ? 1 : 1)              // 引用 i18nVersion 确保语言变化时重新渲染
@@ -236,7 +236,7 @@ export struct SortingInfoCard {
     .backgroundColor(Color.Transparent)                    // 外层容器透明（实际背景由内层控制）
     .border({ width: 1, color: this.getCurrentTheme().borderColor })  // 边框（1px主题边框色）
     .borderRadius(12)                                      // 圆角12px
-    .margin({ top: 0, left: 0, right: 20, bottom: 5 })    // 外边距（顶部0px，右侧20px，底部5px）
+    .margin({ top: 0, bottom: 5 })                         // 外边距（只有上下，左右由父容器控制）
     .clip(true)                                            // 裁剪超出圆角的部分
   }
 

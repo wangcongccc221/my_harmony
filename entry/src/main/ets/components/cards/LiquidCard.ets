@@ -110,7 +110,7 @@ export struct LiquidCard {
         // 液体层（简化渲染）
         Row() {}
           .width('100%')
-          .height(`${this.clampPercent(this.percent)}%`)
+          .height(`${this.clampPercent(this.percent)}%`)3
           .backgroundColor(this.mainColor)
           .opacity(0.9)
           .borderRadius({ bottomLeft: AppleDesignStyle.BORDER_RADIUS_MEDIUM, bottomRight: AppleDesignStyle.BORDER_RADIUS_MEDIUM }) // Apple风格：中等圆角

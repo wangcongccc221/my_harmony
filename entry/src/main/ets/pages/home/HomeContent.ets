@@ -548,20 +548,35 @@ export struct HomeContent {
         }, 600)
       })
       // 主页信息卡片：分选速度 | 本批重量 | 本批个数 | 开始时间 | 分选程序 | 分选效率 | 平均重量 | 实时产量 | 间隔速度
-      SortingInfoCard()
+      Row() {
+        Blank().width('1.5%')  // 左边间隙
+        SortingInfoCard()
+          .layoutWeight(1)  // 自适应宽度，填充剩余空间
+        Blank().width('1.5%')  // 右边间隙
+      }
+      .width('100%')
       .margin({ bottom: '1%' })
 
       // 液体卡片区域：单容器自动换行，固定显示两排高度，支持纵向滚动查看更多
-      LiquidCardsArea({
-        onCardClick: (cardIndex: number, cardData: ThreeLayerCardData) => {
-          this.handleCardClick(cardIndex, cardData)
-        }
-      })
+      Row() {
+        Blank().width('1.5%')  // 左边间隙
+        LiquidCardsArea({
+          onCardClick: (cardIndex: number, cardData: ThreeLayerCardData) => {
+            this.handleCardClick(cardIndex, cardData)
+          }
+        })
+          .layoutWeight(1)  // 自适应宽度，填充剩余空间
+        Blank().width('1.5%')  // 右边间隙
+      }
+      .width('100%')
+      .height('33%')  // 液体卡片区域占主页的33%（减小高度，为表格留出更多空间）
       .margin({ bottom: '0.5%' })
 
       // 数据表格TabBar组件 - 替换原有的FunctionButtons和DataTablesCard
-      DataTablesTabBar({
-        levelTableData: this.getTableData('等级表'),
+      Row() {
+        Blank().width('1.5%')  // 左边间隙
+        DataTablesTabBar({
+          levelTableData: this.getTableData('等级表'),
         containerTableData: this.getTableData('容器表'),
         statisticsTableData: this.getTableData('等级统计表'),
         dynamicPackingTableData: this.getTableData('动态装箱'),
@@ -579,8 +594,11 @@ export struct HomeContent {
           console.log('主页接收到拖拽结束')
         }
       })
+          .layoutWeight(1)  // 自适应宽度，填充剩余空间
+          .height('50%') // 表格区域占50%
+        Blank().width('1.5%')  // 右边间隙
+      }
       .width('100%')
-      .height('50%') // 表格区域占50%
       .margin({ bottom: 0 })
 
 
@@ -717,6 +735,7 @@ export struct HomeContent {
     }
     .width('100%')
     .height('100%')
+    .backgroundColor(this.getCurrentTheme().backgroundColor)  // 主页背景颜色（卡片之外的区域）
     .focusable(true)
     .defaultFocus(true) // 让主页整体默认获得键盘焦点
     .onAppear(() => {

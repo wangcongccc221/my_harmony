@@ -174,6 +174,14 @@ export struct ThirdLayer {
     return this
   }
 
+  // 判断是否有数据（不为空且不为0）
+  private hasData(num: number, idx: number): boolean {
+    const hasNum = num !== 0 && num !== null && num !== undefined
+    const str = this.localChartDataStrings[idx]
+    const hasStr = str && str.trim() !== '' && str !== '0'
+    return hasNum || !!hasStr
+  }
+
   @Builder
   private buildDataItem(num: number, idx: number) {
     Row() {
@@ -260,7 +268,11 @@ export struct ThirdLayer {
           )
         })
     }
+    .width('100%')
+    .padding({ left: 8, right: 8, top: 4, bottom: 4 })
     .margin({ bottom: 2 })
+    .borderRadius(4) // 添加圆角
+    .backgroundColor(this.hasData(num, idx) ? 'rgba(135, 206, 235, 0.2)' : Color.Transparent) // 有数据时添加淡蓝色背景（天蓝色，20%透明度）
   }
 
   @Builder

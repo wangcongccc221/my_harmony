@@ -453,7 +453,9 @@ export struct DataTablesTabBar {
             dividerHeight: 75,   // 等级表分割线高度
             customBorderWidth: 2      // 等级表边框宽度
           })
-          .width('48%')
+          .layoutWeight(1)  // 使用 layoutWeight 自适应宽度
+
+          Blank().width('2%')  // 中间间隙
 
           // 右侧：容器表卡片（支持拖拽）
           GridTable({
@@ -469,8 +471,7 @@ export struct DataTablesTabBar {
             dividerHeight: 73,   // 容器表分割线高度
             customBorderWidth: 2      // 容器表边框宽度
           })
-          .width('48%')
-          .margin({ left: '2%', right: '0.09%' })
+          .layoutWeight(1)  // 使用 layoutWeight 自适应宽度
         }
         .width('100%')
         .height('100%')
@@ -668,7 +669,7 @@ export struct DataTablesTabBar {
     }
     .width('100%')
     .layoutWeight(1)
-    .padding({ left: '0.74%', right: '0.74%', bottom: '1.11%' })
+    .padding({ bottom: '1.11%' })  // 移除左右 padding，由外层 Row + Blank 控制间隙
   }
 
   build() {
