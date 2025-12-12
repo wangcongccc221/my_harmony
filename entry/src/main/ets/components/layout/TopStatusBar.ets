@@ -9,6 +9,7 @@ import { MinimizeAppUtil } from '../../utils/window/MinimizeAppUtil'
 import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 import { AnimatedCloseButton } from '../ui/buttons/AnimatedCloseButton'
 import { AnimatedMinimizeButton } from '../ui/buttons/AnimatedMinimizeButton'
+import { ProfileInfoBar } from './ProfileInfoBar'
 
 /**
  * 顶部状态栏组件（精简版，无个人信息/头像/对话框）
@@ -25,6 +26,7 @@ export struct TopStatusBar {
   @StorageLink(TCP_CONNECTION_STATUS) tcpConnected: boolean = false
   @StorageLink(OMNI_THEME_VERSION_KEY) private themeVersion: number = 0
   @StorageLink('TOP_USER_LABEL') private userLabel: string = '姓名'
+  @StorageLink('SELECTED_AVATAR_URL') private selectedAvatarUrl: string = 'https://img1.baidu.com/it/u=700838104,4078529388&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=500'
   // 客户信息（可由其他页面写入 AppStorage，不改动业务含义）
   @StorageLink('CUSTOMER_LOGO_URL') private customerLogoUrl: string = ''
   @StorageLink('FARM_NAME') private farmName: string = ''
@@ -358,7 +360,7 @@ export struct TopStatusBar {
       // 使用固定宽度的空白，而不是layoutWeight，减少中间空白
       Blank().width(40)
 
-      // 个人信息区域：FSM切换 + 头像 + 姓名/管理员
+      // 个人信息区域：FSM切换 + 个人信息栏
       Row({ space: AppleDesignStyle.SPACING_MEDIUM }) {
         // FSM切换按钮
         CompactFsmToggle({
@@ -370,51 +372,17 @@ export struct TopStatusBar {
           }
         })
 
-        // 头像和用户信息
-        Row({ space: AppleDesignStyle.SPACING_SMALL }) {
-          IBestAvatar({
-            src: AppStorage.get('SELECTED_AVATAR_URL') || 'https://img1.baidu.com/it/u=700838104,4078529388&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=500',
-            defaultAvatar: $r('app.media.default_avatar'),
-            avatarSize: 36, // Apple风格：稍微小一点
-            shape: 'circle',
-            onAvatarClick: () => {
-              AppStorage.setOrCreate('TEMP_USER_LABEL', this.userLabel)
-              AppStorage.setOrCreate('EDIT_USER_LABEL_VISIBLE', true)
-            }
-          })
-
-          Column({ space: 2 }) {
-            Text(this.userLabel)
-              .fontSize(13) // Apple风格：统一字体大小
-              .fontColor(this.getCurrentTheme().subTextColor)
-            Text('管理员')
-              .fontSize(14)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.getCurrentTheme().textColor)
-          }
-          .alignItems(HorizontalAlign.Start)
-          .onClick(() => {
-            AppStorage.setOrCreate('TEMP_USER_LABEL', this.userLabel)
-            AppStorage.setOrCreate('EDIT_USER_LABEL_VISIBLE', true)
-          })
-        }
-        .alignItems(VerticalAlign.Center)
+        // 新版个人信息栏（包含头像、姓名、角色、日期、时间）
+        ProfileInfoBar({
+          userName: this.userLabel,
+          userRole: '管理员',
+          currentDate: this.currentDate,
+          currentTime: this.currentTime,
+          avatarUrl: this.selectedAvatarUrl,
+          isLoading: false
+        })
       }
       .alignItems(VerticalAlign.Center)
-      .margin({ right: AppleDesignStyle.SPACING_MEDIUM })
-
-      // 时间显示（两行：日期+时间）
-      Column({ space: 2 }) {
-        Text(this.currentDate)
-          .fontSize(12) // 日期字体稍小
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().subTextColor)
-        Text(this.currentTime)
-          .fontSize(14) // 时间字体稍大，更突出
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.getCurrentTheme().textColor)
-      }
-      .alignItems(HorizontalAlign.End) // 右对齐
       .margin({ right: AppleDesignStyle.SPACING_MEDIUM })
 
       // 右上角窗口控制 - Vue 动画效果

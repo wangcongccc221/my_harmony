@@ -8,7 +8,7 @@ import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmn
 
 @Component
 export struct CompactFsmToggle {
-  @Prop selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
+  // @Prop selectedFSM: 'FSM1' | 'FSM2' = 'FSM1' // 移除旧的 Prop 定义，因为下面重新定义了带 @Watch 的
   onFSMChange?: (fsm: 'FSM1' | 'FSM2') => void
   
   // 主题变化监听
@@ -16,10 +16,14 @@ export struct CompactFsmToggle {
   @StorageLink(OMNI_THEME_VERSION_KEY) @Watch('onThemeChange') themeVersion: number = 0
 
   // 滑块位置状态
-  @State private sliderOffset: number = 0
-  private readonly itemWidth: number = 96 // 每个选项的宽度（根据220px总宽度计算：(220-20-8)/2=96，其中20是左右padding各10px）
-  private readonly itemSpacing: number = 8 // 选项之间的间距
-  private readonly containerPadding: number = 10 // 容器内边距
+  @State private sliderOffset: number = 4 // 初始位置修正为 4 (内边距)
+  
+  // 尺寸常量定义 (适配 180x44 的设计)
+  private readonly containerWidth: number = 180
+  private readonly containerHeight: number = 44
+  private readonly sliderWidth: number = 86 // (180 - 4*2) / 2 = 86
+  private readonly sliderHeight: number = 36 // 44 - 4*2 = 36
+  private readonly containerPadding: number = 4
 
   private getCurrentTheme(): ExtendedOmniThemeStyle {
     return this.consumedTheme
@@ -35,153 +39,115 @@ export struct CompactFsmToggle {
     if (this.selectedFSM === 'FSM1') {
       return this.containerPadding
     } else {
-      return this.containerPadding + this.itemWidth + this.itemSpacing
+      // 右侧位置 = 总宽度 - 内边距 - 滑块宽度
+      // 或者 = 左内边距 + 滑块宽度 + 间距(0)
+      // 这里设计是紧挨着的两块区域，所以 offset = 180 - 4 - 86 = 90
+      return this.containerWidth - this.containerPadding - this.sliderWidth
     }
   }
 
   // 处理切换
   private handleToggle(fsm: 'FSM1' | 'FSM2'): void {
-    console.log('handleToggle called with fsm:', fsm, 'current selectedFSM:', this.selectedFSM)
-    // 如果点击的是当前已选中的，直接返回
-    if (fsm === this.selectedFSM) {
-      console.log('Already selected, ignoring')
-      return
-    }
+    if (fsm === this.selectedFSM) return
+
+    // 1. 立即触发回调（让父组件更新状态）
     if (this.onFSMChange) {
-      console.log('Calling onFSMChange with:', fsm)
       this.onFSMChange(fsm)
     }
-    // 根据目标FSM直接计算滑块位置（不依赖this.selectedFSM，因为它是@Prop可能还没更新）
-    const targetOffset = fsm === 'FSM1' ? this.containerPadding : (this.containerPadding + this.itemWidth + this.itemSpacing)
-    console.log('Target offset:', targetOffset)
-    // 更新滑块位置（动画）
+
+    // 2. 立即计算并启动动画（不等待父组件的 props 更新）
+    // 这样可以消除“等待状态回传”造成的视觉延迟
+    const targetOffset = fsm === 'FSM1' ? 
+      this.containerPadding : 
+      (this.containerWidth - this.containerPadding - this.sliderWidth)
+
     animateTo({
       duration: 300,
-      curve: Curve.EaseInOut
+      curve: Curve.Friction, // 改用 Friction 曲线，这通常比 EaseOut 更有“跟手”的物理感
     }, () => {
       this.sliderOffset = targetOffset
     })
   }
-
+  
   aboutToAppear(): void {
     // 初始化滑块位置
     this.sliderOffset = this.calculateSliderOffset()
   }
 
-  aboutToUpdate(): void {
-    // 当selectedFSM变化时更新滑块位置（使用动画）
-    const newOffset = this.calculateSliderOffset()
-    if (this.sliderOffset !== newOffset) {
+  // 监听 selectedFSM 变化，用于外部（非点击）触发的状态变更同步
+  @Watch('onSelectedFSMChange') @Prop selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
+
+  onSelectedFSMChange() {
+    // 只有当内部状态和外部状态不一致时才执行动画（防止点击触发的动画被覆盖）
+    const targetOffset = this.calculateSliderOffset()
+    if (Math.abs(this.sliderOffset - targetOffset) > 1) { 
       animateTo({
         duration: 300,
-        curve: Curve.EaseInOut
+        curve: Curve.Friction
       }, () => {
-        this.sliderOffset = newOffset
+        this.sliderOffset = targetOffset
       })
     }
   }
 
   build() {
     Stack() {
-      // 底层：选项按钮容器
-      Row() {
-        // FSM1选项
-        Button('FSM1')
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.selectedFSM === 'FSM1' ? 
-            (this.getCurrentTheme().fsmToggleButtonActiveTextColor || '#FFFFFF') : 
-            (this.getCurrentTheme().fsmToggleButtonInactiveTextColor || this.getCurrentTheme().textColor))
-          .backgroundColor(Color.Transparent)
-          .border({ 
-            width: 1, 
-            color: this.getCurrentTheme().fsmToggleButtonBorderColor || this.getCurrentTheme().borderColor
-          })
-          .borderRadius(60)
-          .width(this.itemWidth)
-          .height(50)
-          .zIndex(10) // 确保按钮在滑块之上
-          .onClick(() => {
-            console.log('FSM1 clicked, current selectedFSM:', this.selectedFSM)
-            this.handleToggle('FSM1')
-          })
-
-        // 选项间距
-        Blank()
-          .width(this.itemSpacing)
-
-        // FSM2选项
-        Button('FSM2')
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.selectedFSM === 'FSM2' ? 
-            (this.getCurrentTheme().fsmToggleButtonActiveTextColor || '#FFFFFF') : 
-            (this.getCurrentTheme().fsmToggleButtonInactiveTextColor || this.getCurrentTheme().textColor))
-          .backgroundColor(Color.Transparent)
-          .border({ 
-            width: 1, 
-            color: this.getCurrentTheme().fsmToggleButtonBorderColor || this.getCurrentTheme().borderColor
-          })
-          .borderRadius(60)
-          .width(this.itemWidth)
-          .height(50)
-          .zIndex(10) // 确保按钮在滑块之上
-          .onClick(() => {
-            console.log('FSM2 clicked, current selectedFSM:', this.selectedFSM)
-            this.handleToggle('FSM2')
-          })
-      }
-      .width('100%')
-      .height('100%')
-      .justifyContent(FlexAlign.SpaceBetween)
-      .padding(this.containerPadding)
-
-      // 顶层：滑动指示器（不拦截点击事件）
-      Row() {
-        Blank()
-          .width(this.sliderOffset)
-          .hitTestBehavior(HitTestMode.None)
-        
-        // 滑块指示器
-        Row() {
-          Text(this.selectedFSM)
-            .fontSize(18)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().fsmToggleButtonActiveTextColor || '#FFFFFF')
-        }
-        .width(this.itemWidth)
-        .height(50)
-        .borderRadius(60)
-        .border({
-          width: 1,
-          color: this.getCurrentTheme().fsmToggleButtonActiveBg || this.getCurrentTheme().primary
+      // 1. 容器背景（白色卡片 + 阴影）
+      Row()
+        .width(this.containerWidth)
+        .height(this.containerHeight)
+        .backgroundColor('#FFFFFF') // 固定白色背景
+        .borderRadius(this.containerHeight / 2)
+        .shadow({ 
+          radius: 12, 
+          color: 'rgba(0, 0, 0, 0.1)', 
+          offsetX: 0, 
+          offsetY: 4 
         })
-        .linearGradient({
-          angle: 90,
+
+      // 2. 滑动渐变背景（滑块）
+      Row()
+        .width(this.sliderWidth)
+        .height(this.sliderHeight)
+        .borderRadius(this.sliderHeight / 2)
+        .linearGradient({ 
+          angle: 90, 
           colors: [
-            [this.getCurrentTheme().fsmToggleButtonActiveBg || this.getCurrentTheme().primary, 0.0],
-            [this.getCurrentTheme().primary || '#007AFF', 1.0]
-          ]
+            ['#3B82F6', 0], // 蓝色起始
+            ['#22D3EE', 1]  // 青色结束
+          ] 
         })
-        .justifyContent(FlexAlign.Center)
-        .alignItems(VerticalAlign.Center)
-        .zIndex(1) // 滑块在按钮下方
-        .hitTestBehavior(HitTestMode.None) // 滑块指示器也不拦截点击
+        .position({ 
+          x: this.sliderOffset, 
+          y: this.containerPadding 
+        })
+
+      // 3. 按钮文字层（透明点击区域）
+      Row() {
+        // FSM1 按钮
+        Text('FSM1')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.selectedFSM === 'FSM1' ? '#FFFFFF' : '#6B7280') // 选中白字，未选中灰字
+          .width('50%')
+          .height('100%')
+          .textAlign(TextAlign.Center)
+          .onClick(() => this.handleToggle('FSM1'))
+
+        // FSM2 按钮
+        Text('FSM2')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.selectedFSM === 'FSM2' ? '#FFFFFF' : '#6B7280')
+          .width('50%')
+          .height('100%')
+          .textAlign(TextAlign.Center)
+          .onClick(() => this.handleToggle('FSM2'))
       }
-      .width('100%')
-      .height('100%')
-      .alignItems(VerticalAlign.Center)
-      .hitTestBehavior(HitTestMode.None) // 不拦截点击事件，让底层按钮可以点击
+      .width(this.containerWidth)
+      .height(this.containerHeight)
     }
-    .width(220)
-    .height(70)
-    .backgroundColor(this.getCurrentTheme().fsmToggleContainerBg || this.getCurrentTheme().backgroundColor)
-    .borderRadius(60)
-    .border({ 
-      width: 1, 
-      color: this.getCurrentTheme().fsmToggleButtonBorderColor || this.getCurrentTheme().borderColor 
-    })
-    .shadow({ radius: 2, color: 'rgba(0,0,0,0.1)', offsetY: 1 })
-    .alignSelf(ItemAlign.Start)
+    .width(this.containerWidth)
+    .height(this.containerHeight)
   }
 }

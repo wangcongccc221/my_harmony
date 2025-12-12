@@ -182,59 +182,62 @@ export struct SortingInfoCard {
    * 
    * 功能：
    * - 构建分选信息卡片的UI结构
+   * - 实现单个卡片内部分隔：标题区域有主题色背景，数据区域在下方
    * - 实现9个关键指标的水平排列
    * - 处理数据的显示和更新
    * 
    * 布局说明：
-   * - 使用Column布局垂直排列标题和内容
-   * - 标题：'当前分选信息'
-   * - 内容：9个信息项水平排列
-   * - 卡片样式：白色背景，圆角设计
+   * - 使用Column布局垂直排列标题和数据（在同一个卡片内）
+   * - 标题区域：'当前分选信息'，主题色背景
+   * - 数据区域：9个信息项水平排列，浅色背景
+   * - 整体卡片：统一边框、圆角
    * 
    * 样式说明：
-   * - 卡片高度：15%
-   * - 背景色：主题控制背景色或表面色
-   * - 边框：1px主题边框色
-   * - 圆角：12px
-   * - 内边距：12px
-   * - 外边距：顶部16px，右侧20px，底部5px
+   * - 整体卡片：边框、圆角12px
+   * - 标题区域：主题色背景，顶部圆角12px
+   * - 数据区域：浅色背景
    */
   build() {
     Column() {
-      // ==================== 卡片标题 ====================
-      Text(t('当前分选信息', '当前分选信息'))
-        .fontSize(16)                                    // 字体大小（与等级表标题一致）
-        .fontWeight(FontWeight.Medium)                   // 字体粗细（与等级表标题一致）
-        .fontColor(this.getCurrentTheme().textColor)     // 文字颜色（主题色）
-        .alignSelf(ItemAlign.Start)                      // 左对齐
-        .margin({ bottom: 8 })                          // 底部边距（增加间距）
-        .opacity(this.i18nVersion >= 0 ? 1 : 1)          // 引用 i18nVersion 确保语言变化时重新渲染
-
-      // ==================== 信息内容区域 ====================
-      // 内容一行布局（九个项目，按百分比等分，每项约11.11%）
+      // ==================== 标题区域（在卡片内部，有主题色背景）====================
       Row() {
-        this.buildInfoItem('分选速度', () => this.sortSpeed, 11.11)        // 分选速度信息项（保持自动模拟）
-        this.buildInfoItem('本批重量', () => this.batchWeight, 11.11)      // 本批重量信息项（保持自动模拟）
-        this.buildInfoItem('本批个数', () => this.batchCount, 11.11)       // 本批个数信息项（保持自动模拟）
-        this.buildInfoItem('开始时间', () => this.startTime, 11.11)        // 开始时间信息项（保持实时）
-        this.buildInfoItem('分选程序', () => this.programName, 11.11)     // 分选程序信息项
-        this.buildInfoItem('分选效率', () => this.efficiency, 11.11)      // 分选效率信息项（保持自动模拟）
-        this.buildInfoItem('平均重量', () => this.avgWeight, 11.11)       // 平均重量信息项（保持自动模拟）
-        this.buildInfoItem('实时产量', () => this.realTimeOutput, 11.11)   // 实时产量信息项（保持自动模拟）
-        this.buildInfoItem('间隔速度', () => this.intervalSpeed, 11.11)   // 间隔速度信息项（保持自动模拟）
+        Text(t('当前分选信息', '当前分选信息'))
+          .fontSize(16)                                    // 字体大小
+          .fontWeight(FontWeight.Medium)                   // 字体粗细
+          .fontColor(Color.White)                          // 文字颜色（白色，在彩色背景上更清晰）
+          .opacity(this.i18nVersion >= 0 ? 1 : 1)          // 引用 i18nVersion 确保语言变化时重新渲染
       }
-        .opacity(this.i18nVersion >= 0 ? 1 : 1)          // 引用 i18nVersion 确保语言变化时重新渲染
-      .width('100%')                                     // 宽度100%
-      .justifyContent(FlexAlign.Start)                   // 左对齐
-      .alignItems(VerticalAlign.Center)                  // 垂直居中
+      .width('100%')                                       // 宽度100%
+      .backgroundColor(this.getCurrentTheme().primary)     // 使用主题色作为标题背景
+      .borderRadius({ topLeft: 12, topRight: 12 })        // 顶部圆角（与卡片圆角匹配）
+      .padding({ left: 12, right: 12, top: 10, bottom: 10 })  // 内边距
+
+      // ==================== 数据区域（在卡片内部，浅色背景）====================
+      Row() {
+        this.buildInfoItem('分选速度', () => this.sortSpeed, 11.11)        // 分选速度信息项
+        this.buildInfoItem('本批重量', () => this.batchWeight, 11.11)      // 本批重量信息项
+        this.buildInfoItem('本批个数', () => this.batchCount, 11.11)       // 本批个数信息项
+        this.buildInfoItem('开始时间', () => this.startTime, 11.11)        // 开始时间信息项
+        this.buildInfoItem('分选程序', () => this.programName, 11.11)     // 分选程序信息项
+        this.buildInfoItem('分选效率', () => this.efficiency, 11.11)      // 分选效率信息项
+        this.buildInfoItem('平均重量', () => this.avgWeight, 11.11)       // 平均重量信息项
+        this.buildInfoItem('实时产量', () => this.realTimeOutput, 11.11)   // 实时产量信息项
+        this.buildInfoItem('间隔速度', () => this.intervalSpeed, 11.11)   // 间隔速度信息项
+      }
+      .width('100%')                                       // 宽度100%
+      .justifyContent(FlexAlign.Start)                     // 左对齐
+      .alignItems(VerticalAlign.Center)                    // 垂直居中
+      .opacity(this.i18nVersion >= 0 ? 1 : 1)              // 引用 i18nVersion 确保语言变化时重新渲染
+      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)  // 背景色（浅色）
+      .borderRadius({ bottomLeft: 12, bottomRight: 12 })  // 底部圆角（与卡片圆角匹配）
+      .padding(12)                                         // 内边距12px
     }
-    .width('100%')                                       // 宽度100%
-    // 移除固定高度，允许根据内容自动调整高度（适应换行文本）
-    .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)  // 背景色（主题控制背景色或表面色）
+    .width('100%')                                         // 宽度100%
+    .backgroundColor(Color.Transparent)                    // 外层容器透明（实际背景由内层控制）
     .border({ width: 1, color: this.getCurrentTheme().borderColor })  // 边框（1px主题边框色）
-    .borderRadius(12)                                    // 圆角12px
-    .padding(12)                                         // 内边距12px
-    .margin({ top: 0, left: 0, right: 20, bottom: 5 })  // 外边距（顶部0px，右侧20px，底部5px）
+    .borderRadius(12)                                      // 圆角12px
+    .margin({ top: 0, left: 0, right: 20, bottom: 5 })    // 外边距（顶部0px，右侧20px，底部5px）
+    .clip(true)                                            // 裁剪超出圆角的部分
   }
 
   /**

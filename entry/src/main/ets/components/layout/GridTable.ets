@@ -711,15 +711,19 @@ export struct GridTable {
 
   build() {
     Column() {
-      // 表格标题
-      Text(this.tableTitle)
-        .fontSize(16)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.getCurrentTheme().textColor)
-        .alignSelf(ItemAlign.Start)
-        .margin({ bottom: 4 })
+      // ==================== 标题区域（主题色背景）====================
+      Row() {
+        Text(this.tableTitle)
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Color.White)                          // 白色文字，在彩色背景上更清晰
+      }
+      .width('100%')
+      .backgroundColor(this.getCurrentTheme().primary)     // 使用主题色作为标题背景
+      .borderRadius({ topLeft: 6, topRight: 6 })          // 顶部圆角（与卡片圆角匹配）
+      .padding({ left: 12, right: 12, top: 10, bottom: 10 })  // 内边距
 
-      // 表格容器
+      // ==================== 表格容器（浅色背景）====================
       Column() {
         // 固定表头
         Row() {
@@ -763,14 +767,17 @@ export struct GridTable {
       }
       .width('100%')
       .alignItems(HorizontalAlign.Start)
+      .backgroundColor(this.containerBg || (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor))  // 浅色背景
+      .borderRadius({ bottomLeft: 6, bottomRight: 6 })    // 底部圆角（与卡片圆角匹配）
+      .padding(4)                                         // 内边距
     }
     .width(this.tableWidth)
-    .backgroundColor(this.containerBg || (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor))
+    .backgroundColor(Color.Transparent)                   // 外层容器透明（实际背景由内层控制）
     .border({ width: 1, color: this.getCurrentTheme().borderColor })
     .borderRadius(6)
-    .padding(4)
     .margin({ top: 4, left: 4, right: 4, bottom: 2 })
     .alignItems(HorizontalAlign.Center)
     .justifyContent(FlexAlign.Center)
+    .clip(true)                                           // 裁剪超出圆角的部分
   }
 }

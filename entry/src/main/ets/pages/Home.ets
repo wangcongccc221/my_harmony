@@ -33,6 +33,9 @@ import { RectButton } from '../components/ui/buttons/RectButton'
 import { TopStatusBar } from '../components/layout/TopStatusBar'
 import { BottomControlBar } from '../components/layout/BottomControlBar'
 import { KeyCode } from '@kit.InputKit';
+import { UserInfoStorage } from '../utils/storage/UserInfoStorage'
+// import { getContext } from '@kit.ArkUI' // 移除错误的导入
+import common from '@ohos.app.ability.common'
 // 移除 BottomBar 集成
 
 
@@ -164,11 +167,34 @@ struct Page {
   
   
   // 页面初始化时初始化 Omni-UI 和 IBest-UI
-  aboutToAppear() {
+  async aboutToAppear() {
     this.omniUIInit.init()
     this.omniThemeManager.init()
     // 初始化 Ctrl 多选状态
     AppStorage.setOrCreate('HOME_CTRL_PRESSED', false)
+    
+    // 初始化用户信息持久化存储并加载保存的用户名和头像
+    try {
+      const ctx = getContext(this) as common.UIAbilityContext
+      const userInfoStorage = UserInfoStorage.getInstance()
+      await userInfoStorage.init(ctx)
+      
+      // 加载保存的用户名
+      const savedUserName = await userInfoStorage.loadUserName()
+      if (savedUserName && savedUserName !== '姓名') {
+        AppStorage.setOrCreate('TOP_USER_LABEL', savedUserName)
+        console.log(`[Home] Loaded saved userName: ${savedUserName}`)
+      }
+      
+      // 加载保存的头像URL
+      const savedAvatarUrl = await userInfoStorage.loadAvatarUrl()
+      if (savedAvatarUrl) {
+        AppStorage.setOrCreate('SELECTED_AVATAR_URL', savedAvatarUrl)
+        console.log(`[Home] Loaded saved avatarUrl: ${savedAvatarUrl}`)
+      }
+    } catch (e) {
+      console.error('[Home] Failed to load user info from storage:', JSON.stringify(e))
+    }
     
     // 同步当前语言（从 I18nManager 或 AppStorage 读取）
     const mgr = I18nManager.getInstance()
@@ -2093,14 +2119,30 @@ struct Page {
                 .padding({ left: 40, right: 40, top: 16, bottom: 16 })
                 .layoutWeight(1)
                 .margin({ left: 12 })
-                .onClick(() => {
+                .onClick(async () => {
                   const text = (this.tempUserLabel || '').trim()
                   if (text.length > 0) {
                     AppStorage.setOrCreate('TOP_USER_LABEL', text)
+                    // 持久化保存用户名
+                    try {
+                      const userInfoStorage = UserInfoStorage.getInstance()
+                      await userInfoStorage.saveUserName(text)
+                      console.log(`[Home] Saved userName to persistent storage: ${text}`)
+                    } catch (e) {
+                      console.error('[Home] Failed to save userName:', JSON.stringify(e))
+                    }
                   }
                   // 保存选中的头像
                   console.log('保存头像:', this.selectedAvatarUrl)
                   AppStorage.setOrCreate('SELECTED_AVATAR_URL', this.selectedAvatarUrl)
+                  // 持久化保存头像URL
+                  try {
+                    const userInfoStorage = UserInfoStorage.getInstance()
+                    await userInfoStorage.saveAvatarUrl(this.selectedAvatarUrl || this.avatarOptions[0])
+                    console.log(`[Home] Saved avatarUrl to persistent storage: ${this.selectedAvatarUrl}`)
+                  } catch (e) {
+                    console.error('[Home] Failed to save avatarUrl:', JSON.stringify(e))
+                  }
                   AppStorage.set('EDIT_USER_LABEL_VISIBLE', false)
                 })
             }
