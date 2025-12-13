@@ -199,18 +199,31 @@ export struct SortingInfoCard {
    */
   build() {
     Column() {
-      // ==================== 标题区域（在卡片内部，有主题色背景）====================
+      // ==================== 标题区域（高级渐变效果）====================
       Row() {
-      Text(t('当前分选信息', '当前分选信息'))
-          .fontSize(16)                                    // 字体大小
-          .fontWeight(FontWeight.Medium)                   // 字体粗细
-          .fontColor(Color.White)                          // 文字颜色（白色，在彩色背景上更清晰）
-        .opacity(this.i18nVersion >= 0 ? 1 : 1)          // 引用 i18nVersion 确保语言变化时重新渲染
+        Text(t('当前分选信息', '当前分选信息'))
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Color.White)
+          .opacity(this.i18nVersion >= 0 ? 1 : 1)
       }
-      .width('100%')                                       // 宽度100%
-      .backgroundColor(this.getCurrentTheme().primary)     // 使用主题色作为标题背景
-      .borderRadius({ topLeft: 12, topRight: 12 })        // 顶部圆角（与卡片圆角匹配）
-      .padding({ left: 12, right: 12, top: 10, bottom: 10 })  // 内边距
+      .width('100%')
+      .linearGradient({                                    // 高级效果：颜色渐变 - 增强对比度，更明显
+        angle: 135,
+        colors: [
+          [this.getCurrentTheme().primary, 0],
+          [this.getCurrentTheme().primary, 0.5],
+          [this.getCurrentTheme().primary + '88', 1]      // 增强渐变对比
+        ]
+      })
+      .backdropBlur(20)                                    // 背景模糊（毛玻璃效果）
+      .blur(3)                                             // 内容模糊（增强毛玻璃质感）
+      .borderRadius({ topLeft: 12, topRight: 12 })
+      .border({                                            // 高级效果：外描边设置 - 精致边框
+        width: { bottom: 1 },
+        color: 'rgba(255, 255, 255, 0.2)'                // 半透明边框增加层次
+      })
+      .padding({ left: 12, right: 12, top: 10, bottom: 10 })
 
       // ==================== 数据区域（在卡片内部，浅色背景）====================
       Row() {
@@ -227,17 +240,44 @@ export struct SortingInfoCard {
     .width('100%')                                       // 宽度100%
       .justifyContent(FlexAlign.Start)                     // 左对齐
       .alignItems(VerticalAlign.Center)                    // 垂直居中
-      .opacity(this.i18nVersion >= 0 ? 1 : 1)              // 引用 i18nVersion 确保语言变化时重新渲染
-      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)  // 背景色（浅色）
-      .borderRadius({ bottomLeft: 12, bottomRight: 12 })  // 底部圆角（与卡片圆角匹配）
-      .padding(12)                                         // 内边距12px
+      .opacity(this.i18nVersion >= 0 ? 1 : 1)
+      .linearGradient({                                    // 高级效果：颜色渐变 - 增强渐变对比
+        angle: 180,
+        colors: [
+          ['rgba(255, 255, 255, 0.95)', 0],               // 更明显的渐变
+          ['rgba(255, 255, 255, 0.85)', 0.5],
+          [this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor, 1]
+        ]
+      })
+      .backdropBlur(15)                                    // 背景模糊（毛玻璃效果）
+      .blur(2)                                             // 内容模糊（增强毛玻璃质感）
+      .borderRadius({ bottomLeft: 12, bottomRight: 12 })
+      .padding(12)
     }
-    .width('100%')                                         // 宽度100%
-    .backgroundColor(Color.Transparent)                    // 外层容器透明（实际背景由内层控制）
-    .border({ width: 1, color: this.getCurrentTheme().borderColor })  // 边框（1px主题边框色）
-    .borderRadius(12)                                      // 圆角12px
-    .margin({ top: 0, bottom: 5 })                         // 外边距（只有上下，左右由父容器控制）
-    .clip(true)                                            // 裁剪超出圆角的部分
+    .width('100%')
+    .linearGradient({                                      // 高级效果：颜色渐变 - 增强渐变对比度
+      angle: 135,
+      colors: [
+        ['rgba(96, 165, 250, 0.15)', 0],                  // 增强渐变透明度
+        ['rgba(59, 130, 246, 0.1)', 0.5],
+        ['rgba(37, 99, 235, 0.18)', 1]                    // 更强的渐变对比
+      ]
+    })
+    .backdropBlur(12)                                      // 背景模糊（整体毛玻璃）
+    .blur(1)                                               // 内容模糊（轻微模糊增强质感）
+    .border({                                              // 高级效果：外描边设置 - 更明显的边框
+      width: 2,                                            // 更粗的边框
+      color: this.getCurrentTheme().primary + '40'        // 主题色边框更明显
+    })
+    .borderRadius(16)
+    .shadow({                                              // 高级效果：视效设置 - 增强阴影效果
+      radius: 25,                                          // 更大的阴影半径
+      color: 'rgba(0, 0, 0, 0.15)',                       // 更深的阴影
+      offsetX: 0,
+      offsetY: 8                                           // 更大的阴影偏移
+    })
+    .margin({ top: 0, bottom: 5 })
+    .clip(true)
   }
 
   /**

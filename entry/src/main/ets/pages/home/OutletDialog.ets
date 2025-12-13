@@ -724,7 +724,7 @@ export struct OutletDialog {
                 onClickCallback: () => {
                   if (this.onConfirm) this.onConfirm()
                 }
-              })
+                })
             }
 
             // 中间：上一个、下一个
@@ -750,7 +750,7 @@ export struct OutletDialog {
                 onClickCallback: () => {
                   if (this.onNext) this.onNext()
                 }
-              })
+                })
             }
 
             // 右侧：常规、缺箱

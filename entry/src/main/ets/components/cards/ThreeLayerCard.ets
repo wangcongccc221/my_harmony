@@ -414,7 +414,7 @@ export struct ThreeLayerCard {
     }
     .width(this.cardWidth)
     .height(this.cardHeight)
-    .backgroundColor(this.isEmptyCard() ? '#f8fafc' : Color.Transparent) // 空白格子：极浅背景色，有数据的保持透明
+    .backgroundColor(this.isEmptyCard() ? '#f8fafc' : '#E6F0FF') // 空白卡片：浅色背景；有数据的卡片：柔和的深蓝色背景
     .borderRadius(12) // Apple风格：中等圆角
     .border({ width: 0.5, color: UseCardLogic.getCardColors().cardBorder }) // Apple风格：细边框
     .shadow({ radius: 8, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 2 }) // Apple风格：柔和阴影

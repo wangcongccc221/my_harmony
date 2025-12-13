@@ -397,9 +397,27 @@ export struct LiquidCardsArea {
       .scrollBarWidth(6)
       .friction(0.6)
       .padding({ left: '0.93%', right: '0.93%', top: '0%', bottom: '0.28%' })
-      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-      .border({ width: 1, color: this.getCurrentTheme().borderColor })
-      .borderRadius(10)
+      .linearGradient({                                      // 高级效果：颜色渐变 - 与分选信息卡片一致
+        angle: 135,
+        colors: [
+          ['rgba(96, 165, 250, 0.15)', 0],                  // 与分选信息卡片一致的渐变透明度
+          ['rgba(59, 130, 246, 0.1)', 0.5],
+          ['rgba(37, 99, 235, 0.18)', 1]                    // 与分选信息卡片一致的渐变对比
+        ]
+      })
+      .backdropBlur(12)                                      // 背景模糊（整体毛玻璃）- 与分选信息卡片一致
+      .blur(1)                                               // 内容模糊（轻微模糊增强质感）- 与分选信息卡片一致
+      .border({                                              // 高级效果：外描边设置 - 与分选信息卡片一致
+        width: 2,                                            // 更粗的边框
+        color: this.getCurrentTheme().primary + '40'        // 主题色边框 - 与分选信息卡片一致
+      })
+      .borderRadius(16)                                      // 圆角 - 与分选信息卡片一致
+      .shadow({                                              // 高级效果：视效设置 - 与分选信息卡片一致
+        radius: 25,                                          // 阴影半径
+        color: 'rgba(0, 0, 0, 0.15)',                       // 更深的阴影
+        offsetX: 0,
+        offsetY: 8                                           // 阴影偏移
+      })
       .onAppear(() => {
         this.initializeCardData()
       })
