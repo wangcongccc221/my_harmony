@@ -36,6 +36,7 @@ import { KeyCode } from '@kit.InputKit';
 import { UserInfoStorage } from '../utils/storage/UserInfoStorage'
 // import { getContext } from '@kit.ArkUI' // 移除错误的导入
 import common from '@ohos.app.ability.common'
+import { PrintManager } from '../utils/print/PrintManager'
 // 移除 BottomBar 集成
 
 
@@ -350,13 +351,50 @@ struct Page {
 
   // 处理打印按钮点击显示子按钮
   private handlePrintClick(): void {
-    this.showPrintSubButtons = !this.showPrintSubButtons
+    console.log(`[Home] handlePrintClick called. Current state: ${this.showPrintSubButtons}`);
+    this.showPrintSubButtons = !this.showPrintSubButtons;
+    console.log(`[Home] handlePrintClick new state: ${this.showPrintSubButtons}`);
   }
 
   // 处理打印子按钮点击
-  private handlePrintSubButtonClick(subButtonName: string): void {
-    this.omniUIUtils.showInfo(`已点击${subButtonName}`)
-    // 点击子按钮后不自动隐藏，保持子按钮显示状态
+  private async handlePrintSubButtonClick(subButtonName: string): Promise<void> {
+    console.log(`[Home] handlePrintSubButtonClick called with: ${subButtonName}`);
+    this.omniUIUtils.showInfo(`正在准备${subButtonName}...`)
+    
+    try {
+      const context = getContext(this) as common.UIAbilityContext
+      const filesDir = context.filesDir
+      console.log(`[Home] Files directory: ${filesDir}`);
+      
+      const printManager = PrintManager.getInstance()
+      
+      // 创建一个简单的测试文件
+      const fileName = subButtonName.includes('报告') ? 'report_test.txt' : 'label_test.txt'
+      const filePath = `${filesDir}/${fileName}`
+      const fileContent = subButtonName.includes('报告') 
+        ? '这是一份测试报告\n\n项目: 水果分选系统\n时间: 2025-12-15\n状态: 正常' 
+        : '测试标签\n\n等级: 特级\n重量: 250g'
+      
+      const file = fs.openSync(filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE | fs.OpenMode.TRUNC)
+      fs.writeSync(file.fd, fileContent)
+      fs.closeSync(file.fd)
+      
+      // 使用 FD (文件描述符) 方式传递，解决系统打印服务无法读取私有路径文件的问题
+      const fileRead = fs.openSync(filePath, fs.OpenMode.READ_ONLY)
+      const fileUri = `fd://${fileRead.fd}`
+      console.log(`[Home] Created test file for printing (FD): ${fileUri}`)
+      
+      await printManager.printFiles(context, [fileUri])
+      console.log(`[Home] printManager.printFiles called`);
+      
+      // 注意：这里暂时不关闭 fileRead.fd，等待打印服务读取
+      // 在实际业务中，应该监听打印结束事件后再关闭
+
+      
+    } catch (e) {
+      console.error('[Home] Print failed:', e)
+      this.omniUIUtils.showError(`打印失败: ${JSON.stringify(e)}`)
+    }
   }
 
   // 处理悬浮窗显示

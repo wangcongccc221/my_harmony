@@ -241,40 +241,17 @@ export struct SortingInfoCard {
       .justifyContent(FlexAlign.Start)                     // 左对齐
       .alignItems(VerticalAlign.Center)                    // 垂直居中
       .opacity(this.i18nVersion >= 0 ? 1 : 1)
-      .linearGradient({                                    // 高级效果：颜色渐变 - 增强渐变对比
-        angle: 180,
-        colors: [
-          ['rgba(255, 255, 255, 0.95)', 0],               // 更明显的渐变
-          ['rgba(255, 255, 255, 0.85)', 0.5],
-          [this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor, 1]
-        ]
-      })
-      .backdropBlur(15)                                    // 背景模糊（毛玻璃效果）
-      .blur(2)                                             // 内容模糊（增强毛玻璃质感）
+      .backgroundColor('#FFFFFF')                          // 纯白背景
       .borderRadius({ bottomLeft: 12, bottomRight: 12 })
       .padding(12)
     }
     .width('100%')
-    .linearGradient({                                      // 高级效果：颜色渐变 - 增强渐变对比度
-      angle: 135,
-      colors: [
-        ['rgba(96, 165, 250, 0.15)', 0],                  // 增强渐变透明度
-        ['rgba(59, 130, 246, 0.1)', 0.5],
-        ['rgba(37, 99, 235, 0.18)', 1]                    // 更强的渐变对比
-      ]
-    })
-    .backdropBlur(12)                                      // 背景模糊（整体毛玻璃）
-    .blur(1)                                               // 内容模糊（轻微模糊增强质感）
-    .border({                                              // 高级效果：外描边设置 - 更明显的边框
-      width: 2,                                            // 更粗的边框
-      color: this.getCurrentTheme().primary + '40'        // 主题色边框更明显
-    })
+    .backgroundColor('#FFFFFF')                            // 整体纯白背景
     .borderRadius(16)
-    .shadow({                                              // 高级效果：视效设置 - 增强阴影效果
-      radius: 25,                                          // 更大的阴影半径
-      color: 'rgba(0, 0, 0, 0.15)',                       // 更深的阴影
-      offsetX: 0,
-      offsetY: 8                                           // 更大的阴影偏移
+    .shadow({                                              // 极简风格的悬浮阴影
+      radius: 16,
+      color: 'rgba(0, 0, 0, 0.05)',
+      offsetY: 4
     })
     .margin({ top: 0, bottom: 5 })
     .clip(true)

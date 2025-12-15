@@ -707,7 +707,7 @@ export struct LevelDataTable {
     .width('100%')
     .height(50)  //修改表格每一行的行高
     .padding(0)
-    .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+    // .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor }) // 移除底部边框，使用List的divider分隔
   }
 
   /**
@@ -961,7 +961,15 @@ export struct LevelDataTable {
     .backgroundColor(isHeader ?
       (this.getCurrentTheme().primary + '20') :
       (index % 2 === 0 ? this.getCurrentTheme().backgroundColor : this.getCurrentTheme().surfaceColor))
-    .border({ width: 1, color: this.getCurrentTheme().borderColor })
+    .border({
+      width: {
+        right: 1,
+        bottom: 1,
+        top: isHeader ? 1 : 0, // 表头保留上边框，数据行移除上边框（依靠上一行的下边框）
+        left: index === 0 ? 1 : 0 // 第一列保留左边框
+      },
+      color: this.getCurrentTheme().borderColor
+    })
     .justifyContent(FlexAlign.Center)
   }
 
@@ -1145,8 +1153,8 @@ export struct LevelDataTable {
             })
           }
           .columnsTemplate('1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr') // 9列等宽
-          .columnsGap(1)
-          .rowsGap(1)
+          .columnsGap(0)
+          .rowsGap(0)
           .width('100%')
           .height(40) // 表头固定高度
           .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
@@ -1164,8 +1172,8 @@ export struct LevelDataTable {
               })
             }
             .columnsTemplate('1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr') // 9列等宽
-            .columnsGap(1)
-            .rowsGap(1)
+            .columnsGap(0)
+            .rowsGap(0)
             .width('100%')
             .height(this.statisticsTableData.length * 40) // 数据区域高度：数据行数 × 每行高度
           }
@@ -1186,7 +1194,7 @@ export struct LevelDataTable {
       .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
       .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // 合理圆角(12px)
       .shadow(AppleDesignStyle.getShadowMedium()) // 柔和阴影
-      .margin({ bottom: AppleDesignStyle.CARD_MARGIN_SMALL }) // 合理间距
+      .margin({ top: 12, bottom: AppleDesignStyle.CARD_MARGIN_SMALL }) // 增加顶部间距，与上方表格隔开
 
       .padding({ top: 8 })
       .backgroundColor('rgba(0,0,0,0)')

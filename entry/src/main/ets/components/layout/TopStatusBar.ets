@@ -185,25 +185,25 @@ export struct TopStatusBar {
         // 1. Production
         Column() {
           Text('Production')
-            .fontSize(this.getCurrentTheme().fontLevel4 ?? 18) // 18px - Label
+            .fontSize(12) // 优化：12px 更精致
             .fontWeight(FontWeight.Medium)
             .fontColor(this.getCurrentTheme().subTextColor)
-            .maxLines(2)
-            .textOverflow({ overflow: TextOverflow.None })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
           
           Row() {
             Text(this.productionTonPerHour)
-              .fontSize(this.getCurrentTheme().fontLevel3 ?? 24) // 降级为 24px (Level 3)，32px 太大导致溢出
+              .fontSize(20) // 优化：20px 足够清晰且不显大
               .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold)
               .fontColor(this.getCurrentTheme().primary)
             Text('Ton/h')
-              .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
+              .fontSize(12) // 优化：12px
               .fontColor(this.getCurrentTheme().subTextColor)
               .opacity(0.7)
-              .margin({ left: 4, bottom: 4 })
+              .margin({ left: 2, bottom: 3 })
               .alignSelf(ItemAlign.End)
           }
-          .margin({ top: 4 })
+          .margin({ top: 2 })
         }
         .alignItems(HorizontalAlign.Start)
         .margin({ right: AppleDesignStyle.SPACING_MEDIUM })
@@ -212,32 +212,32 @@ export struct TopStatusBar {
           .vertical(true)
           .strokeWidth(AppleDesignStyle.BORDER_WIDTH_THIN)
           .color(this.getCurrentTheme().borderColor)
-          .height('60%')
+          .height('50%')
           .opacity(0.5)
           .margin({ left: '1%', right: '1%' })
 
         // 2. SumWeight
         Column() {
           Text('SumWeight')
-            .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
+            .fontSize(12)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.getCurrentTheme().subTextColor)
-            .maxLines(2)
-            .textOverflow({ overflow: TextOverflow.None })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
           
           Row() {
             Text(this.sumWeightTon)
-              .fontSize(this.getCurrentTheme().fontLevel3 ?? 24) // 降级为 24px
+              .fontSize(20)
               .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold)
               .fontColor(this.getCurrentTheme().primary)
             Text('Ton')
-              .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
+              .fontSize(12)
               .fontColor(this.getCurrentTheme().subTextColor)
               .opacity(0.7)
-              .margin({ left: 4, bottom: 4 })
+              .margin({ left: 2, bottom: 3 })
               .alignSelf(ItemAlign.End)
           }
-          .margin({ top: 4 })
+          .margin({ top: 2 })
         }
         .alignItems(HorizontalAlign.Start)
         .margin({ right: AppleDesignStyle.SPACING_MEDIUM })
@@ -246,32 +246,32 @@ export struct TopStatusBar {
           .vertical(true)
           .strokeWidth(AppleDesignStyle.BORDER_WIDTH_THIN)
           .color(this.getCurrentTheme().borderColor)
-          .height('60%')
+          .height('50%')
           .opacity(0.5)
           .margin({ left: '1%', right: '1%' })
 
         // 3. SumCounts
         Column() {
           Text('SumCounts')
-            .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
+            .fontSize(12)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.getCurrentTheme().subTextColor)
-            .maxLines(2)
-            .textOverflow({ overflow: TextOverflow.None })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
           
           Row() {
             Text(this.sumCounts)
-              .fontSize(this.getCurrentTheme().fontLevel3 ?? 24) // 降级为 24px
+              .fontSize(20)
               .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold)
               .fontColor(this.getCurrentTheme().primary)
             Text('PCS')
-              .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
+              .fontSize(12)
               .fontColor(this.getCurrentTheme().subTextColor)
               .opacity(0.7)
-              .margin({ left: 4, bottom: 4 })
+              .margin({ left: 2, bottom: 3 })
               .alignSelf(ItemAlign.End)
           }
-          .margin({ top: 4 })
+          .margin({ top: 2 })
         }
         .alignItems(HorizontalAlign.Start)
         .margin({ right: AppleDesignStyle.SPACING_MEDIUM })
@@ -280,32 +280,32 @@ export struct TopStatusBar {
           .vertical(true)
           .strokeWidth(AppleDesignStyle.BORDER_WIDTH_THIN)
           .color(this.getCurrentTheme().borderColor)
-          .height('60%')
+          .height('50%')
           .opacity(0.5)
           .margin({ left: '1%', right: '1%' })
 
         // 4. Avg
         Column() {
           Text('Avg')
-            .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
+            .fontSize(12)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.getCurrentTheme().subTextColor)
-            .maxLines(2)
-            .textOverflow({ overflow: TextOverflow.None })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
           
           Row() {
             Text(this.avgGram)
-              .fontSize(this.getCurrentTheme().fontLevel3 ?? 24) // 降级为 24px
+              .fontSize(20)
               .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold)
               .fontColor(this.getCurrentTheme().primary)
             Text('g')
-              .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
+              .fontSize(12)
               .fontColor(this.getCurrentTheme().subTextColor)
               .opacity(0.7)
-              .margin({ left: 4, bottom: 4 })
+              .margin({ left: 2, bottom: 3 })
               .alignSelf(ItemAlign.End)
           }
-          .margin({ top: 4 })
+          .margin({ top: 2 })
         }
         .alignItems(HorizontalAlign.Start)
       }
@@ -318,42 +318,32 @@ export struct TopStatusBar {
         if (this.tcpConnected) {
           Row() {
             Text('●')
-              .fontSize(12) // 保持小点，或者也改成18？点太大了不好看，但这不属于"字体"。保留12或改18。
-              // 用户说 "I only use 4 sizes". 
-              // 12 is not allowed. 
-              // If I use 18, the dot will be huge. 
-              // Maybe I should use a shape instead of Text for the dot?
-              // But for now, let's try 18 and see if I can make it work, or just leave it as an "icon".
-              // User said "4 sizes". I'll try 18 but maybe scale it?
-              // Let's stick to 12 for "graphics" if possible, but user might complain.
-              // I will use 18 but maybe specific font? No.
-              // I will change it to 18.
-              .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
-              .fontColor(this.getCurrentTheme().primary)
+              .fontSize(12) // 优化：12px
+              .fontColor('#67C23A') // 绿色
               .margin({ right: 6 })
             Text('设备连接正常')
-              .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
+              .fontSize(14) // 优化：14px
               .fontWeight(FontWeight.Medium)
               .fontColor(this.getCurrentTheme().primary)
           }
           .height('100%')
-          .padding({ left: 16, right: 16 })
-          .backgroundColor(this.getCurrentTheme().primary + '15')
+          .padding({ left: 12, right: 12 })
+          .backgroundColor(this.getCurrentTheme().primary + '10') // 极浅背景
           .borderRadius(8)
           .alignItems(VerticalAlign.Center)
         } else {
           // 优化后的故障提示样式：占满高度
           Row() {
             Text('⚠️')
-              .fontSize(this.getCurrentTheme().fontLevel3 ?? 24)
+              .fontSize(16) // 优化：16px
               .margin({ right: 8 })
             Text('设备故障，请排查')
-              .fontSize(this.getCurrentTheme().fontLevel3 ?? 24) // 强调
+              .fontSize(16) // 优化：16px
               .fontWeight(FontWeight.Bold)
               .fontColor(Color.White)
           }
           .height('100%')
-          .padding({ left: 20, right: 20 })
+          .padding({ left: 12, right: 12 })
           .backgroundColor('#FF3B30') // 实心红背景
           .borderRadius(8)
           .shadow(AppleDesignStyle.getShadowSmall())
@@ -361,7 +351,7 @@ export struct TopStatusBar {
         }
         
         Text(this.statusText)
-          .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
+          .fontSize(14) // 优化：14px
           .fontColor(this.getCurrentTheme().subTextColor)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -373,22 +363,22 @@ export struct TopStatusBar {
       // 客户公司 LOGO + 农场名称 + 分选种类（放在状态区与FSM切换之间）
       Row({ space: AppleDesignStyle.SPACING_SMALL }) {
         Image(this.customerLogoUrl && this.customerLogoUrl.length > 0 ? this.customerLogoUrl : $r('app.media.customer_logo'))
-          .width('5%') // 放大图标：从4%改为5%
-          .height('80%') // 放大图标：从70%改为80%
+          .width(32) // 优化：固定尺寸
+          .height(32)
           .objectFit(ImageFit.Contain)
           .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：圆角
           .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
           .margin({ right: AppleDesignStyle.SPACING_SMALL })
 
-        Column({ space: 4 }) {
+        Column({ space: 2 }) {
           Text(this.farmName && this.farmName.length > 0 ? this.farmName : '— 农场 —')
-            .fontSize(this.getCurrentTheme().fontLevel3 ?? 24) // 24px - Title
+            .fontSize(16) // 优化：16px
             .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold) // Title - Bold
             .fontColor(this.getCurrentTheme().textColor)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
           Text(this.fruitType && this.fruitType.length > 0 ? this.fruitType : '— 分选种类 —')
-            .fontSize(this.getCurrentTheme().fontLevel4 ?? 18) // 18px - Content
+            .fontSize(12) // 优化：12px
             .fontColor(this.getCurrentTheme().subTextColor)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -433,9 +423,9 @@ export struct TopStatusBar {
         ThreeDButton({
           text: '−',
           isSelected: false,
-          buttonWidth: 40,
-          buttonHeight: 40,
-          fontSize: this.getCurrentTheme().fontLevel3 ?? 24, // 24px
+          buttonWidth: 32, // 优化：32px
+          buttonHeight: 32,
+          fontSize: 18, // 优化：18px
           onClickCallback: () => { 
             this.minimizeApp() 
           }
@@ -445,9 +435,9 @@ export struct TopStatusBar {
         ThreeDButton({
           text: '×',
           isSelected: false,
-          buttonWidth: 40,
-          buttonHeight: 40,
-          fontSize: this.getCurrentTheme().fontLevel3 ?? 24, // 24px
+          buttonWidth: 32, // 优化：32px
+          buttonHeight: 32,
+          fontSize: 18, // 优化：18px
           onClickCallback: () => { 
             this.closeApp() 
           }

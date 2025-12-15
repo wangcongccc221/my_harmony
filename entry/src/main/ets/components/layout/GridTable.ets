@@ -560,19 +560,25 @@ export struct GridTable {
   @Builder
   private buildTableCell(cellValue: string, rowIndex: number, colIndex: number) {
     Text(cellValue)
-      .fontSize(16)
-      .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : this.getCurrentTheme().textColor)
-      .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Bold : FontWeight.Normal)
+      .fontSize(15) // 数据字体稍小
+      .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : '#303133') // 选中白色，未选中深灰
+      .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Medium : FontWeight.Normal)
       .textAlign(TextAlign.Center)
       .layoutWeight(1)
       .height('100%')
-      .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? '#0A84FF' : (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor))
+      // 隔行换色逻辑
+      .backgroundColor(
+        this.isCellSelected(rowIndex, colIndex) ? '#409EFF' : // 选中色：亮蓝
+        (rowIndex % 2 === 0 ? '#FFFFFF' : '#FAFAFA') // 偶数行纯白，奇数行极浅灰
+      )
       .border({
         width: { 
-          right: this.isCellSelected(rowIndex, colIndex) ? Math.max(2, this.customBorderWidth) : this.customBorderWidth, 
-          bottom: this.isCellSelected(rowIndex, colIndex) ? Math.max(2, this.customBorderWidth) : this.customBorderWidth 
+          right: this.isCellSelected(rowIndex, colIndex) ? 1 : 0.5, 
+          bottom: this.isCellSelected(rowIndex, colIndex) ? 1 : 0.5,
+          top: 0, 
+          left: colIndex === 0 ? 0.5 : 0
         },
-        color: this.isCellSelected(rowIndex, colIndex) ? '#0A84FF' : this.getCurrentTheme().borderColor
+        color: this.isCellSelected(rowIndex, colIndex) ? '#409EFF' : '#EBEEF5' // 未选中时边框更浅
       })
       .padding(2)
       .draggable(this.enableDrag && !this.isDragDisabledForCell(colIndex))
@@ -604,34 +610,33 @@ export struct GridTable {
   @Builder
   private buildHeaderCell(title: string, colIndex: number) {
     Text(title)
-      .fontSize(18)
-      .fontWeight(FontWeight.Bold)
+      .fontSize(16) // 稍微调小字体，增加精致感
+      .fontWeight(FontWeight.Medium) // 使用中等字重，不要太粗
       .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
       .textAlign(TextAlign.Center)
       .width('100%')
       .height('100%')
-      .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      // 使用更明显的渐变背景，增加层次感
+      .linearGradient({
+        angle: 180,
+        colors: [
+          ['#F0F4F8', 0.0], // 浅蓝灰，比之前的 F5F7FA 更有色彩倾向
+          ['#D9E2EC', 1.0]  // 较深的蓝灰，增加对比度
+        ]
+      })
       .border({
-        width: { right: this.customBorderWidth, bottom: this.customBorderWidth },
-        color: this.getCurrentTheme().borderColor
+        width: { 
+          right: 0.5, // 边框变细
+          bottom: 0.5,
+          top: 0.5, 
+          left: colIndex === 0 ? 0.5 : 0 
+        },
+        color: '#DCDFE6' // 更柔和的边框颜色
       })
       .padding(2)
   }
 
-  /**
-   * 构建表头左上角空白区域
-   */
-  @Builder
-  private buildHeaderCorner() {
-    Text('')
-      .width(40)
-      .height('100%')
-      .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-      .border({
-        width: { right: this.customBorderWidth, bottom: this.customBorderWidth },
-        color: this.getCurrentTheme().borderColor
-      })
-  }
+  // ... (buildHeaderCorner skipped as it is not used in the main build flow currently)
 
   /**
    * 构建列头 - 支持整列拖拽
@@ -639,16 +644,28 @@ export struct GridTable {
   @Builder
   private buildColumnHeader(title: string, colIndex: number) {
     Text(title)
-      .fontSize(20)
-      .fontWeight(FontWeight.Bold)
-      .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? this.getCurrentTheme().textColor)
+      .fontSize(16)
+      .fontWeight(FontWeight.Medium)
+      .fontColor('#606266') // 深灰色文字，比纯黑更高级
       .textAlign(TextAlign.Center)
       .layoutWeight(1)
       .height('100%')
-      .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+      // 使用更明显的渐变背景代替纯色
+      .linearGradient({
+        angle: 180,
+        colors: [
+          ['#EBF0F5', 0.0], 
+          ['#DDE4EB', 1.0]
+        ]
+      })
       .border({
-        width: { right: this.customBorderWidth, bottom: this.customBorderWidth },
-        color: this.getCurrentTheme().borderColor
+        width: { 
+          right: 0.5, 
+          bottom: 0.5,
+          top: 0.5, 
+          left: colIndex === 0 ? 0.5 : 0 
+        },
+        color: '#DCDFE6'
       })
       .padding(6)
       .draggable(this.enableDrag && !this.isDragDisabledForCell(colIndex))
@@ -671,24 +688,29 @@ export struct GridTable {
   @Builder
   private buildRowDragCell(cellValue: string, rowIndex: number, colIndex: number) {
     Text(cellValue)
-      .fontSize(16)
-      .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : this.getCurrentTheme().textColor)
-      .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Bold : FontWeight.Normal)
+      .fontSize(15) // 数据字体稍小
+      .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : '#303133') // 选中白色，未选中深灰
+      .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Medium : FontWeight.Normal)
       .textAlign(TextAlign.Center)
       .layoutWeight(1)
       .height('100%')
-      .backgroundColor(this.isCellSelected(rowIndex, colIndex) ? '#0A84FF' : (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor))
+      // 隔行换色逻辑
+      .backgroundColor(
+        this.isCellSelected(rowIndex, colIndex) ? '#409EFF' : // 选中色：亮蓝
+        (rowIndex % 2 === 0 ? '#FFFFFF' : '#FAFAFA') // 偶数行纯白，奇数行极浅灰
+      )
       .border({
         width: { 
-          right: this.isCellSelected(rowIndex, colIndex) ? Math.max(2, this.customBorderWidth) : this.customBorderWidth, 
-          bottom: this.isCellSelected(rowIndex, colIndex) ? Math.max(2, this.customBorderWidth) : this.customBorderWidth 
+          right: this.isCellSelected(rowIndex, colIndex) ? 1 : 0.5, 
+          bottom: this.isCellSelected(rowIndex, colIndex) ? 1 : 0.5,
+          top: 0, 
+          left: 0.5
         },
-        color: this.isCellSelected(rowIndex, colIndex) ? '#0A84FF' : this.getCurrentTheme().borderColor
+        color: this.isCellSelected(rowIndex, colIndex) ? '#409EFF' : '#EBEEF5' // 未选中时边框更浅
       })
       .padding(2)
       .draggable(this.enableDrag)
       .onClick(() => {
-        // 点击切换选中状态
         this.toggleCellSelection(rowIndex, colIndex, cellValue)
       })
       .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
@@ -706,7 +728,7 @@ export struct GridTable {
   }
 
   build() {
-    Column() {
+    Column({ space: 0 }) {
       // ==================== 标题区域（无背景，使用深色文字与表头形成对比）====================
       Row() {
         Text(this.tableTitle)
@@ -719,8 +741,9 @@ export struct GridTable {
       .padding({ left: 12, right: 12, top: 12, bottom: 8 })  // 内边距
 
       // ==================== 表格容器（浅色背景）====================
-      Column() {
+      Column({ space: 0 }) {
         // 固定表头
+
         Row() {
           // 列头 - 整列拖拽
           ForEach(this.headerTitles, (title: string, colIndex: number) => {
@@ -751,28 +774,35 @@ export struct GridTable {
             })
           }
           .width('100%')
+          .justifyContent(FlexAlign.Start) // 确保内容靠上对齐，无间隙
         }
         .width('100%')
-        .height(this.maxHeight)
+        // .height(this.maxHeight) // 移除固定高度，改为自适应剩余空间
+        // .layoutWeight(1) // 移除Scroll的自适应权重，让其高度由内容决定（配合maxHeight限制）
         .scrollable(this.enableScroll ? ScrollDirection.Vertical : ScrollDirection.None)
         .scrollBar(this.enableScroll ? BarState.Auto : BarState.Off)
         .scrollBarColor(this.getCurrentTheme().borderColor)
         .scrollBarWidth(6)
         .friction(0.6)
+        .align(Alignment.TopStart) // 确保内容从顶部开始
+        .constraintSize({ maxHeight: this.maxHeight }) // 限制最大高度，防止撑破布局
       }
       .width('100%')
+      // .layoutWeight(1) // 移除容器自适应剩余空间，改为自适应内容
       .alignItems(HorizontalAlign.Start)
-      .backgroundColor(this.containerBg || (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor))  // 浅色背景
-      .borderRadius({ bottomLeft: 6, bottomRight: 6 })    // 底部圆角（与卡片圆角匹配）
+      .backgroundColor('#FFFFFF')  // 整体背景纯白
+      .borderRadius(8)    // 增加圆角
+      .shadow({ radius: 16, color: 'rgba(0,0,0,0.05)', offsetY: 4 }) // 增加高级感的淡淡阴影
       .padding(0)                                         // 移除内边距，让表格紧贴卡片边框
     }
     .width(this.tableWidth)
+    // .height('100%') // 移除固定高度，允许自适应内容
     .backgroundColor(Color.Transparent)                   // 外层容器透明（实际背景由内层控制）
-    .border({ width: 1, color: this.getCurrentTheme().borderColor })
-    .borderRadius(6)
-    .margin({ top: 4, left: 4, right: 4, bottom: 2 })
+    .border({ width: 0 }) // 移除外层边框，完全依靠阴影和内部分割线
+    .borderRadius(8)
+    .margin({ top: 4, left: 8, right: 8, bottom: 8 }) // 增加边距，增加呼吸感
     .alignItems(HorizontalAlign.Center)
-    .justifyContent(FlexAlign.Center)
+    .justifyContent(FlexAlign.Start) // 改为Start，避免垂直居中导致的间隙问题
     .clip(true)                                           // 裁剪超出圆角的部分
   }
 }

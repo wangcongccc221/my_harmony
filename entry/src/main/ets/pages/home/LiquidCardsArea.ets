@@ -396,29 +396,16 @@ export struct LiquidCardsArea {
       .scrollBarColor(this.getCurrentTheme().borderColor)
       .scrollBarWidth(6)
       .friction(0.6)
-      .padding({ left: '0.93%', right: '0.93%', top: '0%', bottom: '0.28%' })
-      .linearGradient({                                      // 高级效果：颜色渐变 - 增强对比度，更明显
-        angle: 135,
-        colors: [
-          ['rgba(96, 165, 250, 0.25)', 0],                   // 更明显的蓝色渐变起点
-          ['rgba(59, 130, 246, 0.20)', 0.3],
-          ['rgba(37, 99, 235, 0.28)', 0.6],
-          ['rgba(30, 58, 138, 0.32)', 1]                    // 更深的蓝色渐变终点
-        ]
+      .padding({ left: '0.93%', right: '0.93%', top: '0.28%', bottom: '0.28%' })
+      // 移除旧的复杂装饰效果，改用极简风格
+      .backgroundColor('#FFFFFF') // 纯白背景
+      .borderRadius(12)           // 适中圆角
+      .shadow({                   // 淡淡的悬浮阴影
+        radius: 16,
+        color: 'rgba(0,0,0,0.05)',
+        offsetY: 4
       })
-      .backdropBlur(20)                                      // 增强背景模糊（更明显的毛玻璃效果）
-      .blur(2)                                               // 增强内容模糊（更明显的毛玻璃质感）
-      .border({                                              // 高级效果：外描边设置 - 更明显的精致边框
-        width: 2,                                            // 更粗的边框，更明显
-        color: this.getCurrentTheme().primary + '60'        // 更高的透明度，边框更明显
-      })
-      .borderRadius(16)                                      // 更大的圆角，更现代
-      .shadow({                                              // 高级效果：视效设置 - 增强阴影效果，更立体
-        radius: 30,                                          // 更大的阴影半径，更明显
-        color: 'rgba(37, 99, 235, 0.25)',                   // 蓝色阴影，与主题色呼应
-        offsetX: 0,
-        offsetY: 10                                          // 更大的阴影偏移，更立体
-      })
+      // 移除 border, linearGradient, backdropBlur 等复杂效果
       .onAppear(() => {
         this.initializeCardData()
       })

@@ -9,6 +9,7 @@ import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../
 import { StandardRoundButton } from '../ui/buttons/StandardRoundButton'
 import { FruitCupButton } from '../ui/buttons/FruitCupButton'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
+import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 
 @Component
 export struct BottomControlBar {
@@ -58,76 +59,92 @@ export struct BottomControlBar {
     Row() {
       // 左侧控制区域
       Row() {
-        // 左侧按钮：分选状态（可点击）
-        Button(this.getSortingStatusText())
-          .fontSize(18)  // 调大到18px
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().textColor)  // 使用主题文字颜色
-          .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-          .border({ width: 1, color: this.getCurrentTheme().borderColor })
-          .borderRadius(4)
-          .padding({ left: 16, right: 16, top: 8, bottom: 8 })  // 增加内边距
-          .margin({ right: 16 })
-          .onClick(() => {
-            if (this.onSortingStatusClick) {
-              this.onSortingStatusClick()
-            }
-          })
-
-        // SCM标签
-        Text('SCM:')
-          .fontSize(18)  // 调大到18px
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().buttonBarTextColor ?? this.getCurrentTheme().textColor)  // 使用底部状态栏文字颜色
-          .margin({ right: 8 })
-          .alignSelf(ItemAlign.Center)
-
-        // SCM按钮
-        StandardRoundButton({
-            text: '1',
-            onClickAction: () => {
-              console.log('SCM按钮被点击')
-              // TODO: 后期添加SCM相关逻辑
-              if (this.onSCMClick) {
-                this.onSCMClick()
-              }
-            }
+        // 左侧按钮：分选状态（优化为胶囊样式）
+        Row() {
+          // 状态指示点
+          Circle({ width: 8, height: 8 })
+            .fill(this.sortingStatus ? '#67C23A' : '#F56C6C')
+            .margin({ right: 8 })
+          
+          Text(this.getSortingStatusText())
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.sortingStatus ? '#67C23A' : '#F56C6C')
+        }
+        .height(36)
+        .padding({ left: 16, right: 16 })
+        .backgroundColor(this.sortingStatus ? 'rgba(103, 194, 58, 0.1)' : 'rgba(245, 108, 108, 0.1)')
+        .borderRadius(18)
+        .margin({ right: 24 })
+        .onClick(() => {
+          if (this.onSortingStatusClick) {
+            this.onSortingStatusClick()
+          }
         })
-          .margin({ right: 16 })
 
-        // 果杯标签
-        Text(t('果杯:', '果杯:'))
-          .fontSize(18)  // 调大到18px
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().buttonBarTextColor ?? this.getCurrentTheme().textColor)  // 使用底部状态栏文字颜色
-          .margin({ right: 8 })
-          .alignSelf(ItemAlign.Center)
-          .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
-
-        // 8个果杯按钮（使用循环生成）
-        ForEach(this.buildNumberRange(1, 8), (index: number) => {
-          FruitCupButton({
-            cupNumber: index,
-            onCupClick: (cupNumber: number) => {
-              if (this.onFruitCupClick) {
-                this.onFruitCupClick(cupNumber)
+        // SCM 区域
+        Row() {
+          Text('SCM')
+            .fontSize(12)
+            .fontColor('#909399')
+            .margin({ right: 8 })
+            .fontWeight(FontWeight.Bold)
+          
+          StandardRoundButton({
+              text: '1',
+              onClickAction: () => {
+                console.log('SCM按钮被点击')
+                if (this.onSCMClick) {
+                  this.onSCMClick()
+                }
               }
-            }
           })
-        })
+        }
+        .margin({ right: 24 })
+
+        // 垂直分隔线
+        Divider()
+          .vertical(true)
+          .height(20)
+          .color('#E4E7ED')
+          .margin({ right: 24 })
+
+        // 果杯区域
+        Row() {
+          Text(t('果杯', '果杯')) // 移除冒号
+            .fontSize(12)
+            .fontColor('#909399')
+            .margin({ right: 12 })
+            .fontWeight(FontWeight.Bold)
+            .opacity(this.i18nVersion >= 0 ? 1 : 1)
+
+          // 8个果杯按钮
+          ForEach(this.buildNumberRange(1, 8), (index: number) => {
+            FruitCupButton({
+              cupNumber: index,
+              onCupClick: (cupNumber: number) => {
+                if (this.onFruitCupClick) {
+                  this.onFruitCupClick(cupNumber)
+                }
+              }
+            })
+          })
+        }
       }
       .justifyContent(FlexAlign.Start)
       .alignItems(VerticalAlign.Center)
 
-      // 中间空白区域，用于分隔左右两部分
+      // 中间空白区域
       Blank()
     }
     .width('100%')
+    .height(60) // 固定高度
     .justifyContent(FlexAlign.SpaceBetween)
     .alignItems(VerticalAlign.Center)
-    .padding({ left: 150, right: 20, top: 8, bottom: 8 })
-    .backgroundColor(this.getCurrentTheme().buttonBarBg ?? this.getCurrentTheme().surfaceColor)
-    .border({ width: { top: 1 }, color: this.getCurrentTheme().borderColor })
+    .padding({ left: AppleDesignStyle.SPACING_LARGE, right: AppleDesignStyle.SPACING_LARGE })
+    .backgroundColor(this.getCurrentTheme().surfaceColor) // 纯色背景
+    .shadow({ radius: 20, color: 'rgba(0, 0, 0, 0.05)', offsetY: -5 }) // 顶部柔和阴影
+    .border({ width: { top: 1 }, color: '#F2F6FC' }) // 极淡的顶部边框
   }
 
 

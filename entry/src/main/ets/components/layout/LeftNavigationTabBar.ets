@@ -61,7 +61,30 @@ export struct LeftNavigationTabBar {
       { key: 'history', label: t('历史加工', '历史加工') },
       { key: 'realtime', label: t('实时统计', '实时统计') },
       { key: 'end', label: t('结束加工', '结束加工') },
-      { key: 'print', label: t('打印', '打印') },
+      { 
+        key: 'print', 
+        label: t('打印', '打印'),
+        subItems: [
+          {
+            key: 'print_report',
+            label: t('打印报告', '打印报告'),
+            onClick: () => {
+              if (this.onPrintSubButtonClick) {
+                this.onPrintSubButtonClick('打印报告')
+              }
+            }
+          },
+          {
+            key: 'print_label',
+            label: t('打印标签', '打印标签'),
+            onClick: () => {
+              if (this.onPrintSubButtonClick) {
+                this.onPrintSubButtonClick('打印标签')
+              }
+            }
+          }
+        ]
+      },
       { key: 'more', label: t('更多', '更多') }
     ]
   }
@@ -80,80 +103,6 @@ export struct LeftNavigationTabBar {
     }
   }
 
-  // 构建打印子按钮
-  @Builder
-  private buildPrintSubButtons() {
-    Column() {
-      // 子按钮1：打印报告（引用 i18nVersion 确保语言变化时重新构建）
-      Button() {
-        Text(t('打印报告', '打印报告'))
-          .fontSize(12)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.resolveTheme().textColor)
-          .maxLines(2)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .textAlign(TextAlign.Center)
-      }
-      .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 触发重建
-      .width('85%')
-      .height(40)
-      .margin({ bottom: 6, left: 16, right: 16 })
-      .fontSize(12)
-      .fontWeight(FontWeight.Medium)
-      .fontColor(this.resolveTheme().textColor)
-      .backgroundColor(this.resolveTheme().surfaceColor)
-      .border({ 
-        width: AppleDesignStyle.BORDER_WIDTH_THIN, // Apple风格：细边框
-        color: this.resolveTheme().borderColor 
-      })
-      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
-      .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.08)')) // Apple风格：柔和阴影
-      .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅过渡动画
-      .onClick(() => {
-        if (this.onPrintSubButtonClick) {
-          this.onPrintSubButtonClick('打印报告')
-        }
-      })
-
-      // 子按钮2：打印标签（引用 i18nVersion 确保语言变化时重新构建）
-      Button() {
-        Text(t('打印标签', '打印标签'))
-          .fontSize(12)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.resolveTheme().textColor)
-          .maxLines(2)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .textAlign(TextAlign.Center)
-      }
-      .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 触发重建
-      .width('85%')
-      .height(40)
-      .margin({ bottom: 8, left: 16, right: 16 })
-      .fontSize(12)
-      .fontWeight(FontWeight.Medium)
-      .fontColor(this.resolveTheme().textColor)
-      .backgroundColor(this.resolveTheme().surfaceColor)
-      .border({ 
-        width: AppleDesignStyle.BORDER_WIDTH_THIN, // Apple风格：细边框
-        color: this.resolveTheme().borderColor 
-      })
-      .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
-      .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.08)')) // Apple风格：柔和阴影
-      .transition(AppleDesignStyle.getTransitionNormal()) // Apple风格：流畅过渡动画
-      .onClick(() => {
-        if (this.onPrintSubButtonClick) {
-          this.onPrintSubButtonClick('打印标签')
-        }
-      })
-    }
-    .width('100%')
-    .margin({ top: 8 })
-    .animation({
-      duration: 300,
-      curve: Curve.EaseInOut
-    })
-  }
-
   build() {
     Column() {
       // TabBar导航（引用 i18nVersion 确保语言变化时重新构建）
@@ -167,11 +116,6 @@ export struct LeftNavigationTabBar {
         }
       })
       .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 触发重建
-      
-      // 打印子按钮（如果显示）
-      if (this.showPrintSubButtons) {
-        this.buildPrintSubButtons()
-      }
     }
     .width('100%')
     .height('100%')
