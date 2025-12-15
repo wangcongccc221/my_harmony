@@ -541,29 +541,33 @@ export struct MoreContent {
     Row() {
       // 图标
       Text(icon)
-        .fontSize(36)  // 图标字体调大到36px，更有气势！
+        .fontSize(36)
         .margin({ right: 16 })
 
       // 文字内容
       Column() {
         Text(t(title, title))
-          .fontSize(26)  // 标题字体调大到26px，更有气势！
+          .fontSize(22)  // 调整为更合理的字体大小
           .fontWeight(FontWeight.Medium)
           .fontColor(this.getCurrentTheme().textColor)
           .alignSelf(ItemAlign.Start)
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
 
         Text(t(subtitle, subtitle))
-          .fontSize(22)  // 副标题字体调大到22px，更有气势！
+          .fontSize(16)  // 调整为更合理的字体大小
           .fontColor(this.getCurrentTheme().subTextColor)
           .alignSelf(ItemAlign.Start)
           .margin({ top: 2 })
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
 
       // 右箭头
       Text('>')
-        .fontSize(26)  // 箭头字体调大到26px，更有气势！
+        .fontSize(22)
         .fontColor(this.getCurrentTheme().subTextColor)
     }
     .width('100%')
@@ -588,29 +592,33 @@ export struct MoreContent {
     Row() {
       // 图标
       Text(icon)
-        .fontSize(36)  // 图标字体调大到36px，更有气势！
+        .fontSize(36)
         .margin({ right: 16 })
 
       // 文字内容
       Column() {
         Text(t(title, title))
-          .fontSize(26)  // 标题字体调大到26px，更有气势！
+          .fontSize(22)  // 调整为更合理的字体大小
           .fontWeight(FontWeight.Medium)
           .fontColor(this.getCurrentTheme().textColor)
           .alignSelf(ItemAlign.Start)
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
 
         Text(t(subtitle, subtitle))
-          .fontSize(22)  // 副标题字体调大到22px，更有气势！
+          .fontSize(16)  // 调整为更合理的字体大小
           .fontColor(this.getCurrentTheme().subTextColor)
           .alignSelf(ItemAlign.Start)
           .margin({ top: 2 })
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
 
       // 右箭头
       Text('>')
-        .fontSize(26)  // 箭头字体调大到26px，更有气势！
+        .fontSize(22)
         .fontColor(this.getCurrentTheme().subTextColor)
     }
     .width('100%')
@@ -633,29 +641,33 @@ export struct MoreContent {
     Row() {
       // 图标
       Text(icon)
-        .fontSize(36)  // 图标字体调大到36px，更有气势！
+        .fontSize(36)
         .margin({ right: 16 })
 
       // 文字内容
       Column() {
         Text(t(title, title))
-          .fontSize(26)  // 标题字体调大到26px，更有气势！
+          .fontSize(22)  // 调整为更合理的字体大小
           .fontWeight(FontWeight.Medium)
           .fontColor(this.getCurrentTheme().textColor)
           .alignSelf(ItemAlign.Start)
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
 
         Text(t(subtitle, subtitle))
-          .fontSize(22)  // 副标题字体调大到22px，更有气势！
+          .fontSize(16)  // 调整为更合理的字体大小
           .fontColor(this.getCurrentTheme().subTextColor)
           .alignSelf(ItemAlign.Start)
           .margin({ top: 2 })
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
 
       // 右箭头
       Text('>')
-        .fontSize(26)  // 箭头字体调大到26px，更有气势！
+        .fontSize(22)
         .fontColor(this.getCurrentTheme().subTextColor)
     }
     .width('100%')

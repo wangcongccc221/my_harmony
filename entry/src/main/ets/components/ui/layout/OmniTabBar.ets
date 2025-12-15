@@ -17,6 +17,7 @@ import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../.
 import { getCurrentTheme } from '../../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../../utils/theme/useOmniTheme'
 import { BorderGrowthButton } from '../buttons/BorderGrowthButton'
+import { ThreeDButton } from '../buttons/ThreeDButton'
 import { AppleDesignStyle } from '../../../utils/theme/AppleDesignStyle'
 
 // Tab配置接口
@@ -96,40 +97,54 @@ export struct OmniTabBar {
   // 构建垂直TabBar
   @Builder
   private buildVerticalTabBar() {
-    Column() {
-      ForEach(this.tabs, (tab: TabConfig, index: number) => {
-        this.buildTab(tab)
+    Scroll() {
+      Column() {
+        ForEach(this.tabs, (tab: TabConfig, index: number) => {
+          // 给第一个按钮添加顶部边距
+          if (index === 0) {
+            Column().height(20) // 减少顶部间距 30 -> 20
+          }
+          
+          this.buildTab(tab)
+          
+          // 在按钮之间添加分隔线（如果需要）
+          if (this.showSeparator && index < this.tabs.length - 1) {
+            Row()
+              .width('80%')
+              .height(1)
+              .backgroundColor(this.resolveTheme().borderColor)
+              .margin({ top: 8, bottom: 8 })
+          }
+        })
         
-        // 在按钮之间添加分隔线（如果需要）
-        if (this.showSeparator && index < this.tabs.length - 1) {
-          Row()
-            .width('80%')
-            .height(1)
-            .backgroundColor(this.resolveTheme().borderColor)
-            .margin({ top: 8, bottom: 8 })
-        }
-      })
+        // 底部留白
+        Column().height(20)
+      }
+      .width('100%')
+      // .height('100%') // 去除固定高度，由内容撑开
+      .justifyContent(FlexAlign.Start)
+      .alignItems(HorizontalAlign.Center)
     }
     .width('100%')
     .height('100%')
+    .scrollBar(BarState.Off) // 隐藏滚动条
     .backgroundColor(this.resolveTheme().surfaceColor)
     .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // Apple风格：中等圆角
     .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.08)')) // Apple风格：柔和阴影
-    .padding({ top: 16, bottom: 16 }) // 改为内边距，移除左右外边距以修正居中偏移
-    .justifyContent(FlexAlign.Start)
-    .alignItems(HorizontalAlign.Center)
+    .padding(0) // 移除内边距，确保内容填满
+    .align(Alignment.Top)
   }
 
   // 构建单个Tab
   @Builder
   private buildTab(tab: TabConfig) {
-    // 垂直布局时使用BorderGrowthButton
+    // 垂直布局时使用ThreeDButton（与主页等级表按钮风格一致）
     if (this.layoutDirection === TabBarDirection.VERTICAL) {
-      BorderGrowthButton({
+      ThreeDButton({
         text: tab.label,
-        buttonWidth: 120, // 使用固定宽度，确保左右对称
-        buttonHeight: 48, // 保持原有高度
-        isActive: this.selectedTab === tab.key,
+        buttonWidth: 140, // 增加宽度以适应 24px 字体
+        buttonHeight: 64, // 增加高度以适应 24px 字体
+        isSelected: this.selectedTab === tab.key,
         onClickCallback: () => {
           if (!tab.disabled && this.onTabClick) {
             this.onTabClick(tab.key)
@@ -139,8 +154,8 @@ export struct OmniTabBar {
       .opacity(tab.disabled ? 0.4 : 1)
       .enabled(!tab.disabled)
       .margin({ 
-        top: 15,
-        bottom: 15,
+        top: 10,    // 恢复垂直间距 8 -> 10 (增加一点呼吸感)
+        bottom: 10, // 恢复垂直间距 8 -> 10
         left: 0,
         right: 0
       })
@@ -160,8 +175,8 @@ export struct OmniTabBar {
           
           // 文字
           Text(tab.label)
-            .fontSize(14)
-            .fontWeight(this.selectedTab === tab.key ? FontWeight.Bold : FontWeight.Normal)
+            .fontSize(this.selectedTab === tab.key ? (this.resolveTheme().fontLevel3 ?? 24) : (this.resolveTheme().fontLevel4 ?? 18)) // 选中用 Level 3 (24px), 未选中 Level 4 (18px)
+            .fontWeight(this.selectedTab === tab.key ? (this.resolveTheme().fontWeightBold ?? FontWeight.Bold) : (this.resolveTheme().fontWeightMedium ?? FontWeight.Normal))
             .fontColor(tab.disabled ? this.resolveTheme().textColor + '60' : 
                       (this.selectedTab === tab.key ? this.resolveTheme().primary : this.resolveTheme().textColor))
           

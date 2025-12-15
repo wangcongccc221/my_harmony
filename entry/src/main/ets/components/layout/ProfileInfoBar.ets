@@ -210,15 +210,15 @@ export struct ProfileInfoBar {
           Stack() {
             Row() {
               Text(this.userName)
-                .fontSize(17)
-                .fontWeight(FontWeight.Bold)
+                .fontSize(this.getCurrentTheme().fontLevel3 ?? 24) // 24px - Name (Big)
+                .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold)
                 .fontColor(this.getCurrentTheme().textColor)
                 .maxLines(1)
             }
             .translate({ x: -this.scrollOffset })
           }
           .width('100%')
-          .height(20)
+          .height(26) // 调整高度以适应字体
           .clip(true) // 裁剪超出部分
           .margin({ bottom: 3 })
           .alignSelf(ItemAlign.Start) // 姓名左对齐
@@ -232,7 +232,7 @@ export struct ProfileInfoBar {
           // 管理员标签居中显示
           Row() {
             Text(this.userRole)
-              .fontSize(14)
+              .fontSize(this.getCurrentTheme().fontLevel4 ?? 18) // 18px - Role (Small)
               .fontColor(this.getCurrentTheme().primary) // 角色高亮
               .maxLines(1)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -261,14 +261,14 @@ export struct ProfileInfoBar {
       // 右侧部分：日期/时间
       Column() {
         Text(this.currentDate)
-          .fontSize(14)
+          .fontSize(this.getCurrentTheme().fontLevel4 ?? 18) // 18px
           .fontWeight(FontWeight.Medium)
           .fontColor(this.getCurrentTheme().subTextColor)
           .margin({ bottom: 4 })
         
         Text(this.currentTime)
-          .fontSize(16) // 时间稍大
-          .fontWeight(FontWeight.Bold)
+          .fontSize(this.getCurrentTheme().fontLevel3 ?? 24) // 24px - Time (Big)
+          .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold)
           .fontColor(this.getCurrentTheme().textColor)
       }
       .alignItems(HorizontalAlign.End)

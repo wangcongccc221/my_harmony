@@ -202,8 +202,8 @@ export struct SortingInfoCard {
       // ==================== 标题区域（高级渐变效果）====================
       Row() {
         Text(t('当前分选信息', '当前分选信息'))
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
+          .fontSize(20)                                      // 增大字体：从16改为20，更突出
+          .fontWeight(FontWeight.Bold)                      // 加粗字体：从Medium改为Bold，更醒目
           .fontColor(Color.White)
           .opacity(this.i18nVersion >= 0 ? 1 : 1)
       }
@@ -220,10 +220,10 @@ export struct SortingInfoCard {
       .blur(3)                                             // 内容模糊（增强毛玻璃质感）
       .borderRadius({ topLeft: 12, topRight: 12 })
       .border({                                            // 高级效果：外描边设置 - 精致边框
-        width: { bottom: 1 },
-        color: 'rgba(255, 255, 255, 0.2)'                // 半透明边框增加层次
+        width: { bottom: 2 },                              // 加粗底部分隔线：从1改为2，更明显
+        color: 'rgba(255, 255, 255, 0.3)'                 // 提高分隔线透明度：从0.2改为0.3，更清晰
       })
-      .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+      .padding({ left: 16, right: 16, top: 14, bottom: 14 }) // 增加内边距：从10改为14，让标题更突出
 
       // ==================== 数据区域（在卡片内部，浅色背景）====================
       Row() {

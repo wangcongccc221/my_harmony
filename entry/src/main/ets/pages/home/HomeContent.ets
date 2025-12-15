@@ -569,7 +569,7 @@ export struct HomeContent {
         Blank().width('1.5%')  // 右边间隙
       }
       .width('100%')
-      .height('33%')  // 液体卡片区域占主页的33%（减小高度，为表格留出更多空间）
+      .height('32%')  // 液体卡片区域占主页的32%（折中方案）
       .margin({ bottom: '0.5%' })
 
       // 数据表格TabBar组件 - 替换原有的FunctionButtons和DataTablesCard
@@ -595,7 +595,7 @@ export struct HomeContent {
         }
       })
           .layoutWeight(1)  // 自适应宽度，填充剩余空间
-          .height('50%') // 表格区域占50%
+          .height('53%') // 表格区域占53%
         Blank().width('1.5%')  // 右边间隙
       }
       .width('100%')

@@ -126,9 +126,9 @@ export struct CompactFsmToggle {
       Row() {
         // FSM1 按钮
         Text('FSM1')
-          .fontSize(14)
+          .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
           .fontWeight(FontWeight.Medium)
-          .fontColor(this.selectedFSM === 'FSM1' ? '#FFFFFF' : '#6B7280') // 选中白字，未选中灰字
+          .fontColor(this.selectedFSM === 'FSM1' ? '#FFFFFF' : (this.getCurrentTheme().subTextColor ?? '#6B7280')) // 选中白字，未选中主题次要色
           .width('50%')
           .height('100%')
           .textAlign(TextAlign.Center)
@@ -136,9 +136,9 @@ export struct CompactFsmToggle {
 
         // FSM2 按钮
         Text('FSM2')
-          .fontSize(14)
+          .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
           .fontWeight(FontWeight.Medium)
-          .fontColor(this.selectedFSM === 'FSM2' ? '#FFFFFF' : '#6B7280')
+          .fontColor(this.selectedFSM === 'FSM2' ? '#FFFFFF' : (this.getCurrentTheme().subTextColor ?? '#6B7280'))
           .width('50%')
           .height('100%')
           .textAlign(TextAlign.Center)

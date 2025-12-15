@@ -12,6 +12,7 @@
  */
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { OMNI_THEME_KEY } from '../../utils/theme/useOmniTheme'
 import { TableRow } from './LevelTable'
 import { MultiSelectCell, MultiSelectState } from '../ThreeLayerCard/types'
 import { StorageKeys } from '../../utils/constants/StorageKeys'
@@ -81,7 +82,7 @@ export struct GridTable {
   @Prop enableScroll: boolean = false 
 
   // 当前主题样式
-  private currentTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
+  @StorageLink(OMNI_THEME_KEY) currentTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
 
   /**
    * 获取当前主题配置
@@ -419,29 +420,24 @@ export struct GridTable {
 
     let newTableRows: string[][]
 
-    if (isLevelToContainer || isContainerToLevel) {
-      // 跨表格拖拽：覆盖模式（根据拖拽值决定替换哪一列）
-      const dragValue = fromData.value || fromRow[0]
-      
-      // 根据拖拽值决定替换策略
+    if (isLevelToContainer) {
+      // 等级表 -> 容器表：拖拽等级行到容器行，将容器的"容器等级"列（索引3）更新为该等级
+      const levelName = fromData.levelName || fromRow[0]
       newTableRows = this.tableRows.map((row, rowIdx) => {
         if (rowIdx === toRowIndex) {
-          // 如果是等级名称（A级、B级等），替换第一列（容器名称）
-          if (dragValue.includes('级')) {
-            return row.map((cell, colIdx) => {
-              if (colIdx === 0) {
-                return dragValue // 替换容器名称
-              }
-              return cell
-            })
-          } else {
-            // 如果是其他数据，替换整行
-            return fromRow
-          }
+          const newRow = [...row]
+          // 确保有足够的列（容器表通常有4列：名称、标准、规格、等级）
+          while (newRow.length <= 3) newRow.push('')
+          newRow[3] = levelName // 更新容器等级（假设在第4列）
+          return newRow
         }
         return row
       })
-      console.log(`跨表格行拖拽: ${fromData.sourceTable} -> ${this.tableName}, 值: ${dragValue}`)
+      console.log(`跨表格行拖拽: Level -> Container, 设置等级: ${levelName}`)
+    } else if (isContainerToLevel) {
+      // 容器表 -> 等级表：暂不支持整行替换，防止破坏等级表结构
+      console.warn('不支持从容器表拖拽整行到等级表')
+      return
     } else {
       // 同表格内拖拽：交换模式
       newTableRows = this.tableRows.map((row, rowIdx) => {

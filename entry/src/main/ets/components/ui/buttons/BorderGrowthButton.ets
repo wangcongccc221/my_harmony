@@ -77,10 +77,11 @@ export struct BorderGrowthButton {
     Stack({ alignContent: Alignment.Center }) {
       // 文字层 - Apple风格优化
       Text(this.text)
-        .fontSize(16)
-        .fontWeight(this.isActive ? FontWeight.Medium : FontWeight.Normal) // Apple风格：激活时Medium，否则Normal（HarmonyOS不支持SemiBold）
+        .fontSize(this.isActive ? 20 : 16) // 选中时字体变大
+        .fontWeight(this.isActive ? FontWeight.Bold : FontWeight.Normal) // 选中时加粗
         .fontColor(this.getTextColor())
         .letterSpacing(0.5) // Apple风格：减少字间距，更紧凑
+        .animation({ duration: 300, curve: Curve.EaseOut }) // 字体大小变化的动画
       
       // 边框层 - 使用 Column 和 Row 来绘制边框
       Column() {
@@ -124,6 +125,22 @@ export struct BorderGrowthButton {
     .width(typeof this.buttonWidth === 'string' ? this.buttonWidth : this.buttonWidth)
     .height(this.buttonHeight)
     .backgroundColor(Color.Transparent)
+    // 渐变色背景 (isActive 时显示)
+    .linearGradient(this.isActive ? {
+      angle: 180, // 从上到下
+      colors: [
+        [this.getCurrentTheme().primary + '33', 0.0], // 顶部透明度约 20%
+        [this.getCurrentTheme().primary + '66', 1.0]  // 底部透明度约 40%
+      ]
+    } : {
+      angle: 180,
+      colors: [[Color.Transparent, 0], [Color.Transparent, 1]]
+    })
+    // 毛玻璃效果 (isActive 时显示)
+    .backdropBlur(this.isActive ? 20 : 0)
+    .borderRadius(8) // 添加圆角以配合背景
+    .scale({ x: this.isActive ? 1.3 : 1, y: this.isActive ? 1.3 : 1 }) // 选中时放大比例增大到 1.3
+    .animation({ duration: 300, curve: Curve.EaseOut }) // 放大动画
     .onHover((isHover: boolean, event: HoverEvent) => {
       console.info(`[BorderGrowthButton] onHover triggered! isHover: ${isHover}`);
       

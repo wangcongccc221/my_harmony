@@ -90,6 +90,9 @@ export struct LeftNavigationTabBar {
           .fontSize(12)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.resolveTheme().textColor)
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .textAlign(TextAlign.Center)
       }
       .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 触发重建
       .width('85%')
@@ -118,6 +121,9 @@ export struct LeftNavigationTabBar {
           .fontSize(12)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.resolveTheme().textColor)
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .textAlign(TextAlign.Center)
       }
       .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 触发重建
       .width('85%')
@@ -169,7 +175,7 @@ export struct LeftNavigationTabBar {
     }
     .width('100%')
     .height('100%')
-    .padding({ top: 20, bottom: 20 })
+    .padding(0) // 移除内边距，确保内容填满
     .backgroundColor(this.resolveTheme().navBg ?? this.resolveTheme().backgroundColor)
   }
 }

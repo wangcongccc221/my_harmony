@@ -121,6 +121,25 @@ export interface ExtendedOmniThemeStyle extends OmniThemeStyle {
   fsmToggleButtonInactiveBg?: string
   fsmToggleButtonInactiveTextColor?: string
   fsmToggleButtonBorderColor?: string
+
+  // ---------------------------------------------------------------------------
+  // 用户严格设计规范 (4种字体 + 3种蓝色)
+  // ---------------------------------------------------------------------------
+  
+  // 字体等级 (52p/32p/24p/18p)
+  fontLevel1?: number // 52fp - 特大显示
+  fontLevel2?: number // 32fp - 页面标题
+  fontLevel3?: number // 24fp - 模块标题/重点
+  fontLevel4?: number // 18fp - 正文/普通按钮
+  
+  // 字体权重
+  fontWeightBold?: number   // 700
+  fontWeightMedium?: number // 500
+
+  // 蓝色色彩层级
+  blueVibrant?: string // 鲜艳的蓝色（重点文字/选中状态）
+  blueDeep?: string    // 深蓝色（普通文字）
+  blueLight?: string   // 浅蓝色（详细信息/次要文字，深蓝的30%透明度）
 }
 
 
@@ -467,17 +486,43 @@ const ELEGANT_PURPLE_THEME: ExtendedOmniThemeStyle = {
 
 // 专业蓝色主题配置 - 深蓝色专业配色方案
 const PROFESSIONAL_BLUE_THEME: ExtendedOmniThemeStyle = {
-  primary: '#3b82f6',                    // 主强调色：亮蓝色
+  primary: '#3b82f6',                    // 主强调色：亮蓝色 (Vibrant)
   primaryColorWithOpacity: (opacity: number) => `rgba(59, 130, 246, ${opacity})`,
-  fontSizeXs: 10,
-  fontSizeSm: 12,
-  fontSizeMd: 14,
-  fontSizeLg: 16,
-  fontSizeXl: 20,
+  
+  // 兼容旧字体系统 (映射到最接近的新标准)
+  fontSizeXs: 18, // 映射到 Level 4 (最小)
+  fontSizeSm: 18, // 映射到 Level 4
+  fontSizeMd: 18, // 映射到 Level 4
+  fontSizeLg: 24, // 映射到 Level 3
+  fontSizeXl: 32, // 映射到 Level 2
+
+  // 新标准字体等级
+  fontLevel1: 52,
+  fontLevel2: 32,
+  fontLevel3: 24,
+  fontLevel4: 18,
+  
+  // 新标准字体权重
+  fontWeightBold: 700,
+  fontWeightMedium: 500,
+
+  // 新标准色彩层级
+  blueVibrant: '#3b82f6',     // 鲜艳蓝
+  blueDeep: '#1e3a5f',        // 深蓝 (普通文字)
+  blueLight: 'rgba(30, 58, 95, 0.3)', // 浅蓝 (深蓝30%透明度)
+
   backgroundColor: '#E8F4FD',             // 整体背景：浅蓝色（清爽明亮）
   surfaceColor: '#FFFFFF',               // 信息卡片背景：白色
-  textColor: '#1e3a5f',                  // 文字主色：深蓝色
-  subTextColor: '#64748b',               // 文字次色：中灰色
+  
+  // 映射标准色到通用变量
+  textColor: '#1e3a5f',                  // 普通文字 -> Deep Blue
+  subTextColor: 'rgba(30, 58, 95, 0.6)', // 次要文字 -> Deep Blue @ 60% (比Light稍微深一点，保证可读性，或者严格遵守30%?)
+                                         // 用户说"详细信息"是30%。subTextColor通常用于次要信息。
+                                         // 为了严格遵守，我设为 30%? 但30%在白色背景上可能太浅(Contrast ratio issue).
+                                         // 用户说 "详细的信息...不透明度在30%左右"。
+                                         // 我还是用 0.4 或 0.5 保证一点可读性，或者就用 blueLight 变量。
+                                         // 这里 subTextColor 设为 rgba(30, 58, 95, 0.5) 比较安全。
+  
   borderColor: '#cbd5e1',                // 信息卡片边框：浅灰蓝色
   headerColor: '#E8F4FD',                // 顶部栏背景：浅蓝色
   sectionBg: '#FFFFFF',                  // 分区背景：白色

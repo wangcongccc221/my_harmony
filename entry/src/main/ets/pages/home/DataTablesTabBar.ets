@@ -676,7 +676,7 @@ export struct DataTablesTabBar {
     Column() {
       // Custom ThreeDButton TabBar
       Scroll() {
-        Row({ space: 12 }) {
+        Row({ space: 0 }) {  // 使用0间距，通过margin控制每个按钮的间距
           ForEach(this.getTabConfig(), (tab: TabConfig) => {
             ThreeDButton({
               text: tab.label,
@@ -687,6 +687,7 @@ export struct DataTablesTabBar {
             })
             .width(140) // Fixed width for consistent look, or auto
             .height(48)
+            .margin({ right: 24 })  // 调整右边距，scale缩放后间距更合适
           })
         }
         .padding({ left: 16, right: 16, top: 16, bottom: 8 })

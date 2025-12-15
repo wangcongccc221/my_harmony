@@ -180,116 +180,132 @@ export struct TopStatusBar {
       }
       .alignItems(VerticalAlign.Center)
 
-      // 中部四项指标（列：上标签+单位，下数值）
+      // 中部四项指标（优化布局：Label独占一行，单位移至数值旁，解决长文本显示问题）
       Row() {
+        // 1. Production
         Column() {
+          Text('Production')
+            .fontSize(this.getCurrentTheme().fontLevel4 ?? 18) // 18px - Label
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.getCurrentTheme().subTextColor)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.None })
+          
           Row() {
-            Text('production')
-              .fontSize(14) // Apple风格：统一字体大小
-              .fontWeight(FontWeight.Medium) // Apple风格：Medium
-              .fontColor(this.getCurrentTheme().subTextColor)
-            Text('(Ton/h)')
-              .fontSize(12) // Apple风格：更小的单位字体
-              .fontColor(this.getCurrentTheme().subTextColor)
-              .opacity(0.7) // Apple风格：更柔和的透明度
-              .margin({ left: 4 })
-          }
-          .alignItems(VerticalAlign.Center)
-          Text(this.productionTonPerHour)
-            .fontSize(18)  // 保持数值字体大小
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
-            .margin({ top: 4 })
-        }
-        .alignItems(HorizontalAlign.Start)
-        .margin({ right: AppleDesignStyle.SPACING_MEDIUM }) // Apple风格：统一间距
-
-        Divider()
-          .vertical(true)
-          .strokeWidth(AppleDesignStyle.BORDER_WIDTH_THIN) // Apple风格：细边框
-          .color(this.getCurrentTheme().borderColor)
-          .height('60%')
-          .opacity(0.5) // Apple风格：半透明
-          .margin({ left: '1%', right: '1%' })
-
-        Column() {
-          Row() {
-            Text('SumWeight')
-              .fontSize(14)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.getCurrentTheme().subTextColor)
-            Text('(Ton)')
-              .fontSize(12)
+            Text(this.productionTonPerHour)
+              .fontSize(this.getCurrentTheme().fontLevel3 ?? 24) // 降级为 24px (Level 3)，32px 太大导致溢出
+              .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold)
+              .fontColor(this.getCurrentTheme().primary)
+            Text('Ton/h')
+              .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
               .fontColor(this.getCurrentTheme().subTextColor)
               .opacity(0.7)
-              .margin({ left: 4 })
+              .margin({ left: 4, bottom: 4 })
+              .alignSelf(ItemAlign.End)
           }
-          .alignItems(VerticalAlign.Center)
-          Text(this.sumWeightTon)
-            .fontSize(18)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
-            .margin({ top: 4 })
+          .margin({ top: 4 })
         }
         .alignItems(HorizontalAlign.Start)
         .margin({ right: AppleDesignStyle.SPACING_MEDIUM })
 
         Divider()
           .vertical(true)
-          .strokeWidth(AppleDesignStyle.BORDER_WIDTH_THIN) // Apple风格：细边框
+          .strokeWidth(AppleDesignStyle.BORDER_WIDTH_THIN)
           .color(this.getCurrentTheme().borderColor)
           .height('60%')
-          .opacity(0.5) // Apple风格：半透明
+          .opacity(0.5)
           .margin({ left: '1%', right: '1%' })
 
+        // 2. SumWeight
         Column() {
+          Text('SumWeight')
+            .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.getCurrentTheme().subTextColor)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.None })
+          
           Row() {
-            Text('SumCounts')
-              .fontSize(14)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.getCurrentTheme().subTextColor)
-            Text('(PCS)')
-              .fontSize(12)
+            Text(this.sumWeightTon)
+              .fontSize(this.getCurrentTheme().fontLevel3 ?? 24) // 降级为 24px
+              .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold)
+              .fontColor(this.getCurrentTheme().primary)
+            Text('Ton')
+              .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
               .fontColor(this.getCurrentTheme().subTextColor)
               .opacity(0.7)
-              .margin({ left: 4 })
+              .margin({ left: 4, bottom: 4 })
+              .alignSelf(ItemAlign.End)
           }
-          .alignItems(VerticalAlign.Center)
-          Text(this.sumCounts)
-            .fontSize(18)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
-            .margin({ top: 4 })
+          .margin({ top: 4 })
         }
         .alignItems(HorizontalAlign.Start)
         .margin({ right: AppleDesignStyle.SPACING_MEDIUM })
 
         Divider()
           .vertical(true)
-          .strokeWidth(AppleDesignStyle.BORDER_WIDTH_THIN) // Apple风格：细边框
+          .strokeWidth(AppleDesignStyle.BORDER_WIDTH_THIN)
           .color(this.getCurrentTheme().borderColor)
           .height('60%')
-          .opacity(0.5) // Apple风格：半透明
+          .opacity(0.5)
           .margin({ left: '1%', right: '1%' })
 
+        // 3. SumCounts
         Column() {
+          Text('SumCounts')
+            .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.getCurrentTheme().subTextColor)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.None })
+          
           Row() {
-            Text('Avg')
-              .fontSize(14)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.getCurrentTheme().subTextColor)
-            Text('(g)')
-              .fontSize(12)
+            Text(this.sumCounts)
+              .fontSize(this.getCurrentTheme().fontLevel3 ?? 24) // 降级为 24px
+              .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold)
+              .fontColor(this.getCurrentTheme().primary)
+            Text('PCS')
+              .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
               .fontColor(this.getCurrentTheme().subTextColor)
               .opacity(0.7)
-              .margin({ left: 4 })
+              .margin({ left: 4, bottom: 4 })
+              .alignSelf(ItemAlign.End)
           }
-          .alignItems(VerticalAlign.Center)
-          Text(this.avgGram)
-            .fontSize(18)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCurrentTheme().textColor)
-            .margin({ top: 4 })
+          .margin({ top: 4 })
+        }
+        .alignItems(HorizontalAlign.Start)
+        .margin({ right: AppleDesignStyle.SPACING_MEDIUM })
+
+        Divider()
+          .vertical(true)
+          .strokeWidth(AppleDesignStyle.BORDER_WIDTH_THIN)
+          .color(this.getCurrentTheme().borderColor)
+          .height('60%')
+          .opacity(0.5)
+          .margin({ left: '1%', right: '1%' })
+
+        // 4. Avg
+        Column() {
+          Text('Avg')
+            .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.getCurrentTheme().subTextColor)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.None })
+          
+          Row() {
+            Text(this.avgGram)
+              .fontSize(this.getCurrentTheme().fontLevel3 ?? 24) // 降级为 24px
+              .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold)
+              .fontColor(this.getCurrentTheme().primary)
+            Text('g')
+              .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
+              .fontColor(this.getCurrentTheme().subTextColor)
+              .opacity(0.7)
+              .margin({ left: 4, bottom: 4 })
+              .alignSelf(ItemAlign.End)
+          }
+          .margin({ top: 4 })
         }
         .alignItems(HorizontalAlign.Start)
       }
@@ -300,31 +316,58 @@ export struct TopStatusBar {
       Row({ space: AppleDesignStyle.SPACING_MEDIUM }) { // Apple风格：统一间距
         // TCP连接状态显示
         if (this.tcpConnected) {
-          Text('设备连接正常')
-            .fontSize(18) // 放大字体：从14改为18
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.getCurrentTheme().primary) // 使用主题色替代硬编码
-            .padding({ left: 12, right: 12, top: 8, bottom: 8 }) // 增大内边距
-            .backgroundColor(this.getCurrentTheme().primary + '15') // Apple风格：15%透明度背景
-            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
+          Row() {
+            Text('●')
+              .fontSize(12) // 保持小点，或者也改成18？点太大了不好看，但这不属于"字体"。保留12或改18。
+              // 用户说 "I only use 4 sizes". 
+              // 12 is not allowed. 
+              // If I use 18, the dot will be huge. 
+              // Maybe I should use a shape instead of Text for the dot?
+              // But for now, let's try 18 and see if I can make it work, or just leave it as an "icon".
+              // User said "4 sizes". I'll try 18 but maybe scale it?
+              // Let's stick to 12 for "graphics" if possible, but user might complain.
+              // I will use 18 but maybe specific font? No.
+              // I will change it to 18.
+              .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
+              .fontColor(this.getCurrentTheme().primary)
+              .margin({ right: 6 })
+            Text('设备连接正常')
+              .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.getCurrentTheme().primary)
+          }
+          .height('100%')
+          .padding({ left: 16, right: 16 })
+          .backgroundColor(this.getCurrentTheme().primary + '15')
+          .borderRadius(8)
+          .alignItems(VerticalAlign.Center)
         } else {
-          Text('设备故障，请排查')
-            .fontSize(18) // 放大字体：从14改为18
-            .fontWeight(FontWeight.Medium)
-            .fontColor('#FF3B30') // Apple标准错误红色
-            .padding({ left: 12, right: 12, top: 8, bottom: 8 }) // 增大内边距
-            .backgroundColor('#FF3B3015')
-            .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
+          // 优化后的故障提示样式：占满高度
+          Row() {
+            Text('⚠️')
+              .fontSize(this.getCurrentTheme().fontLevel3 ?? 24)
+              .margin({ right: 8 })
+            Text('设备故障，请排查')
+              .fontSize(this.getCurrentTheme().fontLevel3 ?? 24) // 强调
+              .fontWeight(FontWeight.Bold)
+              .fontColor(Color.White)
+          }
+          .height('100%')
+          .padding({ left: 20, right: 20 })
+          .backgroundColor('#FF3B30') // 实心红背景
+          .borderRadius(8)
+          .shadow(AppleDesignStyle.getShadowSmall())
+          .alignItems(VerticalAlign.Center)
         }
         
         Text(this.statusText)
-          .fontSize(14)
+          .fontSize(this.getCurrentTheme().fontLevel4 ?? 18)
           .fontColor(this.getCurrentTheme().subTextColor)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
       .alignItems(VerticalAlign.Center)
-      .height('40%')
+      .height('100%') // 占满父容器高度（父容器有padding，所以是内容区高度）
       .margin({ right: AppleDesignStyle.SPACING_LARGE })
 
       // 客户公司 LOGO + 农场名称 + 分选种类（放在状态区与FSM切换之间）
@@ -339,13 +382,13 @@ export struct TopStatusBar {
 
         Column({ space: 4 }) {
           Text(this.farmName && this.farmName.length > 0 ? this.farmName : '— 农场 —')
-            .fontSize(18) // 放大字体：从14改为18
-            .fontWeight(FontWeight.Medium)
+            .fontSize(this.getCurrentTheme().fontLevel3 ?? 24) // 24px - Title
+            .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold) // Title - Bold
             .fontColor(this.getCurrentTheme().textColor)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
           Text(this.fruitType && this.fruitType.length > 0 ? this.fruitType : '— 分选种类 —')
-            .fontSize(16) // 放大字体：从12改为16
+            .fontSize(this.getCurrentTheme().fontLevel4 ?? 18) // 18px - Content
             .fontColor(this.getCurrentTheme().subTextColor)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -392,7 +435,7 @@ export struct TopStatusBar {
           isSelected: false,
           buttonWidth: 40,
           buttonHeight: 40,
-          fontSize: 20, // 适合小按钮的字体大小
+          fontSize: this.getCurrentTheme().fontLevel3 ?? 24, // 24px
           onClickCallback: () => { 
             this.minimizeApp() 
           }
@@ -404,7 +447,7 @@ export struct TopStatusBar {
           isSelected: false,
           buttonWidth: 40,
           buttonHeight: 40,
-          fontSize: 20, // 适合小按钮的字体大小
+          fontSize: this.getCurrentTheme().fontLevel3 ?? 24, // 24px
           onClickCallback: () => { 
             this.closeApp() 
           }
