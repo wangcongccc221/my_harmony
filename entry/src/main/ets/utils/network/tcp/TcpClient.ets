@@ -3,6 +3,7 @@ import { util } from '@kit.ArkTS';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { taskpool } from '@kit.ArkTS';
 import { TcpMessageQueueManager } from './dispatch';
+import { handleStatisticsData } from './handlers/StatisticsDataHandler';
 
 const DOMAIN = 0x0000;
 
@@ -46,18 +47,37 @@ export class TcpClient {
       this.tcpSocket.on('message', (data: socket.SocketMessageInfo) => {
         // 使用 Dispatch 队列处理消息
         const messageData = new Uint8Array(data.message);
-        TcpMessageQueueManager.executeMessage(
-          messageData,
-          (message: string) => {
-            hilog.info(DOMAIN, 'TcpClient', `收到消息: ${message}`);
-            this.notifyMessageCallbacks(message);
-          },
-          this.tcpSocket || undefined
-        ).catch((err: Error | object) => {
-          const errorMsg = err instanceof Error ? err.message : String(err);
-          hilog.error(DOMAIN, 'TcpClient', `接收消息处理失败: ${errorMsg}`);
-          this.notifyErrorCallbacks(`接收消息处理失败: ${errorMsg}`);
-        });
+        
+        // 检查是否为二进制统计数据（以SYNC开头）
+        const isBinaryData = messageData.length >= 4 && 
+          messageData[0] === 0x53 && // 'S'
+          messageData[1] === 0x59 && // 'Y'
+          messageData[2] === 0x4E && // 'N'
+          messageData[3] === 0x43;    // 'C'
+        
+        if (isBinaryData) {
+          // 二进制统计数据，直接处理
+          handleStatisticsData(messageData).catch((err: Error | object) => {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            hilog.error(DOMAIN, 'TcpClient', `处理统计数据失败: ${errorMsg}`);
+            this.notifyErrorCallbacks(`处理统计数据失败: ${errorMsg}`);
+          });
+        } else {
+          // 文本消息，使用原有处理方式
+          TcpMessageQueueManager.executeMessage(
+            messageData,
+            (message: string | Uint8Array) => {
+              const messageStr = typeof message === 'string' ? message : '[Binary Data]';
+              hilog.info(DOMAIN, 'TcpClient', `收到消息: ${messageStr}`);
+              this.notifyMessageCallbacks(messageStr);
+            },
+            this.tcpSocket || undefined
+          ).catch((err: Error | object) => {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            hilog.error(DOMAIN, 'TcpClient', `接收消息处理失败: ${errorMsg}`);
+            this.notifyErrorCallbacks(`接收消息处理失败: ${errorMsg}`);
+          });
+        }
       });
       
       // 监听连接关闭
@@ -300,15 +320,32 @@ export async function runTcpClientWorker(remoteIp: string, port: number): Promis
       client.on('message', (data: socket.SocketMessageInfo) => {
         // 使用 Dispatch 队列处理消息
         const messageData = new Uint8Array(data.message);
-        TcpMessageQueueManager.executeMessage(
-          messageData,
-          (message: string) => {
-            hilog.info(DOMAIN, 'TcpClientWorker', `收到消息: ${message}`);
-          },
-          client || undefined
-        ).catch((err: Error | object) => {
-          hilog.error(DOMAIN, 'TcpClientWorker', `消息处理失败: ${JSON.stringify(err)}`);
-        });
+        
+        // 检查是否为二进制统计数据（以SYNC开头）
+        const isBinaryData = messageData.length >= 4 && 
+          messageData[0] === 0x53 && // 'S'
+          messageData[1] === 0x59 && // 'Y'
+          messageData[2] === 0x4E && // 'N'
+          messageData[3] === 0x43;    // 'C'
+        
+        if (isBinaryData) {
+          // 二进制统计数据，直接处理
+          handleStatisticsData(messageData).catch((err: Error | object) => {
+            hilog.error(DOMAIN, 'TcpClientWorker', `处理统计数据失败: ${JSON.stringify(err)}`);
+          });
+        } else {
+          // 文本消息，使用原有处理方式
+          TcpMessageQueueManager.executeMessage(
+            messageData,
+            (message: string | Uint8Array) => {
+              const messageStr = typeof message === 'string' ? message : '[Binary Data]';
+              hilog.info(DOMAIN, 'TcpClientWorker', `收到消息: ${messageStr}`);
+            },
+            client || undefined
+          ).catch((err: Error | object) => {
+            hilog.error(DOMAIN, 'TcpClientWorker', `消息处理失败: ${JSON.stringify(err)}`);
+          });
+        }
       });
 
       client.on('close', () => {

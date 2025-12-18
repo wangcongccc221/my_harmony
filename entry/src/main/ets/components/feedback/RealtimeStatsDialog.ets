@@ -13,6 +13,7 @@ import { McPieChart, Options } from '@mcui/mccharts'
 import { ExportStatisticsContent } from './ExportStatisticsContent'
 import { ExportStatisticsBarChart } from '../charts/ExportStatisticsBarChart'
 import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
+import { RealtimeDataManager } from '../../utils/managers/RealtimeDataManager'
 
 interface RealtimeStats {
   productionTonH: string
@@ -32,13 +33,18 @@ export struct RealtimeStatsDialog {
   @Prop isVisible: boolean = false
   // 为子图表提供主题，避免 @Consume 解析失败
   @Provide providedTheme: ExtendedOmniThemeStyle = getCurrentTheme()
+  @StorageLink(HOME_SELECTED_FSM) private selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
+  @StorageLink('TCP_STATISTICS_GLOBAL_UPDATE') @Watch('onTcpDataUpdate') private tcpDataUpdate: number = 0
 
-  // 简要统计占位（可由外部传入或后续联动替换）
+  // 实时数据管理器
+  private realtimeDataManager: RealtimeDataManager = RealtimeDataManager.getInstance()
+
+  // 简要统计（从TCP数据获取）
   @State stats: RealtimeStats = {
-    productionTonH: '--',
-    sumWeightTon: '--',
-    sumCounts: '--',
-    avgG: '--'
+    productionTonH: '1213',
+    sumWeightTon: '-2323-',
+    sumCounts: '-2332-',
+    avgG: '-32323-'
   }
 
   onConfirm?: (stats: RealtimeStats) => void
@@ -117,6 +123,46 @@ export struct RealtimeStatsDialog {
   @State private contentRefreshKey: number = 0
   @State private currentInnerPage: string = '出口统计信息'
 
+  /**
+   * 监听TCP数据更新
+   */
+  onTcpDataUpdate(): void {
+    this.updateStatsFromTcpData()
+  }
+
+  /**
+   * 从TCP数据更新统计信息
+   */
+  private updateStatsFromTcpData(): void {
+    try {
+      const subsysId: number = this.selectedFSM === 'FSM1' ? 0 : 1
+      const statistics = this.realtimeDataManager.getStatistics(subsysId)
+      const calculated = this.realtimeDataManager.getCalculatedData(subsysId)
+      
+      // 获取所有子系统的累加数据
+      const allStatistics = this.realtimeDataManager.getAllStatistics()
+      const allCalculated = this.realtimeDataManager.getAllCalculatedData()
+      
+      // 实时产量（吨/小时）
+      this.stats.productionTonH = allCalculated.realTimeOutput.toFixed(2)
+      
+      // 总重量（吨）
+      const totalWeightTon = allStatistics.nWeightCount / 1000000.0
+      this.stats.sumWeightTon = totalWeightTon.toFixed(2)
+      
+      // 总个数
+      this.stats.sumCounts = String(allStatistics.nTotalCount)
+      
+      // 平均果重（克）
+      this.stats.avgG = allCalculated.avgWeight.toFixed(2)
+      
+      console.log(`[RealtimeStatsDialog] 统计数据已更新`)
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[RealtimeStatsDialog] 更新统计数据失败: ${errorMsg}`)
+    }
+  }
+
   private handleConfirm() {
     if (this.onConfirm) {
       this.onConfirm(this.stats)
@@ -133,6 +179,11 @@ export struct RealtimeStatsDialog {
   private getSelectedSubsystemValue(): string {
     const currentFSM = AppStorage.get<string>(HOME_SELECTED_FSM) || 'FSM1'
     return currentFSM === 'FSM1' ? '1' : '2'
+  }
+
+  aboutToAppear() {
+    // 初始化时更新一次数据
+    this.updateStatsFromTcpData()
   }
 
   build(): void {

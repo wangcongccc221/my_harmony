@@ -9,6 +9,7 @@
 import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
+import { RealtimeDataManager } from '../../utils/managers/RealtimeDataManager'
 
 interface ChartPadding {
   top: number;
@@ -36,6 +37,10 @@ export struct ExportStatisticsBarChart {
   @StorageLink(HOME_SELECTED_FSM) @Watch('onFSMChange') private selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
   @StorageLink('OutletCount_FSM1') private outletCountFSM1: number = 20
   @StorageLink('OutletCount_FSM2') private outletCountFSM2: number = 20
+  @StorageLink('TCP_STATISTICS_GLOBAL_UPDATE') @Watch('onTcpDataUpdate') private tcpDataUpdate: number = 0
+  
+  // 实时数据管理器
+  private realtimeDataManager: RealtimeDataManager = RealtimeDataManager.getInstance()
   
   private itemWidth: number = 90;  // 从60增加到90，让柱子更大更宽
   
@@ -70,12 +75,71 @@ export struct ExportStatisticsBarChart {
   @State data1: number[] = [];
   @State data2: number[] = [];
   
-  aboutToAppear() {
-    // 初始化静态数据（不启动定时器）
-    this.initStaticData();
+  /**
+   * 监听TCP数据更新
+   */
+  onTcpDataUpdate(): void {
+    this.updateFromTcpData()
   }
-  
-  // 初始化静态数据
+
+  /**
+   * 从TCP数据更新图表数据
+   */
+  private updateFromTcpData(): void {
+    try {
+      const subsysId: number = this.selectedFSM === 'FSM1' ? 0 : 1
+      const statistics = this.realtimeDataManager.getStatistics(subsysId)
+      
+      // 获取出口数量
+      const outletCount: number = this.selectedFSM === 'FSM1' ? this.outletCountFSM1 : this.outletCountFSM2
+      const maxOutlets = Math.min(20, outletCount); // 最多显示20个出口
+      
+      // 更新类别（出口名称）
+      const newCategories: string[] = []
+      for (let i = 1; i <= maxOutlets; i++) {
+        newCategories.push(`出口${i}`)
+      }
+      this.categories = newCategories
+      
+      // 更新数据系列1（出口个数）
+      const newData1: number[] = []
+      for (let i = 0; i < maxOutlets && i < statistics.nExitCount.length; i++) {
+        newData1.push(statistics.nExitCount[i])
+      }
+      this.data1 = newData1
+      
+      // 更新数据系列2（出口重量，转换为千克）
+      const newData2: number[] = []
+      for (let i = 0; i < maxOutlets && i < statistics.nExitWeightCount.length; i++) {
+        newData2.push(statistics.nExitWeightCount[i] / 1000.0) // 克转千克
+      }
+      this.data2 = newData2
+      
+      // 更新系列配置中的数据
+      this.seriesConfig[0].data = this.data1;
+      this.seriesConfig[1].data = this.data2;
+      
+      // 更新画布宽度
+      this.updateCanvasWidth();
+      
+      // 重绘
+      if (this.context) {
+        this.draw();
+      }
+      
+      console.log(`[ExportStatisticsBarChart] 数据已更新 - 出口数: ${maxOutlets}`)
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[ExportStatisticsBarChart] 更新数据失败: ${errorMsg}`)
+    }
+  }
+
+  aboutToAppear() {
+    // 初始化时更新一次数据
+    this.updateFromTcpData()
+  }
+
+  // 初始化静态数据（已废弃，改用TCP数据）
   private initStaticData(): void {
     // 根据选中的FSM获取出口数量
     const outletCount = this.selectedFSM === 'FSM1' ? this.outletCountFSM1 : this.outletCountFSM2;
@@ -113,8 +177,8 @@ export struct ExportStatisticsBarChart {
   // 监听FSM变化（使用@Watch装饰器，立即响应）
   onFSMChange(): void {
     console.log(`ExportStatisticsBarChart: FSM状态变化到 ${this.selectedFSM}`)
-    // 立即重新初始化数据并重绘
-    this.initStaticData()
+    // 立即从TCP数据更新
+    this.updateFromTcpData()
   }
   
   // 更新画布宽度

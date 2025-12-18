@@ -9,6 +9,8 @@ import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { McBarChart, Options } from '@mcui/mccharts'
 import { ProcessingCurveChart } from '../../components/charts/ProcessingCurveChart'
 import { CustomPieChart, PieChartsOptions, PieChartsData } from '../../components/charts/CustomPieChart'
+import { RealtimeDataManager } from '../../utils/managers/RealtimeDataManager'
+import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
 
 // 饼图数据类
 class PieData implements PieChartsData {
@@ -21,102 +23,106 @@ class PieData implements PieChartsData {
 @Component
 export struct RealtimeStatsContent {
   @StorageLink('OMNI_THEME_VERSION_KEY') private themeVersion: number = 0
+  @StorageLink(HOME_SELECTED_FSM) private selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
+  @StorageLink('TCP_STATISTICS_GLOBAL_UPDATE') @Watch('onTcpDataUpdate') private tcpDataUpdate: number = 0
 
-  // 饼图数据状态
+  // 实时数据管理器
+  private realtimeDataManager: RealtimeDataManager = RealtimeDataManager.getInstance()
+
+  // 饼图数据状态（从TCP数据计算）
   @State private pieData: PieData[] = [
-    new PieData(35), // 优质
-    new PieData(30), // 良好
-    new PieData(25), // 一般
-    new PieData(10)  // 较差
+    new PieData(0), // 优质
+    new PieData(0), // 良好
+    new PieData(0), // 一般
+    new PieData(0)  // 较差
   ]
   
   @State private pieLabels: string[] = ['优质', '良好', '一般', '较差']
   @State private pieColors: string[] = ['#00B894', '#00CEC9', '#FDCB6E', '#E17055']
   
-  // 品质统计数据
-  @State private qualityData: number[] = [120, 200, 150, 80, 50]
+  // 品质统计数据（从TCP数据获取）
+  @State private qualityData: number[] = [0, 0, 0, 0, 0]
   
-  
-  // 出口产量数据
-  @State private outletData: number[] = [120, 200, 150, 80, 70, 90, 110, 95]
-  
-  // 定时器
-  private pieTimerId: number | null = null
-  private qualityTimerId: number | null = null
-  private outletTimerId: number | null = null
+  // 出口产量数据（从TCP数据获取）
+  @State private outletData: number[] = []
 
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return resolveTheme()
   }
 
-  // 初始化所有图表数据
-  private initializeAllData() {
-    // 移除日志输出，减少性能开销
-    
-    // 启动饼图数据更新（每5秒更新一次）
-    if (!this.pieTimerId) {
-      this.pieTimerId = setInterval(() => {
-        // 更新饼图数据（模拟数据变化）
-        const newPieData = [...this.pieData]
-        for (let i = 0; i < newPieData.length; i++) {
-          const variation = (Math.random() - 0.5) * 10 // -5 到 +5 的随机变化
-          newPieData[i] = new PieData(Math.max(5, Math.min(50, newPieData[i].getValue() + variation)))
-        }
-        this.pieData = newPieData
-      }, 5000) as number
-    }
-    
-    // 启动品质统计数据更新（每3秒更新一次）
-    if (!this.qualityTimerId) {
-      this.qualityTimerId = setInterval(() => {
-        // 更新品质统计数据
-        const newQualityData = [...this.qualityData]
-        for (let i = 0; i < newQualityData.length; i++) {
-          const variation = (Math.random() - 0.5) * 20 // -10 到 +10 的随机变化
-          newQualityData[i] = Math.max(50, Math.min(300, newQualityData[i] + variation))
-        }
-        this.qualityData = newQualityData
-      }, 3000) as number
-    }
-    
-    
-    // 启动出口产量数据更新（每4秒更新一次）
-    if (!this.outletTimerId) {
-      this.outletTimerId = setInterval(() => {
-        // 更新出口产量数据
-        const newOutletData = [...this.outletData]
-        for (let i = 0; i < newOutletData.length; i++) {
-          const variation = (Math.random() - 0.5) * 30 // -15 到 +15 的随机变化
-          newOutletData[i] = Math.max(50, Math.min(250, newOutletData[i] + variation))
-        }
-        this.outletData = newOutletData
-      }, 4000) as number
-    }
+  /**
+   * 监听TCP数据更新
+   */
+  onTcpDataUpdate(): void {
+    this.updateFromTcpData()
   }
 
-  // 停止所有定时器
-  private stopAllTimers() {
-    if (this.pieTimerId) {
-      clearInterval(this.pieTimerId)
-      this.pieTimerId = null
-    }
-    if (this.qualityTimerId) {
-      clearInterval(this.qualityTimerId)
-      this.qualityTimerId = null
-    }
-    if (this.outletTimerId) {
-      clearInterval(this.outletTimerId)
-      this.outletTimerId = null
+  /**
+   * 从TCP数据更新所有图表数据
+   */
+  private updateFromTcpData(): void {
+    try {
+      const subsysId: number = this.selectedFSM === 'FSM1' ? 0 : 1
+      const statistics = this.realtimeDataManager.getStatistics(subsysId)
+      
+      // 更新饼图数据（根据各品质等级的个数计算占比）
+      // 假设前4个品质等级对应：优质、良好、一般、较差
+      const totalCount: number = statistics.nTotalCount
+      if (totalCount > 0) {
+        const MAX_SIZE_GRADE_NUM = 16
+        const pieValues: number[] = []
+        for (let quality = 0; quality < 4; quality++) {
+          let gradeCount = 0
+          // 累加该品质等级下所有尺寸等级的个数
+          for (let size = 0; size < MAX_SIZE_GRADE_NUM; size++) {
+            const index = quality * MAX_SIZE_GRADE_NUM + size
+            if (index < statistics.nGradeCount.length) {
+              gradeCount += statistics.nGradeCount[index]
+            }
+          }
+          // 计算占比（百分比）
+          const percentage = (gradeCount / totalCount) * 100
+          pieValues.push(percentage)
+        }
+        this.pieData = pieValues.map(value => new PieData(value))
+      }
+      
+      // 更新品质统计数据（取前5个品质等级的总个数）
+      const qualityValues: number[] = []
+      for (let quality = 0; quality < 5; quality++) {
+        let gradeCount = 0
+        for (let size = 0; size < MAX_SIZE_GRADE_NUM; size++) {
+          const index = quality * MAX_SIZE_GRADE_NUM + size
+          if (index < statistics.nGradeCount.length) {
+            gradeCount += statistics.nGradeCount[index]
+          }
+        }
+        qualityValues.push(gradeCount)
+      }
+      this.qualityData = qualityValues
+      
+      // 更新出口产量数据（取前8个出口的个数）
+      const outletValues: number[] = []
+      for (let i = 0; i < 8 && i < statistics.nExitCount.length; i++) {
+        outletValues.push(statistics.nExitCount[i])
+      }
+      this.outletData = outletValues
+      
+      console.log(`[RealtimeStatsContent] 数据已更新 - 总个数: ${totalCount}`)
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[RealtimeStatsContent] 更新数据失败: ${errorMsg}`)
     }
   }
 
   // 组件生命周期
   aboutToAppear() {
-    this.initializeAllData()
+    // 初始化时更新一次数据
+    this.updateFromTcpData()
   }
 
   aboutToDisappear() {
-    this.stopAllTimers()
+    // 不需要清理定时器，因为不再使用定时器
   }
 
   build() {

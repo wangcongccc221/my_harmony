@@ -25,6 +25,8 @@ import { HomeState, DEFAULT_HOME_STATE } from './core/HomeState'
 import { DEFAULT_TOP_BAR_DATA, DEFAULT_SORTING_INFO, DEFAULT_SETTINGS, DEFAULT_SELECTED_BUTTON, DEFAULT_SELECTED_FSM } from './HomeConstants'
 import { CardDetailDialog } from '../../components/dialogs/CardDetailDialog'
 import { ThreeLayerCardData } from '../../components/ThreeLayerCard/types'
+import { RealtimeDataManager, RealtimeCalculatedData } from '../../utils/managers/RealtimeDataManager'
+import { StStatistics } from '../../utils/network/tcp/types/StStatistics'
 
 // 日志总开关（减少频繁日志导致的内存与卡顿）
 const LOG_TIME_ENABLED: boolean = false
@@ -110,7 +112,15 @@ export struct HomeContent {
   @State private avgWeight: string = DEFAULT_HOME_STATE.avgWeight
   @State private realTimeOutput: string = DEFAULT_HOME_STATE.realTimeOutput
   @State private intervalSpeed: string = DEFAULT_HOME_STATE.intervalSpeed
-  // 模拟实时数据定时器
+  // 实时数据管理器
+  private realtimeDataManager: RealtimeDataManager = RealtimeDataManager.getInstance()
+  // TCP数据更新监听（使用AppStorage，现在可以在UI线程中使用）
+  @StorageLink('TCP_STATISTICS_GLOBAL_UPDATE') @Watch('onTcpDataUpdate') private tcpDataUpdate: number = 0
+  // 上次检查的数据版本号（作为备用检测机制）
+  private lastCheckVersion: number = 0
+  // TCP数据更新定时器（定期检查数据是否有更新，作为备用机制）
+  private tcpDataCheckTimerId?: number
+  // 模拟实时数据定时器（已禁用，改用TCP真实数据）
   private mockSortingInfoTimerId?: number
   
   // 时间更新定时器
@@ -213,6 +223,140 @@ export struct HomeContent {
     
     // 如果只有一个设置开启，且当前设置是开启的，则不能关闭
     return enabledCount === 1 && settings[currentIndex]
+  }
+
+  /**
+   * 监听TCP数据更新（通过AppStorage，主要方式）
+   */
+  onTcpDataUpdate(): void {
+    console.log(`[HomeContent] 收到TCP数据更新通知，立即更新UI`)
+    this.updateFromTcpData()
+  }
+  
+  /**
+   * 检查TCP数据是否有更新（通过轮询全局版本号，备用机制）
+   */
+  private checkTcpDataUpdate(): void {
+    try {
+      const subsysId: number = this.selectedFSM === 'FSM1' ? 0 : 1
+      const currentVersion: number = this.realtimeDataManager.getUpdateVersion(subsysId)
+      
+      // 如果版本号变化，说明数据有更新，则更新UI（备用机制）
+      if (currentVersion !== this.lastCheckVersion) {
+        console.log(`[HomeContent] 检测到数据更新（备用机制）！版本号从 ${this.lastCheckVersion} 变为 ${currentVersion}`)
+        this.lastCheckVersion = currentVersion
+        this.updateFromTcpData()
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[HomeContent] 检查TCP数据更新失败: ${errorMsg}`)
+    }
+  }
+
+  /**
+   * 从TCP数据更新UI
+   */
+  private updateFromTcpData(): void {
+    try {
+      console.log(`[HomeContent] 开始更新UI数据...`)
+      // 根据当前FSM获取子系统ID（FSM1=0, FSM2=1）
+      const subsysId: number = this.selectedFSM === 'FSM1' ? 0 : 1
+      
+      // 获取统计数据
+      const statistics: StStatistics = this.realtimeDataManager.getStatistics(subsysId)
+      console.log(`[HomeContent] 获取统计数据 - 总个数: ${statistics.nTotalCount}, 总重量: ${statistics.nWeightCount}`)
+      
+      // 获取计算后的实时数据
+      const calculated: RealtimeCalculatedData | null = this.realtimeDataManager.getCalculatedData(subsysId)
+      
+      // 如果没有计算数据，使用所有子系统的平均值
+      const finalCalculated: RealtimeCalculatedData = calculated || this.realtimeDataManager.getAllCalculatedData()
+      console.log(`[HomeContent] 计算数据 - 分选速度: ${finalCalculated.sortSpeed}, 实时产量: ${finalCalculated.realTimeOutput}`)
+      
+      // 更新分选速度
+      this.sortSpeed = `${Math.round(finalCalculated.sortSpeed)} 件/分钟`
+      AppStorage.setOrCreate('SORT_SPEED', this.sortSpeed)
+      
+      // 更新实时产量（转换为件/分钟显示，实际是吨/小时）
+      // 注意：这里可能需要根据实际需求调整显示格式
+      this.realTimeOutput = `${finalCalculated.realTimeOutput.toFixed(2)} 吨/小时`
+      AppStorage.setOrCreate('REALTIME_OUTPUT', this.realTimeOutput)
+      
+      // 更新本批个数
+      this.batchCount = `${statistics.nTotalCount} 件`
+      AppStorage.setOrCreate('BATCH_COUNT', this.batchCount)
+      
+      // 更新本批重量（转换为kg）
+      const weightKg = statistics.nWeightCount / 1000.0 // 克转千克
+      this.batchWeight = `${weightKg.toFixed(2)} kg`
+      AppStorage.setOrCreate('BATCH_WEIGHT', this.batchWeight)
+      
+      // 更新平均重量（转换为kg）
+      const avgKg = finalCalculated.avgWeight / 1000.0 // 克转千克
+      this.avgWeight = `${avgKg.toFixed(2)} kg`
+      AppStorage.setOrCreate('AVG_WEIGHT', this.avgWeight)
+      
+      // 更新分选效率
+      this.efficiency = `${finalCalculated.separationEfficiency.toFixed(1)}%`
+      AppStorage.setOrCreate('EFFICIENCY', this.efficiency)
+      
+      // 更新间隔速度
+      this.intervalSpeed = `${Math.round(finalCalculated.intervalSpeed)} ms`
+      AppStorage.setOrCreate('INTERVAL_SPEED', this.intervalSpeed)
+      
+      // 更新开始时间（如果总个数大于0且开始时间为空）
+      if (statistics.nTotalCount > 0 && (this.startTime === '--:--:--' || this.startTime === '')) {
+        const now = new Date()
+        const hh = String(now.getHours()).padStart(2, '0')
+        const mm = String(now.getMinutes()).padStart(2, '0')
+        const ss = String(now.getSeconds()).padStart(2, '0')
+        this.startTime = `${hh}:${mm}:${ss}`
+        AppStorage.setOrCreate('START_TIME', this.startTime)
+      }
+      
+      // 更新顶部状态栏数据（使用所有子系统的累加数据）
+      const allStatistics: StStatistics = this.realtimeDataManager.getAllStatistics()
+      const allCalculated: RealtimeCalculatedData = this.realtimeDataManager.getAllCalculatedData()
+      
+      console.log(`[HomeContent] 顶部状态栏数据 - 总个数: ${allStatistics.nTotalCount}, 总重量: ${allStatistics.nWeightCount}克`)
+      console.log(`[HomeContent] 顶部状态栏计算数据 - 实时产量: ${allCalculated.realTimeOutput}吨/小时, 平均果重: ${allCalculated.avgWeight}克`)
+      
+      // 实时产量（吨/小时）
+      const newProduction = allCalculated.realTimeOutput.toFixed(2)
+      this.topProduction = newProduction
+      // 使用 setOrCreate 确保更新，即使值相同也会触发
+      AppStorage.setOrCreate(TOP_PRODUCTION_TON_H, newProduction)
+      console.log(`[HomeContent] 更新顶部实时产量: ${this.topProduction}`)
+      
+      // 总重量（吨）
+      const totalWeightTon = allStatistics.nWeightCount / 1000000.0
+      const newSumWeightTon = totalWeightTon.toFixed(2)
+      this.topSumWeightTon = newSumWeightTon
+      AppStorage.setOrCreate(TOP_SUM_WEIGHT_TON, newSumWeightTon)
+      console.log(`[HomeContent] 更新顶部总重量: ${this.topSumWeightTon}吨`)
+      
+      // 总个数
+      const newSumCounts = String(allStatistics.nTotalCount)
+      this.topSumCounts = newSumCounts
+      AppStorage.setOrCreate(TOP_SUM_COUNTS, newSumCounts)
+      console.log(`[HomeContent] 更新顶部总个数: ${this.topSumCounts}`)
+      
+      // 平均果重（克）
+      const newAvgG = allCalculated.avgWeight.toFixed(2)
+      this.topAvgG = newAvgG
+      AppStorage.setOrCreate(TOP_AVG_G, newAvgG)
+      console.log(`[HomeContent] 更新顶部平均果重: ${this.topAvgG}克`)
+      
+      // 更新等级统计表数据（从TCP数据更新）
+      this.dataManager.setFSM(this.selectedFSM)
+      this.dataManager.updateStatisticsTableFromTcp()
+      
+      console.log(`[HomeContent] UI数据更新完成 - 分选速度: ${this.sortSpeed}, 本批个数: ${this.batchCount}, 本批重量: ${this.batchWeight}`)
+      
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('[HomeContent] 更新TCP数据失败:', errorMsg)
+    }
   }
 
   /**
@@ -850,12 +994,39 @@ export struct HomeContent {
       this.stateManager.updateSetting4Enabled(defaultSettings.setting4)
     }
     
-    // 根据FSM状态初始化顶部状态栏四项指标
-    this.updateTopBarForFSM()
     // 初始化用户与状态
     AppStorage.setOrCreate(TOP_USER_NAME, '管理员')
     AppStorage.setOrCreate(TOP_STATUS_TEXT, '')
     AppStorage.setOrCreate(TOP_ALERT_HIDE, false)
+    
+    // 初始化顶部状态栏数据键，使用默认值（不要重置为'--'，会覆盖真实数据）
+    // 先尝试从TCP数据获取真实值，如果没有则使用默认值
+    const allStatistics: StStatistics = this.realtimeDataManager.getAllStatistics()
+    const allCalculated: RealtimeCalculatedData = this.realtimeDataManager.getAllCalculatedData()
+    
+    if (allStatistics.nTotalCount > 0 || allCalculated.realTimeOutput > 0) {
+      // 有真实数据，使用真实数据初始化
+      const newProduction = allCalculated.realTimeOutput.toFixed(2)
+      const totalWeightTon = allStatistics.nWeightCount / 1000000.0
+      const newSumWeightTon = totalWeightTon.toFixed(2)
+      const newSumCounts = String(allStatistics.nTotalCount)
+      const newAvgG = allCalculated.avgWeight.toFixed(2)
+      
+      AppStorage.setOrCreate(TOP_PRODUCTION_TON_H, newProduction)
+      AppStorage.setOrCreate(TOP_SUM_WEIGHT_TON, newSumWeightTon)
+      AppStorage.setOrCreate(TOP_SUM_COUNTS, newSumCounts)
+      AppStorage.setOrCreate(TOP_AVG_G, newAvgG)
+    } else {
+      // 没有真实数据，使用默认值
+      AppStorage.setOrCreate(TOP_PRODUCTION_TON_H, '0.00')
+      AppStorage.setOrCreate(TOP_SUM_WEIGHT_TON, '0.00')
+      AppStorage.setOrCreate(TOP_SUM_COUNTS, '0')
+      AppStorage.setOrCreate(TOP_AVG_G, '0.00')
+    }
+    
+    // 根据FSM状态更新顶部状态栏（仅在切换FSM时调用，不在初始化时调用，避免覆盖真实数据）
+    // this.updateTopBarForFSM() // 注释掉，避免用硬编码数据覆盖真实数据
+    AppStorage.setOrCreate('TOP_BAR_UPDATE_VERSION', 0)
 
     // 初始化主页状态（新增的@StorageLink变量）
     AppStorage.setOrCreate(HOME_SELECTED_FSM, this.selectedFSM)
@@ -942,8 +1113,25 @@ export struct HomeContent {
       }, 5000) as number // 改为5秒更新一次，减少频率
     }
 
+    // 初始化时更新一次UI（显示默认值或已有数据）
+    this.updateFromTcpData()
+    
+    // 初始化版本号（作为备用检测机制）
+    const subsysId: number = this.selectedFSM === 'FSM1' ? 0 : 1
+    this.lastCheckVersion = this.realtimeDataManager.getUpdateVersion(subsysId)
+    console.log(`[HomeContent] aboutToAppear - 初始化版本号: ${this.lastCheckVersion}, 子系统: ${subsysId}`)
+    
+    // 启动TCP数据更新检查定时器（每2秒检查一次，作为备用机制，主要依靠AppStorage通知）
+    if (!this.tcpDataCheckTimerId) {
+      console.log(`[HomeContent] 启动TCP数据检查定时器（2秒间隔，备用机制）`)
+      this.tcpDataCheckTimerId = setInterval(() => {
+        this.checkTcpDataUpdate()
+      }, 2000) as number
+    }
+    
+    // 以下代码已禁用，改用TCP真实数据
     // 启动模拟实时更新（每60秒刷新一次）
-    if (!this.mockSortingInfoTimerId) {
+    /* if (!this.mockSortingInfoTimerId) {
       if (LOG_SORT_ENABLED) { console.log('[模拟分选信息] 启动定时器 (60s)') }
       this.mockSortingInfoTimerId = setInterval(() => {
         // 异步批量更新，避免阻塞主线程
@@ -1033,7 +1221,7 @@ export struct HomeContent {
             ' 间隔=', this.intervalSpeed)
         }
       }
-    }
+    } */
   }
 
   aboutToDisappear() {

@@ -7,18 +7,15 @@
  * - 基本状态获取
  */
 
-import { hilog } from '@kit.PerformanceAnalysisKit';
 import { TCPServer, SendResult } from './tcp/TCPServer';
-import { TcpClient, createTcpClient, runTcpClientWorker } from './tcp/TcpClient';
-import { runTcpServerWorker } from './tcp/TCPServer';
-import { taskpool } from '@kit.ArkTS';
+import { TcpClient, createTcpClient } from './tcp/TcpClient';
 
-const DOMAIN = 0x0000;
+// AppStorage 是全局可用的，无需导入
 
 // TCP 网络配置
-const TCP_SERVER_IP: string = '0.0.0.0';      // TCP 服务器监听地址（0.0.0.0表示监听所有网络接口，可从局域网访问）
-const TCP_CLIENT_REMOTE_IP: string = '192.168.0.16'; // TCP 客户端连接的目标地址
-const TCP_SERVER_PORT: number = 8081;               // TCP 服务器端口（避免与 HTTP 服务器 8080 冲突）
+const TCP_SERVER_IP: string = '0.0.0.0';      // 8081
+const TCP_CLIENT_REMOTE_IP: string = '192.168.0.16';
+const TCP_SERVER_PORT: number = 8081;
 
 /**
  * 网络优化器
@@ -27,14 +24,14 @@ export class NetworkOptimizer {
   private static instance: NetworkOptimizer | null = null;
   
   // 网络组件
-  private tcpServer: TCPServer | null = null; // 兼容保留，不再直接在UI启动
-  private tcpClient: TcpClient | null = null; // 兼容保留，不再直接在UI启动
+  private tcpServer: TCPServer | null = null;
+  private tcpClient: TcpClient | null = null;
   
   // 状态管理
   private isInitialized: boolean = false;
 
   private constructor() {
-    hilog.info(DOMAIN, 'NetworkOptimizer', '网络优化器实例已创建');
+    console.log('[NetworkOptimizer] 网络优化器实例已创建');
   }
 
   /**
@@ -53,54 +50,66 @@ export class NetworkOptimizer {
   async initialize(): Promise<boolean> {
     try {
       if (this.isInitialized) {
-        hilog.warn(DOMAIN, 'NetworkOptimizer', '网络优化器已经初始化');
+        console.warn('[NetworkOptimizer] 网络优化器已经初始化');
         return true;
       }
       
-      hilog.info(DOMAIN, 'NetworkOptimizer', '开始初始化网络优化器');
+      console.log('[NetworkOptimizer] 开始初始化网络优化器');
       
-      // 初始化TCP服务器
+      // 初始化TCP服务器（不使用TaskPool，直接在UI线程运行）
       await this.initializeTCPServer();
       
-      // 初始化TCP客户端
-      await this.initializeTcpClient();
+      // 初始化TCP客户端（暂时不启动，如果需要可以后续添加）
+      // await this.initializeTcpClient();
       
       this.isInitialized = true;
-      hilog.info(DOMAIN, 'NetworkOptimizer', '网络优化器初始化完成');
+      console.log('[NetworkOptimizer] 网络优化器初始化完成');
       
       return true;
     } catch (error) {
-      hilog.error(DOMAIN, 'NetworkOptimizer', `网络优化器初始化失败: ${error}`);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[NetworkOptimizer] 网络优化器初始化失败: ${errorMsg}`);
       return false;
     }
   }
 
   /**
-   * 初始化TCP服务器
+   * 初始化TCP服务器（不使用TaskPool，直接在UI线程运行）
    */
   private async initializeTCPServer(): Promise<void> {
     try {
-      const task: taskpool.Task = new taskpool.Task(runTcpServerWorker, TCP_SERVER_IP, TCP_SERVER_PORT);
-      taskpool.execute(task);
-      hilog.info(DOMAIN, 'NetworkOptimizer', `TCP服务器已在TaskPool中启动 - ${TCP_SERVER_IP}:${TCP_SERVER_PORT}`);
+      // 创建TCP服务器实例（不使用TaskPool）
+      this.tcpServer = new TCPServer();
+      
+      // 启动服务器（在UI线程中运行，可以直接使用AppStorage）
+      const success: boolean = await this.tcpServer.start(TCP_SERVER_IP, TCP_SERVER_PORT);
+      
+      if (success) {
+        console.log(`[NetworkOptimizer] TCP服务器启动成功 - ${TCP_SERVER_IP}:${TCP_SERVER_PORT}`);
+      } else {
+        console.error(`[NetworkOptimizer] TCP服务器启动失败 - ${TCP_SERVER_IP}:${TCP_SERVER_PORT}`);
+      }
     } catch (error) {
-      hilog.error(DOMAIN, 'NetworkOptimizer', `TCP服务器初始化失败: ${error}`);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[NetworkOptimizer] TCP服务器初始化失败: ${errorMsg}`);
       return;
     }
   }
 
   /**
-   * 初始化TCP客户端
+   * 初始化TCP客户端（暂时不启动，如果需要可以后续添加）
    */
   private async initializeTcpClient(): Promise<void> {
     try {
-      const task: taskpool.Task = new taskpool.Task(runTcpClientWorker, TCP_CLIENT_REMOTE_IP, TCP_SERVER_PORT);
-      taskpool.execute(task);
       // 初始化客户端发信队列
       AppStorage.setOrCreate('TCP_CLIENT_OUTBOX', [] as string[]);
-      hilog.info(DOMAIN, 'NetworkOptimizer', `TCP客户端已在TaskPool中启动 - ${TCP_CLIENT_REMOTE_IP}:${TCP_SERVER_PORT}`);
+      console.log(`[NetworkOptimizer] TCP客户端队列已初始化`);
+      // 如果需要启动TCP客户端，可以在这里创建并启动
+      // this.tcpClient = createTcpClient();
+      // await this.tcpClient.connect(TCP_CLIENT_REMOTE_IP, TCP_SERVER_PORT);
     } catch (error) {
-      hilog.error(DOMAIN, 'NetworkOptimizer', `TCP客户端初始化失败: ${error}`);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[NetworkOptimizer] TCP客户端初始化失败: ${errorMsg}`);
       return;
     }
   }
@@ -123,7 +132,8 @@ export class NetworkOptimizer {
       AppStorage.setOrCreate('TCP_CLIENT_OUTBOX', next);
       return true;
     } catch (error) {
-      hilog.error(DOMAIN, 'NetworkOptimizer', `发送消息失败(队列): ${error}`);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[NetworkOptimizer] 发送消息失败(队列): ${errorMsg}`);
       return false;
     }
   }
@@ -133,18 +143,27 @@ export class NetworkOptimizer {
    */
   async stop(): Promise<boolean> {
     try {
-      hilog.info(DOMAIN, 'NetworkOptimizer', '正在停止网络优化器');
+      console.log('[NetworkOptimizer] 正在停止网络优化器');
       
-      // 发出停止信号，交由Worker处理
-      AppStorage.setOrCreate('TCP_SERVER_SHUTDOWN', true);
-      AppStorage.setOrCreate('TCP_CLIENT_SHUTDOWN', true);
+      // 停止TCP服务器
+      if (this.tcpServer) {
+        await this.tcpServer.stop();
+        this.tcpServer = null;
+      }
+      
+      // 停止TCP客户端
+      if (this.tcpClient) {
+        await this.tcpClient.disconnect();
+        this.tcpClient = null;
+      }
       
       this.isInitialized = false;
-      hilog.info(DOMAIN, 'NetworkOptimizer', '网络优化器已停止');
+      console.log('[NetworkOptimizer] 网络优化器已停止');
       
       return true;
     } catch (error) {
-      hilog.error(DOMAIN, 'NetworkOptimizer', `停止网络优化器失败: ${error}`);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[NetworkOptimizer] 停止网络优化器失败: ${errorMsg}`);
       return false;
     }
   }

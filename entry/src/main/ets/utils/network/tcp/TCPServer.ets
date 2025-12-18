@@ -1,76 +1,102 @@
 import { socket } from '@kit.NetworkKit';
 import { util } from '@kit.ArkTS';
-import { hilog } from '@kit.PerformanceAnalysisKit';
 // AppStorage 是全局可用的，无需导入
 import { TCP_CONNECTION_STATUS } from '../../../constants/TopBarKeys';
 import { taskpool } from '@kit.ArkTS';
 import { TcpMessageQueueManager } from './dispatch';
+import { handleStatisticsData } from './handlers/StatisticsDataHandler';
 
 @Concurrent
 export async function runTcpServerWorker(ip: string, port: number): Promise<void> {
-  const DOMAIN = 0x0000;
   try {
     const server = socket.constructTCPSocketServerInstance();
 
     server.on('connect', async (client: socket.TCPSocketConnection) => {
       try {
         const remote = await client.getRemoteAddress();
-        hilog.info(DOMAIN, 'TCPServerWorker', `客户端连接: ${remote.address}:${remote.port || 0}`);
-        AppStorage.setOrCreate(TCP_CONNECTION_STATUS, true);
+        console.log(`[TCPServerWorker] 客户端连接: ${remote.address}:${remote.port || 0}`);
+        // 注意：在@Concurrent函数中无法使用AppStorage，需要通过其他方式通知
+        // AppStorage.setOrCreate(TCP_CONNECTION_STATUS, true);
 
         client.on('message', (data: socket.SocketMessageInfo) => {
           // 使用 Dispatch 队列处理消息
           const messageData = new Uint8Array(data.message);
-          TcpMessageQueueManager.executeMessage(
-            messageData,
-            async (message: string) => {
-              hilog.info(DOMAIN, 'TCPServerWorker', `收到消息: ${message}`);
-            },
-            client
-          ).catch((err: Error | object) => {
-            // 错误已经在 executeMessage 中处理，这里只记录日志
-            hilog.error(DOMAIN, 'TCPServerWorker', `消息处理异常: ${JSON.stringify(err)}`);
-          });
+          
+          console.log(`[TCPServerWorker] 收到数据，长度: ${messageData.length} 字节`);
+          
+          // 检查是否为二进制统计数据（以SYNC开头）
+          const isBinaryData = messageData.length >= 4 && 
+            messageData[0] === 0x53 && // 'S'
+            messageData[1] === 0x59 && // 'Y'
+            messageData[2] === 0x4E && // 'N'
+            messageData[3] === 0x43;    // 'C'
+          
+          console.log(`[TCPServerWorker] 数据前4字节: ${messageData[0]}, ${messageData[1]}, ${messageData[2]}, ${messageData[3]}, 是否为SYNC: ${isBinaryData}`);
+          
+          if (isBinaryData) {
+            // 二进制统计数据，直接处理
+            console.log(`[TCPServerWorker] 识别为二进制统计数据，开始处理...`);
+            handleStatisticsData(messageData).catch((err: Error | object) => {
+              const errorMsg = err instanceof Error ? err.message : String(err);
+              console.error(`[TCPServerWorker] 处理统计数据失败: ${errorMsg}`);
+            });
+          } else {
+            // 文本消息，使用原有处理方式
+            TcpMessageQueueManager.executeMessage(
+              messageData,
+              async (message: string | Uint8Array) => {
+                const messageStr = typeof message === 'string' ? message : '[Binary Data]';
+                console.log(`[TCPServerWorker] 收到文本消息: ${messageStr}`);
+              },
+              client
+            ).catch((err: Error | object) => {
+              // 错误已经在 executeMessage 中处理，这里只记录日志
+              const errorMsg = err instanceof Error ? err.message : String(err);
+              console.error(`[TCPServerWorker] 消息处理异常: ${errorMsg}`);
+            });
+          }
         });
 
         client.on('close', () => {
-          hilog.info(DOMAIN, 'TCPServerWorker', `客户端断开: ${remote.address}:${remote.port || 0}`);
-          AppStorage.setOrCreate(TCP_CONNECTION_STATUS, false);
+          console.log(`[TCPServerWorker] 客户端断开: ${remote.address}:${remote.port || 0}`);
+          // 注意：在@Concurrent函数中无法使用AppStorage
+          // AppStorage.setOrCreate(TCP_CONNECTION_STATUS, false);
         });
 
         client.on('error', (err: Error) => {
-          hilog.error(DOMAIN, 'TCPServerWorker', `客户端错误: ${err.message}`);
+          console.error(`[TCPServerWorker] 客户端错误: ${err.message}`);
         });
       } catch (e) {
-        hilog.error(DOMAIN, 'TCPServerWorker', `处理连接失败: ${e}`);
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        console.error(`[TCPServerWorker] 处理连接失败: ${errorMsg}`);
       }
     });
 
     server.on('error', (error: Error) => {
-      hilog.error(DOMAIN, 'TCPServerWorker', `服务器错误: ${error.message}`);
+      console.error(`[TCPServerWorker] 服务器错误: ${error.message}`);
     });
 
     await server.listen({ address: ip, port, family: 1 });
-    hilog.info(DOMAIN, 'TCPServerWorker', `服务器启动成功: ${ip}:${port}`);
+    console.log(`[TCPServerWorker] 服务器启动成功: ${ip}:${port}`);
 
     // 简单的关闭信号轮询
-    const SHUTDOWN_KEY = 'TCP_SERVER_SHUTDOWN';
-    const checkInterval = setInterval(async () => {
-      try {
-        const flag = AppStorage.get(SHUTDOWN_KEY) as boolean | null;
-        if (flag) {
-          clearInterval(checkInterval);
-          try { server.off('connect'); server.off('error'); } catch (_) {}
-          hilog.info(DOMAIN, 'TCPServerWorker', '收到关闭信号，服务器退出');
-        }
-      } catch (_) {}
-    }, 1000) as number;
+    // 注意：在@Concurrent函数中无法使用AppStorage，这里简化处理
+    // const SHUTDOWN_KEY = 'TCP_SERVER_SHUTDOWN';
+    // const checkInterval = setInterval(async () => {
+    //   try {
+    //     const flag = AppStorage.get(SHUTDOWN_KEY) as boolean | null;
+    //     if (flag) {
+    //       clearInterval(checkInterval);
+    //       try { server.off('connect'); server.off('error'); } catch (_) {}
+    //       console.log(`[TCPServerWorker] 收到关闭信号，服务器退出`);
+    //     }
+    //   } catch (_) {}
+    // }, 1000) as number;
   } catch (error) {
-    hilog.error(DOMAIN, 'TCPServerWorker', `启动失败: ${error instanceof Error ? error.message : String(error)}`);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[TCPServerWorker] 启动失败: ${errorMsg}`);
   }
 }
-
-const DOMAIN = 0x0000;
 
 interface ClientInfo {
   id: string;
@@ -96,7 +122,7 @@ export class TCPServer {
   private onServerStatusCallback?: (isRunning: boolean, message: string) => void;
 
   constructor() {
-    hilog.info(DOMAIN, 'TCPServer', 'TCP服务器实例已创建');
+    console.log(`[TCPServer] TCP服务器实例已创建`);
     // 初始化连接状态为false
     AppStorage.setOrCreate(TCP_CONNECTION_STATUS, false);
   }
@@ -124,7 +150,7 @@ export class TCPServer {
   // 启动服务器
   async start(ip: string, port: number): Promise<boolean> {
     try {
-      hilog.info(DOMAIN, 'TCPServer', `正在启动TCP服务器 ${ip}:${port}`);
+      console.log(`[TCPServer] 正在启动TCP服务器 ${ip}:${port}`);
       
       this.server = socket.constructTCPSocketServerInstance();
       
@@ -141,8 +167,7 @@ export class TCPServer {
           };
           
           this.clients.set(clientInfo.id, clientInfo);
-          hilog.info(DOMAIN, 'TCPServer', `客户端连接: ${clientInfo.address}:${clientInfo.port}`);
-          console.log(`[TCP服务器] 客户端连接: ${clientInfo.address}:${clientInfo.port}`);
+          console.log(`[TCPServer] 客户端连接: ${clientInfo.address}:${clientInfo.port}`);
           this.onMessageCallback?.('receive', `客户端 ${clientInfo.address}:${clientInfo.port} 已连接`);
           this.onClientConnectCallback?.(clientInfo);
           
@@ -153,27 +178,43 @@ export class TCPServer {
           client.on('message', (data: socket.SocketMessageInfo) => {
             // 使用 Dispatch 队列处理消息
             const messageData = new Uint8Array(data.message);
-            TcpMessageQueueManager.executeMessage(
-              messageData,
-              (message: string) => {
-                hilog.info(DOMAIN, 'TCPServer', `收到消息: ${message}`);
-                console.log(`[TCP服务器] 从客户端 ${clientInfo.address}:${clientInfo.port} 接收到数据: ${message}`);
-                this.onMessageCallback?.('receive', message, clientInfo.id);
-              },
-              client
-            ).catch((err: Error | object) => {
-              const errorMsg = err instanceof Error ? err.message : String(err);
-              hilog.error(DOMAIN, 'TCPServer', `接收消息处理失败: ${errorMsg}`);
-              console.log(`[TCP服务器] 接收消息处理失败: ${errorMsg}`);
-              this.onMessageCallback?.('receive', `接收消息处理失败: ${errorMsg}`, clientInfo.id);
-            });
+            
+            // 检查是否为二进制统计数据（以SYNC开头）
+            const isBinaryData = messageData.length >= 4 && 
+              messageData[0] === 0x53 && // 'S'
+              messageData[1] === 0x59 && // 'Y'
+              messageData[2] === 0x4E && // 'N'
+              messageData[3] === 0x43;    // 'C'
+            
+            if (isBinaryData) {
+              // 二进制统计数据，直接处理
+              console.log(`[TCPServer] 识别为二进制统计数据，开始处理...`);
+              handleStatisticsData(messageData).catch((err: Error | object) => {
+                const errorMsg = err instanceof Error ? err.message : String(err);
+                console.error(`[TCPServer] 处理统计数据失败: ${errorMsg}`);
+              });
+            } else {
+              // 文本消息，使用原有处理方式
+              TcpMessageQueueManager.executeMessage(
+                messageData,
+                (message: string | Uint8Array) => {
+                  const messageStr = typeof message === 'string' ? message : '[Binary Data]';
+                  console.log(`[TCPServer] 收到文本消息: ${messageStr}`);
+                  this.onMessageCallback?.('receive', messageStr, clientInfo.id);
+                },
+                client
+              ).catch((err: Error | object) => {
+                const errorMsg = err instanceof Error ? err.message : String(err);
+                console.error(`[TCPServer] 接收消息处理失败: ${errorMsg}`);
+                this.onMessageCallback?.('receive', `接收消息处理失败: ${errorMsg}`, clientInfo.id);
+              });
+            }
           });
           
           // 监听客户端断开
           client.on('close', () => {
             this.clients.delete(clientInfo.id);
-            hilog.info(DOMAIN, 'TCPServer', `客户端断开: ${clientInfo.address}:${clientInfo.port}`);
-            console.log(`[TCP服务器] 客户端断开: ${clientInfo.address}:${clientInfo.port}`);
+            console.log(`[TCPServer] 客户端断开: ${clientInfo.address}:${clientInfo.port}`);
             this.onMessageCallback?.('receive', `客户端 ${clientInfo.address}:${clientInfo.port} 已断开`);
             this.onClientDisconnectCallback?.(clientInfo.id);
             
@@ -185,7 +226,7 @@ export class TCPServer {
           
           // 监听客户端错误
           client.on('error', (error: Error) => {
-            hilog.error(DOMAIN, 'TCPServer', `客户端错误: ${error.message}`);
+            console.error(`[TCPServer] 客户端错误: ${error.message}`);
             this.onMessageCallback?.('receive', `客户端 ${clientInfo.address}:${clientInfo.port} 发生错误: ${error.message}`);
             this.clients.delete(clientInfo.id);
             this.onClientDisconnectCallback?.(clientInfo.id);
@@ -196,14 +237,15 @@ export class TCPServer {
             }
           });
         } catch (error) {
-          hilog.error(DOMAIN, 'TCPServer', `处理客户端连接失败: ${error}`);
-          this.onMessageCallback?.('receive', `处理客户端连接失败: ${error}`);
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          console.error(`[TCPServer] 处理客户端连接失败: ${errorMsg}`);
+          this.onMessageCallback?.('receive', `处理客户端连接失败: ${errorMsg}`);
         }
       });
       
       // 监听服务器错误
       this.server.on('error', (error: Error) => {
-        hilog.error(DOMAIN, 'TCPServer', `服务器错误: ${error.message}`);
+        console.error(`[TCPServer] 服务器错误: ${error.message}`);
         this.onMessageCallback?.('receive', `服务器错误: ${error.message}`);
         this.onServerStatusCallback?.(false, `服务器错误: ${error.message}`);
       });
@@ -215,16 +257,16 @@ export class TCPServer {
         family: 1 // IPv4
       });
       
-      hilog.info(DOMAIN, 'TCPServer', `TCP服务器启动成功，监听 ${ip}:${port}`);
-      console.log(`[TCP服务器] 服务器启动成功，监听 ${ip}:${port}`);
+      console.log(`[TCPServer] TCP服务器启动成功，监听 ${ip}:${port}`);
       this.onMessageCallback?.('receive', `服务器已启动，监听 ${ip}:${port}`);
       this.onServerStatusCallback?.(true, `服务器运行正常 - ${ip}:${port}`);
       return true;
       
     } catch (error) {
-      hilog.error(DOMAIN, 'TCPServer', `启动服务器失败: ${error.message}`);
-      this.onMessageCallback?.('receive', `启动服务器失败: ${error.message}`);
-      this.onServerStatusCallback?.(false, `启动失败: ${error.message}`);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[TCPServer] 启动服务器失败: ${errorMsg}`);
+      this.onMessageCallback?.('receive', `启动服务器失败: ${errorMsg}`);
+      this.onServerStatusCallback?.(false, `启动失败: ${errorMsg}`);
       return false;
     }
   }
@@ -232,7 +274,7 @@ export class TCPServer {
   // 停止服务器
   async stop(): Promise<void> {
     try {
-      hilog.info(DOMAIN, 'TCPServer', '正在停止TCP服务器');
+      console.log(`[TCPServer] 正在停止TCP服务器`);
       
       // 断开所有客户端连接
       for (const clientId of this.clients.keys()) {
@@ -256,15 +298,15 @@ export class TCPServer {
       this.clients.clear();
       // 服务器停止时，设置连接状态为false
       AppStorage.setOrCreate(TCP_CONNECTION_STATUS, false);
-      hilog.info(DOMAIN, 'TCPServer', 'TCP服务器已停止');
-      console.log(`[TCP服务器] 服务器已停止`);
+      console.log(`[TCPServer] TCP服务器已停止`);
       this.onMessageCallback?.('receive', '服务器已停止');
       this.onServerStatusCallback?.(false, '服务器已停止');
       
     } catch (error) {
-      hilog.error(DOMAIN, 'TCPServer', `停止服务器失败: ${error.message}`);
-      this.onMessageCallback?.('receive', `停止服务器失败: ${error.message}`);
-      this.onServerStatusCallback?.(false, `停止失败: ${error.message}`);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[TCPServer] 停止服务器失败: ${errorMsg}`);
+      this.onMessageCallback?.('receive', `停止服务器失败: ${errorMsg}`);
+      this.onServerStatusCallback?.(false, `停止失败: ${errorMsg}`);
     }
   }
 
@@ -283,8 +325,9 @@ export class TCPServer {
           successCount++;
         } catch (error) {
           failCount++;
-          hilog.error(DOMAIN, 'TCPServer', `发送消息失败: ${error}`);
-          this.onMessageCallback?.('receive', `发送消息到 ${client.address}:${client.port} 失败: ${error}`);
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          console.error(`[TCPServer] 发送消息失败: ${errorMsg}`);
+          this.onMessageCallback?.('receive', `发送消息到 ${client.address}:${client.port} 失败: ${errorMsg}`);
         }
       }
     }
@@ -307,7 +350,7 @@ export class TCPServer {
       try {
         await client.connection.close();
         this.clients.delete(clientId);
-        hilog.info(DOMAIN, 'TCPServer', `已断开客户端: ${clientId}`);
+        console.log(`[TCPServer] 已断开客户端: ${clientId}`);
         this.onMessageCallback?.('receive', `已断开客户端 ${clientId}`);
         
         // 检查是否还有客户端连接，如果没有则更新状态为false
@@ -316,8 +359,9 @@ export class TCPServer {
         }
         return true;
       } catch (error) {
-        hilog.error(DOMAIN, 'TCPServer', `断开客户端失败: ${error.message}`);
-        this.onMessageCallback?.('receive', `断开客户端失败: ${error.message}`);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[TCPServer] 断开客户端失败: ${errorMsg}`);
+        this.onMessageCallback?.('receive', `断开客户端失败: ${errorMsg}`);
         return false;
       }
     }

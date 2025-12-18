@@ -16,10 +16,28 @@ import { ProfileInfoBar } from './ProfileInfoBar'
 @Component
 export struct TopStatusBar {
   @Prop currentPage: string = ''
-  @StorageLink(TOP_PRODUCTION_TON_H) productionTonPerHour: string = '--'
-  @StorageLink(TOP_SUM_WEIGHT_TON) sumWeightTon: string = '--'
-  @StorageLink(TOP_SUM_COUNTS) sumCounts: string = '--'
-  @StorageLink(TOP_AVG_G) avgGram: string = '--'
+  // 直接使用 @StorageLink，让它自动响应 AppStorage 的变化
+  @StorageLink(TOP_PRODUCTION_TON_H) @Watch('onProductionChange') productionTonPerHour: string = '--'
+  @StorageLink(TOP_SUM_WEIGHT_TON) @Watch('onSumWeightChange') sumWeightTon: string = '--'
+  @StorageLink(TOP_SUM_COUNTS) @Watch('onSumCountsChange') sumCounts: string = '--'
+  @StorageLink(TOP_AVG_G) @Watch('onAvgGramChange') avgGram: string = '--'
+  
+  // 监听 @StorageLink 的变化
+  onProductionChange(): void {
+    console.log(`[TopStatusBar] ⚡ productionTonPerHour 变化: ${this.productionTonPerHour}`)
+  }
+  
+  onSumWeightChange(): void {
+    console.log(`[TopStatusBar] ⚡ sumWeightTon 变化: ${this.sumWeightTon}`)
+  }
+  
+  onSumCountsChange(): void {
+    console.log(`[TopStatusBar] ⚡ sumCounts 变化: ${this.sumCounts}`)
+  }
+  
+  onAvgGramChange(): void {
+    console.log(`[TopStatusBar] ⚡ avgGram 变化: ${this.avgGram}`)
+  }
   @StorageLink(TOP_STATUS_TEXT) statusText: string = ''
   @StorageLink(TOP_ALERT_HIDE) alertHide: boolean = true
   @StorageLink(TCP_CONNECTION_STATUS) tcpConnected: boolean = false
@@ -88,6 +106,13 @@ export struct TopStatusBar {
     this.timeTimer = setInterval(() => {
       this.updateCurrentTime()
     }, 1000)
+    
+    // 打印初始值，用于调试
+    console.log(`[TopStatusBar] aboutToAppear - 初始值:`)
+    console.log(`  - productionTonPerHour: ${this.productionTonPerHour}`)
+    console.log(`  - sumWeightTon: ${this.sumWeightTon}`)
+    console.log(`  - sumCounts: ${this.sumCounts}`)
+    console.log(`  - avgGram: ${this.avgGram}`)
     
     // 【测试用】暂时注释掉模拟数据，测试卡顿问题
     // this.initializeMockData()
@@ -189,10 +214,10 @@ export struct TopStatusBar {
 
         // 3. 生产指标 (使用 Flex 自动换行或 Row 紧凑排列)
         Row({ space: 24 }) { // 增加间距，减少拥挤感
-          this.buildMetricItem('Production', this.productionTonPerHour, 'Ton/h')
-          this.buildMetricItem('SumWeight', this.sumWeightTon, 'Ton')
-          this.buildMetricItem('SumCounts', this.sumCounts, 'PCS')
-          this.buildMetricItem('Avg', this.avgGram, 'g')
+          this.buildMetricItem('Production', 'Ton/h')
+          this.buildMetricItem('SumWeight', 'Ton')
+          this.buildMetricItem('SumCounts', 'PCS')
+          this.buildMetricItem('Avg', 'g')
         }
       }
       .layoutWeight(0) // 左侧根据内容自适应宽度
@@ -288,7 +313,7 @@ export struct TopStatusBar {
 
   // Helper: 构建单个指标项
   @Builder
-  buildMetricItem(label: string, value: string, unit: string) {
+  buildMetricItem(label: string, unit: string) {
     Column() {
       Text(label)
         .fontSize(14) // 更小更精致的 Label
@@ -296,10 +321,39 @@ export struct TopStatusBar {
         .margin({ bottom: 2 })
       
       Row() {
-        Text(value)
-          .fontSize(20) // 数值大小适中
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.getCurrentTheme().primary)
+        // 根据label直接使用对应的@StorageLink值，确保响应式更新
+        if (label === 'Production') {
+          Text(this.productionTonPerHour)
+            .fontSize(20) // 数值大小适中
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getCurrentTheme().primary)
+            .id(`metric-${label}`) // 添加ID用于调试
+        } else if (label === 'SumWeight') {
+          Text(this.sumWeightTon)
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getCurrentTheme().primary)
+            .id(`metric-${label}`)
+        } else if (label === 'SumCounts') {
+          Text(this.sumCounts)
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getCurrentTheme().primary)
+            .id(`metric-${label}`)
+        } else if (label === 'Avg') {
+          Text(this.avgGram)
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getCurrentTheme().primary)
+            .id(`metric-${label}`)
+        } else {
+          Text('--')
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getCurrentTheme().primary)
+            .id(`metric-${label}`)
+        }
+        
         Text(unit)
           .fontSize(12)
           .fontColor(this.getCurrentTheme().subTextColor)

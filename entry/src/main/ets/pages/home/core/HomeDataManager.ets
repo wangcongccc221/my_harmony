@@ -37,6 +37,8 @@
  */
 
 import { TableRow } from '../../../components/layout/LevelTable'
+import { RealtimeDataManager } from '../../../utils/managers/RealtimeDataManager'
+import { StStatistics } from '../../../utils/network/tcp/types/StStatistics'
 
 export class HomeDataManager {
   private static instance: HomeDataManager | null = null
@@ -60,6 +62,11 @@ export class HomeDataManager {
    * 当前FSM状态
    */
   private currentFSM: 'FSM1' | 'FSM2' = 'FSM1'
+  
+  /**
+   * 实时数据管理器
+   */
+  private realtimeDataManager: RealtimeDataManager = RealtimeDataManager.getInstance()
   
   /**
    * 每个表格的最大数据条数（防止内存泄漏）
@@ -403,45 +410,98 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
    * ```
    */
   initializeStatisticsTableData(): void {
-    // 检查当前FSM状态的数据是否已存在，如果存在则不重新初始化
-    const fsmKey = `等级统计表_${this.currentFSM}`
-    if (this.allTableData[fsmKey] && this.allTableData[fsmKey].length > 0) {
-      console.log(`${this.currentFSM}等级统计表数据已存在，跳过初始化`)
-      return
+    // 从TCP数据更新等级统计表
+    this.updateStatisticsTableFromTcp()
+  }
+
+  /**
+   * 从TCP数据更新等级统计表
+   */
+  updateStatisticsTableFromTcp(): void {
+    try {
+      // 根据当前FSM获取子系统ID（FSM1=0, FSM2=1）
+      const subsysId = this.currentFSM === 'FSM1' ? 0 : 1
+      
+      // 获取统计数据
+      const statistics: StStatistics = this.realtimeDataManager.getStatistics(subsysId)
+      
+      // 计算总个数和总重量（用于计算百分比）
+      let totalCount: number = 0
+      let totalWeight: number = 0
+      let totalBoxCount: number = 0
+      
+      for (let i = 0; i < statistics.nGradeCount.length; i++) {
+        totalCount += statistics.nGradeCount[i]
+        totalWeight += statistics.nWeightGradeCount[i]
+        totalBoxCount += statistics.nBoxGradeCount[i]
+      }
+      
+      // 构建等级统计表数据
+      // 注意：这里假设等级信息从配置中获取，如果没有配置则使用默认等级名称
+      // 实际项目中，等级名称应该从配置或数据库中获取
+      const statisticsData: TableRow[] = []
+      
+      // 假设有4个等级（实际应该从配置获取）
+      const gradeNames = ['A级', 'B级', 'C级', 'D级']
+      const maxGrades = Math.min(gradeNames.length, Math.floor(statistics.nGradeCount.length / 4)) // 假设每个品质等级有4个尺寸等级
+      
+      for (let i = 0; i < maxGrades; i++) {
+        const gradeIndex: number = i * 4 // 假设每个品质等级有4个尺寸等级，取第一个尺寸等级的数据
+        const gradeCount: number = statistics.nGradeCount[gradeIndex]
+        const gradeWeight: number = statistics.nWeightGradeCount[gradeIndex] / 1000.0 // 克转千克
+        const boxCount: number = statistics.nBoxGradeCount[gradeIndex]
+        const boxWeight: number = statistics.nBoxGradeWeight[gradeIndex] / 1000.0 // 克转千克
+        
+        // 计算百分比
+        const countPercent: string = totalCount > 0 ? ((gradeCount / totalCount) * 100).toFixed(2) : '0.00'
+        const weightPercent: string = totalWeight > 0 ? ((statistics.nWeightGradeCount[gradeIndex] / totalWeight) * 100).toFixed(2) : '0.00'
+        const boxPercent: string = totalBoxCount > 0 ? ((boxCount / totalBoxCount) * 100).toFixed(2) : '0.00'
+        
+        // 计算平均重量（克转千克）
+        const avgWeight: string = gradeCount > 0 ? (statistics.nWeightGradeCount[gradeIndex] / gradeCount / 1000.0).toFixed(2) : '0.00'
+        
+        // 构建出口信息（这里简化处理，实际应该从配置获取）
+        const exitInfo: string = `出口${i + 1}`
+        
+        // 构建表格行数据
+        // 格式：[等级名称, 重量(kg), 出口, 个数, 个数百分比, 重量(kg), 重量百分比, 箱数, 箱数百分比, 每箱重(kg), 平均重量(kg)]
+        statisticsData.push([
+          gradeNames[i] || `等级${i + 1}`,
+          gradeWeight.toFixed(2),
+          exitInfo,
+          gradeCount.toString(),
+          `${countPercent}%`,
+          gradeWeight.toFixed(2),
+          `${weightPercent}%`,
+          boxCount.toString(),
+          `${boxPercent}%`,
+          boxWeight.toFixed(2),
+          avgWeight
+        ])
+      }
+      
+      // 如果没有数据，使用默认数据
+      if (statisticsData.length === 0) {
+        statisticsData.push([
+          'A级', '0.00', '出口1', '0', '0.00%', '0.00', '0.00%', '0', '0.00%', '0.00', '0.00'
+        ])
+      }
+      
+      // 使用FSM特定的键名存储数据
+      const fsmKey = `等级统计表_${this.currentFSM}`
+      this.allTableData[fsmKey] = statisticsData
+      
+      console.log(`从TCP数据更新${this.currentFSM}等级统计表数据:`, statisticsData.length, '行')
+    } catch (error) {
+      console.error('从TCP数据更新等级统计表失败:', error)
+      // 如果更新失败，使用默认数据
+      const fsmKey = `等级统计表_${this.currentFSM}`
+      if (!this.allTableData[fsmKey] || this.allTableData[fsmKey].length === 0) {
+        this.allTableData[fsmKey] = [
+          ['A级', '0.00', '出口1', '0', '0.00%', '0.00', '0.00%', '0', '0.00%', '0.00', '0.00']
+        ]
+      }
     }
-    
-    let statisticsData: TableRow[]
-    
-    if (this.currentFSM === 'FSM1') {
-      // FSM1的等级统计表数据
-      statisticsData = [
-        ['A级', '1250.5', '出口1', '156', '25.2%', '1250.5', '28.5%', '8', '26.7%', '156.3', '15.6'],
-        ['B级', '980.2', '出口2', '98', '15.8%', '980.2', '22.3%', '6', '20.0%', '163.4', '16.3'],
-        ['C级', '756.8', '出口3', '78', '12.6%', '756.8', '17.2%', '5', '16.7%', '151.4', '15.1'],
-        ['D级', '654.3', '出口4', '65', '10.5%', '654.3', '14.9%', '4', '13.3%', '163.6', '16.4']
-      ]
-    } else if (this.currentFSM === 'FSM2') {
-      // FSM2的等级统计表数据（不同的等级和数值）
-      statisticsData = [
-        ['特级', '1580.3', '出口1', '189', '28.7%', '1580.3', '32.1%', '12', '35.3%', '131.7', '13.2'],
-        ['优级', '1120.7', '出口2', '134', '20.3%', '1120.7', '22.8%', '9', '26.5%', '124.5', '12.5'],
-        ['良级', '890.4', '出口3', '107', '16.2%', '890.4', '18.1%', '7', '20.6%', '127.2', '12.7'],
-        ['合格', '720.6', '出口4', '87', '13.2%', '720.6', '14.6%', '5', '14.7%', '144.1', '14.4'],
-        ['次品', '450.2', '出口5', '54', '8.2%', '450.2', '9.1%', '3', '8.8%', '150.1', '15.0']
-      ]
-    } else {
-      // 默认情况，使用FSM1数据
-      statisticsData = [
-        ['A级', '1250.5', '出口1', '156', '25.2%', '1250.5', '28.5%', '8', '26.7%', '156.3', '15.6'],
-        ['B级', '980.2', '出口2', '98', '15.8%', '980.2', '22.3%', '6', '20.0%', '163.4', '16.3'],
-        ['C级', '756.8', '出口3', '78', '12.6%', '756.8', '17.2%', '5', '16.7%', '151.4', '15.1'],
-        ['D级', '654.3', '出口4', '65', '10.5%', '654.3', '14.9%', '4', '13.3%', '163.6', '16.4']
-      ]
-    }
-    
-    // 使用FSM特定的键名存储数据
-    this.allTableData[fsmKey] = statisticsData
-    console.log(`初始化${this.currentFSM}等级统计表数据:`, statisticsData)
   }
 
   /**

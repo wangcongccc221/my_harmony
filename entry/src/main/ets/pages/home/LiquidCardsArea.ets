@@ -46,6 +46,8 @@ import { CardDataManager } from '../../utils/ui/CardDataManager'
 import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
 import { HomeDataManager } from './core/HomeDataManager'
 import { HomeContent } from './HomeContent'
+import { RealtimeDataManager } from '../../utils/managers/RealtimeDataManager'
+import { StStatistics } from '../../utils/network/tcp/types/StStatistics'
 
 // 移除源数据接口
 interface RemoveSourceData {
@@ -69,6 +71,12 @@ export struct LiquidCardsArea {
   @StorageLink(GRID_DRAG_ACTIVE_KEY) private gridDragActive: boolean = false
   // FSM状态监听
   @StorageLink(HOME_SELECTED_FSM) @Watch('onFSMChange') private selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
+  // 实时数据管理器
+  private realtimeDataManager: RealtimeDataManager = RealtimeDataManager.getInstance()
+  // 上次检查的数据版本号（用于检测数据更新）
+  private lastCheckVersion: number = 0
+  // TCP数据更新检查定时器
+  private tcpDataCheckTimerId?: number
   // 简化：不记录几何，直接在卡片自身接收抬手投放
   
   // 卡片点击回调
@@ -222,6 +230,9 @@ export struct LiquidCardsArea {
   aboutToAppear(): void {
     // 将当前实例注册到AppStorage，供其他组件调用
     AppStorage.setOrCreate('LIQUID_CARDS_AREA_REF', this)
+    
+    // 初始化时从TCP数据更新一次
+    this.updateCardsFromTcpData()
     // 初始化卡片数据
     this.initializeCardData()
   }
@@ -234,6 +245,75 @@ export struct LiquidCardsArea {
   /**
    * 监听FSM状态变化
    */
+  /**
+   * 检查TCP数据是否有更新（通过轮询全局版本号）
+   */
+  private checkTcpDataUpdate(): void {
+    try {
+      const subsysId: number = this.selectedFSM === 'FSM1' ? 0 : 1
+      const currentVersion: number = this.realtimeDataManager.getUpdateVersion(subsysId)
+      
+      // 如果版本号变化，说明数据有更新，则更新UI
+      if (currentVersion !== this.lastCheckVersion) {
+        this.lastCheckVersion = currentVersion
+        this.updateCardsFromTcpData()
+        console.log(`[LiquidCardsArea] 检测到数据更新，版本号: ${currentVersion}`)
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[LiquidCardsArea] 检查TCP数据更新失败: ${errorMsg}`)
+    }
+  }
+
+  /**
+   * 从TCP数据更新出口卡片
+   */
+  private updateCardsFromTcpData(): void {
+    try {
+      // 根据当前FSM获取子系统ID（FSM1=0, FSM2=1）
+      const subsysId = this.selectedFSM === 'FSM1' ? 0 : 1
+      
+      // 获取统计数据
+      const statistics: StStatistics = this.realtimeDataManager.getStatistics(subsysId)
+      
+      // 获取出口数量
+      const outletCount: number = this.selectedFSM === 'FSM1' ? this.outletCountFSM1 : this.outletCountFSM2
+      
+      // 更新每个出口卡片的数据
+      for (let i = 0; i < Math.min(outletCount, statistics.nExitCount.length); i++) {
+        const exitIndex: number = i // 出口索引（从0开始，对应出口1-N）
+        const exitCount: number = statistics.nExitCount[exitIndex] // 出口个数
+        const exitWeight: number = statistics.nExitWeightCount[exitIndex] / 1000.0 // 出口重量（克转千克）
+        const exitBoxNum: number = statistics.ExitBoxNum[exitIndex] // 出口箱数
+        
+        // 更新卡片数据（通过全局数据管理器）
+        if (i < this.cardDataList.length) {
+          const cardData: ThreeLayerCardData = this.cardDataList[i]
+          // 更新第三层数据（出口统计）
+          // 注意：ThirdLayerData没有value和subValue属性，需要使用chartData
+          if (cardData && cardData.thirdLayer) {
+            // 更新chartData数组（第一个元素为个数，第二个元素为重量）
+            cardData.thirdLayer.chartData = [exitCount, exitWeight]
+            // 更新chartDataStrings（用于显示）
+            cardData.thirdLayer.chartDataStrings = [
+              exitCount.toString(),
+              `${exitWeight.toFixed(2)} kg`
+            ]
+            // 更新卡片数据
+            this.globalDataManager.updateCardData(i, cardData)
+          }
+        }
+      }
+      
+      // 更新本地状态
+      this.cardDataList = this.globalDataManager.getCardDataList()
+      
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('更新出口卡片数据失败:', errorMsg)
+    }
+  }
+
   onFSMChange(): void {
     console.log(`LiquidCardsArea: FSM状态变化到 ${this.selectedFSM}`)
     this.globalDataManager.setFSM(this.selectedFSM)

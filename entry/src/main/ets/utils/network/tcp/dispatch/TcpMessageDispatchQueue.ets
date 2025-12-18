@@ -26,8 +26,9 @@ export interface TcpMessageTaskResult {
 
 /**
  * TCP 消息处理回调函数类型
+ * 支持文本消息（string）和二进制消息（Uint8Array）
  */
-export type TcpMessageHandler = (message: string) => void | Promise<void>;
+export type TcpMessageHandler = (message: string | Uint8Array) => void | Promise<void>;
 
 /**
  * TCP 消息任务类（继承 DispatchTask）
@@ -82,19 +83,37 @@ export class TcpMessageDispatchQueue extends DispatchQueue {
     // 在原始 worker 中执行消息处理（异步，不阻塞队列）
     const processMessage = async () => {
       try {
-        // 解码消息
-        const decoder = new util.TextDecoder();
-        const decodedMessage = decoder.decode(tcpTask.message);
+        // 尝试解析为二进制数据（StStatistics结构体）
+        // 首先检查是否为SYNC开头
+        const syncBytes = new Uint8Array([0x53, 0x59, 0x4E, 0x43]); // "SYNC"
+        const isBinaryData = tcpTask.message.length >= 4 && 
+          tcpTask.message[0] === syncBytes[0] &&
+          tcpTask.message[1] === syncBytes[1] &&
+          tcpTask.message[2] === syncBytes[2] &&
+          tcpTask.message[3] === syncBytes[3];
         
-        // 执行 handler
-        const handlerResult = handler(decodedMessage);
-        if (handlerResult instanceof Promise) {
-          await handlerResult;
+        if (isBinaryData) {
+          // 二进制数据，直接传递原始字节数组给handler
+          // handler需要接收Uint8Array类型
+          const handlerResult = handler(tcpTask.message as Uint8Array);
+          if (handlerResult instanceof Promise) {
+            await handlerResult;
+          }
+        } else {
+          // 文本数据，解码为字符串
+          const decoder = new util.TextDecoder();
+          const decodedMessage = decoder.decode(tcpTask.message);
+          
+          // 执行 handler
+          const handlerResult = handler(decodedMessage);
+          if (handlerResult instanceof Promise) {
+            await handlerResult;
+          }
         }
 
         const result: TcpMessageTaskResult = {
           success: true,
-          decodedMessage: decodedMessage
+          decodedMessage: isBinaryData ? '[Binary Data]' : new util.TextDecoder().decode(tcpTask.message)
         };
         this.finishTask(taskData, result as ESObject);
       } catch (error) {
