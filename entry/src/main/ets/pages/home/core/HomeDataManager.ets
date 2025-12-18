@@ -38,7 +38,8 @@
 
 import { TableRow } from '../../../components/layout/LevelTable'
 import { RealtimeDataManager } from '../../../utils/managers/RealtimeDataManager'
-import { StStatistics } from '../../../utils/network/tcp/types/StStatistics'
+import { GradeInfoManager } from '../../../utils/managers/GradeInfoManager'
+import { StStatistics, MAX_SIZE_GRADE_NUM } from '../../../utils/network/tcp/types/StStatistics'
 
 export class HomeDataManager {
   private static instance: HomeDataManager | null = null
@@ -415,6 +416,87 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
   }
 
   /**
+   * 从TCP数据更新等级表
+   * 
+   * 功能说明：
+   * - 从StStatistics统计数据中提取等级信息
+   * - 更新等级表数据（等级名称、重量、百分比、个数等）
+   * - 等级表格式：[等级名称, 重量(kg), 重量百分比, 个数, 个数百分比]
+   */
+  updateLevelTableFromTcp(): void {
+    try {
+      // 根据当前FSM获取子系统ID（FSM1=0, FSM2=1）
+      const subsysId = this.currentFSM === 'FSM1' ? 0 : 1
+      
+      // 获取统计数据
+      const statistics: StStatistics = this.realtimeDataManager.getStatistics(subsysId)
+      
+      // 从GradeInfoManager获取等级配置信息（从TCP的FSM_CMD_CONFIG命令获取）
+      const gradeInfoManager = GradeInfoManager.getInstance()
+      const qualityGradeNames = gradeInfoManager.getQualityGradeNames(subsysId)
+      
+      // 计算总个数和总重量（用于计算百分比）
+      let totalCount: number = 0
+      let totalWeight: number = 0
+      
+      for (let i = 0; i < statistics.nGradeCount.length; i++) {
+        totalCount += statistics.nGradeCount[i]
+        totalWeight += statistics.nWeightGradeCount[i]
+      }
+      
+      // 构建等级表数据
+      const levelData: TableRow[] = []
+      
+      // 每个品质等级有16个尺寸等级（MAX_SIZE_GRADE_NUM=16），取第一个尺寸等级的数据（size=0）
+      const maxGrades = Math.min(qualityGradeNames.length, Math.floor(statistics.nGradeCount.length / MAX_SIZE_GRADE_NUM))
+      
+      for (let i = 0; i < maxGrades; i++) {
+        const gradeIndex: number = i * MAX_SIZE_GRADE_NUM // 每个品质等级有16个尺寸等级，取第一个尺寸等级的数据（size=0）
+        const gradeCount: number = statistics.nGradeCount[gradeIndex]
+        const gradeWeight: number = statistics.nWeightGradeCount[gradeIndex] / 1000.0 // 克转千克
+        
+        // 计算百分比
+        const countPercent: string = totalCount > 0 ? ((gradeCount / totalCount) * 100).toFixed(2) : '0.00'
+        const weightPercent: string = totalWeight > 0 ? ((statistics.nWeightGradeCount[gradeIndex] / totalWeight) * 100).toFixed(2) : '0.00'
+        
+        // 使用从TCP配置获取的等级名称（如果没有配置则使用默认名称）
+        const gradeName = qualityGradeNames[i] || `等级${i + 1}`
+        
+        // 构建表格行数据
+        // 格式：[等级名称, 重量(kg), 重量百分比, 个数, 个数百分比]
+        levelData.push([
+          gradeName,
+          gradeWeight.toFixed(2),
+          `${weightPercent}%`,
+          gradeCount.toString(),
+          `${countPercent}%`
+        ])
+      }
+      
+      // 如果没有数据，使用默认数据
+      if (levelData.length === 0) {
+        const defaultGradeName = qualityGradeNames[0] || 'A级'
+        levelData.push([
+          defaultGradeName, '0.00', '0.00%', '0', '0.00%'
+        ])
+      }
+      
+      // 使用FSM特定的键名存储数据
+      const fsmKey = `等级表_${this.currentFSM}`
+      this.allTableData[fsmKey] = levelData
+      
+      // console.log(`从TCP数据更新${this.currentFSM}等级表数据:`, levelData.length, '行, 等级名称来源: TCP配置`)
+    } catch (error) {
+      console.error('从TCP数据更新等级表失败:', error)
+      // 如果更新失败，使用默认数据
+      const fsmKey = `等级表_${this.currentFSM}`
+      if (!this.allTableData[fsmKey] || this.allTableData[fsmKey].length === 0) {
+        this.initializeLevelTableData()
+      }
+    }
+  }
+
+  /**
    * 从TCP数据更新等级统计表
    */
   updateStatisticsTableFromTcp(): void {
@@ -436,17 +518,18 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
         totalBoxCount += statistics.nBoxGradeCount[i]
       }
       
+      // 从GradeInfoManager获取等级配置信息（从TCP的FSM_CMD_CONFIG命令获取）
+      const gradeInfoManager = GradeInfoManager.getInstance()
+      const qualityGradeNames = gradeInfoManager.getQualityGradeNames(subsysId)
+      
       // 构建等级统计表数据
-      // 注意：这里假设等级信息从配置中获取，如果没有配置则使用默认等级名称
-      // 实际项目中，等级名称应该从配置或数据库中获取
       const statisticsData: TableRow[] = []
       
-      // 假设有4个等级（实际应该从配置获取）
-      const gradeNames = ['A级', 'B级', 'C级', 'D级']
-      const maxGrades = Math.min(gradeNames.length, Math.floor(statistics.nGradeCount.length / 4)) // 假设每个品质等级有4个尺寸等级
+      // 每个品质等级有16个尺寸等级（MAX_SIZE_GRADE_NUM=16），取第一个尺寸等级的数据（size=0）
+      const maxGrades = Math.min(qualityGradeNames.length, Math.floor(statistics.nGradeCount.length / MAX_SIZE_GRADE_NUM))
       
       for (let i = 0; i < maxGrades; i++) {
-        const gradeIndex: number = i * 4 // 假设每个品质等级有4个尺寸等级，取第一个尺寸等级的数据
+        const gradeIndex: number = i * MAX_SIZE_GRADE_NUM // 每个品质等级有16个尺寸等级，取第一个尺寸等级的数据（size=0）
         const gradeCount: number = statistics.nGradeCount[gradeIndex]
         const gradeWeight: number = statistics.nWeightGradeCount[gradeIndex] / 1000.0 // 克转千克
         const boxCount: number = statistics.nBoxGradeCount[gradeIndex]
@@ -463,10 +546,13 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
         // 构建出口信息（这里简化处理，实际应该从配置获取）
         const exitInfo: string = `出口${i + 1}`
         
+        // 使用从TCP配置获取的等级名称（如果没有配置则使用默认名称）
+        const gradeName = qualityGradeNames[i] || `等级${i + 1}`
+        
         // 构建表格行数据
         // 格式：[等级名称, 重量(kg), 出口, 个数, 个数百分比, 重量(kg), 重量百分比, 箱数, 箱数百分比, 每箱重(kg), 平均重量(kg)]
         statisticsData.push([
-          gradeNames[i] || `等级${i + 1}`,
+          gradeName,
           gradeWeight.toFixed(2),
           exitInfo,
           gradeCount.toString(),
@@ -491,7 +577,7 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
       const fsmKey = `等级统计表_${this.currentFSM}`
       this.allTableData[fsmKey] = statisticsData
       
-      console.log(`从TCP数据更新${this.currentFSM}等级统计表数据:`, statisticsData.length, '行')
+      console.log(`从TCP数据更新${this.currentFSM}等级统计表数据: ${statisticsData.length}行`)
     } catch (error) {
       console.error('从TCP数据更新等级统计表失败:', error)
       // 如果更新失败，使用默认数据

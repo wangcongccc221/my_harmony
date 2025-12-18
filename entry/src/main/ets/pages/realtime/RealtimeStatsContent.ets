@@ -85,8 +85,8 @@ export struct RealtimeStatsContent {
           pieValues.push(percentage)
         }
         this.pieData = pieValues.map(value => new PieData(value))
-      }
-      
+    }
+    
       // 更新品质统计数据（取前5个品质等级的总个数）
       const qualityValues: number[] = []
       for (let quality = 0; quality < 5; quality++) {
@@ -98,14 +98,14 @@ export struct RealtimeStatsContent {
           }
         }
         qualityValues.push(gradeCount)
-      }
+        }
       this.qualityData = qualityValues
       
       // 更新出口产量数据（取前8个出口的个数）
       const outletValues: number[] = []
       for (let i = 0; i < 8 && i < statistics.nExitCount.length; i++) {
         outletValues.push(statistics.nExitCount[i])
-      }
+        }
       this.outletData = outletValues
       
       console.log(`[RealtimeStatsContent] 数据已更新 - 总个数: ${totalCount}`)

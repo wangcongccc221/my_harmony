@@ -9,7 +9,14 @@ export { GradeInfoService } from './GradeInfoService';
 export { ExportInfoService } from './ExportInfoService';
 export { FarmerInfoService } from './FarmerInfoService';
 export { ProcessingTaskService } from './ProcessingTaskService';
-export { AlarmInfoService } from './AlarmInfoService';
+
+// 新增的服务（对应48项目）
+export { CustomerService } from './CustomerService';
+export { SysFruitInfoService } from './SysFruitInfoService';
+export { BaseFaultService } from './BaseFaultService';
+export { FaultInfoService } from './FaultInfoService';
+export { FruitProcessInfoService } from './FruitProcessInfoService';
+export { SysConfigsService } from './SysConfigsService';
 
 export { createService, createOrmService } from './createService';
 

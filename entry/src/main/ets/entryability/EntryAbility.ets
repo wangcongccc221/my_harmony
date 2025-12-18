@@ -21,7 +21,13 @@ import { GradeInfo } from '../database/models/GradeInfo';
 import { ExportInfo } from '../database/models/ExportInfo';
 import { FarmerInfo } from '../database/models/FarmerInfo';
 import { ProcessingTask } from '../database/models/ProcessingTask';
-import { AlarmInfo } from '../database/models/AlarmInfo';
+// 新增的表（对应48项目）
+import { Customer } from '../database/models/Customer';
+import { SysFruitInfo } from '../database/models/SysFruitInfo';
+import { BaseFault } from '../database/models/BaseFault';
+import { FaultInfo } from '../database/models/FaultInfo';
+import { FruitProcessInfo } from '../database/models/FruitProcessInfo';
+import { SysConfigs } from '../database/models/SysConfigs';
 import { I18nManager } from '../utils/i18n/I18nManager';
 import { OutletCountStorage } from '../utils/storage/OutletCountStorage';
 // import { taskPoolExecuteInsert, taskPoolExecuteQuery, taskPoolExecuteUpdate, taskPoolExecuteDelete } from '../database/examples/taskpool'; // 文件已删除
@@ -97,7 +103,13 @@ export default class EntryAbility extends UIAbility {
       GetIBestORM().AutoMigrate(ExportInfo);
       GetIBestORM().AutoMigrate(FarmerInfo);
       GetIBestORM().AutoMigrate(ProcessingTask);
-      GetIBestORM().AutoMigrate(AlarmInfo);
+      // 新增的表（对应48项目）
+      GetIBestORM().AutoMigrate(Customer);
+      GetIBestORM().AutoMigrate(SysFruitInfo);
+      GetIBestORM().AutoMigrate(BaseFault);
+      GetIBestORM().AutoMigrate(FaultInfo);
+      GetIBestORM().AutoMigrate(FruitProcessInfo);
+      GetIBestORM().AutoMigrate(SysConfigs);
       // 创建索引以优化查询性能
       ProcessingHistory.createIndexes();
       FruitInfo.createIndexes();
@@ -105,7 +117,13 @@ export default class EntryAbility extends UIAbility {
       ExportInfo.createIndexes();
       FarmerInfo.createIndexes();
       ProcessingTask.createIndexes();
-      AlarmInfo.createIndexes();
+      // 新增的表（对应48项目）
+      Customer.createIndexes();
+      SysFruitInfo.createIndexes();
+      BaseFault.createIndexes();
+      FaultInfo.createIndexes();
+      FruitProcessInfo.createIndexes();
+      SysConfigs.createIndexes();
       hilog.info(DOMAIN, 'EntryAbility', 'ORM 初始化完成并迁移所有表');
 
     } catch (e) {

@@ -347,9 +347,10 @@ export struct HomeContent {
       AppStorage.setOrCreate(TOP_AVG_G, newAvgG)
       console.log(`[HomeContent] 更新顶部平均果重: ${this.topAvgG}克`)
       
-      // 更新等级统计表数据（从TCP数据更新）
+      // 更新等级表和等级统计表数据（从TCP数据更新）
       this.dataManager.setFSM(this.selectedFSM)
-      this.dataManager.updateStatisticsTableFromTcp()
+      this.dataManager.updateLevelTableFromTcp() // 更新等级表
+      this.dataManager.updateStatisticsTableFromTcp() // 更新等级统计表
       
       console.log(`[HomeContent] UI数据更新完成 - 分选速度: ${this.sortSpeed}, 本批个数: ${this.batchCount}, 本批重量: ${this.batchWeight}`)
       

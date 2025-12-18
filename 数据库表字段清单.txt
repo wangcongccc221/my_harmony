@@ -1,0 +1,250 @@
+数据库表字段清单
+====================
+
+表名: tb_customer
+表说明: 客户信息表
+====================
+字段名(数据库列名)	类型	可空	主键	自增	默认值	索引	业务说明
+fid	INTEGER	否	是	是	-	主键索引	客户ID，主键，自增
+f_name	TEXT	是	否	否	NULL	普通索引	客户名称
+f_code	TEXT	是	否	否	NULL	普通索引	客户代码
+f_create_date	TEXT	是	否	否	NULL	普通索引	创建时间（格式：YYYY-MM-DD HH:mm:ss）
+
+
+====================
+
+表名: tb_sys_fruitinfo
+表说明: 系统水果信息表（按子系统存储批次信息）
+用途说明: 用于存储每个子系统（FSM1、FSM2）的批次信息，一个客户可以有多个子系统记录（FSM1一条，FSM2一条）
+====================
+字段名(数据库列名)	类型	可空	主键	自增	默认值	索引	业务说明
+fid	INTEGER	否	是	是	-	主键索引	记录ID，主键，自增
+customer_id	INTEGER	否	否	否	-	普通索引,复合索引	客户ID（外键，关联tb_customer）
+system_id	INTEGER	否	否	否	0	普通索引,复合索引	子系统ID（1=FSM1，2=FSM2）
+batch_number	INTEGER	是	否	否	0	-	批次号
+batch_weight	INTEGER	是	否	否	0	-	批次重量（单位：克）
+
+====================
+
+表名: tb_base_fault
+表说明: 基础故障模板表
+====================
+字段名(数据库列名)	类型	可空	主键	自增	默认值	索引	业务说明
+fid	INTEGER	否	是	是	-	主键索引	故障模板ID，主键，自增
+f_type	INTEGER	是	否	否	0	普通索引	故障类型
+f_code	TEXT	是	否	否	NULL	普通索引	故障代码
+f_name	TEXT	是	否	否	NULL	-	故障名称
+f_group_name	TEXT	是	否	否	NULL	普通索引	故障组名
+f_message	TEXT	是	否	否	NULL	-	故障消息描述
+f_shutdown_condition	INTEGER	是	否	否	0	-	停机条件
+f_deceleration_condition	INTEGER	是	否	否	0	-	减速条件
+f_popup_condition	INTEGER	是	否	否	0	-	弹窗条件
+f_prompt_condition	INTEGER	是	否	否	0	-	提示条件
+f_create_date	TEXT	是	否	否	NULL	-	创建时间（格式：YYYY-MM-DD HH:mm:ss）
+f_modify_date	TEXT	是	否	否	NULL	-	修改时间（格式：YYYY-MM-DD HH:mm:ss）
+
+====================
+
+表名: tb_faultinfo
+表说明: 故障信息记录表
+====================
+字段名(数据库列名)	类型	可空	主键	自增	默认值	索引	业务说明
+fid	INTEGER	否	是	是	-	主键索引	故障记录ID，主键，自增
+f_type	INTEGER	是	否	否	0	普通索引,复合索引	故障类型
+f_code	TEXT	是	否	否	NULL	普通索引	故障代码（关联tb_base_fault）
+f_name	TEXT	是	否	否	NULL	-	故障名称
+f_message	TEXT	是	否	否	NULL	-	故障消息描述
+f_status	INTEGER	是	否	否	0	普通索引,复合索引	故障状态（0=故障中，1=已修复）
+f_begin_date	TEXT	是	否	否	NULL	普通索引,复合索引	故障开始时间（格式：YYYY-MM-DD HH:mm:ss）
+f_end_date	TEXT	是	否	否	NULL	普通索引,复合索引	故障结束时间（格式：YYYY-MM-DD HH:mm:ss）
+
+====================
+
+表名: tb_fruitprocessinfo
+表说明: 水果加工信息表（存储加工过程统计信息）
+用途说明: 用于存储水果加工过程的统计信息（百分比、效率等），一个客户一条记录，存储加工统计数据
+与tb_sys_fruitinfo的区别: tb_sys_fruitinfo存储按子系统区分的批次信息，tb_fruitprocessinfo存储加工过程的统计百分比数据
+====================
+字段名(数据库列名)	类型	可空	主键	自增	默认值	索引	业务说明
+fid	INTEGER	否	是	是	-	主键索引	记录ID，主键，自增
+customer_id	INTEGER	是	否	否	NULL	普通索引	客户ID（外键，关联tb_customer）
+real_weight_count_percent	TEXT	是	否	否	[]	-	实际重量计数百分比（BLOB→TEXT，JSON字符串格式）
+separation_efficiency_percent	TEXT	是	否	否	[]	-	分选效率百分比（BLOB→TEXT，JSON字符串格式）
+
+====================
+
+表名: tb_sys_configs
+表说明: 系统配置表（键值对）
+====================
+字段名(数据库列名)	类型	可空	主键	自增	默认值	索引	业务说明
+fid	INTEGER	否	是	是	-	主键索引	配置ID，主键，自增
+f_module_name	TEXT	否	否	否	RSS	普通索引,复合索引	模块名称（默认：'RSS'）
+f_type	TEXT	否	否	否	-	普通索引,复合索引	配置类型（键）
+f_value	TEXT	是	否	否	NULL	-	配置值（值）
+f_create_date	TEXT	是	否	否	NULL	-	创建时间（格式：YYYY-MM-DD HH:mm:ss）
+f_modify_date	TEXT	是	否	否	NULL	-	修改时间（格式：YYYY-MM-DD HH:mm:ss）
+f_visible	INTEGER	是	否	否	0	普通索引,复合索引	是否可见（0=隐藏，1=可见）
+
+====================
+
+表名: tb_fruitinfo
+表说明: 水果信息表
+====================
+字段名(数据库列名)	类型	可空	主键	自增	默认值	索引	业务说明
+customer_id	INTEGER	否	是	是	-	主键索引	客户ID，主键，自增
+sys_id	INTEGER	是	否	否	0	普通索引	系统ID
+feed_port_id	INTEGER	是	否	否	0	-	进料口ID
+major_customer_id	INTEGER	是	否	否	NULL	-	主要客户ID
+f_batch_no	TEXT	是	否	否	NULL	普通索引	批次号
+order_id	INTEGER	是	否	否	0	普通索引	订单ID
+chain_idx	TEXT	是	否	否	NULL	-	链索引
+customer_name	TEXT	是	否	否	NULL	普通索引	客户名称
+farm_name	TEXT	是	否	否	NULL	-	农场名称
+fruit_name	TEXT	是	否	否	NULL	普通索引	水果名称
+start_time	TEXT	是	否	否	NULL	普通索引	开始时间（格式：YYYY-MM-DD HH:mm:ss）
+end_time	TEXT	是	否	否	NULL	普通索引	结束时间（格式：YYYY-MM-DD HH:mm:ss）
+started_state	TEXT	是	否	否	NULL	-	开始状态
+completed_state	TEXT	是	否	否	NULL	-	完成状态
+batch_weight	REAL	是	否	否	NULL	-	批次重量
+batch_number	INTEGER	是	否	否	NULL	-	批次数量
+sort_type	INTEGER	否	否	否	0	-	分选类型
+system_num	INTEGER	是	否	否	NULL	-	系统数量
+size_i_d_num	INTEGER	是	否	否	NULL	-	尺寸ID数量
+channel_num	INTEGER	是	否	否	NULL	-	通道数量
+quality_grade_sum	INTEGER	是	否	否	NULL	-	品质等级总数
+weight_or_size_grade_sum	INTEGER	是	否	否	NULL	-	重量或尺寸等级总数
+color_grade_name	TEXT	是	否	否	NULL	-	颜色等级名称
+shape_grade_name	TEXT	是	否	否	NULL	-	形状等级名称
+flaw_grade_name	TEXT	是	否	否	NULL	-	瑕疵等级名称
+hard_grade_name	TEXT	是	否	否	NULL	-	硬度等级名称
+density_grade_name	TEXT	是	否	否	NULL	-	密度等级名称
+sugar_degree_grade_name	TEXT	是	否	否	NULL	-	糖度等级名称
+export_sum	INTEGER	是	否	否	NULL	-	出口总数
+program_name	TEXT	是	否	否	NULL	-	程序名称
+
+====================
+
+表名: tb_exportinfo
+表说明: 出口信息表
+====================
+字段名(数据库列名)	类型	可空	主键	自增	默认值	索引	业务说明
+fid	INTEGER	否	是	是	-	主键索引	记录ID，主键，自增
+customer_id	INTEGER	否	否	否	-	普通索引	客户ID（外键，关联tb_fruitinfo）
+channel_id	INTEGER	否	否	否	0	普通索引	通道ID
+export_id	INTEGER	否	否	否	-	普通索引	出口ID
+fruit_number	INTEGER	是	否	否	NULL	-	水果数量
+fruit_weight	REAL	是	否	否	NULL	-	水果重量
+box_number	INTEGER	是	否	否	0	-	箱数
+exit_name	TEXT	是	否	否	NULL	-	出口名称
+
+====================
+
+表名: tb_gradeinfo
+表说明: 等级信息表
+====================
+字段名(数据库列名)	类型	可空	主键	自增	默认值	索引	业务说明
+fid	INTEGER	否	是	是	-	主键索引	记录ID，主键，自增
+customer_id	INTEGER	否	否	否	-	普通索引	客户ID（外键，关联tb_fruitinfo）
+channel_id	INTEGER	否	否	否	0	普通索引	通道ID
+quality_index	INTEGER	否	否	否	0	普通索引	品质索引
+size_id	INTEGER	否	否	否	0	普通索引	尺寸ID
+size_index	INTEGER	否	否	否	0	-	尺寸索引
+box_number	INTEGER	否	否	否	0	-	箱数
+box_weight	REAL	是	否	否	NULL	-	箱重
+fruit_number	INTEGER	否	否	否	0	-	水果数量
+fruit_weight	REAL	否	否	否	0.00	-	水果重量
+f_price	REAL	否	否	否	0.00	-	价格
+grade_id	INTEGER	否	否	否	-	普通索引	等级ID
+quality_name	TEXT	是	否	否	NULL	-	品质名称
+weight_or_size_name	TEXT	是	否	否	NULL	-	重量或尺寸名称
+weight_or_size_limit	REAL	是	否	否	NULL	-	重量或尺寸限制
+select_weight_or_size	TEXT	是	否	否	NULL	-	选择重量或尺寸
+trait_weight_or_size	TEXT	是	否	否	NULL	-	特征重量或尺寸
+trait_color	TEXT	是	否	否	NULL	-	特征颜色
+trait_shape	TEXT	是	否	否	NULL	-	特征形状
+trait_flaw	TEXT	是	否	否	NULL	-	特征瑕疵
+trait_hard	TEXT	是	否	否	NULL	-	特征硬度
+trait_density	TEXT	是	否	否	NULL	-	特征密度
+trait_sugar_degree	TEXT	是	否	否	NULL	-	特征糖度
+
+====================
+
+表名: tb_farmer_info
+表说明: 农户/工厂信息表
+====================
+字段名(数据库列名)	类型	可空	主键	自增	默认值	索引	业务说明
+farmer_id	INTEGER	否	是	是	-	主键索引	工厂ID，主键，自增
+farmer_name	TEXT	否	否	否	-	普通索引	农户/工厂名称
+farmer_phone	TEXT	是	否	否	NULL	普通索引	联系电话
+farmer_address	TEXT	是	否	否	NULL	-	地址
+farmer_create_at	TEXT	是	否	否	NULL	-	创建时间（格式：YYYY-MM-DD HH:mm:ss）
+
+====================
+
+表名: tb_processing_task
+表说明: 加工任务表
+====================
+字段名(数据库列名)	类型	可空	主键	自增	默认值	索引	业务说明
+task_id	INTEGER	否	是	是	-	主键索引	任务ID，主键，自增
+farmer_id	INTEGER	否	否	否	-	普通索引	关联的农户ID（外键，关联tb_farmer_info）
+customer_name	TEXT	是	否	否	NULL	普通索引	代加工对象名称
+fruit_name	TEXT	是	否	否	NULL	普通索引	加工水果名称
+total_weight	REAL	是	否	否	NULL	-	加工总重量
+status	TEXT	是	否	否	NULL	普通索引	任务状态
+bound_order_id	INTEGER	是	否	否	NULL	-	绑定内部订单号
+created_at	TEXT	是	否	否	NULL	普通索引	创建时间（格式：YYYY-MM-DD HH:mm:ss）
+
+====================
+
+表名: processing_history
+表说明: 历史加工数据表
+====================
+字段名(数据库列名)	类型	可空	主键	自增	默认值	索引	业务说明
+id	INTEGER	否	是	是	-	主键索引	记录ID，主键，自增（由Model基类提供）
+created_at	TEXT	是	否	否	NULL	普通索引	创建时间（由Model基类提供）
+updated_at	TEXT	是	否	否	NULL	-	更新时间（由Model基类提供）
+customer_id	INTEGER	否	否	否	0	普通索引	客户ID（关联tb_fruitinfo）
+customer_name	TEXT	否	否	否	-	普通索引	客户名称
+farm_name	TEXT	否	否	否	-	普通索引	农场名称
+fruit_name	TEXT	否	否	否	-	普通索引	水果名称/品种
+status	TEXT	否	否	否	-	普通索引	状态（已完成/进行中/待开始）
+start_time	TEXT	否	否	否	-	普通索引	开始时间（格式：YYYY-MM-DD HH:mm:ss）
+end_time	TEXT	是	否	否	NULL	普通索引	结束时间（格式：YYYY-MM-DD HH:mm:ss）
+weight	REAL	否	否	否	0	-	总重量（单位：克或千克）
+quantity	INTEGER	否	否	否	0	-	总数量（个）
+batch_no	TEXT	是	否	否	NULL	普通索引	批次号（用于追溯和查询）
+order_id	INTEGER	是	否	否	0	普通索引	订单ID（关联订单系统）
+program_name	TEXT	是	否	否	NULL	-	使用的分选程序名称
+channel_num	INTEGER	是	否	否	0	-	通道数量
+export_sum	INTEGER	是	否	否	0	-	出口总数
+quality_grade_sum	INTEGER	是	否	否	0	-	品质等级总数
+weight_or_size_grade_sum	INTEGER	是	否	否	0	-	重量/尺寸等级总数
+completed_state	TEXT	是	否	否	NULL	-	完成状态
+
+====================
+
+索引说明
+====================
+主键索引: 自动创建，用于唯一标识记录
+普通索引: 用于加速单字段查询
+复合索引: 用于加速多字段组合查询
+降序索引: 用于按ID降序查询（每个表都有fid DESC或id DESC索引）
+
+特殊说明
+====================
+1. tb_fruitprocessinfo表中的real_weight_count_percent和separation_efficiency_percent字段
+   在48项目中为BLOB类型，在鸿蒙项目中映射为TEXT类型，存储JSON字符串格式
+   示例格式: [0.1, 0.2, 0.3, 0.15, 0.25]
+
+2. 所有时间字段格式统一为: YYYY-MM-DD HH:mm:ss
+
+3. 复合索引说明:
+   - tb_sys_fruitinfo: (customer_id, system_id) - 唯一约束
+   - tb_faultinfo: (f_type, f_status) - 用于按类型和状态查询
+   - tb_faultinfo: (f_begin_date, f_end_date) - 用于时间范围查询
+   - tb_sys_configs: (f_module_name, f_type) - 唯一约束
+   - tb_sys_configs: (f_module_name, f_visible) - 用于按模块和可见性查询
+
+4. 每个表都有fid DESC或id DESC降序索引，用于按ID降序查询最新记录
+
+5. ProcessingHistory表使用Model基类，自动提供id、created_at、updated_at字段

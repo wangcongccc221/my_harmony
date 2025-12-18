@@ -5,6 +5,8 @@ import { TCP_CONNECTION_STATUS } from '../../../constants/TopBarKeys';
 import { taskpool } from '@kit.ArkTS';
 import { TcpMessageQueueManager } from './dispatch';
 import { handleStatisticsData } from './handlers/StatisticsDataHandler';
+import { handleConfigData } from './handlers/ConfigDataHandler';
+import { TcpStatisticsParser } from './parsers/TcpStatisticsParser';
 
 @Concurrent
 export async function runTcpServerWorker(ip: string, port: number): Promise<void> {
@@ -187,12 +189,54 @@ export class TCPServer {
               messageData[3] === 0x43;    // 'C'
             
             if (isBinaryData) {
-              // 二进制统计数据，直接处理
-              console.log(`[TCPServer] 识别为二进制统计数据，开始处理...`);
-              handleStatisticsData(messageData).catch((err: Error | object) => {
-                const errorMsg = err instanceof Error ? err.message : String(err);
-                console.error(`[TCPServer] 处理统计数据失败: ${errorMsg}`);
-              });
+              // 二进制数据，需要根据命令ID分发到不同的处理器
+              try {
+                // 解析命令头以确定命令类型
+                const packet = TcpStatisticsParser.parseTcpPacket(messageData);
+                if (packet) {
+                  const cmdId = packet.commandHead.nCmdId;
+                  console.log(`[TCPServer] 识别为二进制数据，命令ID: ${cmdId}`);
+                  
+                  // 根据命令ID分发到不同的处理器
+                  if (cmdId === 0x0001) {
+                    // FSM_CMD_STATISTICS - 统计信息命令
+                    console.log(`[TCPServer] 处理统计信息命令...`);
+                    handleStatisticsData(messageData).catch((err: Error | object) => {
+                      const errorMsg = err instanceof Error ? err.message : String(err);
+                      console.error(`[TCPServer] 处理统计数据失败: ${errorMsg}`);
+                    });
+                  } else if (cmdId === 0x0000) {
+                    // FSM_CMD_CONFIG - 配置信息命令
+                    console.log(`[TCPServer] 处理配置信息命令...`);
+                    handleConfigData(messageData).catch((err: Error | object) => {
+                      const errorMsg = err instanceof Error ? err.message : String(err);
+                      console.error(`[TCPServer] 处理配置数据失败: ${errorMsg}`);
+                    });
+                  } else {
+                    console.warn(`[TCPServer] 未知的命令ID: ${cmdId}，使用默认处理（统计信息）`);
+                    // 默认按统计信息处理
+                    handleStatisticsData(messageData).catch((err: Error | object) => {
+                      const errorMsg = err instanceof Error ? err.message : String(err);
+                      console.error(`[TCPServer] 处理统计数据失败: ${errorMsg}`);
+                    });
+                  }
+                } else {
+                  console.warn(`[TCPServer] 无法解析命令头，使用默认处理（统计信息）`);
+                  // 如果解析失败，默认按统计信息处理
+                  handleStatisticsData(messageData).catch((err: Error | object) => {
+                    const errorMsg = err instanceof Error ? err.message : String(err);
+                    console.error(`[TCPServer] 处理统计数据失败: ${errorMsg}`);
+                  });
+                }
+              } catch (error) {
+                const errorMsg = error instanceof Error ? error.message : String(error);
+                console.error(`[TCPServer] 解析命令头失败: ${errorMsg}，使用默认处理（统计信息）`);
+                // 如果解析失败，默认按统计信息处理
+                handleStatisticsData(messageData).catch((err: Error | object) => {
+                  const errMsg = err instanceof Error ? err.message : String(err);
+                  console.error(`[TCPServer] 处理统计数据失败: ${errMsg}`);
+                });
+              }
             } else {
               // 文本消息，使用原有处理方式
               TcpMessageQueueManager.executeMessage(

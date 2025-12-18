@@ -5,10 +5,10 @@
  */
 
 // 常量定义（对应48项目的ConstPreDefine）
-const MAX_QUALITY_GRADE_NUM = 8;  // 最大品质等级数
-const MAX_SIZE_GRADE_NUM = 16;     // 最大尺寸等级数
-const MAX_EXIT_NUM = 20;            // 最大出口数
-const MAX_CHANNEL_NUM = 12;         // 最大通道数
+export const MAX_QUALITY_GRADE_NUM = 8;  // 最大品质等级数
+export const MAX_SIZE_GRADE_NUM = 16;     // 最大尺寸等级数
+export const MAX_EXIT_NUM = 20;            // 最大出口数
+export const MAX_CHANNEL_NUM = 12;         // 最大通道数
 
 /**
  * 分选基准范围结构
