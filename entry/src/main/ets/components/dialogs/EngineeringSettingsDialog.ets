@@ -125,13 +125,22 @@ export struct EngineeringSettingsDialog {
           // 内容区域 - 根据选中的Tab显示不同页面
           Column() {
             if (this.selectedTab === '系统结构设置') {
-              SystemStructurePage()
+              SystemStructurePage({
+                onCancel: (): void => this.handleCancel(),
+                onSave: (): void => this.handleConfirm()
+              })
             } else if (this.selectedTab === '通道范围设置') {
               ChannelRangePage()
             } else if (this.selectedTab === '通道出口设置') {
-              ChannelExportPage()
+              ChannelExportPage({
+                onCancel: (): void => this.handleCancel(),
+                onSave: (): void => this.handleConfirm()
+              })
             } else if (this.selectedTab === '重量设置') {
-              WeightSettingsPage()
+              WeightSettingsPage({
+                onCancel: (): void => this.handleCancel(),
+                onSave: (): void => this.handleConfirm()
+              })
             } else if (this.selectedTab === '水果信息设置') {
               FruitInfoPage()
             }
@@ -141,21 +150,23 @@ export struct EngineeringSettingsDialog {
           .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
 
           // 底部按钮栏（使用DialogButtons组件）
-          DialogButtons({
-            confirmText: t('确认', '确认'),
-            cancelText: t('取消', '取消'),
-            showCancel: true,
-            confirmDisabled: false,
-            onConfirm: () => {
-              this.handleConfirm()
-            },
-            onCancel: () => {
-              this.handleCancel()
-            }
-          })
-          .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
-          .width('100%')
-          .padding({ left: 12, right: 12, top: 10, bottom: 12 })
+          if (this.selectedTab !== '系统结构设置' && this.selectedTab !== '通道出口设置' && this.selectedTab !== '重量设置') {
+            DialogButtons({
+              confirmText: t('确认', '确认'),
+              cancelText: t('取消', '取消'),
+              showCancel: true,
+              confirmDisabled: false,
+              onConfirm: () => {
+                this.handleConfirm()
+              },
+              onCancel: () => {
+                this.handleCancel()
+              }
+            })
+            .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
+            .width('100%')
+            .padding({ left: 12, right: 12, top: 10, bottom: 12 })
+          }
         }
         .width('85%')
         .height('90%')
@@ -172,10 +183,6 @@ export struct EngineeringSettingsDialog {
       .height('100%')
       .backgroundColor('rgba(0, 0, 0, 0.5)')
       .alignContent(Alignment.Center)
-      .onClick(() => {
-        // 点击遮罩层关闭对话框
-        this.handleCancel()
-      })
     }
   }
 }

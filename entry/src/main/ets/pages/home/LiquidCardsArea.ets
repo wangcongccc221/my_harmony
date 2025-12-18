@@ -16,7 +16,7 @@
  * 布局说明：
  * - 卡片排列：水平排列，自动换行
  * - 卡片间距：右边距6px，下边距6px
- * - 区域高度：占父容器的100%
+ * - 区域高度：占父容器的30%
  * - 滚动方向：垂直滚动
  * 
  * 性能优化：
@@ -56,6 +56,8 @@ interface RemoveSourceData {
 
 @Component
 export struct LiquidCardsArea {
+  @StorageLink('OutletCount_FSM1') outletCountFSM1: number = 20
+  @StorageLink('OutletCount_FSM2') outletCountFSM2: number = 20
   // 拖拽数据状态
   @State private dragData: CellDragData | null = null
   // 每张卡片的数据（索引从0开始，对应UI里的1..N）
@@ -361,15 +363,15 @@ export struct LiquidCardsArea {
    */
   build() {
     Stack() {
-      // 卡片区域
-      Scroll() {
-        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Start }) {
-          ForEach(this.cardDataList, (cardData: ThreeLayerCardData, idx: number) => {
+      // 卡片区域 - 使用 Grid 布局替代 Flex，确保固定两行显示
+      Grid() {
+        ForEach(this.cardDataList.slice(0, this.selectedFSM === 'FSM1' ? this.outletCountFSM1 : this.outletCountFSM2), (cardData: ThreeLayerCardData, idx: number) => {
+          GridItem() {
             // 使用新的三层卡片
             ThreeLayerCard({
               cardData: cardData,
-              cardWidth: '9.26%',
-              cardHeight: '50.13%',
+              cardWidth: '100%',   // 填满格子
+              cardHeight: '100%',  // 填满格子
               mainColor: this.getCurrentTheme().primary,
               enableWave: this.isWaveAnimationEnabled() && idx < this.getWaveCount() && (!cardData.thirdLayer.chartData || cardData.thirdLayer.chartData.length === 0),
               onCardDrop: (data: ThreeLayerCardData) => {
@@ -382,30 +384,41 @@ export struct LiquidCardsArea {
                 }
               }
             })
-            .margin({ right: '0.28%', bottom: '0.28%' })
-          })
-        }
-        .width('100%')
+          }
+        })
       }
       .width('100%')
+      .height('100%')
+      .rowsTemplate('1fr 1fr') // 固定两行，高度均分
+      .columnsTemplate('1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr') // 固定10列
+      .columnsGap('0.28%') // 列间距
+      .rowsGap('0.56%')    // 行间距
+      .padding({ left: '0.93%', right: '0.93%', top: '1%', bottom: '1%' }) // 调整内边距适应 Grid
       // 拖拽激活时禁用滚动，避免抢占onDrop事件
       .enabled(!this.gridDragActive)
-      .scrollable(ScrollDirection.Vertical)
-      .scrollBar(BarState.Auto)
-      .edgeEffect(EdgeEffect.Spring)
-      .scrollBarColor(this.getCurrentTheme().borderColor)
-      .scrollBarWidth(6)
-      .friction(0.6)
-      .padding({ left: '0.93%', right: '0.93%', top: '0.28%', bottom: '0.28%' })
-      // 移除旧的复杂装饰效果，改用极简风格
-      .backgroundColor('#FFFFFF') // 纯白背景
-      .borderRadius(12)           // 适中圆角
-      .shadow({                   // 淡淡的悬浮阴影
-        radius: 16,
-        color: 'rgba(0,0,0,0.05)',
-        offsetY: 4
+      // 样式设置
+      .linearGradient({                                      // 高级效果：颜色渐变 - 增强对比度，更明显
+        angle: 135,
+        colors: [
+          ['rgba(96, 165, 250, 0.25)', 0],                   // 更明显的蓝色渐变起点
+          ['rgba(59, 130, 246, 0.20)', 0.3],
+          ['rgba(37, 99, 235, 0.28)', 0.6],
+          ['rgba(30, 58, 138, 0.32)', 1]                    // 更深的蓝色渐变终点
+        ]
       })
-      // 移除 border, linearGradient, backdropBlur 等复杂效果
+      .backdropBlur(20)                                      // 增强背景模糊（更明显的毛玻璃效果）
+      .blur(2)                                               // 增强内容模糊（更明显的毛玻璃质感）
+      .border({                                              // 高级效果：外描边设置 - 更明显的精致边框
+        width: 2,                                            // 更粗的边框，更明显
+        color: this.getCurrentTheme().primary + '60'        // 更高的透明度，边框更明显
+      })
+      .borderRadius(16)                                      // 更大的圆角，更现代
+      .shadow({                                              // 高级效果：视效设置 - 增强阴影效果，更立体
+        radius: 30,                                          // 更大的阴影半径，更明显
+        color: 'rgba(37, 99, 235, 0.25)',                   // 蓝色阴影，与主题色呼应
+        offsetX: 0,
+        offsetY: 10                                          // 更大的阴影偏移，更立体
+      })
       .onAppear(() => {
         this.initializeCardData()
       })

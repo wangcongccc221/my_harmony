@@ -6,7 +6,7 @@ export struct ThreeDButton {
   @Prop isSelected: boolean
   @Prop buttonWidth: number | string = 140 // 支持自定义宽度
   @Prop buttonHeight: number = 48 // 支持自定义高度
-  @Prop fontSize: number = 18 // 支持自定义字体大小 (默认为 Level 4 - 18px)
+  @Prop fontSize: number = 17 // 支持自定义字体大小
   onClickCallback?: () => void
 
   @State isHovered: boolean = false
@@ -20,22 +20,17 @@ export struct ThreeDButton {
   build() {
     Button() {
       Text(this.text)
-        // 严格遵循用户设计规范：选中用 Level 3 (24px)，未选中用 Level 4 (18px)
-        .fontSize(this.isSelected ? (this.getCurrentTheme().fontLevel3 ?? 24) : this.fontSize)
+        .fontSize(this.isSelected ? this.fontSize + 3 : this.fontSize)  // 选中状态字体大3px，增强层次感
         .fontColor(this.isSelected ? Color.White : this.getCurrentTheme().textColor)
-        .fontWeight(this.isSelected ? (this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold) : (this.getCurrentTheme().fontWeightMedium ?? FontWeight.Medium))
-        .textAlign(TextAlign.Center)
-        .textOverflow({ overflow: TextOverflow.None }) // 支持换行
-        .maxLines(2)
+        .fontWeight(this.isSelected ? FontWeight.Bold : FontWeight.Medium)  // 选中状态加粗，更突出
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .maxLines(1)
     }
-    // 保持固定尺寸，使用scale缩放实现更自然的变大效果
-    .width(typeof this.buttonWidth === 'string' ? this.buttonWidth : this.buttonWidth)
-    .height(this.buttonHeight)
-    // 选中状态：使用scale缩放（1.15倍），增强层次感，更明显
-    .scale({ 
-      x: this.isSelected ? 1.15 : 1.0, 
-      y: this.isSelected ? 1.15 : 1.0
-    })
+    // 选中状态：按钮变大（宽度+20px，高度+8px），增强层次感
+    .width(this.isSelected 
+      ? (typeof this.buttonWidth === 'string' ? this.buttonWidth : this.buttonWidth + 20)
+      : (typeof this.buttonWidth === 'string' ? this.buttonWidth : this.buttonWidth))
+    .height(this.isSelected ? this.buttonHeight + 8 : this.buttonHeight)
     .type(ButtonType.Normal)
     .borderRadius(12)
     // 只有选中状态才使用渐变色+毛玻璃效果（参考"当前分选信息"标题的实现）
@@ -72,18 +67,12 @@ export struct ThreeDButton {
     .translate({ 
       y: (this.isPressed || this.isSelected) ? 2 : (this.isHovered ? -1 : 0) 
     })
-    // 添加阴影效果，增强立体感（只有选中状态才有阴影，多层阴影更明显）
+    // 添加阴影效果，增强立体感（只有选中状态才有阴影）
     .shadow(this.isSelected ? {
-      radius: 20,
-      color: 'rgba(0, 0, 0, 0.25)',
-      offsetX: 0,
-      offsetY: 6
-    } : undefined)
-    .shadow(this.isSelected ? {
-      radius: 10,
+      radius: 12,
       color: 'rgba(0, 0, 0, 0.15)',
       offsetX: 0,
-      offsetY: 3
+      offsetY: 4
     } : undefined)
     .animation({
       duration: 250, // transition-all duration approx

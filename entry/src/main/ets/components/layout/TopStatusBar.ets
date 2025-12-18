@@ -169,232 +169,62 @@ export struct TopStatusBar {
 
   build() {
     Row() {
-      // 左侧 LOGO
+      // ===============================================
+      // 左侧区域：Logo + 生产指标 (紧凑布局)
+      // ===============================================
       Row() {
+        // 1. Logo
         Image($r('app.media.logo'))
-          .width('8%')
-          .height('100%')
+          .height('60%')
           .objectFit(ImageFit.Contain)
-          .margin({ left: '0.5%', right: '1%' })
-          .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：圆角
+          .margin({ right: 16 })
+        
+        // 2. 分割线
+        Divider()
+          .vertical(true)
+          .height('40%')
+          .color(this.getCurrentTheme().borderColor)
+          .opacity(0.5)
+          .margin({ right: 16 })
+
+        // 3. 生产指标 (使用 Flex 自动换行或 Row 紧凑排列)
+        Row({ space: 24 }) { // 增加间距，减少拥挤感
+          this.buildMetricItem('Production', this.productionTonPerHour, 'Ton/h')
+          this.buildMetricItem('SumWeight', this.sumWeightTon, 'Ton')
+          this.buildMetricItem('SumCounts', this.sumCounts, 'PCS')
+          this.buildMetricItem('Avg', this.avgGram, 'g')
+        }
       }
+      .layoutWeight(0) // 左侧根据内容自适应宽度
+      .height('100%')
       .alignItems(VerticalAlign.Center)
 
-      // 中部四项指标（优化布局：Label独占一行，单位移至数值旁，解决长文本显示问题）
+      // ===============================================
+      // 中间区域：状态告警 + 客户信息 (弹性空间)
+      // ===============================================
       Row() {
-        // 1. Production
-        Column() {
-          Text('Production')
-            .fontSize(12) // 优化：12px 更精致
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.getCurrentTheme().subTextColor)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-          
-          Row() {
-            Text(this.productionTonPerHour)
-              .fontSize(20) // 优化：20px 足够清晰且不显大
-              .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().primary)
-            Text('Ton/h')
-              .fontSize(12) // 优化：12px
-              .fontColor(this.getCurrentTheme().subTextColor)
-              .opacity(0.7)
-              .margin({ left: 2, bottom: 3 })
-              .alignSelf(ItemAlign.End)
-          }
-          .margin({ top: 2 })
-        }
-        .alignItems(HorizontalAlign.Start)
-        .margin({ right: AppleDesignStyle.SPACING_MEDIUM })
+        Blank() // 填充左边空间，让中间内容居中或偏右
 
-        Divider()
-          .vertical(true)
-          .strokeWidth(AppleDesignStyle.BORDER_WIDTH_THIN)
-          .color(this.getCurrentTheme().borderColor)
-          .height('50%')
-          .opacity(0.5)
-          .margin({ left: '1%', right: '1%' })
+        // status & Customer Group
+        Row({ space: 16 }) {
+           // 状态/告警信息
+           this.buildStatusAlert()
 
-        // 2. SumWeight
-        Column() {
-          Text('SumWeight')
-            .fontSize(12)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.getCurrentTheme().subTextColor)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-          
-          Row() {
-            Text(this.sumWeightTon)
-              .fontSize(20)
-              .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().primary)
-            Text('Ton')
-              .fontSize(12)
-              .fontColor(this.getCurrentTheme().subTextColor)
-              .opacity(0.7)
-              .margin({ left: 2, bottom: 3 })
-              .alignSelf(ItemAlign.End)
-          }
-          .margin({ top: 2 })
-        }
-        .alignItems(HorizontalAlign.Start)
-        .margin({ right: AppleDesignStyle.SPACING_MEDIUM })
-
-        Divider()
-          .vertical(true)
-          .strokeWidth(AppleDesignStyle.BORDER_WIDTH_THIN)
-          .color(this.getCurrentTheme().borderColor)
-          .height('50%')
-          .opacity(0.5)
-          .margin({ left: '1%', right: '1%' })
-
-        // 3. SumCounts
-        Column() {
-          Text('SumCounts')
-            .fontSize(12)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.getCurrentTheme().subTextColor)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-          
-          Row() {
-            Text(this.sumCounts)
-              .fontSize(20)
-              .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().primary)
-            Text('PCS')
-              .fontSize(12)
-              .fontColor(this.getCurrentTheme().subTextColor)
-              .opacity(0.7)
-              .margin({ left: 2, bottom: 3 })
-              .alignSelf(ItemAlign.End)
-          }
-          .margin({ top: 2 })
-        }
-        .alignItems(HorizontalAlign.Start)
-        .margin({ right: AppleDesignStyle.SPACING_MEDIUM })
-
-        Divider()
-          .vertical(true)
-          .strokeWidth(AppleDesignStyle.BORDER_WIDTH_THIN)
-          .color(this.getCurrentTheme().borderColor)
-          .height('50%')
-          .opacity(0.5)
-          .margin({ left: '1%', right: '1%' })
-
-        // 4. Avg
-        Column() {
-          Text('Avg')
-            .fontSize(12)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.getCurrentTheme().subTextColor)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-          
-          Row() {
-            Text(this.avgGram)
-              .fontSize(20)
-              .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().primary)
-            Text('g')
-              .fontSize(12)
-              .fontColor(this.getCurrentTheme().subTextColor)
-              .opacity(0.7)
-              .margin({ left: 2, bottom: 3 })
-              .alignSelf(ItemAlign.End)
-          }
-          .margin({ top: 2 })
-        }
-        .alignItems(HorizontalAlign.Start)
-      }
-      .alignItems(VerticalAlign.Center)
-      .margin({ right: '1.5%' })
-
-      // 状态文本与告警提示
-      Row({ space: AppleDesignStyle.SPACING_MEDIUM }) { // Apple风格：统一间距
-        // TCP连接状态显示
-        if (this.tcpConnected) {
-          Row() {
-            Text('●')
-              .fontSize(12) // 优化：12px
-              .fontColor('#67C23A') // 绿色
-              .margin({ right: 6 })
-            Text('设备连接正常')
-              .fontSize(14) // 优化：14px
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.getCurrentTheme().primary)
-          }
-          .height('100%')
-          .padding({ left: 12, right: 12 })
-          .backgroundColor(this.getCurrentTheme().primary + '10') // 极浅背景
-          .borderRadius(8)
-          .alignItems(VerticalAlign.Center)
-        } else {
-          // 优化后的故障提示样式：占满高度
-          Row() {
-            Text('⚠️')
-              .fontSize(16) // 优化：16px
-              .margin({ right: 8 })
-            Text('设备故障，请排查')
-              .fontSize(16) // 优化：16px
-              .fontWeight(FontWeight.Bold)
-              .fontColor(Color.White)
-          }
-          .height('100%')
-          .padding({ left: 12, right: 12 })
-          .backgroundColor('#FF3B30') // 实心红背景
-          .borderRadius(8)
-          .shadow(AppleDesignStyle.getShadowSmall())
-          .alignItems(VerticalAlign.Center)
+           // 客户信息 (Logo + 农场名)
+           this.buildCustomerInfo()
         }
         
-        Text(this.statusText)
-          .fontSize(14) // 优化：14px
-          .fontColor(this.getCurrentTheme().subTextColor)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
+        Blank() // 填充右边空间
       }
+      .layoutWeight(1) // 占据剩余所有空间
+      .height('100%')
       .alignItems(VerticalAlign.Center)
-      .height('100%') // 占满父容器高度（父容器有padding，所以是内容区高度）
-      .margin({ right: AppleDesignStyle.SPACING_LARGE })
-
-      // 客户公司 LOGO + 农场名称 + 分选种类（放在状态区与FSM切换之间）
-      Row({ space: AppleDesignStyle.SPACING_SMALL }) {
-        Image(this.customerLogoUrl && this.customerLogoUrl.length > 0 ? this.customerLogoUrl : $r('app.media.customer_logo'))
-          .width(32) // 优化：固定尺寸
-          .height(32)
-          .objectFit(ImageFit.Contain)
-          .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：圆角
-          .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
-          .margin({ right: AppleDesignStyle.SPACING_SMALL })
-
-        Column({ space: 2 }) {
-          Text(this.farmName && this.farmName.length > 0 ? this.farmName : '— 农场 —')
-            .fontSize(16) // 优化：16px
-            .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold) // Title - Bold
-            .fontColor(this.getCurrentTheme().textColor)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-          Text(this.fruitType && this.fruitType.length > 0 ? this.fruitType : '— 分选种类 —')
-            .fontSize(12) // 优化：12px
-            .fontColor(this.getCurrentTheme().subTextColor)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-        }
-        .alignItems(HorizontalAlign.Start)
-      }
-      .alignItems(VerticalAlign.Center)
-      .width('auto')
-      .margin({ right: AppleDesignStyle.SPACING_LARGE })
-
-      // 使用弹性空白占据剩余空间，确保窗口控制按钮在最右边
-      Blank().layoutWeight(1)
-
-      // 个人信息区域：FSM切换 + 个人信息栏
-      Row({ space: AppleDesignStyle.SPACING_MEDIUM }) {
-        // FSM切换按钮
+      
+      // ===============================================
+      // 右侧区域：FSM切换 + 个人信息 + 窗口控制 (固定在右侧)
+      // ===============================================
+      Row({ space: 12 }) {
+        // FSM 切换
         CompactFsmToggle({
           selectedFSM: this.selectedFSM,
           onFSMChange: (fsm: 'FSM1' | 'FSM2') => {
@@ -404,7 +234,7 @@ export struct TopStatusBar {
           }
         })
 
-        // 新版个人信息栏（包含头像、姓名、角色、日期、时间）
+        // 个人信息
         ProfileInfoBar({
           userName: this.userLabel,
           userRole: '管理员',
@@ -413,48 +243,130 @@ export struct TopStatusBar {
           avatarUrl: this.selectedAvatarUrl,
           isLoading: false
         })
+
+        // 分割线
+        Divider()
+          .vertical(true)
+          .height('40%')
+          .color(this.getCurrentTheme().borderColor)
+          .opacity(0.5)
+          .margin({ left: 4, right: 4 })
+
+        // 窗口控制按钮
+        Row({ space: 8 }) {
+          ThreeDButton({
+            text: '−',
+            isSelected: false,
+            buttonWidth: 36, // 稍微调小一点，更精致
+            buttonHeight: 36,
+            fontSize: 20,
+            onClickCallback: () => { this.minimizeApp() }
+          })
+
+          ThreeDButton({
+            text: '×',
+            isSelected: false,
+            buttonWidth: 36,
+            buttonHeight: 36,
+            fontSize: 20,
+            onClickCallback: () => { this.closeApp() }
+          })
+        }
       }
+      .layoutWeight(0) // 右侧自适应宽度，确保显示
+      .height('100%')
       .alignItems(VerticalAlign.Center)
-      .margin({ right: '1%' }) // 使用百分比间距
 
-      // 右上角窗口控制按钮（固定在最右边，使用ThreeDButton组件）
-      Row({ space: AppleDesignStyle.SPACING_SMALL }) {
-        // 最小化按钮 - 直接使用ThreeDButton组件
-        ThreeDButton({
-          text: '−',
-          isSelected: false,
-          buttonWidth: 32, // 优化：32px
-          buttonHeight: 32,
-          fontSize: 18, // 优化：18px
-          onClickCallback: () => { 
-            this.minimizeApp() 
-          }
-        })
-
-        // 关闭按钮 - 直接使用ThreeDButton组件
-        ThreeDButton({
-          text: '×',
-          isSelected: false,
-          buttonWidth: 32, // 优化：32px
-          buttonHeight: 32,
-          fontSize: 18, // 优化：18px
-          onClickCallback: () => { 
-            this.closeApp() 
-          }
-        })
-      }
-      .margin({ right: '0.5%' }) // 使用百分比，确保在最右边且有适当间距
-
-      // （对话框改为系统级 CustomDialogController 实现）
     }
     .width('100%')
-    .height('8%')
-    .backgroundColor(this.getCurrentTheme().headerColor ?? this.getCurrentTheme().backgroundColor)  // 顶部状态栏背景颜色
-    .padding({ left: AppleDesignStyle.SPACING_LARGE, right: AppleDesignStyle.SPACING_LARGE, top: AppleDesignStyle.SPACING_MEDIUM, bottom: AppleDesignStyle.SPACING_MEDIUM }) // Apple风格：统一内边距
-    .border({ width: { bottom: AppleDesignStyle.BORDER_WIDTH_THIN }, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
-    .shadow(AppleDesignStyle.getShadowSmall()) // Apple风格：柔和阴影
+    .height('8%') // 保持原有高度设置
+    .backgroundColor(this.getCurrentTheme().headerColor ?? this.getCurrentTheme().backgroundColor)
+    .padding({ left: 16, right: 16 }) // 减少 padding，让出更多空间
+    .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+    .shadow({ radius: 6, color: 'rgba(0,0,0,0.05)', offsetY: 2 }) // 更柔和的阴影
   }
 
+  // Helper: 构建单个指标项
+  @Builder
+  buildMetricItem(label: string, value: string, unit: string) {
+    Column() {
+      Text(label)
+        .fontSize(14) // 更小更精致的 Label
+        .fontColor(this.getCurrentTheme().subTextColor)
+        .margin({ bottom: 2 })
+      
+      Row() {
+        Text(value)
+          .fontSize(20) // 数值大小适中
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.getCurrentTheme().primary)
+        Text(unit)
+          .fontSize(12)
+          .fontColor(this.getCurrentTheme().subTextColor)
+          .opacity(0.8)
+          .margin({ left: 2, top: 4 }) // 单位稍微下沉
+      }
+    }
+    .alignItems(HorizontalAlign.Start)
+  }
+
+  // Helper: 构建状态/告警条
+  @Builder
+  buildStatusAlert() {
+    if (this.tcpConnected) {
+      // 正常状态：简洁的胶囊样式
+      Row() {
+        Circle({ width: 8, height: 8 })
+          .fill('#4CAF50') // 绿色
+          .margin({ right: 8 })
+        Text(this.statusText || '系统就绪')
+          .fontSize(16)
+          .fontColor(this.getCurrentTheme().primary)
+      }
+      .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+      .backgroundColor(this.getCurrentTheme().surfaceColor)
+      .borderRadius(16)
+      .border({ width: 1, color: this.getCurrentTheme().borderColor })
+    } else {
+      // 故障/断开状态：醒目但不突兀的胶囊样式
+      Row() {
+        Text('⚠️')
+          .fontSize(16)
+          .margin({ right: 6 })
+        Text('连接断开')
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#FF3B30')
+      }
+      .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+      .backgroundColor('#FFF0F0') // 浅红背景
+      .borderRadius(16)
+      .border({ width: 1, color: '#FFcccc' })
+    }
+  }
+
+  // Helper: 客户信息
+  @Builder
+  buildCustomerInfo() {
+    Row() {
+       Image(this.customerLogoUrl || $r('app.media.customer_logo'))
+        .width(32)
+        .height(32)
+        .objectFit(ImageFit.Contain)
+        .borderRadius(4)
+        .margin({ right: 8 })
+      
+      Column() {
+        Text(this.farmName || '未选定农场')
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.getCurrentTheme().textColor)
+        Text(this.fruitType || '—')
+          .fontSize(12)
+          .fontColor(this.getCurrentTheme().subTextColor)
+      }
+      .alignItems(HorizontalAlign.Start)
+    }
+    .padding({ left: 12, right: 12, top: 4, bottom: 4 })
+  }
 }
-
-

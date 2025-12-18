@@ -616,12 +616,12 @@ export struct GridTable {
       .textAlign(TextAlign.Center)
       .width('100%')
       .height('100%')
-      // 使用更明显的渐变背景，增加层次感
+      // 使用渐变背景，增加层次感
       .linearGradient({
         angle: 180,
         colors: [
-          ['#F0F4F8', 0.0], // 浅蓝灰，比之前的 F5F7FA 更有色彩倾向
-          ['#D9E2EC', 1.0]  // 较深的蓝灰，增加对比度
+          ['#F5F7FA', 0.0], // 浅灰白
+          ['#E4E7ED', 1.0]  // 稍深的灰
         ]
       })
       .border({
@@ -650,12 +650,12 @@ export struct GridTable {
       .textAlign(TextAlign.Center)
       .layoutWeight(1)
       .height('100%')
-      // 使用更明显的渐变背景代替纯色
+      // 使用渐变背景代替纯色
       .linearGradient({
         angle: 180,
         colors: [
-          ['#EBF0F5', 0.0], 
-          ['#DDE4EB', 1.0]
+          ['#F0F2F5', 0.0], 
+          ['#E6E8EB', 1.0]
         ]
       })
       .border({

@@ -190,7 +190,7 @@ export class FruitInfoApiHandler {
   private static async handleUpdate(id: number, data: Map<string, string>, ctx: Context): Promise<string> {
     try {
       const fruitInfo: Partial<FruitInfo> = FruitInfoApiHandler.mapToFruitInfo(data);
-      const affected = await FruitInfoService.update(id, fruitInfo, ctx);
+      const affected = await FruitInfoService.updateReturnAffected(id, fruitInfo, ctx);
 
       if (affected === 0) {
         return HttpResponseUtils.buildErrorResponse('记录不存在', 404);
@@ -206,7 +206,7 @@ export class FruitInfoApiHandler {
 
   private static async handleDelete(id: number, ctx: Context): Promise<string> {
     try {
-      const affected = await FruitInfoService.delete(id, ctx);
+      const affected = await FruitInfoService.deleteReturnAffected(id, ctx);
 
       if (affected === 0) {
         return HttpResponseUtils.buildErrorResponse('记录不存在', 404);

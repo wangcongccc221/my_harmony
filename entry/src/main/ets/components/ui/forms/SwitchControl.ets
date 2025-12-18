@@ -25,36 +25,34 @@ export struct SwitchControl {
     Row() {
       // 左侧标签文字
       Text(this.label)
-        .fontSize(16) // 加大字体到16，与整体风格匹配
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.isEnabled ? this.activeColor : '#606266') // 开启时标签也高亮，关闭时用高级灰
-        .margin({ right: 12 }) // 增加间距
+        .fontSize(12)
+        .fontColor(this.getCurrentTheme().textColor)
+        .margin({ right: 8 })
         .flexShrink(0)
-        .animation({ duration: 300 }) // 颜色过渡动画
 
       // 自定义开关 UI
       Stack() {
         // 背景轨道
         Row()
-          .width(50) // 固定宽度 50
-          .height(28) // 固定高度 28
-          .backgroundColor(this.isEnabled ? this.activeColor : '#E4E7ED') // 关闭时用更柔和的灰色
-          .borderRadius(14)
-          .animation({ duration: 300, curve: Curve.EaseInOut }) // 优化动画曲线
+          .width(this.switchSize * 2) // 宽度是高度的2倍
+          .height(this.switchSize)
+          .backgroundColor(this.isEnabled ? this.activeColor : this.inactiveColor)
+          .borderRadius(this.switchSize / 2)
+          .animation({ duration: 300, curve: Curve.LinearOutSlowIn }) // 背景色过渡动画
 
         // 操纵钮（圆形）
         Row()
-          .width(24) 
-          .height(24)
+          .width(this.switchSize - 4) // 上下各留2px间距
+          .height(this.switchSize - 4)
           .backgroundColor(Color.White)
-          .borderRadius(12)
-          .shadow({ radius: 4, color: 'rgba(0,0,0,0.1)', offsetY: 2 }) // 更精致的阴影
-          .margin({ left: 2 }) 
-          .translate({ x: this.isEnabled ? 22 : 0 }) // 精确计算位移
-          .animation({ duration: 300, curve: Curve.FastOutSlowIn }) // 使用标准减速动画
+          .borderRadius((this.switchSize - 4) / 2)
+          .shadow({ radius: 2, color: '#00000033', offsetX: 1, offsetY: 1 }) // 添加轻微阴影，增加立体感
+          .margin({ left: 2 }) // 初始左边距
+          .translate({ x: this.isEnabled ? this.switchSize : 0 }) // 开启时向右移动一个高度的距离
+          .animation({ duration: 300, curve: Curve.LinearOutSlowIn }) // 移动动画
       }
-      .width(50)
-      .height(28)
+      .width(this.switchSize * 2)
+      .height(this.switchSize)
       .alignContent(Alignment.Start) // 内容左对齐，通过translate移动滑块
       .onClick(() => {
         // 核心交互逻辑

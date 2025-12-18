@@ -1,26 +1,3 @@
-/**
- * 三层结构卡片组件
- * 功能：显示三层结构的卡片，无间隔贴合
- * 用途：替代原有的液体卡片，提供更丰富的显示内容
- */
-
-// TODO(后期计划 - 方案A 工厂+插槽):
-// 采用“工厂函数 + 插槽(@Builder)”改造卡片创建，便于在不改主体逻辑的前提下
-// 灵活插入/替换内容，尤其是：
-// 1) 第一层与第二层之间: betweenFirstSecondSlot
-// 2) 第二层与第三层之间: betweenSecondThirdSlot
-// 3) 第三层可扩展: thirdPrependSlot / thirdContentSlot / thirdOverlaySlot / thirdAppendSlot
-// 4) 模式控制: thirdMode('data'|'widget'|'custom') + onModeChange
-// 5) 工厂签名示意: createThreeLayerCard(options: {
-//      size, theme, enableWave, onDrop,
-//      firstLayerSlot?, betweenFirstSecondSlot?, secondLayerSlot?, betweenSecondThirdSlot?,
-//      thirdPrependSlot?, thirdContentSlot?, thirdOverlaySlot?, thirdAppendSlot?
-//    }) => @Builder
-// 使用处(LiquidCardsArea)仅传入 options，不再直接依赖内部实现，后期可迭代第三层而不动主渲染。
-// TODO(性能优化-计划):
-// - 离屏卡片自动暂停波浪: 通过可见性/滚动监听，非可见时暂停 WaveCard 定时器；可见时恢复
-// - 第三层数据更新节流: 高频拖拽或合并操作时批量合并 setState
-
 import { getCurrentCellDragData, CellDragData, CELL_DRAG_ACTIVE_KEY, CELL_DRAG_STORAGE_KEY, MULTI_SELECT_CELLS_KEY, MULTI_SELECT_ACTIVE_KEY, CLEAR_ALL_HIGHLIGHTS_KEY } from '../ui/tables/SimpleDraggableCell'
 import { DragData as GridDragData, GRID_DRAG_DATA_KEY, GRID_DRAG_ACTIVE_KEY } from '../layout/DraggableGridTable'
 // 导入模块化的拖拽管理器
@@ -62,7 +39,6 @@ import { ThirdLayer } from '../ThreeLayerCard/ThirdLayer'
 import { CardColorConfig } from '../../utils/theme/CardColors'
 
 // 接口定义已移至 ThreeLayerCard/types.ets
-// 重新导出 ThreeLayerCardData 以保持向后兼容
 export { ThreeLayerCardData } from '../ThreeLayerCard/types'
 
 @Component

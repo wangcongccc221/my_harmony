@@ -10,6 +10,9 @@ import { RectButton } from '../ui/buttons/RectButton'
 import { ProcessingCurveChart } from '../charts/ProcessingCurveChart'
 import { ChartComponent, ChartComponentParams, ChartData } from '../ChartComponent'
 import { McPieChart, Options } from '@mcui/mccharts'
+import { ExportStatisticsContent } from './ExportStatisticsContent'
+import { ExportStatisticsBarChart } from '../charts/ExportStatisticsBarChart'
+import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
 
 interface RealtimeStats {
   productionTonH: string
@@ -126,6 +129,12 @@ export struct RealtimeStatsDialog {
     }
   }
 
+  // 获取当前选中的子系统值（用于下拉框显示）
+  private getSelectedSubsystemValue(): string {
+    const currentFSM = AppStorage.get<string>(HOME_SELECTED_FSM) || 'FSM1'
+    return currentFSM === 'FSM1' ? '1' : '2'
+  }
+
   build(): void {
     if (this.isVisible) {
       Stack() {
@@ -197,96 +206,99 @@ export struct RealtimeStatsDialog {
           // 下方大卡片：占据剩余空间，依据所选按钮切换内容（仿主页 if/else 渲染）
           Column() {
             if (this.currentInnerPage === '出口统计信息') {
-              ProcessingCurveChart({ 
-                title: '出口统计信息', 
-                chartHeight: '80%',  // 图表高度调整为80%
-                chartWidth: '100%'
-                // 不传入data，让组件自动模拟数据
+               // 使用新的出口统计柱状图组件（2个数据系列，与FSM联动）
+              ExportStatisticsBarChart({
+                title: '出口统计信息',
+                chartHeight: 350
               })
-                .width('100%').height('100%')
-            } else if (this.currentInnerPage === '品质统计信息') {
-              ChartComponent({
-                params: {
-                  dataCount: 80,
-                  startHour: 8,
-                  startMinute: 0,
-                  chartHeight: 300,
-                  barWidth: 15,
-                  barSpacing: 60, // 品质统计信息使用较宽松的间距
-                  showScrollBar: true,
-                  onDataClick: (data: ChartData, event: ClickEvent) => {
-                    console.log(`点击了品质数据: ${data.time} - ${data.value}`);
-                  }
+                .width('100%')
+                .layoutWeight(1)
+              
+              // 底部控制栏
+              Row() {
+                // 左侧：子系统下拉框
+                Row() {
+                  Text('子系统:')
+                    .fontSize(16)  // 从14增加到16
+                    .fontWeight(FontWeight.Medium)  // 加粗，更清晰
+                    .fontColor(getCurrentTheme().textColor)
+                    .margin({ right: 10 })
+                  
+                  Select([{ value: '1' }, { value: '2' }])
+                    .value(this.getSelectedSubsystemValue())
+                    .font({ size: 16 })  // 下拉框字体也调大
+                    .onSelect((index: number, value: string) => {
+                      // 切换FSM
+                      const newFSM = value === '1' ? 'FSM1' : 'FSM2'
+                      AppStorage.set(HOME_SELECTED_FSM, newFSM)
+                    })
                 }
-              })
-            } else if (this.currentInnerPage === '外观品质统计信息') {
-              McPieChart({
-                options: new Options({
-                  title: {
-                    show: true,
-                    text: '外观品质统计信息',
-                    left: 'center',
-                    top: 10,
-                    textStyle: {
-                      fontSize: 16,
-                      color: getCurrentTheme().textColor
-                    }
-                  },
-                  series: [{
-                    name: '外观品质',
-                    type: 'pie',
-                    radius: ['40%', '70%'],
-                    center: ['50%', '50%'],
-                    data: [
-                      { name: '优质', value: 35, itemStyle: { color: '#00B894' } },
-                      { name: '良好', value: 30, itemStyle: { color: '#00CEC9' } },
-                      { name: '一般', value: 25, itemStyle: { color: '#FDCB6E' } },
-                      { name: '较差', value: 10, itemStyle: { color: '#E17055' } }
-                    ]
-                  }]
-                })
-              })
-                .width('100%').height('100%')
-            } else if (this.currentInnerPage === '内部品质统计信息') {
-              ProcessingCurveChart({ 
-                title: '内部品质统计信息', 
-                chartHeight: '80%',  // 图表高度调整为80% 
-                chartWidth: '100%',
-                data: this.getChartDataForTab('内部品质统计信息')
-              })
-                .width('100%').height('100%')
-            } else if (this.currentInnerPage === '重量/尺寸统计信息') {
-              ProcessingCurveChart({ 
-                title: '重量/尺寸统计信息', 
-                chartHeight: '80%',  // 图表高度调整为80% 
-                chartWidth: '100%',
-                data: this.getChartDataForTab('重量/尺寸统计信息')
-              })
-                .width('100%').height('100%')
-            } else if (this.currentInnerPage === '重量/尺寸统计表') {
-              ProcessingCurveChart({ 
-                title: '重量/尺寸统计表', 
-                chartHeight: '80%',  // 图表高度调整为80% 
-                chartWidth: '100%',
-                data: this.getChartDataForTab('重量/尺寸统计表')
-              })
-                .width('100%').height('100%')
-            } else if (this.currentInnerPage === '等级统计表') {
-              ProcessingCurveChart({ 
-                title: '等级统计表', 
-                chartHeight: '80%',  // 图表高度调整为80% 
-                chartWidth: '100%',
-                data: this.getChartDataForTab('等级统计表')
-              })
-                .width('100%').height('100%')
-            } else if (this.currentInnerPage === '时间效率图') {
-              ProcessingCurveChart({ 
-                title: '时间效率图', 
-                chartHeight: '80%',  // 图表高度调整为80% 
-                chartWidth: '100%',
-                data: this.getChartDataForTab('时间效率图')
-              })
-                .width('100%').height('100%')
+                .layoutWeight(1)
+                .justifyContent(FlexAlign.Start)
+                
+                // 右侧：按钮组
+                Row() {
+                  Button('批次比例刷新')
+                    .fontSize(14)  // 从12增加到14
+                    .fontWeight(FontWeight.Medium)  // 加粗
+                    .backgroundColor(getCurrentTheme().controlBg || getCurrentTheme().surfaceColor)
+                    .fontColor(getCurrentTheme().textColor)
+                    .height(36)  // 增加按钮高度
+                    .onClick(() => {
+                      console.log('批次比例刷新')
+                    })
+                    .margin({ right: 10 })
+                  
+                  Button('实时比例刷新')
+                    .fontSize(14)  // 从12增加到14
+                    .fontWeight(FontWeight.Medium)  // 加粗
+                    .backgroundColor(getCurrentTheme().controlBg || getCurrentTheme().surfaceColor)
+                    .fontColor(getCurrentTheme().textColor)
+                    .height(36)  // 增加按钮高度
+                    .onClick(() => {
+                      console.log('实时比例刷新')
+                    })
+                    .margin({ right: 10 })
+                  
+                  Button('导出')
+                    .fontSize(14)  // 从12增加到14
+                    .fontWeight(FontWeight.Medium)  // 加粗
+                    .backgroundColor(getCurrentTheme().primary)
+                    .fontColor(Color.White)
+                    .height(36)  // 增加按钮高度
+                    .onClick(() => {
+                      console.log('导出')
+                    })
+                    .margin({ right: 10 })
+                  
+                  Button('打印')
+                    .fontSize(14)  // 从12增加到14
+                    .fontWeight(FontWeight.Medium)  // 加粗
+                    .backgroundColor(getCurrentTheme().primary)
+                    .fontColor(Color.White)
+                    .height(36)  // 增加按钮高度
+                    .onClick(() => {
+                      console.log('打印')
+                    })
+                }
+                .justifyContent(FlexAlign.End)
+              }
+              .width('100%')
+              .height(56)  // 从50增加到56，给更大的空间
+              .padding({ left: 16, right: 16, top: 10, bottom: 10 })  // 增加内边距
+              .backgroundColor(getCurrentTheme().controlBg || '#808080')
+              .alignItems(VerticalAlign.Center)
+            } else {
+              // 其他标签页内容已清空
+              Column() {
+                Text('')
+                  .fontSize(16)
+                  .fontColor(getCurrentTheme().subTextColor)
+              }
+              .width('100%')
+              .height('100%')
+              .justifyContent(FlexAlign.Center)
+              .alignItems(HorizontalAlign.Center)
             }
           }
           .width('100%')

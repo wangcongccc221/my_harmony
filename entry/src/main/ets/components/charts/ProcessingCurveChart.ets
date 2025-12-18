@@ -1,6 +1,6 @@
 import { McLineChart } from '@mcui/mccharts'
 import { Options } from '@mcui/mccharts'
-import { OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
+import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 
 // 数据接口定义
@@ -34,7 +34,7 @@ export struct ProcessingCurveChart {
   private currentProgress: number = 0
   private dataCount: number = 0 // 数据计数器
   private clearCount: number = 0 // 清空次数计数器
-  @State private followLatest: boolean = true // 是否自动跟随最新数据
+ // @State private followLatest: boolean = true // 是否自动跟随最新数据
 
   // 默认数据（初始一组）
   private defaultData: ChartDataItem[] = [
@@ -69,6 +69,9 @@ export struct ProcessingCurveChart {
       name: '加工量(%)',
       nameLocation: 'middle',
       nameGap: 30,
+      min: 0,
+      max: 120,
+      interval: 24,
       axisLabel: {
         fontSize: 20
       }
@@ -148,6 +151,9 @@ export struct ProcessingCurveChart {
         name: '加工量(%)',
         nameLocation: 'middle',
         nameGap: 30,
+        min: 0,
+        max: 120,
+        interval: 24,
         axisLabel: {
           fontSize: 20,
           color: this.resolveTheme().textColor

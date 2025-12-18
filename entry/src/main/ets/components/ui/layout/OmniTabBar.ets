@@ -191,65 +191,36 @@ export struct OmniTabBar {
   // 构建单个Tab
   @Builder
   private buildTab(tab: TabConfig) {
-    // 垂直布局时使用现代胶囊风格
+    // 垂直布局时使用ThreeDButton（与主页等级表按钮风格一致）
     if (this.layoutDirection === TabBarDirection.VERTICAL) {
-      Stack() {
-        // 选中态背景（渐变+阴影）
-        if (this.selectedTab === tab.key) {
-          Column()
-            .width('100%')
-            .height('100%')
-            .borderRadius(25) // 胶囊圆角
-            .linearGradient({
-              angle: 135,
-              colors: [[this.resolveTheme().primary, 0.0], [this.resolveTheme().primary + 'CC', 1.0]] // 渐变色
-            })
-            .shadow({ radius: 8, color: this.resolveTheme().primary + '4D', offsetY: 4 }) // 柔和投影
-        }
-
-        // 内容
-        Row() {
-          // 图标（如果需要，目前设计主要是文字，预留图标位）
-          if (tab.icon) {
-            Image(tab.icon)
-              .width(20)
-              .height(20)
-              .fillColor(this.selectedTab === tab.key ? Color.White : '#909399')
-              .margin({ right: 8 })
-          }
-
-          Text(tab.label)
-            .fontSize(this.selectedTab === tab.key ? 16 : 15) // 选中16px，未选中15px
-            .fontWeight(this.selectedTab === tab.key ? FontWeight.Bold : FontWeight.Medium)
-            .fontColor(this.selectedTab === tab.key ? Color.White : '#606266') // 选中白色，未选中高级灰
-        }
-        .width('100%')
-        .height('100%')
-        .justifyContent(FlexAlign.Center)
-        .alignItems(VerticalAlign.Center)
-      }
-      .width(120) // 优化宽度：120px
-      .height(50) // 优化高度：50px
-      .onClick(() => {
-        if (!tab.disabled) {
-          if (tab.subItems && tab.subItems.length > 0) {
-            if (this.activePopupTabKey === tab.key) {
-              this.activePopupTabKey = null
-            } else {
-              this.activePopupTabKey = tab.key
+      ThreeDButton({
+        text: tab.label,
+        buttonWidth: 140, // 增加宽度以适应 24px 字体
+        buttonHeight: 64, // 增加高度以适应 24px 字体
+        isSelected: this.selectedTab === tab.key,
+        onClickCallback: () => {
+          if (!tab.disabled) {
+            if (tab.subItems && tab.subItems.length > 0) {
+              // 如果有子菜单，切换弹出状态
+              if (this.activePopupTabKey === tab.key) {
+                this.activePopupTabKey = null
+              } else {
+                this.activePopupTabKey = tab.key
+              }
             }
-          }
-          if (this.onTabClick) {
-            this.onTabClick(tab.key)
+            // 总是触发点击回调（允许父组件处理选中状态或其它逻辑）
+            if (this.onTabClick) {
+              this.onTabClick(tab.key)
+            }
           }
         }
       })
       .bindPopup(this.activePopupTabKey === tab.key, {
         builder: this.buildSubMenu(tab.subItems || []),
-        placement: Placement.Right,
-        mask: false,
-        popupColor: Color.Transparent,
-        enableArrow: false,
+        placement: Placement.Right, // 显示在右侧
+        mask: false, // 不显示遮罩
+        popupColor: Color.Transparent, // 透明背景，由 builder 自身控制
+        enableArrow: false, // 禁用小三角（尖嘴）
         onStateChange: (e) => {
           if (!e.isVisible) {
             this.activePopupTabKey = null
@@ -259,13 +230,12 @@ export struct OmniTabBar {
       .opacity(tab.disabled ? 0.4 : 1)
       .enabled(!tab.disabled)
       .margin({ 
-        top: 8,
-        bottom: 8,
+        top: 10,    // 恢复垂直间距 8 -> 10 (增加一点呼吸感)
+        bottom: 10, // 恢复垂直间距 8 -> 10
         left: 0,
         right: 0
       })
-      .alignSelf(ItemAlign.Center)
-      .animation({ duration: 200, curve: Curve.FastOutSlowIn }) // 添加动画
+      .alignSelf(ItemAlign.Center) // 确保按钮在父容器中居中
     } else {
       // 水平布局保持原有样式
       Button() {

@@ -3,7 +3,8 @@ import { DatabaseQueueManager } from '../../utils/network/database/dispatch/Data
 import { relationalStore } from '@kit.ArkData';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import GlobalStore from '../orm/model/GlobalStore';
-import { Class } from '../orm';
+import { Class, GetIBestORM, GetTableName, IBestORM } from '../orm';
+import { GetColumnMeta } from '../orm/decorator/Index';
 
 const DOMAIN = 0x0000;
 
@@ -20,6 +21,7 @@ type ValidateDataFunc = (data: ESObject) => void;
  */
 interface ServiceOptions {
   validateData?: ValidateDataFunc;
+  mode?: 'queue' | 'orm';
 }
 
 /**
@@ -44,6 +46,7 @@ export function createService(
   options?: ServiceOptions
 ): ServiceInterface {
   const validate = options?.validateData || (() => {});
+  const mode = options?.mode ?? 'queue';
 
   /**
    * Service 类
@@ -60,6 +63,48 @@ export function createService(
       throw new Error(
         'Database Context 未初始化！请确保在 EntryAbility.onCreate() 中执行了 GlobalStore.init(this.context)'
       );
+    }
+
+    private static getOrm(): IBestORM {
+      const orm = GetIBestORM();
+      if (!orm) {
+        throw new Error('ORM 未初始化！请确保在 EntryAbility.onCreate() 中完成 ORM 初始化');
+      }
+      return orm;
+    }
+
+    private static getTableName(): string {
+      return GetTableName(table);
+    }
+
+    private static getPrimaryKeyColumnName(): string {
+      const meta = GetColumnMeta(table);
+      for (let i = 0; i < meta.length; i++) {
+        if (meta[i].tag?.includes('primaryKey') && meta[i].name) {
+          return meta[i].name;
+        }
+      }
+      return 'id';
+    }
+
+    private static countAllSync(): number {
+      const orm = Service.getOrm();
+      const core = orm.GetCore();
+      if (!core) {
+        throw new Error('无法获取数据库核心对象');
+      }
+
+      const tableName = Service.getTableName();
+      const rs = core.querySqlSync(`SELECT COUNT(*) AS cnt FROM ${tableName}`);
+      let total = 0;
+
+      if (rs.columnCount > 0 && rs.goToFirstRow()) {
+        const colName = rs.columnNames[0];
+        total = rs.getDouble(rs.getColumnIndex(colName)) as number;
+      }
+
+      rs.close();
+      return total;
     }
 
     /**
@@ -88,10 +133,18 @@ export function createService(
      * 保存单条数据
      */
     static async save(data: ESObject, ctx?: Context): Promise<number> {
-      const context = Service.getContext(ctx);
       validate(data);
       const values = Service.toValuesBucket(data, columnMap);
-      const id = await DatabaseQueueManager.insert(context, values, table);
+      if (mode === 'queue') {
+        const context = Service.getContext(ctx);
+        const id = await DatabaseQueueManager.insert(context, values, table);
+        hilog.info(DOMAIN, 'Service', `${table.name || 'Unknown'} 保存成功 ID=${id}`);
+        return id;
+      }
+
+      Service.getContext(ctx);
+      const orm = Service.getOrm();
+      const id = orm.Table(Service.getTableName()).Insert(values) as number;
       hilog.info(DOMAIN, 'Service', `${table.name || 'Unknown'} 保存成功 ID=${id}`);
       return id;
     }
@@ -101,20 +154,39 @@ export function createService(
      */
     static async batchSave(list: ESObject[], ctx?: Context): Promise<number> {
       if (!list || list.length === 0) return 0;
-      
-      const context = Service.getContext(ctx);
-      
+
+      if (mode === 'queue') {
+        const context = Service.getContext(ctx);
+
+        for (let i = 0; i < list.length; i++) {
+          validate(list[i]);
+        }
+
+        const valuesList: relationalStore.ValuesBucket[] = [];
+        for (let i = 0; i < list.length; i++) {
+          const values = Service.toValuesBucket(list[i], columnMap);
+          valuesList.push(values);
+        }
+
+        const count = await DatabaseQueueManager.batchInsert(context, valuesList, table);
+        hilog.info(DOMAIN, 'Service', `${table.name || 'Unknown'} 批量保存成功 数量=${count}`);
+        return count;
+      }
+
+      Service.getContext(ctx);
+
       for (let i = 0; i < list.length; i++) {
         validate(list[i]);
       }
-      
+
       const valuesList: relationalStore.ValuesBucket[] = [];
       for (let i = 0; i < list.length; i++) {
         const values = Service.toValuesBucket(list[i], columnMap);
         valuesList.push(values);
       }
-      
-      const count = await DatabaseQueueManager.batchInsert(context, valuesList, table);
+
+      const orm = Service.getOrm();
+      const count = orm.Table(Service.getTableName()).Insert(valuesList) as number;
       hilog.info(DOMAIN, 'Service', `${table.name || 'Unknown'} 批量保存成功 数量=${count}`);
       return count;
     }
@@ -124,11 +196,21 @@ export function createService(
      */
     static async update(id: number, data: ESObject, ctx?: Context): Promise<number> {
       if (!id) throw new Error('更新必须提供有效 ID');
-      
-      const context = Service.getContext(ctx);
+
       validate(data);
       const values = Service.toValuesBucket(data, columnMap);
-      const affected = await DatabaseQueueManager.update(context, id, values, table);
+
+      if (mode === 'queue') {
+        const context = Service.getContext(ctx);
+        const affected = await DatabaseQueueManager.update(context, id, values, table);
+        hilog.info(DOMAIN, 'Service', `${table.name || 'Unknown'} 更新成功 ID=${id} 影响行数=${affected}`);
+        return affected;
+      }
+
+      Service.getContext(ctx);
+      const orm = Service.getOrm();
+      const primaryKey = Service.getPrimaryKeyColumnName();
+      const affected = orm.Table(Service.getTableName()).Where(primaryKey, id).Update(values) as number;
       hilog.info(DOMAIN, 'Service', `${table.name || 'Unknown'} 更新成功 ID=${id} 影响行数=${affected}`);
       return affected;
     }
@@ -138,9 +220,18 @@ export function createService(
      */
     static async delete(id: number, ctx?: Context): Promise<number> {
       if (!id) throw new Error('删除必须提供有效 ID');
-      
-      const context = Service.getContext(ctx);
-      const affected = await DatabaseQueueManager.delete(context, id, table);
+
+      if (mode === 'queue') {
+        const context = Service.getContext(ctx);
+        const affected = await DatabaseQueueManager.delete(context, id, table);
+        hilog.info(DOMAIN, 'Service', `${table.name || 'Unknown'} 删除成功 ID=${id} 影响行数=${affected}`);
+        return affected;
+      }
+
+      Service.getContext(ctx);
+      const orm = Service.getOrm();
+      const primaryKey = Service.getPrimaryKeyColumnName();
+      const affected = orm.Table(Service.getTableName()).Where(primaryKey, id).Delete() as number;
       hilog.info(DOMAIN, 'Service', `${table.name || 'Unknown'} 删除成功 ID=${id} 影响行数=${affected}`);
       return affected;
     }
@@ -149,27 +240,55 @@ export function createService(
      * 查询所有数据
      */
     static async queryAll(ctx?: Context): Promise<ESObject[]> {
-      const context = Service.getContext(ctx);
-      return await DatabaseQueueManager.queryAll<ESObject>(context, table);
+      if (mode === 'queue') {
+        const context = Service.getContext(ctx);
+        return await DatabaseQueueManager.queryAll<ESObject>(context, table);
+      }
+
+      Service.getContext(ctx);
+      const orm = Service.getOrm();
+      return orm.Table(Service.getTableName()).Find(table) as ESObject[];
     }
 
     /**
      * 分页查询数据
      */
     static async queryPage(page: number, size: number, ctx?: Context): Promise<ESObject[]> {
-      const context = Service.getContext(ctx);
-      return await DatabaseQueueManager.queryPage<ESObject>(context, page, size, table);
+      if (mode === 'queue') {
+        const context = Service.getContext(ctx);
+        return await DatabaseQueueManager.queryPage<ESObject>(context, page, size, table);
+      }
+
+      Service.getContext(ctx);
+      const orm = Service.getOrm();
+      const safePage = Math.max(1, page);
+      const safeSize = Math.max(1, size);
+      const offset = (safePage - 1) * safeSize;
+      return orm.Table(Service.getTableName()).Limit(safeSize).Offset(offset).Find(table) as ESObject[];
     }
 
     /**
      * 统计总数
      */
     static async count(ctx?: Context): Promise<number> {
-      const context = Service.getContext(ctx);
-      return await DatabaseQueueManager.countAll(context, table);
+      if (mode === 'queue') {
+        const context = Service.getContext(ctx);
+        return await DatabaseQueueManager.countAll(context, table);
+      }
+
+      Service.getContext(ctx);
+      return Service.countAllSync();
     }
   }
 
   return Service;
+}
+
+export function createOrmService(
+  table: Class,
+  columnMap: Record<string, string>,
+  options?: Omit<ServiceOptions, 'mode'>
+): ServiceInterface {
+  return createService(table, columnMap, { ...options, mode: 'orm' });
 }
 

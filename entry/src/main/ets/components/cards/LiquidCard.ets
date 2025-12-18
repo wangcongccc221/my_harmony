@@ -2,19 +2,7 @@ import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 
 @Component
 export struct LiquidCard {
-  /**
-   * 顶部小图标文字（默认方案）
-   * - 未提供 iconRes / topContent 时生效
-   * - 例如：'A'、'1'、'出'
-   */
   @Prop iconText: string = 'A'
-  /**
-   * 顶部小图标图片资源（优先于 iconText 渲染）
-   * - 类型：资源引用，如 $r('app.media.logo') / $r('app.media.icon_svg')
-   * - 支持 png/jpg/svg 等放在 resources/media 下的资源
-   * - 示例：
-   *   LiquidCard({ iconRes: $r('app.media.logo') })
-   */
   @Prop iconRes: number | Resource | null = null
   /** 顶部栏背景色与高度（可选） */
   @Prop topBarBg: string | number | Color = '#fff5f5'
@@ -27,7 +15,6 @@ export struct LiquidCard {
    *     topContent: () => {
    *       // 方案1：直接使用图片资源（包含 svg）
    *       Image($r('app.media.icon_svg')).width(20).height(20).objectFit(ImageFit.Contain)
-   *
    *       // 方案2：任意自定义布局
    *       // Row() { Text('A').fontSize(12).fontColor(Color.White) }.height(24)
    *     }
@@ -110,7 +97,7 @@ export struct LiquidCard {
         // 液体层（简化渲染）
         Row() {}
           .width('100%')
-          .height(`${this.clampPercent(this.percent)}%`)3
+          .height(`${this.clampPercent(this.percent)}%`)
           .backgroundColor(this.mainColor)
           .opacity(0.9)
           .borderRadius({ bottomLeft: AppleDesignStyle.BORDER_RADIUS_MEDIUM, bottomRight: AppleDesignStyle.BORDER_RADIUS_MEDIUM }) // Apple风格：中等圆角

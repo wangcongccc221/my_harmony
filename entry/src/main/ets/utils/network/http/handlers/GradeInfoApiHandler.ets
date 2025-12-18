@@ -208,7 +208,7 @@ export class GradeInfoApiHandler {
   private static async handleUpdate(id: number, data: Map<string, string>, ctx: Context): Promise<string> {
     try {
       const gradeInfo: Partial<GradeInfo> = GradeInfoApiHandler.mapToGradeInfo(data);
-      const affected = await GradeInfoService.update(id, gradeInfo, ctx);
+      const affected = await GradeInfoService.updateReturnAffected(id, gradeInfo, ctx);
 
       if (affected === 0) {
         return HttpResponseUtils.buildErrorResponse('记录不存在', 404);
@@ -224,7 +224,7 @@ export class GradeInfoApiHandler {
 
   private static async handleDelete(id: number, ctx: Context): Promise<string> {
     try {
-      const affected = await GradeInfoService.delete(id, ctx);
+      const affected = await GradeInfoService.deleteReturnAffected(id, ctx);
 
       if (affected === 0) {
         return HttpResponseUtils.buildErrorResponse('记录不存在', 404);

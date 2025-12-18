@@ -23,7 +23,7 @@ export class InternalApiTester {
       const err = e as Error;
       hilog.error(DOMAIN, TAG, `FruitInfoService 测试失败: ${err.message}`);
     }
-    await FruitInfoService.delete(2,ctx);
+    FruitInfoService.delete(2);
     try {
       await InternalApiTester.testGradeInfo(ctx);
     } catch (e) {
@@ -61,7 +61,7 @@ export class InternalApiTester {
     const list = await FruitInfoService.queryAll(ctx);
     hilog.info(DOMAIN, TAG, `FruitInfoService.queryAll 返回 ${list.length} 条记录`);
 
-    await FruitInfoService.delete(id, ctx);
+    FruitInfoService.delete(id);
     hilog.info(DOMAIN, TAG, `FruitInfoService.delete 删除 ID=${id}`);
   }
 
@@ -90,7 +90,7 @@ export class InternalApiTester {
     const list = await GradeInfoService.queryAll(ctx);
     hilog.info(DOMAIN, TAG, `GradeInfoService.queryAll 返回 ${list.length} 条记录`);
 
-    await GradeInfoService.delete(id, ctx);
+    GradeInfoService.delete(id);
     hilog.info(DOMAIN, TAG, `GradeInfoService.delete 删除 ID=${id}`);
   }
 
@@ -115,7 +115,7 @@ export class InternalApiTester {
     const list = await ExportInfoService.queryAll(ctx);
     hilog.info(DOMAIN, TAG, `ExportInfoService.queryAll 返回 ${list.length} 条记录`);
 
-    await ExportInfoService.delete(id, ctx);
+    ExportInfoService.delete(id);
     hilog.info(DOMAIN, TAG, `ExportInfoService.delete 删除 ID=${id}`);
   }
 }

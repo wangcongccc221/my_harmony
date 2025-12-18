@@ -448,9 +448,9 @@ export struct DataTablesTabBar {
             tableWidth: '100%',
             maxHeight: '72%', // 等级表最大高度改为65%
             enableDrag: true,
-            headerHeight: 50,  // 降低表头高度 60 -> 50
-            dataRowHeight: 60,  // 降低行高 75 -> 60 (紧凑模式)
-            dividerHeight: 60,   // 降低分割线高度 75 -> 60
+            headerHeight: 60,  // 等级表表头高度
+            dataRowHeight: 75,  // 等级表数据行高度
+            dividerHeight: 75,   // 等级表分割线高度
             customBorderWidth: 2      // 等级表边框宽度
           })
           .layoutWeight(1)  // 使用 layoutWeight 自适应宽度
@@ -466,9 +466,9 @@ export struct DataTablesTabBar {
             tableWidth: '100%',
             maxHeight: '72%',
             enableDrag: true,
-            headerHeight: 50,  // 降低表头高度 62 -> 50
-            dataRowHeight: 60,  // 降低行高 73 -> 60 (紧凑模式)
-            dividerHeight: 60,   // 降低分割线高度 73 -> 60
+            headerHeight: 62,  // 容器表表头高度
+            dataRowHeight: 73,  // 容器表数据行高度
+            dividerHeight: 73,   // 容器表分割线高度
             customBorderWidth: 2      // 容器表边框宽度
           })
           .layoutWeight(1)  // 使用 layoutWeight 自适应宽度
@@ -487,9 +487,9 @@ export struct DataTablesTabBar {
           maxHeight: '72%',
           enableDrag: false,    // 拖拽设置
           enableScroll: false, // 滚动设置
-            headerHeight: 50,  // 降低表头高度 60 -> 50
-            dataRowHeight: 60,  // 降低行高 75 -> 60 (紧凑模式)
-            dividerHeight: 60,   // 降低分割线高度 75 -> 60
+            headerHeight: 60,  // 等级统计表表头高度
+            dataRowHeight: 75,  // 等级统计表数据行高度
+            dividerHeight: 75,   // 等级统计表分割线高度
           customBorderWidth: 2      // 等级统计表边框宽度
         })
         .key(`statistics_table_${this.refreshKey}`)
@@ -670,64 +670,27 @@ export struct DataTablesTabBar {
     .width('100%')
     .layoutWeight(1)
     .padding({ bottom: '1.11%' })  // 移除左右 padding，由外层 Row + Blank 控制间隙
-    .margin({ top: 15 }) // 增加与上方Tab栏的间距
-  }
-
-  @Builder
-  private buildTabButton(tab: TabConfig) {
-    Stack() {
-      // 选中态的背景光晕（仅选中时显示）
-      if (this.selectedTab === tab.key) {
-        Column()
-          .width('100%')
-          .height('100%')
-          .borderRadius(24)
-          .linearGradient({
-            angle: 135,
-            colors: [
-              ['#409EFF', 0.0], // 亮蓝
-              ['#79BBFF', 1.0]  // 浅蓝
-            ]
-          })
-          .shadow({ radius: 12, color: 'rgba(64, 158, 255, 0.4)', offsetY: 6 })
-      }
-
-      // 按钮内容
-      Row() {
-        Text(tab.label)
-          .fontSize(this.selectedTab === tab.key ? 17 : 16)
-          .fontWeight(this.selectedTab === tab.key ? FontWeight.Bold : FontWeight.Medium)
-          .fontColor(this.selectedTab === tab.key ? Color.White : '#606266')
-          .animation({ duration: 300, curve: Curve.EaseInOut })
-      }
-      .width('100%')
-      .height('100%')
-      .justifyContent(FlexAlign.Center)
-      .alignItems(VerticalAlign.Center)
-      // 未选中时的背景（纯白 + 极淡阴影）
-      .backgroundColor(this.selectedTab === tab.key ? Color.Transparent : '#FFFFFF')
-      .borderRadius(24)
-      .shadow(this.selectedTab === tab.key ? undefined : { radius: 8, color: 'rgba(0,0,0,0.05)', offsetY: 2 })
-    }
-    .width(130)
-    .height(44)
-    .onClick(() => {
-      animateTo({ duration: 300, curve: Curve.EaseInOut }, () => {
-        this.handleTabChange(tab.key)
-      })
-    })
   }
 
   build() {
     Column() {
-      // Custom TabBar
+      // Custom ThreeDButton TabBar
       Scroll() {
-        Row({ space: 16 }) {  // 使用 gap 控制间距
+        Row({ space: 0 }) {  // 使用0间距，通过margin控制每个按钮的间距
           ForEach(this.getTabConfig(), (tab: TabConfig) => {
-            this.buildTabButton(tab)
+            ThreeDButton({
+              text: tab.label,
+              isSelected: this.selectedTab === tab.key,
+              onClickCallback: () => {
+                this.handleTabChange(tab.key)
+              }
+            })
+            .width(140) // Fixed width for consistent look, or auto
+            .height(48)
+            .margin({ right: 32 })  // 增大右边距到32px，确保按钮变大后不重叠
           })
         }
-        .padding({ left: 20, right: 20, top: 20, bottom: 12 }) // 增加内边距，给阴影留空间
+        .padding({ left: 16, right: 16, top: 16, bottom: 8 })
       }
       .scrollable(ScrollDirection.Horizontal)
       .scrollBar(BarState.Off)

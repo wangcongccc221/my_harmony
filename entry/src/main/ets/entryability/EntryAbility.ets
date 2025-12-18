@@ -19,7 +19,11 @@ import { ProcessingHistory } from '../database/models/ProcessingHistory';
 import { FruitInfo } from '../database/models/FruitInfo';
 import { GradeInfo } from '../database/models/GradeInfo';
 import { ExportInfo } from '../database/models/ExportInfo';
+import { FarmerInfo } from '../database/models/FarmerInfo';
+import { ProcessingTask } from '../database/models/ProcessingTask';
+import { AlarmInfo } from '../database/models/AlarmInfo';
 import { I18nManager } from '../utils/i18n/I18nManager';
+import { OutletCountStorage } from '../utils/storage/OutletCountStorage';
 // import { taskPoolExecuteInsert, taskPoolExecuteQuery, taskPoolExecuteUpdate, taskPoolExecuteDelete } from '../database/examples/taskpool'; // 文件已删除
 
 const DOMAIN = 0x0000;
@@ -43,6 +47,25 @@ export default class EntryAbility extends UIAbility {
         : (e instanceof Error ? e.message : JSON.stringify(e));
       hilog.warn(DOMAIN, 'EntryAbility', `I18n 初始化失败: ${reason}`);
     });
+  }
+  
+  private async initOutletCountStorage(): Promise<void> {
+    try {
+      const storage = OutletCountStorage.getInstance();
+      await storage.init(this.context);
+      
+      // 加载保存的出口数量并设置到 AppStorage
+      const counts = await storage.loadAllOutletCounts();
+      AppStorage.setOrCreate('OutletCount_FSM1', counts.fsm1);
+      AppStorage.setOrCreate('OutletCount_FSM2', counts.fsm2);
+      
+      hilog.info(DOMAIN, 'EntryAbility', `出口数量已加载: FSM1=${counts.fsm1}, FSM2=${counts.fsm2}`);
+    } catch (e) {
+      hilog.error(DOMAIN, 'EntryAbility', `出口数量存储初始化失败: ${JSON.stringify(e)}`);
+      // 使用默认值
+      AppStorage.setOrCreate('OutletCount_FSM1', 20);
+      AppStorage.setOrCreate('OutletCount_FSM2', 20);
+    }
   }
 
   onDestroy(): void {
@@ -72,16 +95,25 @@ export default class EntryAbility extends UIAbility {
       GetIBestORM().AutoMigrate(FruitInfo);
       GetIBestORM().AutoMigrate(GradeInfo);
       GetIBestORM().AutoMigrate(ExportInfo);
+      GetIBestORM().AutoMigrate(FarmerInfo);
+      GetIBestORM().AutoMigrate(ProcessingTask);
+      GetIBestORM().AutoMigrate(AlarmInfo);
       // 创建索引以优化查询性能
       ProcessingHistory.createIndexes();
       FruitInfo.createIndexes();
       GradeInfo.createIndexes();
       ExportInfo.createIndexes();
+      FarmerInfo.createIndexes();
+      ProcessingTask.createIndexes();
+      AlarmInfo.createIndexes();
       hilog.info(DOMAIN, 'EntryAbility', 'ORM 初始化完成并迁移所有表');
 
     } catch (e) {
       hilog.error(DOMAIN, 'EntryAbility', `数据库初始化失败: ${JSON.stringify(e)}`);
     }
+
+    // 确保出口数量存储已初始化并加载数据
+    await this.initOutletCountStorage();
 
     windowStage.loadContent('pages/Home', async (err) => { 
       if (err.code) {

@@ -242,7 +242,7 @@ export class ExportInfoApiHandler {
   private static async handleUpdate(id: number, data: Map<string, string>, ctx: Context): Promise<string> {
     try {
       const exportInfo: Partial<ExportInfo> = ExportInfoApiHandler.mapToExportInfo(data);
-      const affected = await ExportInfoService.update(id, exportInfo, ctx);
+      const affected = await ExportInfoService.updateReturnAffected(id, exportInfo, ctx);
 
       if (affected === 0) {
         return HttpResponseUtils.buildErrorResponse('记录不存在', 404);
@@ -258,7 +258,7 @@ export class ExportInfoApiHandler {
 
   private static async handleDelete(id: number, ctx: Context): Promise<string> {
     try {
-      const affected = await ExportInfoService.delete(id, ctx);
+      const affected = await ExportInfoService.deleteReturnAffected(id, ctx);
 
       if (affected === 0) {
         return HttpResponseUtils.buildErrorResponse('记录不存在', 404);
