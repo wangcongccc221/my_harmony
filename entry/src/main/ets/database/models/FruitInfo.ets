@@ -4,7 +4,6 @@ import { GetIBestORM } from '../orm';
 /**
  * 水果信息数据模型类
  * 用于存储水果加工信息数据
- * 对应数据库表：tb_fruitinfo
  */
 @Table({ name: 'tb_fruitinfo' })
 export class FruitInfo {

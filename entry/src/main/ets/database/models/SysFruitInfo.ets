@@ -4,8 +4,6 @@ import { GetIBestORM } from '../orm';
 /**
  * 系统水果信息数据模型类
  * 用于存储每个子系统（FSM1、FSM2）的水果信息
- * 对应数据库表：tb_sys_fruitinfo
- * 对应48项目：tb_Sys_FruitInfo
  */
 @Table({ name: 'tb_sys_fruitinfo' })
 export class SysFruitInfo {

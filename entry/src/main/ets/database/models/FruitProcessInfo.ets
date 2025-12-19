@@ -4,8 +4,6 @@ import { GetIBestORM } from '../orm';
 /**
  * 水果加工信息数据模型类
  * 用于存储水果加工过程的统计信息（重量百分比、分选效率百分比）
- * 对应数据库表：tb_fruitprocessinfo
- * 对应48项目：tb_fruitprocessinfo
  * 
  * 注意：RealWeightCountPercent 和 SeparationEfficiencyPercent 在48项目中是blob类型
  * 在SQLite中，blob通常存储为BLOB类型，但在ORM中可以使用TEXT类型存储JSON字符串

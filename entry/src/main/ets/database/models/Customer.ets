@@ -3,9 +3,7 @@ import { GetIBestORM } from '../orm';
 
 /**
  * 客户数据模型类
- * 用于存储客户/用户信息
- * 对应数据库表：tb_customer
- * 对应48项目：tb_Customer
+ * 用于存储用户信息
  */
 @Table({ name: 'tb_customer' })
 export class Customer {

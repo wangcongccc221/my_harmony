@@ -6,6 +6,7 @@ import { taskpool } from '@kit.ArkTS';
 import { TcpMessageQueueManager } from './dispatch';
 import { handleStatisticsData } from './handlers/StatisticsDataHandler';
 import { handleConfigData } from './handlers/ConfigDataHandler';
+import { handleWaveInfoData } from './handlers/WaveInfoDataHandler';
 import { TcpStatisticsParser } from './parsers/TcpStatisticsParser';
 
 @Concurrent
@@ -36,12 +37,39 @@ export async function runTcpServerWorker(ip: string, port: number): Promise<void
           console.log(`[TCPServerWorker] 数据前4字节: ${messageData[0]}, ${messageData[1]}, ${messageData[2]}, ${messageData[3]}, 是否为SYNC: ${isBinaryData}`);
           
           if (isBinaryData) {
-            // 二进制统计数据，直接处理
-            console.log(`[TCPServerWorker] 识别为二进制统计数据，开始处理...`);
-            handleStatisticsData(messageData).catch((err: Error | object) => {
-              const errorMsg = err instanceof Error ? err.message : String(err);
-              console.error(`[TCPServerWorker] 处理统计数据失败: ${errorMsg}`);
-            });
+            // 二进制数据，需要根据命令ID分发到不同的处理器
+            try {
+              const packet = TcpStatisticsParser.parseTcpPacket(messageData);
+              if (packet) {
+                const cmdId = packet.commandHead.nCmdId;
+                if (cmdId === 0x0001) {
+                  // FSM_CMD_STATISTICS
+                  handleStatisticsData(messageData).catch((err: Error | object) => {
+                    const errorMsg = err instanceof Error ? err.message : String(err);
+                    console.error(`[TCPServerWorker] 处理统计数据失败: ${errorMsg}`);
+                  });
+                } else if (cmdId === 0x0000) {
+                  // FSM_CMD_CONFIG
+                  handleConfigData(messageData).catch((err: Error | object) => {
+                    const errorMsg = err instanceof Error ? err.message : String(err);
+                    console.error(`[TCPServerWorker] 处理配置数据失败: ${errorMsg}`);
+                  });
+                } else if (cmdId === 0x1004) {
+                  // FSM_CMD_WAVEINFO
+                  handleWaveInfoData(messageData).catch((err: Error | object) => {
+                    const errorMsg = err instanceof Error ? err.message : String(err);
+                    console.error(`[TCPServerWorker] 处理波形数据失败: ${errorMsg}`);
+                  });
+                } else {
+                  console.warn(`[TCPServerWorker] 未知的命令ID: ${cmdId}`);
+                }
+              } else {
+                console.warn(`[TCPServerWorker] 无法解析命令头`);
+              }
+            } catch (error) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              console.error(`[TCPServerWorker] 解析命令头失败: ${errorMsg}`);
+            }
           } else {
             // 文本消息，使用原有处理方式
             TcpMessageQueueManager.executeMessage(
@@ -211,6 +239,13 @@ export class TCPServer {
                     handleConfigData(messageData).catch((err: Error | object) => {
                       const errorMsg = err instanceof Error ? err.message : String(err);
                       console.error(`[TCPServer] 处理配置数据失败: ${errorMsg}`);
+                    });
+                  } else if (cmdId === 0x1004) {
+                    // FSM_CMD_WAVEINFO - 波形信息命令
+                    console.log(`[TCPServer] 处理波形信息命令...`);
+                    handleWaveInfoData(messageData).catch((err: Error | object) => {
+                      const errorMsg = err instanceof Error ? err.message : String(err);
+                      console.error(`[TCPServer] 处理波形数据失败: ${errorMsg}`);
                     });
                   } else {
                     console.warn(`[TCPServer] 未知的命令ID: ${cmdId}，使用默认处理（统计信息）`);

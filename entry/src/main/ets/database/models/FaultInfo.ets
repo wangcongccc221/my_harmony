@@ -4,8 +4,6 @@ import { GetIBestORM } from '../orm';
 /**
  * 故障信息数据模型类
  * 用于存储实际发生的故障记录
- * 对应数据库表：tb_faultinfo
- * 对应48项目：tb_FaultInfo
  */
 @Table({ name: 'tb_faultinfo' })
 export class FaultInfo {

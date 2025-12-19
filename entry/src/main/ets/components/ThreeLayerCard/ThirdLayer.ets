@@ -50,13 +50,12 @@ export struct ThirdLayer {
 
   build() {
     Column() {
-      // 优先显示数据：有数据就渲染列表；否则再判断是否显示波浪
+      // 优先显示数据：有数据就渲染列表；否则显示波浪（所有卡片都可以显示波浪，根据数据动态更新）
       if (this.localChartData && this.localChartData.length > 0) {
         this.buildDataList()
-      } else if (this.enableWave) {
-        this.buildWaveCard()
       } else {
-        this.buildPlaceholder()
+        // 所有卡片都显示波浪，即使enableWave为false，也会根据接收到的数据动态更新
+        this.buildWaveCard()
       }
     }
     .width('100%')
@@ -286,13 +285,14 @@ export struct ThirdLayer {
       cardBackground: Color.Transparent,
       gradientLeft: this.cardColors.waveGradientLeft,
       gradientMid: this.cardColors.waveGradientMid,
-      gradientRight: this.cardColors.waveGradientRight
+      gradientRight: this.cardColors.waveGradientRight,
+      channelId: this.getCardIndex() + 1  // 通道ID = 卡片索引 + 1（通道ID从1开始，卡片索引从0开始）
     })
       .width('100%')
       .height('100%')
   }
   
-  // 获取卡片索引
+  // 获取卡片索引（从0开始）
   private getCardIndex(): number {
     const cardId = String(this.cardData.id || '')
     // 从 card_0, card_1 等格式中提取数字

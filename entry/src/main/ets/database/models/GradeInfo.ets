@@ -4,7 +4,6 @@ import { GetIBestORM } from '../orm';
 /**
  * 等级信息数据模型类
  * 用于存储水果等级信息数据
- * 对应数据库表：tb_gradeinfo
  */
 @Table({ name: 'tb_gradeinfo' })
 export class GradeInfo {

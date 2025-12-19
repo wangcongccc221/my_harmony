@@ -4,10 +4,6 @@ import { GetIBestORM } from '../orm';
 /**
  * 系统配置数据模型类
  * 用于存储系统配置参数（键值对形式）
- * 对应数据库表：tb_sys_configs
- * 对应48项目：tb_Sys_Configs
- * 
- * 这是48项目中非常重要的表，用于存储各种系统配置参数
  */
 @Table({ name: 'tb_sys_configs' })
 export class SysConfigs {

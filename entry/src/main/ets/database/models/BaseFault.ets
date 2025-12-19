@@ -4,8 +4,6 @@ import { GetIBestORM } from '../orm';
 /**
  * 基础故障数据模型类
  * 用于存储故障模板/基础故障信息
- * 对应数据库表：tb_base_fault
- * 对应48项目：tb_Base_Fault
  */
 @Table({ name: 'tb_base_fault' })
 export class BaseFault {
@@ -13,7 +11,7 @@ export class BaseFault {
   FID?: number;
 
   @Field({ type: FieldType.INTEGER })
-  FType?: number; // 0=硬件类, 1=电气类
+  FType?: number;
 
   @Field({ type: FieldType.TEXT })
   FCode?: string;
