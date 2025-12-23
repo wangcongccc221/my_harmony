@@ -11,8 +11,20 @@ import { ProcessingCurveChart } from '../charts/ProcessingCurveChart'
 import { ChartComponent, ChartComponentParams, ChartData } from '../ChartComponent'
 import { McPieChart, Options } from '@mcui/mccharts'
 import { ExportStatisticsContent } from './ExportStatisticsContent'
-import { ExportStatisticsBarChart } from '../charts/ExportStatisticsBarChart'
 import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
+import { ExportStatisticsHorizontalBarChart } from '../charts/ExportStatisticsHorizontalBarChart'
+import { QualityStatisticsBarChart } from '../charts/QualityStatisticsBarChart'
+import { AppearanceQualityStatisticsBarChart } from '../charts/AppearanceQualityStatisticsBarChart'
+import { InternalQualityStatisticsBarChart } from '../charts/InternalQualityStatisticsBarChart'
+import { WeightSizeStatisticsBarChart } from '../charts/WeightSizeStatisticsBarChart'
+import { WeightSizeStatisticsTable } from '../tables/WeightSizeStatisticsTable'
+import { GradeStatisticsTable } from '../tables/GradeStatisticsTable'
+import { TimeEfficiencyLineChart } from '../charts/TimeEfficiencyLineChart'
+import { PrintManager } from '../../utils/print/PrintManager'
+import GlobalStore from '../../database/orm/model/GlobalStore'
+import fs from '@ohos.file.fs'
+import util from '@ohos.util'
+import common from '@ohos.app.ability.common'
 
 interface RealtimeStats {
   productionTonH: string
@@ -116,6 +128,8 @@ export struct RealtimeStatsDialog {
   @State private selectedTabIndex: number = 0
   @State private contentRefreshKey: number = 0
   @State private currentInnerPage: string = '出口统计信息'
+  // 实时统计对话框内的子系统选择（不影响全局FSM设置）
+  @State private selectedSubsystem: string = 'ALL'
 
   private handleConfirm() {
     if (this.onConfirm) {
@@ -129,15 +143,400 @@ export struct RealtimeStatsDialog {
     }
   }
 
-  // 获取当前选中的子系统值（用于下拉框显示）
+  // 获取当前选中的子系统值（用于下拉框显示，仅用于实时统计对话框内部）
   private getSelectedSubsystemValue(): string {
-    const currentFSM = AppStorage.get<string>(HOME_SELECTED_FSM) || 'FSM1'
-    return currentFSM === 'FSM1' ? '1' : '2'
+    return this.selectedSubsystem
+  }
+
+  /**
+   * 构建控制栏（子系统选择器和按钮组）
+   */
+  @Builder
+  buildControlBar() {
+    Row() {
+      // 左侧：子系统选择器
+      Row() {
+        Text('子系统:')
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(getCurrentTheme().textColor)
+          .margin({ right: 10 })
+        
+        Select([{ value: 'ALL' }, { value: '1' }, { value: '2' }])
+          .value(this.getSelectedSubsystemValue())
+          .font({ size: 16 })
+          .onSelect((index: number, value: string) => {
+            // 只更新本地状态，不影响全局FSM设置
+            this.selectedSubsystem = value
+          })
+      }
+      .justifyContent(FlexAlign.Start)
+      .alignItems(VerticalAlign.Center)
+      .layoutWeight(1)
+      
+      // 右侧：按钮组
+      Row() {
+        Button('批次比例刷新')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .backgroundColor(getCurrentTheme().controlBg || getCurrentTheme().surfaceColor)
+          .fontColor(getCurrentTheme().textColor)
+          .height(36)
+          .onClick(() => this.handleBatchRatioRefresh())
+          .margin({ right: 10 })
+        
+        Button('实时比例刷新')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .backgroundColor(getCurrentTheme().controlBg || getCurrentTheme().surfaceColor)
+          .fontColor(getCurrentTheme().textColor)
+          .height(36)
+          .onClick(() => this.handleRealtimeRatioRefresh())
+          .margin({ right: 10 })
+        
+        Button('导出')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .backgroundColor(getCurrentTheme().primary)
+          .fontColor('#FFFFFF')
+          .height(36)
+          .onClick(() => this.handleExport())
+          .margin({ right: 10 })
+        
+        Button('打印')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .backgroundColor(getCurrentTheme().primary)
+          .fontColor('#FFFFFF')
+          .height(36)
+          .onClick(() => this.handlePrint())
+      }
+      .justifyContent(FlexAlign.End)
+      .alignItems(VerticalAlign.Center)
+    }
+    .width('100%')
+    .padding(16)
+    .backgroundColor(getCurrentTheme().surfaceColor)
+    .border({ width: 1, color: getCurrentTheme().borderColor })
+    .borderRadius(8)
+    .margin({ top: 12 })
+  }
+
+  /**
+   * 构建等级统计表的控制栏（包含更新单价按钮）
+   */
+  @Builder
+  buildControlBarForGradeTable() {
+    Row() {
+      // 左侧：子系统选择器
+      Row() {
+        Text('子系统:')
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(getCurrentTheme().textColor)
+          .margin({ right: 10 })
+
+        Select([{ value: 'ALL' }, { value: '1' }, { value: '2' }])
+          .value(this.getSelectedSubsystemValue())
+          .font({ size: 16 })
+          .onSelect((index: number, value: string) => {
+            this.selectedSubsystem = value
+          })
+      }
+      .justifyContent(FlexAlign.Start)
+      .alignItems(VerticalAlign.Center)
+      .layoutWeight(1)
+
+      // 右侧：按钮组
+      Row() {
+        Button('批次比例刷新')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .backgroundColor(getCurrentTheme().controlBg || getCurrentTheme().surfaceColor)
+          .fontColor(getCurrentTheme().textColor)
+          .height(36)
+          .onClick(() => this.handleBatchRatioRefresh())
+          .margin({ right: 10 })
+
+        Button('实时比例刷新')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .backgroundColor(getCurrentTheme().controlBg || getCurrentTheme().surfaceColor)
+          .fontColor(getCurrentTheme().textColor)
+          .height(36)
+          .onClick(() => this.handleRealtimeRatioRefresh())
+          .margin({ right: 10 })
+
+        Button('导出')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .backgroundColor(getCurrentTheme().primary)
+          .fontColor('#FFFFFF')
+          .height(36)
+          .onClick(() => this.handleExport())
+          .margin({ right: 10 })
+
+        Button('打印')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .backgroundColor(getCurrentTheme().primary)
+          .fontColor('#FFFFFF')
+          .height(36)
+          .onClick(() => this.handlePrint())
+          .margin({ right: 10 })
+
+        Button('更新单价')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .backgroundColor(getCurrentTheme().controlBg || getCurrentTheme().surfaceColor)
+          .fontColor(getCurrentTheme().textColor)
+          .height(36)
+          .onClick(() => this.handleUpdateUnitPrice())
+      }
+      .justifyContent(FlexAlign.End)
+      .alignItems(VerticalAlign.Center)
+    }
+    .width('100%')
+    .padding(16)
+    .backgroundColor(getCurrentTheme().surfaceColor)
+    .border({ width: 1, color: getCurrentTheme().borderColor })
+    .borderRadius(8)
+    .margin({ top: 12 })
+  }
+
+  /**
+   * 批次比例刷新
+   */
+  private handleBatchRatioRefresh(): void {
+    console.log('[RealtimeStatsDialog] 批次比例刷新')
+    // TODO: 从数据库获取批次数据并更新图表
+    // 这里可以触发图表数据刷新
+    this.contentRefreshKey++  // 触发内容刷新
+  }
+
+  /**
+   * 实时比例刷新
+   */
+  private handleRealtimeRatioRefresh(): void {
+    console.log('[RealtimeStatsDialog] 实时比例刷新')
+    // TODO: 从数据库获取实时数据并更新图表
+    // 这里可以触发图表数据刷新
+    this.contentRefreshKey++  // 触发内容刷新
+  }
+
+  /**
+   * 生成时间戳（格式：YYYY.MM.DD.HH.mm）
+   */
+  private generateTimestamp(): string {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const hour = String(now.getHours()).padStart(2, '0')
+    const minute = String(now.getMinutes()).padStart(2, '0')
+    return `${year}.${month}.${day}.${hour}.${minute}`
+  }
+
+  /**
+   * 导出统计数据
+   */
+  private async handleExport(): Promise<void> {
+    try {
+      console.log('[RealtimeStatsDialog] 开始导出统计数据')
+      
+      const context: common.UIAbilityContext | undefined = GlobalStore.context
+      if (!context) {
+        console.error('[RealtimeStatsDialog] 无法获取应用上下文')
+        return
+      }
+      
+      const filesDir: string = context.filesDir
+      const timestamp = this.generateTimestamp()
+      const fileName = `报告_${timestamp}.xlsx`
+      const filePath = `${filesDir}/${fileName}`
+      
+      // 生成CSV内容（当前标签页的统计数据）
+      const csvContent = this.generateExportData()
+      
+      if (!csvContent || csvContent.length === 0) {
+        console.error('[RealtimeStatsDialog] 导出数据为空')
+        return
+      }
+      
+      // 使用 UTF-8 编码并添加 BOM（Excel 需要 BOM 才能正确识别 UTF-8）
+      const textEncoder = new util.TextEncoder()
+      const utf8BOM = new Uint8Array([0xEF, 0xBB, 0xBF]) // UTF-8 BOM
+      const encodedContent = textEncoder.encode(csvContent)
+      
+      // 合并 BOM 和编码后的内容
+      const finalContent = new Uint8Array(utf8BOM.length + encodedContent.length)
+      finalContent.set(utf8BOM, 0)
+      finalContent.set(encodedContent, utf8BOM.length)
+      
+      // 转换为 ArrayBuffer
+      const arrayBuffer = finalContent.buffer.slice(0, finalContent.length)
+      
+      // 创建并写入文件
+      const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY)
+      fs.writeSync(file.fd, arrayBuffer)
+      fs.closeSync(file)
+      
+      console.log(`[RealtimeStatsDialog] 导出成功: ${filePath}`)
+      
+      // 保存到公共目录
+      await this.saveToPublicDirectory(filePath, fileName, csvContent)
+      
+    } catch (error) {
+      console.error('[RealtimeStatsDialog] 导出失败:', error)
+    }
+  }
+
+  /**
+   * 生成导出数据（CSV格式）
+   */
+  private generateExportData(): string {
+    const tabName = this.tabLabels[this.selectedTabIndex]
+    let csvContent = `实时统计 - ${tabName}\n`
+    csvContent += `导出时间,${new Date().toLocaleString('zh-CN')}\n`
+    csvContent += `子系统,${this.selectedSubsystem}\n\n`
+    
+    // 根据当前标签页生成不同的数据
+    if (tabName === '出口统计信息') {
+      csvContent += '出口编号,FSM1数量,FSM2数量\n'
+      // TODO: 从实际数据源获取出口统计数据
+      for (let i = 0; i < 20; i++) {
+        csvContent += `${i},0,0\n`
+      }
+    } else {
+      csvContent += '数据项,数值\n'
+      csvContent += '统计信息,待实现\n'
+  }
+
+    return csvContent
+  }
+
+  /**
+   * 保存到公共目录
+   */
+  private async saveToPublicDirectory(filePath: string, fileName: string, csvContent: string): Promise<void> {
+    try {
+      const context: common.UIAbilityContext | undefined = GlobalStore.context
+      if (!context) {
+        return
+      }
+      
+      // 尝试保存到多个可能的公共目录
+      const targetPaths = [
+        '/storage/emulated/0/Download/',
+        '/sdcard/Download/',
+        context.filesDir + '/'
+      ]
+      
+      const textEncoder = new util.TextEncoder()
+      const utf8BOM = new Uint8Array([0xEF, 0xBB, 0xBF])
+      const encodedContent = textEncoder.encode(csvContent)
+      const finalContent = new Uint8Array(utf8BOM.length + encodedContent.length)
+      finalContent.set(utf8BOM, 0)
+      finalContent.set(encodedContent, utf8BOM.length)
+      const buffer = finalContent.buffer.slice(0, finalContent.length)
+      
+      let successCount = 0
+      for (const targetPath of targetPaths) {
+        try {
+          const fullPath = `${targetPath}${fileName}`
+          fs.mkdirSync(targetPath, true)
+          const targetFile = fs.openSync(fullPath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY)
+          fs.writeSync(targetFile.fd, buffer)
+          fs.closeSync(targetFile)
+          successCount++
+          console.log(`[RealtimeStatsDialog] 成功保存到: ${fullPath}`)
+        } catch (error) {
+          console.warn(`[RealtimeStatsDialog] 保存到 ${targetPath} 失败:`, error)
+        }
+      }
+      
+      if (successCount > 0) {
+        console.log(`[RealtimeStatsDialog] 文件已保存到 ${successCount} 个位置`)
+      }
+    } catch (error) {
+      console.error('[RealtimeStatsDialog] 保存到公共目录失败:', error)
+    }
+  }
+
+  /**
+   * 打印统计数据
+   */
+  private async handlePrint(): Promise<void> {
+    try {
+      console.log('[RealtimeStatsDialog] 开始打印统计数据')
+      
+      const context: common.UIAbilityContext | undefined = GlobalStore.context
+      if (!context) {
+        console.error('[RealtimeStatsDialog] 无法获取应用上下文')
+        return
+      }
+      
+      // 先导出为文件，然后打印
+      const filesDir: string = context.filesDir
+      const timestamp = this.generateTimestamp()
+      const fileName = `报告_${timestamp}.xlsx`
+      const filePath = `${filesDir}/${fileName}`
+      
+      // 生成CSV内容
+      const csvContent = this.generateExportData()
+      
+      if (!csvContent || csvContent.length === 0) {
+        console.error('[RealtimeStatsDialog] 打印数据为空')
+        return
+      }
+      
+      // 使用 UTF-8 编码并添加 BOM
+      const textEncoder = new util.TextEncoder()
+      const utf8BOM = new Uint8Array([0xEF, 0xBB, 0xBF])
+      const encodedContent = textEncoder.encode(csvContent)
+      const finalContent = new Uint8Array(utf8BOM.length + encodedContent.length)
+      finalContent.set(utf8BOM, 0)
+      finalContent.set(encodedContent, utf8BOM.length)
+      const arrayBuffer = finalContent.buffer.slice(0, finalContent.length)
+      
+      // 创建并写入文件
+      const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY)
+      fs.writeSync(file.fd, arrayBuffer)
+      fs.closeSync(file)
+      
+      // 使用 PrintManager 打印文件
+      const printManager = PrintManager.getInstance()
+      const fileUri = `file://${filePath}`
+      await printManager.printSingleFile(context, fileUri)
+      
+      console.log(`[RealtimeStatsDialog] 打印成功: ${filePath}`)
+      
+    } catch (error) {
+      console.error('[RealtimeStatsDialog] 打印失败:', error)
+    }
+  }
+
+  /**
+   * 更新单价
+   */
+  private handleUpdateUnitPrice(): void {
+    console.log('[RealtimeStatsDialog] 更新单价')
+    // TODO: 实现更新单价的逻辑
+    // 这里可以打开一个对话框让用户输入新的单价，或者从数据库/API获取最新单价
   }
 
   build(): void {
     if (this.isVisible) {
       Stack() {
+        // 遮罩层
+        Column()
+          .width('100%')
+          .height('100%')
+          .backgroundColor('rgba(0, 0, 0, 0.5)')
+          .onClick(() => {
+            this.handleCancel()
+          })
+        
         // 内容卡片
         Column() {
           // 标题栏
@@ -155,7 +554,7 @@ export struct RealtimeStatsDialog {
             }
             .width(30)
             .height(30)
-            .backgroundColor(Color.Transparent)
+            .backgroundColor('#00000000')
             .onClick(() => this.handleCancel())
           }
           .width('100%')
@@ -199,106 +598,108 @@ export struct RealtimeStatsDialog {
           .width('100%')
           .padding(12)
           .backgroundColor(Color.Transparent)
-          .border({ width: 0, color: Color.Transparent })
+          .border({ width: 0, color: '#00000000' })
           .borderRadius(0)
           .margin({ top: 0, bottom: 8, left: 12, right: 12 })
 
           // 下方大卡片：占据剩余空间，依据所选按钮切换内容（仿主页 if/else 渲染）
           Column() {
             if (this.currentInnerPage === '出口统计信息') {
-               // 使用新的出口统计柱状图组件（2个数据系列，与FSM联动）
-              ExportStatisticsBarChart({
+              // 中间区域：水平条形图
+              ExportStatisticsHorizontalBarChart({
                 title: '出口统计信息',
-                chartHeight: 350
+                chartHeight: 500,
+                selectedSubsystem: this.selectedSubsystem
               })
+                .key(`export-chart-${this.selectedSubsystem}`)  // 使用key强制重新创建组件
                 .width('100%')
                 .layoutWeight(1)
               
               // 底部控制栏
-              Row() {
-                // 左侧：子系统下拉框
-                Row() {
-                  Text('子系统:')
-                    .fontSize(16)  // 从14增加到16
-                    .fontWeight(FontWeight.Medium)  // 加粗，更清晰
-                    .fontColor(getCurrentTheme().textColor)
-                    .margin({ right: 10 })
-                  
-                  Select([{ value: '1' }, { value: '2' }])
-                    .value(this.getSelectedSubsystemValue())
-                    .font({ size: 16 })  // 下拉框字体也调大
-                    .onSelect((index: number, value: string) => {
-                      // 切换FSM
-                      const newFSM = value === '1' ? 'FSM1' : 'FSM2'
-                      AppStorage.set(HOME_SELECTED_FSM, newFSM)
-                    })
-                }
+              this.buildControlBar()
+            } else if (this.currentInnerPage === '品质统计信息') {
+              // 中间区域：品质统计柱状图（个数和重量）
+              QualityStatisticsBarChart({
+                title: '品质统计信息',
+                chartHeight: 500,
+                selectedSubsystem: this.selectedSubsystem
+              })
+                .key(`quality-chart-${this.selectedSubsystem}`)
+                .width('100%')
                 .layoutWeight(1)
-                .justifyContent(FlexAlign.Start)
-                
-                // 右侧：按钮组
-                Row() {
-                  Button('批次比例刷新')
-                    .fontSize(14)  // 从12增加到14
-                    .fontWeight(FontWeight.Medium)  // 加粗
-                    .backgroundColor(getCurrentTheme().controlBg || getCurrentTheme().surfaceColor)
-                    .fontColor(getCurrentTheme().textColor)
-                    .height(36)  // 增加按钮高度
-                    .onClick(() => {
-                      console.log('批次比例刷新')
+              
+              // 底部控制栏
+              this.buildControlBar()
+            } else if (this.currentInnerPage === '外观品质统计信息') {
+              // 中间区域：外观品质统计柱状图（个数和重量）
+              AppearanceQualityStatisticsBarChart({
+                title: '外观品质统计信息',
+                chartHeight: 500,
+                selectedSubsystem: this.selectedSubsystem
+              })
+                .key(`appearance-quality-chart-${this.selectedSubsystem}`)
+                .width('100%')
+                .layoutWeight(1)
+              
+              // 底部控制栏
+              this.buildControlBar()
+            } else if (this.currentInnerPage === '内部品质统计信息') {
+              // 中间区域：内部品质统计柱状图（个数和重量）
+              InternalQualityStatisticsBarChart({
+                title: '内部品质统计信息',
+                chartHeight: 500,
+                selectedSubsystem: this.selectedSubsystem
+              })
+                .key(`internal-quality-chart-${this.selectedSubsystem}`)
+                .width('100%')
+                .layoutWeight(1)
+              
+              // 底部控制栏
+              this.buildControlBar()
+            } else if (this.currentInnerPage === '重量/尺寸统计信息') {
+              // 中间区域：重量/尺寸统计图表
+              WeightSizeStatisticsBarChart({
+                title: '重量/尺寸统计信息',
+                chartHeight: 500,
+                selectedSubsystem: this.selectedSubsystem
+              })
+                .key(`weight-size-chart-${this.selectedSubsystem}`)
+                .width('100%')
+                .layoutWeight(1)
+              
+              // 底部控制栏
+              this.buildControlBar()
+            } else if (this.currentInnerPage === '重量/尺寸统计表') {
+              // 重量/尺寸统计表内容
+              WeightSizeStatisticsTable({
+                selectedSubsystem: this.selectedSubsystem
                     })
-                    .margin({ right: 10 })
-                  
-                  Button('实时比例刷新')
-                    .fontSize(14)  // 从12增加到14
-                    .fontWeight(FontWeight.Medium)  // 加粗
-                    .backgroundColor(getCurrentTheme().controlBg || getCurrentTheme().surfaceColor)
-                    .fontColor(getCurrentTheme().textColor)
-                    .height(36)  // 增加按钮高度
-                    .onClick(() => {
-                      console.log('实时比例刷新')
-                    })
-                    .margin({ right: 10 })
-                  
-                  Button('导出')
-                    .fontSize(14)  // 从12增加到14
-                    .fontWeight(FontWeight.Medium)  // 加粗
-                    .backgroundColor(getCurrentTheme().primary)
-                    .fontColor(Color.White)
-                    .height(36)  // 增加按钮高度
-                    .onClick(() => {
-                      console.log('导出')
-                    })
-                    .margin({ right: 10 })
-                  
-                  Button('打印')
-                    .fontSize(14)  // 从12增加到14
-                    .fontWeight(FontWeight.Medium)  // 加粗
-                    .backgroundColor(getCurrentTheme().primary)
-                    .fontColor(Color.White)
-                    .height(36)  // 增加按钮高度
-                    .onClick(() => {
-                      console.log('打印')
-                    })
-                }
-                .justifyContent(FlexAlign.End)
-              }
+                .key(`weight-size-table-${this.selectedSubsystem}`)
+                .width('100%')
+                .layoutWeight(1)
+              
+              // 底部控制栏
+              this.buildControlBar()
+            } else if (this.currentInnerPage === '等级统计表') {
+              // 等级统计表内容
+              GradeStatisticsTable({
+                selectedSubsystem: this.selectedSubsystem
+              })
+                .key(`grade-statistics-table-${this.selectedSubsystem}`)
               .width('100%')
-              .height(56)  // 从50增加到56，给更大的空间
-              .padding({ left: 16, right: 16, top: 10, bottom: 10 })  // 增加内边距
-              .backgroundColor(getCurrentTheme().controlBg || '#808080')
-              .alignItems(VerticalAlign.Center)
+                .layoutWeight(1)
+              
+              // 底部控制栏（包含更新单价按钮）
+              this.buildControlBarForGradeTable()
             } else {
-              // 其他标签页内容已清空
-              Column() {
-                Text('')
-                  .fontSize(16)
-                  .fontColor(getCurrentTheme().subTextColor)
-              }
-              .width('100%')
-              .height('100%')
-              .justifyContent(FlexAlign.Center)
-              .alignItems(HorizontalAlign.Center)
+              // 时间效率图 - 不显示控制栏
+              TimeEfficiencyLineChart({
+                chartHeight: 500,
+                selectedSubsystem: this.selectedSubsystem
+              })
+                .key(`time-efficiency-${this.selectedSubsystem}`)
+                .width('100%')
+                .layoutWeight(1)
             }
           }
           .width('100%')
@@ -310,17 +711,18 @@ export struct RealtimeStatsDialog {
           .margin({ top: 0, bottom: 12, left: 8, right: 8 })
           .id(`rt-page-${this.currentInnerPage}-${this.contentRefreshKey}`)
         }
-        .width('80%')  // 调整宽度为80%
+        .width('90%')  // 调整宽度为95%，更大
         .padding({ left: 10, right: 10, top: 0, bottom: 12 })
-        .height('80%')
+        .height('95%')  // 固定高度90%，更大
         .backgroundColor(getCurrentTheme().surfaceColor)
         .borderRadius(12)
         .shadow({ radius: 20, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 4 })
+        .align(Alignment.Top)  // 顶部对齐，而不是居中
+        // .margin({ top: '5%' })  // 距离顶部5%，留出底部空间
       }
       .width('100%')
       .height('100%')
-      .backgroundColor('rgba(0, 0, 0, 0.5)')
-      .alignContent(Alignment.Center)
+      .zIndex(1000)  // 确保对话框在最上层
     }
   }
 
