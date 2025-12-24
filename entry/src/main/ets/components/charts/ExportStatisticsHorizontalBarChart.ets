@@ -208,7 +208,7 @@ export struct ExportStatisticsHorizontalBarChart {
     const baseY = this.canvasHeight - this.chartPadding.bottom  // 条形底部位置
     
     // 绘制条形（垂直方向：从底部向上延伸）
-    ctx.font = '14px sans-serif'  // 从12px增加到14px，让文字更大更清晰
+    ctx.font = '20px sans-serif'  // 增大条形数字字体
     ctx.textBaseline = 'bottom'
     ctx.textAlign = 'center'
     
@@ -297,7 +297,7 @@ export struct ExportStatisticsHorizontalBarChart {
     ctx.stroke()
     
     // 绘制X轴标签（出口编号0-20，在底部水平排列，对应每个条形的位置）
-    ctx.font = '14px sans-serif'  // 从12px增加到14px
+    ctx.font = '20px sans-serif'  // 增大X轴标签字体
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
     ctx.fillStyle = theme.textColor

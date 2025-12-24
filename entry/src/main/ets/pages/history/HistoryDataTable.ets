@@ -390,7 +390,7 @@ export struct HistoryDataTable {
                     .layoutWeight(6)
                     .height(20)
 
-                  Text((rowIdx !== undefined ? (rowIdx + 1) : 1).toString())
+                  Text(item.batchNo || '')
                     .fontSize(14)
                     .fontColor(this.getCurrentTheme().textColor)
                     .textAlign(TextAlign.Center)

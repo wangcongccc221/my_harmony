@@ -181,7 +181,7 @@ export struct QualityStatisticsBarChart {
     const barWidth = this.fixedBarWidth
     const baseY = this.canvasHeight - this.chartPadding.bottom
     
-    ctx.font = '14px sans-serif'
+    ctx.font = '20px sans-serif'  // 增大条形数字字体
     ctx.textBaseline = 'bottom'
     ctx.textAlign = 'center'
     
@@ -229,7 +229,7 @@ export struct QualityStatisticsBarChart {
     ctx.stroke()
     
     // 绘制X轴标签（品质等级，在底部水平排列）
-    ctx.font = '14px sans-serif'
+    ctx.font = '20px sans-serif'  // 增大X轴标签字体
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
     ctx.fillStyle = theme.textColor

@@ -42,6 +42,7 @@ interface ChartDataItem {
 @Component
 export struct RealtimeStatsDialog {
   @Prop isVisible: boolean = false
+  @Prop dialogTitle: string = '实时统计'  // 对话框标题，默认为"实时统计"
   // 为子图表提供主题，避免 @Consume 解析失败
   @Provide providedTheme: ExtendedOmniThemeStyle = getCurrentTheme()
 
@@ -235,18 +236,19 @@ export struct RealtimeStatsDialog {
           .fontWeight(FontWeight.Medium)
           .fontColor(getCurrentTheme().textColor)
           .margin({ right: 10 })
-
+        
         Select([{ value: 'ALL' }, { value: '1' }, { value: '2' }])
           .value(this.getSelectedSubsystemValue())
           .font({ size: 16 })
           .onSelect((index: number, value: string) => {
+            // 只更新本地状态，不影响全局FSM设置
             this.selectedSubsystem = value
           })
       }
       .justifyContent(FlexAlign.Start)
       .alignItems(VerticalAlign.Center)
       .layoutWeight(1)
-
+      
       // 右侧：按钮组
       Row() {
         Button('批次比例刷新')
@@ -257,7 +259,7 @@ export struct RealtimeStatsDialog {
           .height(36)
           .onClick(() => this.handleBatchRatioRefresh())
           .margin({ right: 10 })
-
+        
         Button('实时比例刷新')
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
@@ -266,7 +268,16 @@ export struct RealtimeStatsDialog {
           .height(36)
           .onClick(() => this.handleRealtimeRatioRefresh())
           .margin({ right: 10 })
-
+        
+        Button('更新单价')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .backgroundColor(getCurrentTheme().controlBg || getCurrentTheme().surfaceColor)
+          .fontColor(getCurrentTheme().textColor)
+          .height(36)
+          .onClick(() => this.handleUpdateUnitPrice())
+          .margin({ right: 10 })
+        
         Button('导出')
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
@@ -275,7 +286,7 @@ export struct RealtimeStatsDialog {
           .height(36)
           .onClick(() => this.handleExport())
           .margin({ right: 10 })
-
+        
         Button('打印')
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
@@ -283,15 +294,6 @@ export struct RealtimeStatsDialog {
           .fontColor('#FFFFFF')
           .height(36)
           .onClick(() => this.handlePrint())
-          .margin({ right: 10 })
-
-        Button('更新单价')
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-          .backgroundColor(getCurrentTheme().controlBg || getCurrentTheme().surfaceColor)
-          .fontColor(getCurrentTheme().textColor)
-          .height(36)
-          .onClick(() => this.handleUpdateUnitPrice())
       }
       .justifyContent(FlexAlign.End)
       .alignItems(VerticalAlign.Center)
@@ -410,8 +412,8 @@ export struct RealtimeStatsDialog {
     } else {
       csvContent += '数据项,数值\n'
       csvContent += '统计信息,待实现\n'
-  }
-
+    }
+    
     return csvContent
   }
 
@@ -541,7 +543,7 @@ export struct RealtimeStatsDialog {
         Column() {
           // 标题栏
           Row() {
-            Text('实时统计')
+            Text(this.dialogTitle)
               .fontSize(24)  // 标题字体调大到24px
               .fontWeight(FontWeight.Bold)
               .fontColor(getCurrentTheme().textColor)
@@ -608,7 +610,7 @@ export struct RealtimeStatsDialog {
               // 中间区域：水平条形图
               ExportStatisticsHorizontalBarChart({
                 title: '出口统计信息',
-                chartHeight: 500,
+                chartHeight: 650,
                 selectedSubsystem: this.selectedSubsystem
               })
                 .key(`export-chart-${this.selectedSubsystem}`)  // 使用key强制重新创建组件
@@ -621,7 +623,7 @@ export struct RealtimeStatsDialog {
               // 中间区域：品质统计柱状图（个数和重量）
               QualityStatisticsBarChart({
                 title: '品质统计信息',
-                chartHeight: 500,
+                chartHeight: 650,
                 selectedSubsystem: this.selectedSubsystem
               })
                 .key(`quality-chart-${this.selectedSubsystem}`)
@@ -673,7 +675,7 @@ export struct RealtimeStatsDialog {
               // 重量/尺寸统计表内容
               WeightSizeStatisticsTable({
                 selectedSubsystem: this.selectedSubsystem
-                    })
+              })
                 .key(`weight-size-table-${this.selectedSubsystem}`)
                 .width('100%')
                 .layoutWeight(1)
@@ -691,15 +693,37 @@ export struct RealtimeStatsDialog {
               
               // 底部控制栏（包含更新单价按钮）
               this.buildControlBarForGradeTable()
+            } else if (this.currentInnerPage === '时间效率图') {
+              // 时间效率图内容
+              Column() {
+                Text('时间效率图（分选效率 / 实时产量）')
+                  .fontSize(16)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(getCurrentTheme().textColor)
+                  .margin({ bottom: 8 })
+                TimeEfficiencyLineChart({
+                  chartHeight: 500,
+                  selectedSubsystem: this.selectedSubsystem
+                })
+                  .key(`time-efficiency-${this.selectedSubsystem}`)
+                  .width('100%')
+                  .layoutWeight(1)
+              }
+              .width('100%')
+              .height('100%')
+              .padding(12)
+              .backgroundColor(getCurrentTheme().surfaceColor)
             } else {
-              // 时间效率图 - 不显示控制栏
-              TimeEfficiencyLineChart({
-                chartHeight: 500,
-                selectedSubsystem: this.selectedSubsystem
-              })
-                .key(`time-efficiency-${this.selectedSubsystem}`)
-                .width('100%')
-                .layoutWeight(1)
+              // 默认占位
+              Column() {
+                Text('暂无内容')
+                  .fontSize(16)
+                  .fontColor(getCurrentTheme().textColor)
+              }
+              .width('100%')
+              .height('100%')
+              .justifyContent(FlexAlign.Center)
+              .alignItems(HorizontalAlign.Center)
             }
           }
           .width('100%')

@@ -6,7 +6,8 @@
     "@ibestservices/ibest-ui": "^2.1.7",
     "@mcui/mccharts": "^2.8.9",
     "@magicnumber/dispatch": "^1.0.0",
-    "@ohos/mpchart": "^3.0.26"
+    "@ohos/mpchart": "^3.0.26",
+    "@archermind/exceljs": "^1.0.0"
   },
   "devDependencies": {
     "@ohos/hypium": "1.0.21",

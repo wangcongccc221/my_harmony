@@ -26,10 +26,12 @@ import { HistoryTableData, HistoryTableManager, FilterParams } from './core/Hist
 import { DateErrorDialog } from '../../components/dialogs/DateErrorDialog'
 import { ExportSuccessDialog } from '../../components/dialogs/ExportSuccessDialog'
 import { ToastDialog } from '../../components/dialogs/ToastDialog'
+import { RealtimeStatsDialog } from '../../components/feedback/RealtimeStatsDialog'
 import fs from '@ohos.file.fs'
 import common from '@ohos.app.ability.common'
 import { util, buffer } from '@kit.ArkTS'
 import { InternalApiTester } from '../../utils/tests/InternalApiTester'
+import ExcelJS from '@archermind/exceljs'
 
 /**
  * 历史加工内容组件结构体
@@ -88,6 +90,8 @@ export struct HistoryContent {
   @State private toastType: 'success' | 'error' = 'success'
   /** 提示对话框消息 */
   @State private toastMessage: string = ''
+  /** 历史报告对话框显示状态 */
+  @State private showReportDialog: boolean = false
   
   // ==================== 表格数据状态 ====================
   @State private currentTableData: HistoryTableData[] = []
@@ -403,50 +407,51 @@ export struct HistoryContent {
   }
 
   /**
-   * 处理显示文件命名对话框
+   * 生成时间戳（格式：年.月.日.时.分）
    */
-  private handleShowFileNameDialog(exportType: string): void {
-    this.exportType = exportType
-    this.inputFileName = ''
-    this.showFileNameDialog = true
+  private generateTimestamp(): string {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const hour = String(now.getHours()).padStart(2, '0')
+    const minute = String(now.getMinutes()).padStart(2, '0')
+    return `${year}.${month}.${day}.${hour}.${minute}`
   }
 
   /**
-   * 处理文件命名对话框确认
+   * 处理显示文件命名对话框（已废弃，直接导出）
    */
-  private async handleFileNameConfirm(): Promise<void> {
-    if (!this.inputFileName.trim()) {
-      console.log('文件名不能为空')
-      return
-    }
-    
-    console.log('开始导出，文件名:', this.inputFileName)
-    console.log('导出类型:', this.exportType)
-    console.log('当前表格数据条数:', this.currentTableData.length)
-    console.log('选中数据条数:', this.selectedTableData.length)
-    
-    this.showFileNameDialog = false
-    
+  private handleShowFileNameDialog(exportType: string): void {
+    // 直接执行导出，不再显示对话框
+    this.exportType = exportType
+    this.performDirectExport(exportType)
+  }
+
+  /**
+   * 直接执行导出（不显示对话框）
+   */
+  private async performDirectExport(exportType: string): Promise<void> {
     try {
-      if (this.exportType === 'merge') {
+      // 根据导出类型生成文件名
+      const operationName = exportType === 'merge' ? '合并导出' : '批量导出'
+      const timestamp = this.generateTimestamp()
+      const fileName = `${operationName}${timestamp}`
+      
+      console.log('开始导出，文件名:', fileName)
+      console.log('导出类型:', exportType)
+      
+      if (exportType === 'merge') {
         console.log('执行合并导出')
-        await this.performMergeExport(this.inputFileName)
-      } else if (this.exportType === 'batch') {
+        await this.performMergeExport(fileName)
+      } else if (exportType === 'batch') {
         console.log('执行批量导出')
-        await this.performBatchExport(this.inputFileName)
+        await this.performBatchExport(fileName)
       }
     } catch (error) {
       console.error('导出失败:', error)
+      this.showToast('error', '导出失败，请重试')
     }
-  }
-
-  /**
-   * 处理文件命名对话框取消
-   */
-  private handleFileNameCancel(): void {
-    this.showFileNameDialog = false
-    this.inputFileName = ''
-    this.exportType = ''
   }
 
   /**
@@ -456,7 +461,8 @@ export struct HistoryContent {
     // 在 try 块外定义变量，确保 catch 块可以访问
     const context = getContext(this) as common.UIAbilityContext;
     const filesDir = context.filesDir;
-    const fileExtension = this.selectedFormat === 'excel' ? '.xlsx' : '.csv';
+    // 直接使用Excel格式
+    const fileExtension = '.xlsx';
     const finalFileName = fileName.endsWith(fileExtension) ? fileName : `${fileName}${fileExtension}`;
     const filePath = `${filesDir}/${finalFileName}`;
     
@@ -465,51 +471,28 @@ export struct HistoryContent {
       console.log('应用文件目录:', filesDir)
       console.log('目标文件路径:', filePath)
       
-      let fileContent: string;
-      if (this.selectedFormat === 'excel') {
-        // 对于Excel格式，我们先生成CSV内容，然后保存为.xlsx文件
-        // 注意：这里只是简单地将CSV内容保存为.xlsx扩展名，实际应用中需要真正的Excel格式
-        fileContent = this.generateHistoryCSVData();
-        console.log('Excel内容生成完成，长度:', fileContent.length)
+      // 直接使用ExcelJS生成Excel文件
+      const exportData = this.currentTableData.length > 0 ? this.currentTableData : [];
+      if (exportData.length === 0) {
+        console.log('没有数据，添加测试数据用于Excel导出');
+        // 添加测试数据
+        const testData: HistoryTableData[] = [
+          { id: 1, batchNo: 'B001', customerName: '客户A', farmName: '农场1', fruitName: '苹果', status: '已完成', startTime: '2024-01-15 08:30', endTime: '2024-01-15 12:45', weight: 15.5, count: 1000 },
+          { id: 2, batchNo: 'B002', customerName: '客户B', farmName: '农场2', fruitName: '橙子', status: '已完成', startTime: '2024-01-15 14:20', endTime: '2024-01-15 18:30', weight: 12.3, count: 800 },
+          { id: 3, batchNo: 'B003', customerName: '客户C', farmName: '农场3', fruitName: '香蕉', status: '已完成', startTime: '2024-01-16 09:15', endTime: '2024-01-16 13:30', weight: 8.7, count: 600 }
+        ];
+        await this.generateExcelFile(testData, filePath);
       } else {
-        fileContent = this.generateHistoryCSVData();
-        console.log('CSV内容生成完成，长度:', fileContent.length)
+        await this.generateExcelFile(exportData, filePath);
       }
-      
-      // 检查文件内容是否为空
-      if (!fileContent || fileContent.length === 0) {
-        console.error('文件内容为空，无法导出');
-        this.showToast('error', '导出失败：数据为空');
-        return;
-      }
-      
-      console.log('文件内容长度:', fileContent.length, '前100个字符:', fileContent.substring(0, 100));
-      
-      // 使用 UTF-8 编码并添加 BOM（Excel 需要 BOM 才能正确识别 UTF-8）
-      const textEncoder = new util.TextEncoder();
-      const utf8BOM = new Uint8Array([0xEF, 0xBB, 0xBF]); // UTF-8 BOM
-      const encodedContent = textEncoder.encode(fileContent);
-      
-      // 合并 BOM 和编码后的内容
-      const finalContent = new Uint8Array(utf8BOM.length + encodedContent.length);
-      finalContent.set(utf8BOM, 0);
-      finalContent.set(encodedContent, utf8BOM.length);
-      
-      // 转换为 ArrayBuffer（fs.writeSync 需要 ArrayBuffer）
-      // 创建一个新的 ArrayBuffer，只包含实际需要的字节，避免包含多余的缓冲区
-      const arrayBuffer = finalContent.buffer.slice(0, finalContent.length);
-      
-      // 创建并写入文件（使用 UTF-8 编码）
-      const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
-      fs.writeSync(file.fd, arrayBuffer);
-      fs.closeSync(file);
-      console.log(`合并导出${this.selectedFormat.toUpperCase()}文件创建成功:`, filePath, '文件大小:', finalContent.length, '字节');
+      console.log(`合并导出Excel文件创建成功:`, filePath);
       
       // 计算导出条数
       const exportCount = this.currentTableData.length > 0 ? this.currentTableData.length : 3;
       
       console.log('开始保存到公共目录...')
-      await this.saveToPublicDirectory(filePath, finalFileName, fileContent);
+      // Excel格式：直接复制文件到公共目录
+      await this.saveExcelToPublicDirectory(filePath, finalFileName);
       console.log('保存到公共目录完成')
       console.log('合并导出完成')
     } catch (error) {
@@ -524,60 +507,88 @@ export struct HistoryContent {
     // 在 try 块外定义变量，确保 catch 块可以访问
     const context = getContext(this) as common.UIAbilityContext;
     const filesDir = context.filesDir;
-    const fileExtension = this.selectedFormat === 'excel' ? '.xlsx' : '.csv';
+    // 直接使用Excel格式
+    const fileExtension = '.xlsx';
     const finalFileName = fileName.endsWith(fileExtension) ? fileName : `${fileName}${fileExtension}`;
     const filePath = `${filesDir}/${finalFileName}`;
     
     try {
       if (this.selectedTableData.length === 0) {
         console.log('没有选中任何数据')
+        this.showToast('error', '请先选择要导出的数据')
         return
       }
       
-      console.log(`准备导出 ${this.selectedTableData.length} 条选中的数据，格式:`, this.selectedFormat)
+      console.log(`准备导出 ${this.selectedTableData.length} 条选中的数据`)
 
-      let fileContent: string;
-      if (this.selectedFormat === 'excel') {
-        // 对于Excel格式，我们先生成CSV内容，然后保存为.xlsx文件
-        fileContent = this.generateBatchCSVData(this.selectedTableData);
-        console.log('Excel内容生成完成，长度:', fileContent.length)
-      } else {
-        fileContent = this.generateBatchCSVData(this.selectedTableData);
-        console.log('CSV内容生成完成，长度:', fileContent.length)
-      }
-      
-      // 检查文件内容是否为空
-      if (!fileContent || fileContent.length === 0) {
-        console.error('文件内容为空，无法导出');
-        this.showToast('error', '导出失败：数据为空');
-        return;
-      }
-      
-      console.log('文件内容长度:', fileContent.length, '前100个字符:', fileContent.substring(0, 100));
-      
-      // 使用 UTF-8 编码并添加 BOM（Excel 需要 BOM 才能正确识别 UTF-8）
-      const textEncoder = new util.TextEncoder();
-      const utf8BOM = new Uint8Array([0xEF, 0xBB, 0xBF]); // UTF-8 BOM
-      const encodedContent = textEncoder.encode(fileContent);
-      
-      // 合并 BOM 和编码后的内容
-      const finalContent = new Uint8Array(utf8BOM.length + encodedContent.length);
-      finalContent.set(utf8BOM, 0);
-      finalContent.set(encodedContent, utf8BOM.length);
-      
-      // 转换为 ArrayBuffer（fs.writeSync 需要 ArrayBuffer）
-      // 创建一个新的 ArrayBuffer，只包含实际需要的字节，避免包含多余的缓冲区
-      const arrayBuffer = finalContent.buffer.slice(0, finalContent.length);
-      
-      // 创建并写入文件（使用 UTF-8 编码）
-      const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
-      fs.writeSync(file.fd, arrayBuffer);
-      fs.closeSync(file);
-      console.log(`批量导出${this.selectedFormat.toUpperCase()}文件创建成功:`, filePath, '文件大小:', finalContent.length, '字节');
-      
-      await this.saveToPublicDirectory(filePath, finalFileName, fileContent);
+      // 直接使用ExcelJS生成Excel文件
+      await this.generateExcelFile(this.selectedTableData, filePath);
+      console.log(`批量导出Excel文件创建成功:`, filePath);
+      await this.saveExcelToPublicDirectory(filePath, finalFileName);
     } catch (error) {
       console.error('批量导出失败:', error);
+    }
+  }
+
+  /**
+   * 生成Excel文件（使用ExcelJS）
+   */
+  private async generateExcelFile(data: HistoryTableData[], filePath: string): Promise<void> {
+    try {
+      // 创建工作簿
+      const workbook = new ExcelJS.Workbook();
+      
+      // 添加工作表
+      const worksheet = workbook.addWorksheet('历史加工数据');
+      
+      // 设置列标题
+      worksheet.columns = [
+        { header: '序号', key: 'batchNo', width: 15 },
+        { header: '客户名称', key: 'customerName', width: 20 },
+        { header: '农场名称', key: 'farmName', width: 20 },
+        { header: '水果名称', key: 'fruitName', width: 15 },
+        { header: '加工状态', key: 'status', width: 15 },
+        { header: '开始时间', key: 'startTime', width: 20 },
+        { header: '完成时间', key: 'endTime', width: 20 },
+        { header: '批重量(吨)', key: 'weight', width: 15 },
+        { header: '批个数', key: 'count', width: 15 }
+      ];
+      
+      // 设置表头样式
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+      
+      // 添加数据行
+      data.forEach((item) => {
+        worksheet.addRow({
+          batchNo: item.batchNo || '',
+          customerName: item.customerName || '',
+          farmName: item.farmName || '',
+          fruitName: item.fruitName || '',
+          status: item.status || '',
+          startTime: item.startTime || '',
+          endTime: item.endTime || '',
+          weight: item.weight || 0,
+          count: item.count || 0
+        });
+      });
+      
+      // 生成Excel文件的二进制数据
+      const buffer = await workbook.xlsx.writeBuffer();
+      
+      // 将ArrayBuffer转换为Uint8Array
+      const uint8Array = new Uint8Array(buffer);
+      
+      // 写入文件
+      const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY | fs.OpenMode.TRUNC);
+      fs.writeSync(file.fd, uint8Array.buffer);
+      fs.closeSync(file);
+      
+      console.log('Excel文件生成成功:', filePath, '文件大小:', uint8Array.length, '字节');
+    } catch (error) {
+      console.error('生成Excel文件失败:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`生成Excel文件失败: ${errorMessage}`);
     }
   }
 
@@ -640,6 +651,77 @@ export struct HistoryContent {
     });
     
     return csvContent;
+  }
+
+  /**
+   * 保存Excel文件到公共目录
+   */
+  private async saveExcelToPublicDirectory(filePath: string, fileName: string): Promise<void> {
+    try {
+      console.log('saveExcelToPublicDirectory 开始执行，文件路径:', filePath, '文件名:', fileName)
+      const targetPaths = [
+        '/storage/media/100/local/files/Docs/Download/',
+        '/storage/emulated/0/Download/',
+        '/storage/emulated/0/Documents/',
+        '/sdcard/Download/',
+        '/sdcard/Documents/'
+      ];
+      
+      let successCount = 0;
+      let successPaths: string[] = [];
+      
+      // 读取Excel文件内容
+      const file = fs.openSync(filePath, fs.OpenMode.READ_ONLY);
+      const stat = fs.statSync(filePath);
+      const buffer = new ArrayBuffer(stat.size);
+      fs.readSync(file.fd, buffer);
+      fs.closeSync(file);
+      console.log('Excel文件内容读取完成，文件大小:', stat.size)
+      
+      // 尝试保存到每个路径
+      for (const targetPath of targetPaths) {
+        try {
+          const fullPath = `${targetPath}${fileName}`;
+          console.log(`尝试保存Excel文件到: ${fullPath}`)
+          
+          // 先尝试创建目录
+          try {
+            fs.mkdirSync(targetPath, true);
+            console.log(`目录创建成功: ${targetPath}`)
+          } catch (mkdirError) {
+            console.log(`目录可能已存在或创建失败: ${targetPath}`, mkdirError)
+          }
+          
+          const targetFile = fs.openSync(fullPath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
+          fs.writeSync(targetFile.fd, buffer);
+          fs.closeSync(targetFile);
+          successCount++;
+          successPaths.push(fullPath);
+          console.log(`Excel文件成功保存到: ${fullPath}`)
+        } catch (error) {
+          console.warn(`保存Excel文件到 ${targetPath} 失败:`, error)
+        }
+      }
+      
+      if (successCount > 0) {
+        console.log(`Excel文件已保存到 ${successCount} 个位置`)
+        // 触发导出成功回调
+        const exportCount = this.exportType === 'merge' ? 
+          (this.currentTableData.length > 0 ? this.currentTableData.length : 3) : 
+          this.selectedTableData.length;
+        console.log('触发导出成功对话框，导出条数:', exportCount);
+        this.handleExportSuccess(successPaths[0], exportCount);
+      } else {
+        console.log('公共目录保存失败，但沙箱文件已创建成功，仍然显示成功弹窗');
+        const exportCount = this.exportType === 'merge' ? 
+          (this.currentTableData.length > 0 ? this.currentTableData.length : 3) : 
+          this.selectedTableData.length;
+        console.log('使用沙箱文件路径触发导出成功对话框，导出条数:', exportCount);
+        this.handleExportSuccess(filePath, exportCount);
+      }
+    } catch (error) {
+      console.error('保存Excel文件到公共目录失败:', error);
+    }
   }
 
   /**
@@ -775,7 +857,7 @@ export struct HistoryContent {
             this.handleShowFileNameDialog('merge')
           },
           onReportClick: () => {
-            this.handleInternalApiReportTest()
+            this.handleShowReport()
           },
           onDeleteClick: () => {
             this.handleDelete()
@@ -903,15 +985,33 @@ export struct HistoryContent {
         })
       }
 
-      // ==================== 文件命名对话框 ====================
-      if (this.showFileNameDialog) {
-        this.buildFileNameDialog()
+      // ==================== 历史报告对话框 ====================
+      if (this.showReportDialog) {
+        RealtimeStatsDialog({
+          isVisible: this.showReportDialog,
+          dialogTitle: '实时统计',
+          onCancel: () => {
+            this.showReportDialog = false
+          }
+        })
       }
     }
   }
 
   /**
-   * 触发内部接口测试（点击“报告”按钮）
+   * 显示历史报告对话框（点击"报告"按钮）
+   */
+  private handleShowReport(): void {
+    if (this.selectedTableData.length === 0) {
+      this.showToast('error', '请先选择要查看报告的数据')
+      return
+    }
+    console.log('显示历史报告对话框，选中数据:', this.selectedTableData.length, '条')
+    this.showReportDialog = true
+  }
+
+  /**
+   * 触发内部接口测试（已废弃，保留用于兼容）
    */
   private async handleInternalApiReportTest(): Promise<void> {
     try {
@@ -925,199 +1025,6 @@ export struct HistoryContent {
     }
   }
 
-  /**
-   * 构建文件命名对话框
-   */
-  @Builder
-  buildFileNameDialog(): void {
-    Stack() {
-      // 背景遮罩
-      Column()
-        .width('100%')
-        .height('100%')
-        .backgroundColor('rgba(0, 0, 0, 0.6)')
-        .onClick(() => {
-          this.handleFileNameCancel()
-        })
-
-      // 对话框内容
-      Column() {
-        Column() {
-          // 标题区域
-          Row() {
-            Text('📁 导出文件')
-              .fontSize(24)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.getCurrentTheme().textColor)
-            
-            Blank()
-            
-            // 关闭按钮
-            Text('✕')
-              .fontSize(22)
-              .fontColor('#999')
-              .onClick(() => {
-                this.handleFileNameCancel()
-              })
-          }
-          .width('100%')
-          .margin({ bottom: 32 })
-
-          // 文件名输入区域
-          Column({ space: 12 }) {
-            Text('文件名')
-              .fontSize(18)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.getCurrentTheme().textColor)
-              .alignSelf(ItemAlign.Start)
-
-            TextInput({ 
-              placeholder: '请输入文件名（不需要输入扩展名）', 
-              text: this.inputFileName 
-            })
-              .onChange((value: string) => {
-                this.inputFileName = value
-              })
-              .width('100%')
-              .height(52)
-              .backgroundColor(this.getCurrentTheme().surfaceColor)
-              .borderRadius(16)
-              .padding({ left: 20, right: 20 })
-              .fontSize(16)
-              .border({ width: 2, color: this.inputFileName ? this.getCurrentTheme().primary : '#E0E0E0' })
-          }
-          .width('100%')
-          .margin({ bottom: 28 })
-
-          // 格式选择区域
-          Column({ space: 16 }) {
-            Text('文件格式')
-              .fontSize(18)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.getCurrentTheme().textColor)
-              .alignSelf(ItemAlign.Start)
-
-            Row({ space: 20 }) {
-              // CSV选项
-              Column({ space: 12 }) {
-                Row({ space: 12 }) {
-                  Radio({ value: 'csv', group: 'format' })
-                    .checked(this.selectedFormat === 'csv')
-                    .onChange((isChecked: boolean) => {
-                      if (isChecked) {
-                        this.selectedFormat = 'csv'
-                      }
-                    })
-                    .width(24)
-                    .height(24)
-                  
-                  Column({ space: 4 }) {
-                    Text('📊 CSV格式')
-                      .fontSize(18)
-                      .fontWeight(FontWeight.Medium)
-                      .fontColor(this.getCurrentTheme().textColor)
-                  }
-                  .alignItems(HorizontalAlign.Start)
-                }
-              }
-              .padding({ top: 16, bottom: 16, left: 20, right: 20 })
-              .backgroundColor(this.selectedFormat === 'csv' ? this.getCurrentTheme().primary + '15' : this.getCurrentTheme().surfaceColor)
-              .borderRadius(16)
-              .border({ 
-                width: this.selectedFormat === 'csv' ? 3 : 2, 
-                color: this.selectedFormat === 'csv' ? this.getCurrentTheme().primary : '#E0E0E0' 
-              })
-              .onClick(() => {
-                this.selectedFormat = 'csv'
-              })
-              .layoutWeight(1)
-
-              // Excel选项
-              Column({ space: 12 }) {
-                Row({ space: 12 }) {
-                  Radio({ value: 'excel', group: 'format' })
-                    .checked(this.selectedFormat === 'excel')
-                    .onChange((isChecked: boolean) => {
-                      if (isChecked) {
-                        this.selectedFormat = 'excel'
-                      }
-                    })
-                    .width(24)
-                    .height(24)
-                  
-                  Column({ space: 4 }) {
-                    Text('📈 Excel格式')
-                      .fontSize(18)
-                      .fontWeight(FontWeight.Medium)
-                      .fontColor(this.getCurrentTheme().textColor)
-                  }
-                  .alignItems(HorizontalAlign.Start)
-                }
-              }
-              .padding({ top: 16, bottom: 16, left: 20, right: 20 })
-              .backgroundColor(this.selectedFormat === 'excel' ? this.getCurrentTheme().primary + '15' : this.getCurrentTheme().surfaceColor)
-              .borderRadius(16)
-              .border({ 
-                width: this.selectedFormat === 'excel' ? 3 : 2, 
-                color: this.selectedFormat === 'excel' ? this.getCurrentTheme().primary : '#E0E0E0' 
-              })
-              .onClick(() => {
-                this.selectedFormat = 'excel'
-              })
-              .layoutWeight(1)
-            }
-          }
-          .width('100%')
-          .margin({ bottom: 36 })
-
-          // 按钮区域
-          Row({ space: 20 }) {
-            Button('取消')
-              .fontSize(18)
-              .fontWeight(FontWeight.Medium)
-              .fontColor('#666')
-              .backgroundColor('#F8F9FA')
-              .borderRadius(16)
-              .height(52)
-              .layoutWeight(1)
-              .onClick(() => {
-                this.handleFileNameCancel()
-              })
-
-            Button('确认导出')
-              .fontSize(18)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(Color.White)
-              .backgroundColor(this.getCurrentTheme().primary)
-              .borderRadius(16)
-              .height(52)
-              .layoutWeight(1)
-              .onClick(() => {
-                this.handleFileNameConfirm()
-              })
-          }
-          .width('100%')
-        }
-        .width('90%')
-        .constraintSize({ maxWidth: 480 })
-        .backgroundColor(this.getCurrentTheme().backgroundColor)
-        .borderRadius(24)
-        .padding({ top: 32, bottom: 32, left: 32, right: 32 })
-        .shadow({ 
-          radius: 32, 
-          color: 'rgba(0, 0, 0, 0.2)', 
-          offsetX: 0, 
-          offsetY: 12 
-        })
-      }
-      .width('100%')
-      .height('100%')
-      .justifyContent(FlexAlign.Center)
-      .alignItems(HorizontalAlign.Center)
-      .position({ x: 0, y: 0 })
-      .zIndex(999)
-    }
-  }
 
   /**
    * 组件即将消失时的生命周期方法

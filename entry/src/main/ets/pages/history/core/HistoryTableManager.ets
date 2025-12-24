@@ -1,60 +1,32 @@
-import { GetIBestORM } from '../../../database/orm';
 import { DateValidationUtils } from '../../../utils/helpers/DateValidationUtils'
-import { ProcessingHistory } from '../../../database/models/ProcessingHistory'
-import { ProcessingHistoryData } from '../../../database/types'
-import { DatabaseQueueManager } from '../../../utils/network/database';
-import GlobalStore from '../../../database/orm/model/GlobalStore';
-import { relationalStore } from '@kit.ArkData';
-import { taskpool } from '@kit.ArkTS';
-import { Context } from '@kit.AbilityKit';
+import { GetIBestORM } from '../../../database/orm';
+import { FruitInfo } from '../../../database/models/FruitInfo';
 
-/**
- * 在 TaskPool 中执行带过滤条件的计数查询
- */
-@Concurrent
-async function countFilteredRecords(ctx: Context, filters: FilterParams): Promise<number> {
-  const db = GetIBestORM();
-  const core = db.GetCore();
-  let sql = "SELECT COUNT(*) AS cnt FROM processing_history WHERE 1=1";
-  const parts: string[] = [];
-  const cn = filters.customerName && filters.customerName.trim().length > 0 ? filters.customerName.trim() : '';
-  const fn = filters.farmName && filters.farmName.trim().length > 0 ? filters.farmName.trim() : '';
-  const tn = filters.fruitName && filters.fruitName.trim().length > 0 ? filters.fruitName.trim() : '';
-  const st = filters.status ? String(filters.status) : '';
-  if (cn) parts.push(` AND customer_name='${cn.replace(/'/g, "''")}'`);
-  if (fn) parts.push(` AND farm_name='${fn.replace(/'/g, "''")}'`);
-  if (tn) parts.push(` AND fruit_name='${tn.replace(/'/g, "''")}'`);
-  if (st) parts.push(` AND status='${st.replace(/'/g, "''")}'`);
-  const sd = filters.startDate ? DateValidationUtils.extractDatePart(filters.startDate) : '';
-  const ed = filters.endDate ? DateValidationUtils.extractDatePart(filters.endDate) : '';
-  if (sd && DateValidationUtils.isValidDateFormat(sd)) {
-    parts.push(` AND start_time>='${sd}'`);
-  }
-  if (ed && DateValidationUtils.isValidDateFormat(ed)) {
-    parts.push(` AND end_time<='${ed} 23:59:59'`);
-  }
-  sql += parts.join('');
-  const rs = core!.querySqlSync(sql);
-  let total = 0;
-  if (rs.columnCount > 0 && rs.goToFirstRow()) {
-    const col = rs.columnNames[0];
-    total = rs.getDouble(rs.getColumnIndex(col)) as number;
-  }
-  rs.close();
-  return total;
-}
+// 注意：历史加工数据表对应水果信息表（tb_fruitinfo）
+// 字段映射关系：
+// - 序号：FBatchNo (f_batch_no)
+// - 客户名称：CustomerName (customer_name)
+// - 农场名称：FarmName (farm_name)
+// - 水果名称：FruitName (fruit_name)
+// - 加工状态：根据 StartedState 和 CompletedState 判断
+// - 开始时间：StartTime (start_time)
+// - 完成时间：EndTime (end_time)
+// - 批重量：BatchWeight (batch_weight)
+// - 批个数：BatchNumber (batch_number)
 
 // 表格数据接口定义
 export interface HistoryTableData {
-  id: number
-  customerName: string
-  farmName: string
-  fruitName: string
-  status: '已完成' | '进行中' | '待开始'
-  startTime: string
-  endTime: string
-  weight: number
-  count: number
+  id: number  // CustomerID (主键)
+  batchNo: string  // FBatchNo (批次号，不是序号)
+  customerName: string  // CustomerName
+  farmName: string  // FarmName
+  fruitName: string  // FruitName
+  status: '已完成' | '进行中' | '待开始'  // 根据 StartedState 和 CompletedState 判断
+  startTime: string  // StartTime
+  endTime: string  // EndTime
+  weight: number  // BatchWeight (批重量)
+  count: number  // BatchNumber (批个数)
+  // 注意：序号（serialNumber）是自增的，在表格显示时使用 rowIdx + 1，不需要存储
 }
 
 // 添加数据的接口
@@ -111,7 +83,7 @@ export interface FilterParams {
 
 /**
  * 历史表格数据管理器
- * 从数据库读取数据
+ * 从水果信息表（tb_fruitinfo）读取数据
  */
 export class HistoryTableManager {
   private static instance: HistoryTableManager
@@ -119,7 +91,50 @@ export class HistoryTableManager {
   private dataLoaded: boolean = false
 
   private constructor() {
-    // 不再初始化默认数据，改为从数据库加载
+    // 从数据库加载数据
+  }
+
+  /**
+   * 根据 StartedState 和 CompletedState 判断加工状态
+   */
+  private static determineStatus(startedState?: string, completedState?: string, startTime?: string): '已完成' | '进行中' | '待开始' {
+    // 如果 CompletedState 有值且表示已完成
+    if (completedState && (completedState === '已完成' || completedState === '完成' || completedState === '1' || completedState.toLowerCase() === 'completed')) {
+      return '已完成';
+    }
+    
+    // 如果 StartedState 有值或 StartTime 有值，但未完成 -> 进行中
+    if ((startedState && startedState.trim() !== '') || (startTime && startTime.trim() !== '')) {
+      return '进行中';
+    }
+    
+    // 否则 -> 待开始
+    return '待开始';
+  }
+
+  /**
+   * 将 FruitInfo 转换为 HistoryTableData
+   */
+  private static mapFruitInfoToHistoryData(fruitInfo: FruitInfo): HistoryTableData {
+    const id = fruitInfo.CustomerID || 0;
+    const status = HistoryTableManager.determineStatus(
+      fruitInfo.StartedState,
+      fruitInfo.CompletedState,
+      fruitInfo.StartTime
+    );
+    
+    return {
+      id: id,
+      batchNo: fruitInfo.FBatchNo || '',
+      customerName: fruitInfo.CustomerName || '',
+      farmName: fruitInfo.FarmName || '',
+      fruitName: fruitInfo.FruitName || '',
+      status: status,
+      startTime: fruitInfo.StartTime || '',
+      endTime: fruitInfo.EndTime || '',
+      weight: fruitInfo.BatchWeight || 0,
+      count: fruitInfo.BatchNumber || 0
+    };
   }
 
   public static getInstance(): HistoryTableManager {
@@ -130,184 +145,65 @@ export class HistoryTableManager {
   }
 
   /**
-   * 从数据库加载数据
+   * 从数据库加载数据（从水果信息表读取）
    */
   public async loadDataFromDatabase(): Promise<void> {
     try {
-      const data = await this.getPage(1, 50)
-      this.tableData = data
-      this.dataLoaded = true
+      const db = GetIBestORM();
+      if (!db) {
+        console.error('ORM 未初始化');
+        this.tableData = [];
+        this.dataLoaded = true;
+        return;
+      }
+
+      // 从水果信息表查询所有数据
+      const fruitInfoList = db.Session(FruitInfo).OrderByDesc('customer_i_d').Find(FruitInfo) as FruitInfo[];
+      
+      // 转换为历史表格数据
+      this.tableData = fruitInfoList.map(fruitInfo => HistoryTableManager.mapFruitInfoToHistoryData(fruitInfo));
+      this.dataLoaded = true;
     } catch (error) {
-      console.error('❌ 从数据库加载历史加工数据失败:', error)
-      this.tableData = []
-      this.dataLoaded = true
+      console.error('从数据库加载历史加工数据失败:', error);
+      this.tableData = [];
+      this.dataLoaded = true;
     }
   }
 
   /**
-   * 加载所有数据（用于重置功能）
-   * 使用查询 Dispatch 队列 + TaskPool，避免阻塞 UI
-   * 每次调用都会执行查询，不使用缓存
+   * 加载所有数据（从水果信息表读取）
    */
   public async loadAllData(): Promise<HistoryTableData[]> {
-    try {
-      const ctx = GlobalStore.context
-      if (!ctx) {
-        // 回退：未初始化 Context 时直接查询
-        const db = GetIBestORM()
-        const dbRecords = db.Table('processing_history').OrderByDesc('id').Find(ProcessingHistory) as ProcessingHistoryData[]
-        this.tableData = dbRecords.map(record => this.mapRecord(record))
-        this.dataLoaded = true
-        return this.tableData.slice()
-      }
-
-      // 使用 TaskPool 异步加载所有数据（每次都会查询数据库）
-      const dbRecords = await DatabaseQueueManager.queryAll(ctx)
-      
-      // 性能优化：使用预分配数组，减少数组扩容开销
-      const out: HistoryTableData[] = []
-      out.length = dbRecords.length // 预分配数组大小
-      
-      // 性能优化：内联 mapRecord 逻辑，减少函数调用开销
-      // 直接构建对象，避免函数调用和参数传递
-      for (let i = 0; i < dbRecords.length; i++) {
-        const record = dbRecords[i]
-        const recordId = record.ID || record.id || 0
-        out[i] = {
-          id: recordId,
-          customerName: record.CustomerName || '',
-          farmName: record.FarmName || '',
-          fruitName: record.FruitName || '',
-          status: (record.Status as '已完成' | '进行中' | '待开始') || '待开始',
-          startTime: record.StartTime || '',
-          endTime: record.EndTime || '',
-          weight: record.Weight || 0,
-          count: record.Quantity || 0
-        }
-      }
-      
-      this.tableData = out
-      this.dataLoaded = true
-      
-      return out.slice()
-    } catch (error) {
-      console.error('❌ 从数据库加载全部历史加工数据失败:', error)
-      const err = error instanceof Error ? error : new Error(String(error))
-      throw err
-    }
+    await this.loadDataFromDatabase();
+    return this.tableData.slice();
   }
 
 
   /**
-   * 添加数据（保存到数据库）
-   * 使用 Dispatch 队列管理，避免阻塞 UI 线程
+   * 添加数据（已禁用：历史加工数据来自水果信息表，不支持直接添加）
    */
   async addData(data: AddDataParams): Promise<void> {
-    try {
-      const ctx = GlobalStore.context;
-      if (!ctx) {
-        throw new Error('Context 未初始化');
-      }
-      
-      const values: relationalStore.ValuesBucket = {
-        customer_id: data.customerID ?? 0,
-        customer_name: data.customerName,
-        farm_name: data.farmName,
-        fruit_name: data.fruitName,
-        status: data.status,
-        start_time: data.startTime,
-        end_time: data.endTime,
-        weight: data.weight,
-        quantity: data.count,
-        order_id: data.orderID ?? 0,
-        channel_num: data.channelNum ?? 0,
-        export_sum: data.exportSum ?? 0,
-        quality_grade_sum: data.qualityGradeSum ?? 0,
-        weight_or_size_grade_sum: data.weightOrSizeGradeSum ?? 0
-      };
-      
-      // 只添加非 undefined 的可选字段
-      if (data.batchNo !== undefined) {
-        values['batch_no'] = data.batchNo;
-      }
-      if (data.programName !== undefined) {
-        values['program_name'] = data.programName;
-      }
-      if (data.completedState !== undefined) {
-        values['completed_state'] = data.completedState;
-      }
-      
-      await DatabaseQueueManager.insert(ctx, values);
-      await this.loadDataFromDatabase()
-    } catch (error) {
-      console.error('❌ 添加数据到数据库失败:', error)
-      const err = error as object
-      throw new Error(JSON.stringify(err))
-    }
+    // 注意：历史加工数据来自水果信息表，不支持通过此接口添加
+    // 如需添加数据，请使用 FruitInfoService
+    console.warn('历史加工数据来自水果信息表，不支持通过此接口添加');
   }
 
   /**
-   * 删除数据（从数据库删除）
-   * 使用 Dispatch 队列管理，避免阻塞 UI 线程
+   * 删除数据（已禁用：历史加工数据来自水果信息表，不支持直接删除）
    */
   async deleteData(id: number): Promise<void> {
-    try {
-      const ctx = GlobalStore.context;
-      if (!ctx) {
-        throw new Error('Context 未初始化');
-      }
-      
-      await DatabaseQueueManager.delete(ctx, id);
-      await this.loadDataFromDatabase()
-    } catch (error) {
-      console.error('❌ 从数据库删除数据失败:', error)
-      const err = error as object
-      throw new Error(JSON.stringify(err))
-    }
+    // 注意：历史加工数据来自水果信息表，不支持通过此接口删除
+    // 如需删除数据，请使用 FruitInfoService
+    console.warn('历史加工数据来自水果信息表，不支持通过此接口删除');
   }
 
   /**
-   * 更新数据（保存到数据库）
-   * 使用 Dispatch 队列管理，避免阻塞 UI 线程
+   * 更新数据（已禁用：历史加工数据来自水果信息表，不支持直接更新）
    */
   async updateData(id: number, newData: UpdateDataParams): Promise<void> {
-    try {
-      const currentData = this.tableData.find(item => item.id === id)
-      if (!currentData) {
-        throw new Error(`未找到要更新的数据，ID: ${id}`)
-      }
-      
-      const ctx = GlobalStore.context;
-      if (!ctx) {
-        throw new Error('Context 未初始化');
-      }
-      
-      const values: relationalStore.ValuesBucket = {};
-      if (newData.customerID !== undefined) values['customer_id'] = newData.customerID;
-      if (newData.customerName !== undefined) values['customer_name'] = newData.customerName;
-      if (newData.farmName !== undefined) values['farm_name'] = newData.farmName;
-      if (newData.fruitName !== undefined) values['fruit_name'] = newData.fruitName;
-      if (newData.status !== undefined) values['status'] = newData.status;
-      if (newData.startTime !== undefined) values['start_time'] = newData.startTime;
-      if (newData.endTime !== undefined) values['end_time'] = newData.endTime;
-      if (newData.weight !== undefined) values['weight'] = newData.weight;
-      if (newData.count !== undefined) values['quantity'] = newData.count;
-      if (newData.batchNo !== undefined) values['batch_no'] = newData.batchNo;
-      if (newData.orderID !== undefined) values['order_id'] = newData.orderID;
-      if (newData.programName !== undefined) values['program_name'] = newData.programName;
-      if (newData.channelNum !== undefined) values['channel_num'] = newData.channelNum;
-      if (newData.exportSum !== undefined) values['export_sum'] = newData.exportSum;
-      if (newData.qualityGradeSum !== undefined) values['quality_grade_sum'] = newData.qualityGradeSum;
-      if (newData.weightOrSizeGradeSum !== undefined) values['weight_or_size_grade_sum'] = newData.weightOrSizeGradeSum;
-      if (newData.completedState !== undefined) values['completed_state'] = newData.completedState;
-      
-      await DatabaseQueueManager.update(ctx, id, values);
-      await this.loadDataFromDatabase()
-    } catch (error) {
-      console.error('❌ 更新数据库数据失败:', error)
-      const err = error as object
-      throw new Error(JSON.stringify(err))
-    }
+    // 注意：历史加工数据来自水果信息表，不支持通过此接口更新
+    // 如需更新数据，请使用 FruitInfoService
+    console.warn('历史加工数据来自水果信息表，不支持通过此接口更新');
   }
 
   /**
@@ -315,16 +211,16 @@ export class HistoryTableManager {
    */
   async getData(): Promise<HistoryTableData[]> {
     if (!this.dataLoaded) {
-      await this.loadDataFromDatabase()
+      await this.loadDataFromDatabase();
     }
-    return this.tableData.slice()
+    return this.tableData.slice();
   }
   
   /**
    * 同步获取所有数据（不触发加载，返回当前缓存）
    */
   getDataSync(): HistoryTableData[] {
-    return this.tableData.slice()
+    return this.tableData.slice();
   }
 
   /**
@@ -340,6 +236,91 @@ export class HistoryTableManager {
   clearData(): void {
     this.tableData = []
     console.log('清空所有数据')
+  }
+
+  /**
+   * 从数据库查询数据（支持筛选条件）
+   */
+  public async queryFromDB(filters: FilterParams): Promise<HistoryTableData[]> {
+    try {
+      const db = GetIBestORM();
+      if (!db) {
+        console.error('ORM 未初始化');
+        return [];
+      }
+
+      console.log('开始查询，筛选条件:', JSON.stringify(filters));
+
+      // 先查询所有数据，看看数据库里有什么
+      const allData = db.Session(FruitInfo).Find(FruitInfo) as FruitInfo[];
+      console.log(`数据库中总共有 ${allData.length} 条数据`);
+      if (allData.length > 0) {
+        console.log('前3条数据的FruitName:', allData.slice(0, 3).map(item => item.FruitName));
+      }
+
+      // 开始构建查询
+      // 注意：每次调用 Session 会重置查询状态
+      const session = db.Session(FruitInfo);
+
+      // 1. 构建筛选条件
+      
+      // 客户名称（模糊查询）- 使用数据库字段名
+      if (filters.customerName && filters.customerName.trim() !== '') {
+        session.Like('customer_name', `%${filters.customerName.trim()}%`);
+        console.log(`添加客户名称筛选: ${filters.customerName.trim()}`);
+      }
+
+      // 农场名称（模糊查询）- 使用数据库字段名
+      if (filters.farmName && filters.farmName.trim() !== '') {
+        session.Like('farm_name', `%${filters.farmName.trim()}%`);
+        console.log(`添加农场名称筛选: ${filters.farmName.trim()}`);
+      }
+
+      // 水果名称（模糊查询）- 使用数据库字段名 fruit_name
+      if (filters.fruitName && filters.fruitName.trim() !== '') {
+        // 使用模糊查询，支持部分匹配
+        // 例如：查询"苹果"可以匹配"红富士苹果"、"苹果"等
+        const fruitNameValue = filters.fruitName.trim();
+        session.Like('fruit_name', `%${fruitNameValue}%`);
+        console.log(`添加水果名称筛选: ${fruitNameValue} (使用Like: %${fruitNameValue}%, 字段名: fruit_name)`);
+      }
+
+      // 日期范围查询
+      // 注意：ORM 的 Greater/Less 方法可能仅支持数字，这里使用 Between 处理字符串日期
+      let minDate = '1970-01-01';
+      let maxDate = '9999-12-31 23:59:59';
+
+      if (filters.startDate) {
+        minDate = filters.startDate;
+        console.log(`添加开始日期筛选: ${minDate}`);
+      }
+      
+      if (filters.endDate) {
+        // 确保包含当天
+        maxDate = filters.endDate + ' 23:59:59';
+        console.log(`添加结束日期筛选: ${maxDate}`);
+      }
+
+      if (filters.startDate || filters.endDate) {
+        session.Between('start_time', minDate, maxDate);
+      }
+
+      // 2. 执行查询
+      const fruitInfoList = session.OrderByDesc('customer_i_d').Find(FruitInfo) as FruitInfo[];
+      console.log(`查询结果: ${fruitInfoList.length} 条`);
+      if (fruitInfoList.length > 0) {
+        console.log('查询到的FruitName:', fruitInfoList.map(item => item.FruitName));
+      }
+
+      // 3. 转换为 HistoryTableData
+      const result = fruitInfoList.map(fruitInfo => HistoryTableManager.mapFruitInfoToHistoryData(fruitInfo));
+      
+      return result;
+
+    } catch (error) {
+      console.error('数据库查询失败:', error);
+      return [];
+    }
   }
 
   /**
@@ -466,26 +447,12 @@ export class HistoryTableManager {
   }
 
   /**
-   * 批量删除数据（根据ID数组）
-   * 使用 Dispatch 队列管理，避免阻塞 UI 线程
+   * 批量删除数据（已禁用：历史加工数据来自水果信息表，不支持直接删除）
    */
   async deleteBatchData(ids: number[]): Promise<void> {
-    try {
-      const ctx = GlobalStore.context;
-      if (!ctx) {
-        throw new Error('Context 未初始化');
-      }
-      
-      // 批量删除：使用串行队列，逐个删除
-      for (const id of ids) {
-        await DatabaseQueueManager.delete(ctx, id);
-      }
-      await this.loadDataFromDatabase()
-    } catch (error) {
-      console.error('❌ 批量删除数据失败:', error)
-      const err = error as object
-      throw new Error(JSON.stringify(err))
-    }
+    // 注意：历史加工数据来自水果信息表，不支持通过此接口删除
+    // 如需删除数据，请使用 FruitInfoService
+    console.warn('历史加工数据来自水果信息表，不支持通过此接口批量删除');
   }
 
 
@@ -507,9 +474,7 @@ export class HistoryTableManager {
    * 刷新数据（从数据库重新加载）
    */
   async refreshData(): Promise<void> {
-    const data = await this.getPage(1, 50)
-    this.tableData = data
-    this.dataLoaded = true
+    await this.loadDataFromDatabase();
   }
 
   /**
@@ -551,126 +516,52 @@ export class HistoryTableManager {
     return Array.from(names).sort()
   }
 
-  private mapRecord(record: ProcessingHistoryData): HistoryTableData {
-    const recordId = record.ID || record.id || 0
-    return {
-      id: recordId,
-      customerName: record.CustomerName || '',
-      farmName: record.FarmName || '',
-      fruitName: record.FruitName || '',
-      status: (record.Status as '已完成' | '进行中' | '待开始') || '待开始',
-      startTime: record.StartTime || '',
-      endTime: record.EndTime || '',
-      weight: record.Weight || 0,
-      count: record.Quantity || 0
-    }
-  }
-
   /**
-   * 获取分页数据
-   * 使用 Dispatch 队列管理，避免阻塞 UI 线程
+   * 获取分页数据（从内存数据分页）
    */
   public async getPage(page: number, size: number): Promise<HistoryTableData[]> {
-    const ctx = GlobalStore.context;
-    if (!ctx) {
-      // 如果没有 Context，回退到直接查询（兼容性）
-      const db = GetIBestORM();
-      const p = Math.max(1, page)
-      const s = Math.max(1, Math.min(200, size))
-      const offset = (p - 1) * s
-      const dbRecords = db.Table('processing_history').OrderByDesc('id').Limit(s).Offset(offset).Find(ProcessingHistory) as ProcessingHistoryData[]
-      const out: HistoryTableData[] = []
-      for (let i = 0; i < dbRecords.length; i++) {
-        out.push(this.mapRecord(dbRecords[i]))
-      }
-      return out
+    // 如果未加载，先加载数据
+    if (!this.dataLoaded) {
+      await this.loadDataFromDatabase();
     }
     
-    const p = Math.max(1, page)
-    const s = Math.max(1, Math.min(200, size))
-    const dbRecords = await DatabaseQueueManager.queryPage(ctx, p, s);
-    const out: HistoryTableData[] = []
-    for (let i = 0; i < dbRecords.length; i++) {
-      out.push(this.mapRecord(dbRecords[i]))
-    }
-    return out
+    const p = Math.max(1, page);
+    const s = Math.max(1, Math.min(200, size));
+    const start = (p - 1) * s;
+    const end = start + s;
+    
+    // 按 ID 降序排序（模拟数据库行为）
+    const sortedData = [...this.tableData].sort((a, b) => b.id - a.id);
+    
+    return sortedData.slice(start, end);
   }
 
   public async refreshDataPage(page: number, size: number, append: boolean = false): Promise<number> {
-    const data = await this.getPage(page, size)
+    const data = await this.getPage(page, size);
     if (append) {
-      this.tableData = this.tableData.concat(data)
+      // 追加模式：合并数据（去重）
+      const existingIds = new Set(this.tableData.map(item => item.id));
+      const newData = data.filter(item => !existingIds.has(item.id));
+      this.tableData = this.tableData.concat(newData);
     } else {
-      this.tableData = data
+      // 替换模式：重新加载所有数据
+      await this.loadDataFromDatabase();
     }
-    this.dataLoaded = true
-    return data.length
+    this.dataLoaded = true;
+    return data.length;
   }
 
   /**
-   * 优化后的计数方法：使用数据库查询而不是内存过滤
-   * 性能提升：从O(n)降低到O(1)，n为总记录数
-   * 使用 TaskPool 执行，避免阻塞 UI 线程
+   * 计数方法（从内存数据过滤计数）
    */
   public async countFilteredPaginated(filters: FilterParams, pageSize: number = 200): Promise<number> {
-    try {
-      const ctx = GlobalStore.context;
-      if (!ctx) {
-        // 如果没有 Context，回退到直接查询（兼容性）
-        const db = GetIBestORM();
-        const core = db.GetCore();
-        let sql = "SELECT COUNT(*) AS cnt FROM processing_history WHERE 1=1";
-        const parts: string[] = [];
-        const cn = filters.customerName && filters.customerName.trim().length > 0 ? filters.customerName.trim() : '';
-        const fn = filters.farmName && filters.farmName.trim().length > 0 ? filters.farmName.trim() : '';
-        const tn = filters.fruitName && filters.fruitName.trim().length > 0 ? filters.fruitName.trim() : '';
-        const st = filters.status ? String(filters.status) : '';
-        if (cn) parts.push(` AND customer_name='${cn.replace(/'/g, "''")}'`);
-        if (fn) parts.push(` AND farm_name='${fn.replace(/'/g, "''")}'`);
-        if (tn) parts.push(` AND fruit_name='${tn.replace(/'/g, "''")}'`);
-        if (st) parts.push(` AND status='${st.replace(/'/g, "''")}'`);
-        const sd = filters.startDate ? DateValidationUtils.extractDatePart(filters.startDate) : '';
-        const ed = filters.endDate ? DateValidationUtils.extractDatePart(filters.endDate) : '';
-        if (sd && DateValidationUtils.isValidDateFormat(sd)) {
-          parts.push(` AND start_time>='${sd}'`);
-        }
-        if (ed && DateValidationUtils.isValidDateFormat(ed)) {
-          parts.push(` AND end_time<='${ed} 23:59:59'`);
-        }
-        sql += parts.join('');
-        const rs = core!.querySqlSync(sql);
-        let total = 0;
-        if (rs.columnCount > 0 && rs.goToFirstRow()) {
-          const col = rs.columnNames[0];
-          total = rs.getDouble(rs.getColumnIndex(col)) as number;
-        }
-        rs.close();
-        return total;
-      }
-      
-      // 使用 TaskPool 执行查询
-      const countTask = new taskpool.Task(countFilteredRecords, ctx, filters);
-      const result = await taskpool.execute(countTask);
-      return result as number;
-    } catch (error) {
-      console.error('❌ 计数查询失败:', error);
-      // 降级到原来的方法
-      let total = 0
-      let page = 1
-      while (true) {
-        const data = await this.getPage(page, pageSize)
-        if (data.length === 0) {
-          break
-        }
-        const filtered = HistoryTableManager.filterArray(data, filters)
-        total += filtered.length
-        if (data.length < pageSize) {
-          break
-        }
-        page++
-      }
-      return total
+    // 如果未加载，先加载数据
+    if (!this.dataLoaded) {
+      await this.loadDataFromDatabase();
     }
+    
+    const filtered = this.filterData(filters);
+    return filtered.length;
   }
 
   static filterArray(source: HistoryTableData[], filters: FilterParams): HistoryTableData[] {
