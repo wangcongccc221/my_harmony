@@ -8,7 +8,6 @@ import { ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../../utils/theme/ThemeUtils'
 import { t, I18N_VERSION_KEY } from '../../../utils/i18n/I18nManager'
 import { NumericInput } from '../../ui/inputs/NumericInput'
-import { FSMActionButtons } from '../../ui/dialogs/FSMActionButtons'
 
 @Component
 export struct ChannelExportPage {
@@ -237,15 +236,6 @@ export struct ChannelExportPage {
       .sectionStyle()
       .width('100%')
       .layoutWeight(1)
-
-      // ==================== 底部按钮栏 ====================
-      FSMActionButtons({
-        onCancel: () => {
-          if (this.onCancel) {
-            this.onCancel()
-          }
-        }
-      })
     }
     .width('100%')
     .height('100%')

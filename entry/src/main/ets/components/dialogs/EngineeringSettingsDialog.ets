@@ -9,6 +9,7 @@ import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { DialogButtons } from '../ui/dialogs/DialogButtons'
 import { DialogHeader } from '../ui/dialogs/DialogHeader'
+import { FSMActionButtons } from '../ui/dialogs/FSMActionButtons'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
 import { SystemStructurePage } from './pages/SystemStructurePage'
 import { ChannelRangePage } from './pages/ChannelRangePage'
@@ -45,6 +46,9 @@ export struct EngineeringSettingsDialog {
   // 对话框回调
   onConfirm?: () => void
   onCancel?: () => void
+  onFSMProgram?: () => void
+  onLoad?: () => void
+  onSaveAs?: () => void
 
   // 获取当前主题配置
   getCurrentTheme(): ExtendedOmniThemeStyle {
@@ -149,24 +153,29 @@ export struct EngineeringSettingsDialog {
           .layoutWeight(1)
           .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
 
-          // 底部按钮栏（使用DialogButtons组件）
-          if (this.selectedTab !== '系统结构设置' && this.selectedTab !== '通道出口设置' && this.selectedTab !== '重量设置') {
-            DialogButtons({
-              confirmText: t('确认', '确认'),
-              cancelText: t('取消', '取消'),
-              showCancel: true,
-              confirmDisabled: false,
-              onConfirm: () => {
-                this.handleConfirm()
-              },
-              onCancel: () => {
-                this.handleCancel()
+          // 底部按钮栏（使用FSMActionButtons组件，所有页面都显示）
+          FSMActionButtons({
+            onCancel: () => {
+              this.handleCancel()
+            },
+            onFSMProgram: () => {
+              if (this.onFSMProgram) {
+                this.onFSMProgram()
               }
-            })
-            .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
-            .width('100%')
-            .padding({ left: 12, right: 12, top: 10, bottom: 12 })
-          }
+            },
+            onLoad: () => {
+              if (this.onLoad) {
+                this.onLoad()
+              }
+            },
+            onSaveAs: () => {
+              if (this.onSaveAs) {
+                this.onSaveAs()
+              }
+            }
+          })
+          .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
+          .width('100%')
         }
         .width('85%')
         .height('90%')

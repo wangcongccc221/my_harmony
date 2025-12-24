@@ -373,40 +373,6 @@ export struct WeightSettingsPage {
         .layoutWeight(1)
       }
       .layoutWeight(1)
-
-      // ==================== 底部按钮栏 ====================
-      Row() {
-        Button('FSM烧写')
-          .backgroundColor('#228B22')
-          .fontSize(14)
-          .height(35)
-        
-        Blank()
-
-        Button('加载')
-          .backgroundColor('#228B22')
-          .fontSize(14)
-          .height(35)
-          .margin({ right: 10 })
-
-        Button('另存')
-          .backgroundColor('#228B22')
-          .fontSize(14)
-          .height(35)
-          .margin({ right: 10 })
-          
-        Button('取消')
-          .backgroundColor('#228B22')
-          .fontSize(14)
-          .height(35)
-          .onClick(() => {
-            if (this.onCancel) {
-              this.onCancel()
-            }
-          })
-      }
-      .width('100%')
-      .padding({ top: 10 })
     }
     .width('100%')
     .height('100%')

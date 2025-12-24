@@ -351,14 +351,6 @@ export struct SystemStructurePage {
       .layoutWeight(1) // 占用剩余空间
       .align(Alignment.TopStart)
 
-      // ==================== 底部按钮栏 (固定在底部) ====================
-      FSMActionButtons({
-        onCancel: () => {
-          if (this.onCancel) {
-            this.onCancel()
-          }
-        }
-      })
     }
     .width('100%')
     .height('100%')
