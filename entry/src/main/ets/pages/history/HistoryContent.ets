@@ -184,7 +184,7 @@ export struct HistoryContent {
       return
     }
 
-    // 日期仅在“同时填写开始与结束”时校验先后
+    // 日期仅在"同时填写开始与结束"时校验先后
     if (this.startDate && this.endDate) {
       const startDateObj = new Date(this.startDate)
       const endDateObj = new Date(this.endDate)
@@ -194,8 +194,6 @@ export struct HistoryContent {
       }
     }
     
-    let tDbStart = Date.now()
-    let tDbEnd = tDbStart
     const tableManager = HistoryTableManager.getInstance()
     const filterParams: FilterParams = {
       startDate: this.startDate || undefined,
@@ -204,23 +202,34 @@ export struct HistoryContent {
       farmName: this.farmName.trim() || undefined,
       fruitName: this.fruitName.trim() || undefined
     }
-    let totalCount = 0
+    
+    // 从数据库查询数据
+    let queryResult: HistoryTableData[] = []
     try {
-      totalCount = await tableManager.countFilteredPaginated(filterParams, 200)
-      tDbEnd = Date.now()
-    } catch (_) {
-      tDbEnd = Date.now()
+      console.log('开始从数据库查询数据，筛选条件:', filterParams)
+      queryResult = await tableManager.queryFromDB(filterParams)
+      console.log(`数据库查询完成，找到 ${queryResult.length} 条记录`)
+    } catch (error) {
+      console.error('数据库查询失败:', error)
+      this.showToast('error', '查询失败，请重试')
+      return
     }
-
-    // 应用筛选
-    const tFilterStart = Date.now()
-    const filteredCount = this.applyFilter()
-    const tFilterEnd = Date.now()
+    
+    // 将查询结果设置到筛选数据中
+    this.filteredTableData = [...queryResult] // 使用展开运算符创建新数组，确保响应式更新
+    this.currentTableData = [...queryResult]
+    this.isFiltered = true
+    
     const t1 = Date.now()
     const elapsedMs = t1 - t0
-    const dbMs = tDbEnd - tDbStart
-    const filterMs = tFilterEnd - tFilterStart
-    console.log(`查询了${totalCount}条数据，耗时${elapsedMs}毫秒（数据库${dbMs}毫秒，筛选${filterMs}毫秒）`)
+    console.log(`查询完成，找到 ${queryResult.length} 条记录，耗时${elapsedMs}毫秒`)
+    console.log(`筛选数据已更新，filteredTableData.length = ${this.filteredTableData.length}`)
+    console.log(`isFiltered = ${this.isFiltered}`)
+    
+    // 触发表格刷新 - 通过更新 key 值来触发表格组件重新创建
+    // 确保数据已经更新后再更新 key
+    this.tableRefreshKey = Math.abs(Date.now())
+    console.log(`表格刷新 key 已更新: ${this.tableRefreshKey}`)
     
     // 查询后清空左侧条件（客户/农场/水果）与日期输入
     this.customerName = ''
@@ -230,7 +239,9 @@ export struct HistoryContent {
     this.endDate = ''
     
     // 显示查询成功弹窗
-    this.showToast('success', `查询成功，共找到 ${totalCount} 条记录`)
+    const resultCount = queryResult.length
+    const message = resultCount === 1 ? '查询到一个数据' : `查询到 ${resultCount} 条数据`
+    this.showToast('success', message)
   }
 
   /**
@@ -902,8 +913,8 @@ export struct HistoryContent {
         // 使用条件渲染来强制刷新表格组件（当tableRefreshKey变化时重新创建组件）
         if (this.tableRefreshKey >= 0) {
           HistoryDataTable({
-            filteredData: this.isFiltered && this.filteredTableData.length > 0 ? this.filteredTableData : [],
-            externalData: !this.isFiltered && this.currentTableData.length > 0 ? this.currentTableData : [],
+            filteredData: this.isFiltered ? this.filteredTableData : [],
+            externalData: !this.isFiltered ? this.currentTableData : [],
             onRowClick: (rowData: HistoryTableData) => {
               console.log('点击行数据:', rowData)
             },

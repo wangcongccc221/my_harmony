@@ -74,14 +74,14 @@ export struct QualityControlPanel {
    * 功能说明：
    * - 存储当前选中的等级数量索引
    * - 用于控制面板显示和数据处理
-   * - 默认值为0（对应2个等级）
+   * - 默认值为0（对应0个等级）
    * 
    * 使用场景：
    * - 控制面板显示当前选择
    * - 数据处理时使用选中的等级数量
    * - 状态重置时恢复默认值
    */
-  @Prop levelCountIndex: number = 9
+  @Prop levelCountIndex: number = 0
   
   /**
    * 当前实际数据条数
@@ -363,6 +363,8 @@ export struct QualityControlPanel {
         Text(t('等级数量:', '等级数量:'))
           .fontSize(24)
           .fontColor(this.getCurrentTheme().textColor)
+          .height(48) // 设置与按钮相同的高度
+          .textAlign(TextAlign.Start)
           .margin({ right: 8 })
 
         // 等级数量选择器 - 使用key强制重新创建
@@ -380,6 +382,7 @@ export struct QualityControlPanel {
           .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
           .padding({ left: 8, right: 8, top: 4, bottom: 4 })
           .width('30%')
+          .height(48) // 设置与按钮相同的高度
           .margin({ right: 8 })
           .onSelect((index: number) => {
             if (this.onLevelCountChange) {
@@ -410,36 +413,39 @@ export struct QualityControlPanel {
             }
           })
 
-        // 自动设定按钮 - ThreeDButton样式
-        ThreeDButton({
-          text: '自动设定',
-          isSelected: false,
-          buttonWidth: 120,
-          buttonHeight: 48,
-          fontSize: 22,
-          onClickCallback: () => {
+        // 自动设定按钮
+        Button(t('自动设定', '自动设定'))
+          .type(ButtonType.Normal)
+          .fontSize(18)
+          .fontColor(Color.White)
+          .backgroundColor(this.getCurrentTheme().primary)
+          .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
+          .height(48)
+          .padding({ left: 16, right: 16 })
+          .margin({ right: 8 })
+          .onClick(() => {
             if (this.onAutoSet) {
               this.onAutoSet()
             }
-          }
-        })
-        .margin({ right: 6 })
+          })
 
-        // 设置参数按钮 - ThreeDButton样式
-        ThreeDButton({
-          text: '设置参数',
-          isSelected: false,
-          buttonWidth: 120,
-          buttonHeight: 48,
-          fontSize: 22,
-          onClickCallback: () => {
+        // 设置参数按钮
+        Button(t('设置参数', '设置参数'))
+          .type(ButtonType.Normal)
+          .fontSize(18)
+          .fontColor(Color.White)
+          .backgroundColor(this.getCurrentTheme().primary)
+          .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL)
+          .height(48)
+          .padding({ left: 16, right: 16 })
+          .onClick(() => {
             if (this.onSettingsClick) {
               this.onSettingsClick()
             }
-          }
-        })
+          })
       }
       .width('100%')
+      .alignItems(VerticalAlign.Center)
     }
     .width('100%')
       .height('6%')

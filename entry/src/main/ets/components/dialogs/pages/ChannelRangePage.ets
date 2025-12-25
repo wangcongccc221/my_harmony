@@ -150,10 +150,10 @@ export struct ChannelRangePage {
         Row() {
           // 左侧：摄像机内容占位卡片
           Column() {
-            Text('摄像机预览区域')
-              .fontSize(16)
-              .fontColor('#FFFFFF')
-              .opacity(0.5)
+            // Text('摄像机预览区域')
+            //   .fontSize(16)
+            //   .fontColor('#FFFFFF')
+            //   .opacity(0.5)
           }
           .width('40%')
           .height(420)
@@ -382,12 +382,12 @@ export struct ChannelRangePage {
                     this.defectCount = value
                   })
 
-                  // 参数行：体积
+
                   this.buildParameterRow('体积', this.volume, (value: string) => {
                     this.volume = value
                   })
 
-                  // 参数行：等级
+
                   this.buildParameterRow('等级', this.grade, (value: string) => {
                     this.grade = value
                   })
