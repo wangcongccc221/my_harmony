@@ -15,6 +15,16 @@ import { SaveProgramDialog } from '../components/dialogs/SaveProgramDialog'
 import { SortingStatusDialog } from '../components/dialogs/SortingStatusDialog'
 import { FloatingWindow } from '../components/ui/layout/FloatingWindow'
 import { EngineeringSettingsDialog } from '../components/dialogs/EngineeringSettingsDialog'
+import { ValveTestDialog } from '../components/dialogs/ValveTestDialog'
+import { MotorEnableDialog } from '../components/dialogs/MotorEnableDialog'
+import { ResetCupConfirmDialog } from '../components/dialogs/ResetCupConfirmDialog'
+import { TestCupDialog } from '../components/dialogs/TestCupDialog'
+import { DeviceInfoDialog } from '../components/dialogs/DeviceInfoDialog'
+import { ConfigInfoDialog } from '../components/dialogs/ConfigInfoDialog'
+import { AlarmInfoDialog } from '../components/dialogs/AlarmInfoDialog'
+import { ElectricalFaultDialog } from '../components/dialogs/ElectricalFaultDialog'
+import { SystemFaultDialog } from '../components/dialogs/SystemFaultDialog'
+import { LabelingSettingsDialog } from '../components/dialogs/LabelingSettingsDialog'
 import { getCurrentTheme as resolveTheme } from '../utils/theme/ThemeUtils'
 import { NavigationUtils } from '../utils/helpers/NavigationUtils'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../utils/theme/OmniThemeManager'
@@ -149,6 +159,36 @@ struct Page {
   
   // 工程设置对话框状态
   @State showEngineeringSettingsDialog: boolean = false
+  
+  // 电磁阀测试对话框状态
+  @State showValveTestDialog: boolean = false
+  
+  // 电机使能对话框状态
+  @State showMotorEnableDialog: boolean = false
+  
+  // 复位果杯确认对话框状态
+  @State showResetCupConfirmDialog: boolean = false
+  
+  // 测试果杯对话框状态
+  @State showTestCupDialog: boolean = false
+  
+  // 设备信息对话框状态
+  @State showDeviceInfoDialog: boolean = false
+  
+  // 配置信息对话框状态
+  @State showConfigInfoDialog: boolean = false
+  
+  // 报警信息对话框状态
+  @State showAlarmInfoDialog: boolean = false
+  
+  // 电器故障设置对话框状态
+  @State showElectricalFaultDialog: boolean = false
+  
+  // 系统故障设置对话框状态
+  @State showSystemFaultDialog: boolean = false
+  
+  // 贴标设置对话框状态
+  @State showLabelingSettingsDialog: boolean = false
   
   // 语言选择器状态
   @State showLanguageSelector: boolean = false
@@ -1561,6 +1601,26 @@ struct Page {
         this.showThemeSelector = true
       } else if (originalKey === '工程设置') {
         this.showEngineeringSettings()
+      } else if (originalKey === '电磁阀测试') {
+        this.showValveTestDialog = true
+      } else if (originalKey === '电机使能') {
+        this.showMotorEnableDialog = true
+      } else if (originalKey === '复位果杯') {
+        this.showResetCupConfirmDialog = true
+      } else if (originalKey === '测试果杯') {
+        this.showTestCupDialog = true
+      } else if (originalKey === '设备信息') {
+        this.showDeviceInfoDialog = true
+      } else if (originalKey === '配置设置') {
+        this.showConfigInfoDialog = true
+      } else if (originalKey === '故障信息') {
+        this.showAlarmInfoDialog = true
+      } else if (originalKey === '电器故障设置') {
+        this.showElectricalFaultDialog = true
+      } else if (originalKey === '系统故障设置') {
+        this.showSystemFaultDialog = true
+      } else if (originalKey === '贴标设置') {
+        this.showLabelingSettingsDialog = true
       } else if (originalKey === '出口清空') {
         console.log('执行出口清空操作...')
         this.handleExportClear()
@@ -2391,6 +2451,208 @@ struct Page {
         .height('100%')
         .position({ x: 0, y: 0 })
         .zIndex(3000) // 确保在最上层
+      }
+      
+      // 电磁阀测试对话框
+      if (this.showValveTestDialog) {
+        Stack() {
+          ValveTestDialog({
+            isVisible: this.showValveTestDialog,
+            onCancel: () => {
+              this.showValveTestDialog = false
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(2999) // 电磁阀测试对话框层级
+      }
+      
+      // 电机使能对话框
+      if (this.showMotorEnableDialog) {
+        Stack() {
+          MotorEnableDialog({
+            isVisible: this.showMotorEnableDialog,
+            onCancel: () => {
+              this.showMotorEnableDialog = false
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(2998) // 电机使能对话框层级
+      }
+      
+      // 复位果杯确认对话框
+      if (this.showResetCupConfirmDialog) {
+        Stack() {
+          ResetCupConfirmDialog({
+            isVisible: this.showResetCupConfirmDialog,
+            message: '果杯将复位,请确定分选机上无水果!',
+            onConfirm: () => {
+              console.log('确认复位果杯')
+              // TODO: 实现复位果杯逻辑
+              this.showResetCupConfirmDialog = false
+            },
+            onCancel: () => {
+              this.showResetCupConfirmDialog = false
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(2997) // 复位果杯确认对话框层级
+      }
+      
+      // 测试果杯对话框
+      if (this.showTestCupDialog) {
+        Stack() {
+          TestCupDialog({
+            isVisible: this.showTestCupDialog,
+            message: '请确认分选机上无任何水果!',
+            onConfirm: () => {
+              console.log('开始测试果杯')
+              // TODO: 实现测试果杯逻辑
+              this.showTestCupDialog = false
+            },
+            onCancel: () => {
+              this.showTestCupDialog = false
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(2996) // 测试果杯对话框层级
+      }
+      
+      // 设备信息对话框
+      if (this.showDeviceInfoDialog) {
+        Stack() {
+          DeviceInfoDialog({
+            isVisible: this.showDeviceInfoDialog,
+            onConfirm: () => {
+              console.log('确认设备信息')
+              // TODO: 实现保存设备信息逻辑
+              this.showDeviceInfoDialog = false
+            },
+            onCancel: () => {
+              this.showDeviceInfoDialog = false
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(2995) // 设备信息对话框层级
+      }
+      
+      // 配置信息对话框
+      if (this.showConfigInfoDialog) {
+        Stack() {
+          ConfigInfoDialog({
+            isVisible: this.showConfigInfoDialog,
+            onConfirm: () => {
+              console.log('确认配置信息')
+              this.showConfigInfoDialog = false
+            },
+            onCancel: () => {
+              this.showConfigInfoDialog = false
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(2994) // 配置信息对话框层级
+      }
+      
+      // 报警信息对话框
+      if (this.showAlarmInfoDialog) {
+        Stack() {
+          AlarmInfoDialog({
+            isVisible: this.showAlarmInfoDialog,
+            onCancel: () => {
+              this.showAlarmInfoDialog = false
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(2993) // 报警信息对话框层级
+      }
+      
+      // 电器故障设置对话框
+      if (this.showElectricalFaultDialog) {
+        Stack() {
+          ElectricalFaultDialog({
+            isVisible: this.showElectricalFaultDialog,
+            onCancel: () => {
+              this.showElectricalFaultDialog = false
+            },
+            onLoad: () => {
+              this.omniUIUtils.showInfo(t('正在导入电器故障配置...', '正在导入电器故障配置...'))
+              // TODO: 实现导入逻辑
+            },
+            onSave: () => {
+              this.omniUIUtils.showSuccess(t('电器故障配置已保存', '电器故障配置已保存'))
+              // TODO: 实现保存逻辑
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(2992) // 电器故障设置对话框层级
+      }
+      
+      // 系统故障设置对话框
+      if (this.showSystemFaultDialog) {
+        Stack() {
+          SystemFaultDialog({
+            isVisible: this.showSystemFaultDialog,
+            onCancel: () => {
+              this.showSystemFaultDialog = false
+            },
+            onLoad: () => {
+              this.omniUIUtils.showInfo(t('正在导入系统故障配置...', '正在导入系统故障配置...'))
+              // TODO: 实现导入逻辑
+            },
+            onSave: () => {
+              this.omniUIUtils.showSuccess(t('系统故障配置已保存', '系统故障配置已保存'))
+              // TODO: 实现保存逻辑
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(2991) // 系统故障设置对话框层级
+      }
+      
+      // 贴标设置对话框
+      if (this.showLabelingSettingsDialog) {
+        Stack() {
+          LabelingSettingsDialog({
+            isVisible: this.showLabelingSettingsDialog,
+            onConfirm: () => {
+              console.log('确认贴标设置')
+              // TODO: 实现保存贴标设置逻辑
+              this.showLabelingSettingsDialog = false
+            },
+            onCancel: () => {
+              this.showLabelingSettingsDialog = false
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(2990) // 贴标设置对话框层级
       }
       
       // 语言选择弹窗

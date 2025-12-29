@@ -11,6 +11,7 @@ import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../
 import { useOmniTheme } from '../../utils/theme/useOmniTheme'
 import { OmniUIUtils } from '../../utils/helpers/OmniUIUtils'
 import { EngineeringSettingsDialog } from '../../components/dialogs/EngineeringSettingsDialog'
+import { ElectricalFaultDialog } from '../../components/dialogs/ElectricalFaultDialog'
 import { I18nManager, t, I18N_VERSION_KEY, I18N_LANGUAGE_KEY } from '../../utils/i18n/I18nManager'
 import GlobalStore from '../../database/orm/model/GlobalStore'
 import { fileIo as fs } from '@kit.CoreFileKit'
@@ -45,6 +46,7 @@ export struct MoreContent {
   @State showThemeSelector: boolean = false
   @State selectedTheme: OmniThemeType = OmniThemeType.BLUE
   @State showEngineeringSettingsDialog: boolean = false
+  @State showElectricalFaultDialog: boolean = false
   @State showLanguageSelector: boolean = false
   @State currentLanguage: string = '中文'
   @State availableLanguages: string[] = []
@@ -68,7 +70,7 @@ export struct MoreContent {
     { icon: '👤', title: '用户设置', subtitle: '用户账户管理' },
     { icon: '⬇️', title: '下载配置', subtitle: '下载配置文件' },
     { icon: '⚠️', title: '故障信息', subtitle: '查看故障记录' },
-    { icon: '🔌', title: '电器故障设置', subtitle: '电器故障配置' },
+    { icon: '🔌', title: '电器故障设置', subtitle: '电器故障配置', onClick: () => this.showElectricalFaultSettings() },
     { icon: '🏷️', title: '贴标设置', subtitle: '标签打印设置' },
     { icon: '🛠️', title: '系统故障设置', subtitle: '系统故障配置' },
     { icon: '🔄', title: '复位掉果杯', subtitle: '重置掉果杯状态' }
@@ -113,6 +115,25 @@ export struct MoreContent {
   private handleEngineeringSettingsCancel(): void {
     this.omniUIUtils.showInfo(t('已取消工程设置', '已取消工程设置'))
     this.showEngineeringSettingsDialog = false
+  }
+
+  // 电器故障设置对话框处理
+  private showElectricalFaultSettings(): void {
+    this.showElectricalFaultDialog = true
+  }
+
+  private handleElectricalFaultLoad(): void {
+    this.omniUIUtils.showInfo(t('正在导入电器故障配置...', '正在导入电器故障配置...'))
+    // TODO: 实现导入逻辑
+  }
+
+  private handleElectricalFaultSave(): void {
+    this.omniUIUtils.showSuccess(t('电器故障配置已保存', '电器故障配置已保存'))
+    // TODO: 实现保存逻辑
+  }
+
+  private handleElectricalFaultCancel(): void {
+    this.showElectricalFaultDialog = false
   }
   //
 
@@ -435,6 +456,22 @@ export struct MoreContent {
           },
           onCancel: () => {
             this.handleEngineeringSettingsCancel()
+          }
+        })
+      }
+
+      // 电器故障设置对话框
+      if (this.showElectricalFaultDialog) {
+        ElectricalFaultDialog({
+          isVisible: this.showElectricalFaultDialog,
+          onCancel: () => {
+            this.handleElectricalFaultCancel()
+          },
+          onLoad: () => {
+            this.handleElectricalFaultLoad()
+          },
+          onSave: () => {
+            this.handleElectricalFaultSave()
           }
         })
       }

@@ -1,40 +1,3 @@
-/**
- * 品质页面数据表格组件
- * 
- * 功能说明：
- * - 显示品质等级数据表格
- * - 包含等级名称、颜色等级、糖度等级等列
- * - 支持滚动显示和主题适配
- * 
- * 主要特性：
- * - 表格显示：显示品质等级数据
- * - 表头固定：表头不滚动，内容可滚动
- * - 主题适配：支持明暗主题切换
- * - 响应式设计：适配不同屏幕尺寸
- * - 数据绑定：支持动态数据更新
- * 
- * 使用场景：
- * - 品质页面数据表格显示
- * - 品质等级数据展示
- * - 数据对比和分析
- * 
- * 组件结构：
- * - 表头区域：显示列标题（等级名称、颜色等级、糖度等级）
- * - 数据区域：显示具体的品质等级数据
- * - 滚动区域：支持垂直滚动查看更多数据
- * 
- * 数据格式：
- * - 等级名称：1-7等级编号
- * - 颜色等级：优秀、良好、一般、较差、差、极差、零价值
- * - 糖度等级：高糖度、中糖度、低糖度、极低糖度、无糖度、负糖度、零价值
- * 
- * 样式特性：
- * - 响应式设计：适配不同屏幕尺寸
- * - 主题适配：支持明暗主题
- * - 表格样式：统一的表格设计
- * - 滚动优化：流畅的滚动体验
- */
-
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
@@ -42,163 +5,24 @@ import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 import { QualityLevelData, CustomComponentConfig, CustomComponentType } from './QualityConstants'
 import { t } from '../../utils/i18n/I18nManager'
 
-/**
- * 品质页面数据表格组件
- * 
- * 功能说明：
- * - 显示品质等级数据表格
- * - 包含等级名称、颜色等级、糖度等级等列
- * - 支持滚动显示和主题适配
- * 
- * 属性说明：
- * - qualityLevels：品质等级数据数组
- * - onDataUpdate：数据更新回调函数
- * - onDataClick：数据点击回调函数
- * 
- * 主题支持：
- * - 支持明暗主题切换
- * - 自动适配主题颜色
- * - 响应主题变化
- */
 @Component
 export struct QualityDataTable {
-  // ==================== 属性定义 ====================
-  
-  /**
-   * 品质等级数据数组
-   * 
-   * 功能说明：
-   * - 存储要显示的品质等级数据
-   * - 用于数据表格显示
-   * - 支持动态更新
-   * 
-   * 数据结构：
-   * - 每个元素包含等级名称、颜色等级、糖度等级
-   * - 按照等级顺序排列
-   * - 支持2-6个等级的动态显示
-   * 
-   * 使用场景：
-   * - 数据表格显示数据
-   * - 数据更新和同步
-   * - 状态管理
-   */
   @Prop qualityLevels: QualityLevelData[] = []
-
-  // ==================== 事件回调 ====================
-  
-  /**
-   * 数据更新回调函数
-   * 
-   * 功能说明：
-   * - 处理数据更新的事件
-   * - 接收更新的数据和索引
-   * - 可选的回调函数
-   * 
-   * @param data 更新的数据
-   * @param index 数据索引
-   * 
-   * 使用场景：
-   * - 用户编辑数据时
-   * - 程序自动更新数据时
-   */
   onDataUpdate?: (data: QualityLevelData, index: number) => void
-
-  /**
-   * 数据点击回调函数
-   * 
-   * 功能说明：
-   * - 处理用户点击数据行的事件
-   * - 接收点击的数据和索引
-   * - 可选的回调函数
-   * 
-   * @param data 点击的数据
-   * @param index 数据索引
-   * 
-   * 使用场景：
-   * - 用户选择数据行时
-   * - 程序需要处理数据点击时
-   */
   onDataClick?: (data: QualityLevelData, index: number) => void
 
-  // ==================== 主题相关 ====================
-  
-  /**
-   * 当前主题样式
-   * 
-   * 功能说明：
-   * - 存储当前应用的主题样式
-   * - 用于组件样式适配
-   * - 自动响应主题变化
-   * 
-   * 使用场景：
-   * - 组件渲染时获取主题样式
-   * - 主题切换时自动更新
-   */
   @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
-
-  /**
-   * 当前主题类型
-   * 
-   * 功能说明：
-   * - 存储当前应用的主题类型
-   * - 用于主题类型判断
-   * - 自动响应主题变化
-   * 
-   * 使用场景：
-   * - 主题类型判断时
-   * - 主题切换时自动更新
-   */
   @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
 
-  /**
-   * 主题版本号
-   * 
-   * 功能说明：
-   * - 存储当前主题的版本号
-   * - 用于主题更新检测
-   * - 自动响应主题变化
-   * 
-   * 使用场景：
-   * - 主题更新检测时
-   * - 主题切换时自动更新
-   */
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
 
-  // 内部滚动控制：自动从顶部开始
   private lastCount: number = 0
-  // 受控输入：按行存储“等级名称”的输入值，确保仅数字与不跳动
   @State private levelNameInputs: string[] = []
 
-  // ==================== 方法定义 ====================
-  
-  /**
-   * 获取当前主题配置
-   * 
-   * 功能说明：
-   * - 获取当前应用的主题配置
-   * - 返回主题样式对象
-   * - 用于组件样式适配
-   * 
-   * @returns 当前主题样式对象
-   * 
-   * 使用场景：
-   * - 组件渲染时获取主题样式
-   * - 样式适配时调用
-   */
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return resolveTheme(this.consumedTheme)
   }
 
-  /**
-   * 构建表头
-   * 
-   * 功能说明：
-   * - 构建固定的表头UI
-   * - 包含等级名称、颜色等级、糖度等级三列
-   * - 支持主题适配
-   * 
-   * @returns 表头组件
-   */
   @Builder
   private buildTableHeader() {
     Row() {
@@ -324,25 +148,6 @@ export struct QualityDataTable {
     }
   }
 
-  /**
-   * 构建列表项
-   * 
-   * 功能说明：
-   * - 构建单个列表项的UI
-   * - 包含等级名称、颜色等级、糖度等级
-   * - 支持TextInput编辑、点击事件和样式适配
-   * - 支持颜色等级的自定义组件渲染
-   * 
-   * @param data 数据对象
-   * @param index 数据索引
-   * @returns 列表项组件
-   * 
-   * 使用场景：
-   * - List组件的数据项渲染
-   * - 数据点击处理
-   * - 样式适配
-   * - 自定义组件渲染
-   */
   @Builder
   private buildListItem(data: QualityLevelData, index: number) {
     Row() {
@@ -438,31 +243,6 @@ export struct QualityDataTable {
     })
   }
 
-  /**
-   * 构建组件UI
-   * 
-   * 功能说明：
-   * - 构建品质页面数据表格的UI结构
-   * - 使用List + ListItem实现高性能表格
-   * - 包含固定表头和可滚动数据区域
-   * - 支持滚动显示和主题适配
-   * 
-   * 组件结构：
-   * - 表头区域：显示列标题（等级名称、颜色等级、糖度等级）
-   * - 数据区域：使用List组件显示具体的品质等级数据
-   * - 滚动区域：List内置滚动，支持垂直滚动查看更多数据
-   * 
-   * 样式特性：
-   * - 响应式设计：适配不同屏幕尺寸
-   * - 主题适配：支持明暗主题
-   * - 表格样式：统一的表格设计
-   * - 滚动优化：List内置虚拟化，流畅的滚动体验
-   * 
-   * 事件处理：
-   * - 数据行点击：触发onDataClick事件
-   * - 数据更新：触发onDataUpdate事件
-   * - TextInput编辑：支持实时编辑和验证
-   */
   build() {
     Column() {
       // 固定表头

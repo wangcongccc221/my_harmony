@@ -497,7 +497,7 @@ export struct SystemStructurePage {
           })
         }
         
-        // 行2: 黄色方块 0
+        
         Row() {
           ForEach(this.getWorkbenchColumns(), (i: number) => {
              Row() {

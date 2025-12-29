@@ -56,7 +56,7 @@ export struct FruitInfoPage {
       // 第1列：密度
       Text(t('密度(kg/m³)', '密度(kg/m³)'))
         .layoutWeight(this.COL_WEIGHTS.density)
-        .textAlign(TextAlign.Center)
+          .textAlign(TextAlign.Center)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.resolveTheme().textColor)
         .height(40)
@@ -68,12 +68,12 @@ export struct FruitInfoPage {
           .layoutWeight(this.COL_WEIGHTS.subtype)
           .textAlign(TextAlign.Center)
           .fontWeight(FontWeight.Bold)
-          .fontColor(this.resolveTheme().textColor)
+            .fontColor(this.resolveTheme().textColor)
           .height(40)
           .border({ width: { right: index === 8 ? 0 : 1 }, color: this.resolveTheme().borderColor })
       })
-    }
-    .width('100%')
+        }
+        .width('100%')
     .height(45)
     .backgroundColor(this.resolveTheme().surfaceColor)
     .border({ width: { bottom: 1 }, color: this.resolveTheme().borderColor })
@@ -92,12 +92,12 @@ export struct FruitInfoPage {
           List() {
             ForEach(this.fruitList, (item: FruitInfoItem, index: number) => {
               ListItem() {
-                Row() {
+        Row() {
                   // 第0列：水果种类 (只读)
                   Text(item.typeName)
                     .layoutWeight(this.COL_WEIGHTS.type)
                     .textAlign(TextAlign.Center)
-                    .fontColor(this.resolveTheme().textColor)
+            .fontColor(this.resolveTheme().textColor)
                     .height(40)
                     .border({ width: { right: 1 }, color: this.resolveTheme().borderColor })
 
@@ -136,13 +136,13 @@ export struct FruitInfoPage {
                             })
                     )
                   })
-                }
-                .width('100%')
+        }
+        .width('100%')
                 .border({ width: { bottom: 1 }, color: this.resolveTheme().borderColor })
               }
             })
-          }
-          .width('100%')
+        }
+        .width('100%')
           .layoutWeight(1) // 占满剩余空间
         }
       }

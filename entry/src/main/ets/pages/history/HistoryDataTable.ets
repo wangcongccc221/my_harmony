@@ -322,11 +322,7 @@ export struct HistoryDataTable {
       }
       return
     }
-    // 注意：如果 filteredData 是空数组，可能是初始化时的默认值，不应该清空数据源
-    // 只有当明确处于筛选状态时（由父组件控制），才应该清空
-    // 这里不处理空数组的情况，让它继续执行下面的加载逻辑
-    // 否则加载分页数据（用于"重置"等场景）
-    // 添加防重复加载机制，避免循环触发
+    
     if (!this.isLoading) {
       this.isLoading = true
       const currentKey = Date.now()
