@@ -135,7 +135,7 @@ export struct ValveTestDialog {
         // 标题栏
         Row() {
           Text('电磁阀测试')
-            .fontSize(20) 
+            .fontSize(20)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getCurrentTheme().textColor)
             .layoutWeight(1)
@@ -157,7 +157,6 @@ export struct ValveTestDialog {
         .height(50)
         .padding({ left: 20, right: 12, top: 12, bottom: 12 })
         .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
-
         // 内容区域
         Scroll() {
           Column({ space: 20 }) {

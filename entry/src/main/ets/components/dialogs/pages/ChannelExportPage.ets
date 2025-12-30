@@ -83,15 +83,41 @@ export struct ChannelExportPage {
         Row() {
           Row() {
             Text('子系统选择:').fontSize(14).margin({ right: 10 })
-            Select([{ value: '子系统1' }, { value: '子系统2' }])
-              .selected(this.subsystem === '子系统1' ? 0 : 1)
-              .value(this.subsystem)
-              .font({ size: 14 })
-              .height(30)
-              .onSelect((index, value) => {
-                this.subsystem = value
-                // 子系统切换时，表格会自动根据新的出口数量更新
-              })
+            Row() {
+              Row() {
+                Radio({ value: '子系统1', group: 'subsystem' })
+                  .checked(this.subsystem === '子系统1')
+                  .width(14)
+                  .height(14)
+                  .onChange((isChecked: boolean) => {
+                    if (isChecked) {
+                      this.subsystem = '子系统1'
+                    }
+                  })
+                Text('子系统1')
+                  .fontSize(14)
+                  .margin({ left: 4 })
+              }
+              .alignItems(VerticalAlign.Center)
+              .margin({ right: 16 })
+              
+              Row() {
+                Radio({ value: '子系统2', group: 'subsystem' })
+                  .checked(this.subsystem === '子系统2')
+                  .width(14)
+                  .height(14)
+                  .onChange((isChecked: boolean) => {
+                    if (isChecked) {
+                      this.subsystem = '子系统2'
+                    }
+                  })
+                Text('子系统2')
+                  .fontSize(14)
+                  .margin({ left: 4 })
+              }
+              .alignItems(VerticalAlign.Center)
+            }
+            .alignItems(VerticalAlign.Center)
           }.margin({ right: 20 })
 
           Row() {
@@ -164,12 +190,41 @@ export struct ChannelExportPage {
         Row() {
           Row() {
             Text('通道选择:').fontSize(14).margin({ right: 10 })
-            Select([{ value: '通道 1' }, { value: '通道 2' }])
-              .selected(0)
-              .value(this.channelSelection)
-              .font({ size: 14 })
-              .height(30)
-              .onSelect((index, value) => this.channelSelection = value)
+            Row() {
+              Row() {
+                Radio({ value: '通道 1', group: 'channel' })
+                  .checked(this.channelSelection === '通道 1')
+                  .width(14)
+                  .height(14)
+                  .onChange((isChecked: boolean) => {
+                    if (isChecked) {
+                      this.channelSelection = '通道 1'
+                    }
+                  })
+                Text('通道 1')
+                  .fontSize(14)
+                  .margin({ left: 4 })
+              }
+              .alignItems(VerticalAlign.Center)
+              .margin({ right: 16 })
+              
+              Row() {
+                Radio({ value: '通道 2', group: 'channel' })
+                  .checked(this.channelSelection === '通道 2')
+                  .width(14)
+                  .height(14)
+                  .onChange((isChecked: boolean) => {
+                    if (isChecked) {
+                      this.channelSelection = '通道 2'
+                    }
+                  })
+                Text('通道 2')
+                  .fontSize(14)
+                  .margin({ left: 4 })
+              }
+              .alignItems(VerticalAlign.Center)
+            }
+            .alignItems(VerticalAlign.Center)
           }
 
           Blank()

@@ -342,7 +342,7 @@ export const DEFAULT_STATISTICS_DATA: DefaultStatisticsData = {
  * 属性说明：
  * - selectedFruit: 选中的水果类型
  * - outletThreshold: 出口阈值设置
- * - selectedStandards: 选中的分选标准数组
+ * - selectedStandards: 选中的分选标准（单选）
  * - selectedUnit: 选中的计算单位
  * - packingWeight1: 包装重量1设置
  * - packingWeight2: 包装重量2设置
@@ -353,8 +353,8 @@ export interface DefaultLevelSettings {
   selectedFruit: string
   /** 出口阈值设置 */
   outletThreshold: number
-  /** 选中的分选标准数组 */
-  selectedStandards: string[]
+  /** 选中的分选标准（单选） */
+  selectedStandards: string
   /** 选中的计算单位 */
   selectedUnit: string
   /** 包装重量1设置 */
@@ -376,7 +376,7 @@ export interface DefaultLevelSettings {
  * 默认值说明：
  * - selectedFruit: '苹果'（默认选择苹果）
  * - outletThreshold: 0（默认出口阈值为0）
- * - selectedStandards: []（默认未选择分选标准）
+ * - selectedStandards: ''（默认未选择分选标准）
  * - selectedUnit: 'gram'（默认选择克作为单位）
  * - packingWeight1: 0（默认包装重量1为0）
  * - packingWeight2: 0（默认包装重量2为0）
@@ -390,7 +390,7 @@ export interface DefaultLevelSettings {
 export const DEFAULT_LEVEL_SETTINGS: DefaultLevelSettings = {
   selectedFruit: '苹果',
   outletThreshold: 0,
-  selectedStandards: [],
+  selectedStandards: '',
   selectedUnit: 'gram',
   packingWeight1: 1500,
   packingWeight2: 1800,

@@ -117,13 +117,41 @@ export struct WeightSettingsPage {
               
               Row() {
                 Text('当前算法').fontSize(14).width(90)
-                Select([{ value: '算法 1' }, { value: '算法 2' }] as SelectOption[])
-                  .selected(0)
-                  .value(this.currentAlgo)
-                  .font({ size: 14 })
-                  .height(30)
-                  .width(100)
-                  .onSelect((index, value) => this.currentAlgo = value)
+                Row() {
+                  Row() {
+                    Radio({ value: '算法 1', group: 'algorithm' })
+                      .checked(this.currentAlgo === '算法 1')
+                      .width(14)
+                      .height(14)
+                      .onChange((isChecked: boolean) => {
+                        if (isChecked) {
+                          this.currentAlgo = '算法 1'
+                        }
+                      })
+                    Text('算法 1')
+                      .fontSize(14)
+                      .margin({ left: 4 })
+                  }
+                  .alignItems(VerticalAlign.Center)
+                  .margin({ right: 16 })
+                  
+                  Row() {
+                    Radio({ value: '算法 2', group: 'algorithm' })
+                      .checked(this.currentAlgo === '算法 2')
+                      .width(14)
+                      .height(14)
+                      .onChange((isChecked: boolean) => {
+                        if (isChecked) {
+                          this.currentAlgo = '算法 2'
+                        }
+                      })
+                    Text('算法 2')
+                      .fontSize(14)
+                      .margin({ left: 4 })
+                  }
+                  .alignItems(VerticalAlign.Center)
+                }
+                .alignItems(VerticalAlign.Center)
               }.width('100%')
 
               // 阈值设置
@@ -170,8 +198,8 @@ export struct WeightSettingsPage {
 
             // 右下：系统校准
             Column({ space: 10 }) {
-              this.buildSelectRow('系统', ['1', '2'], this.systemSelection, (v) => this.systemSelection = v)
-              this.buildSelectRow('通道', ['通道 1', '通道 2'], this.channelSelection, (v) => this.channelSelection = v)
+              this.buildRadioRow('系统', '1', '2', this.systemSelection, (v) => this.systemSelection = v)
+              this.buildRadioRow('通道', '通道 1', '通道 2', this.channelSelection, (v) => this.channelSelection = v)
               
               Row() {
                 Text('校正系数').fontSize(14).width(60)
@@ -390,17 +418,46 @@ export struct WeightSettingsPage {
     .margin({ bottom: 5 })
   }
 
-  // 辅助构建器：下拉选择行
-  @Builder buildSelectRow(label: string, options: string[], selectedValue: string, onSelect: (v: string) => void) {
+  // 辅助构建器：单选按钮行（用于2个选项）
+  @Builder buildRadioRow(label: string, option1: string, option2: string, selectedValue: string, onSelect: (v: string) => void) {
     Row() {
       Text(label).fontSize(14).width(60)
-      Select(options.map((o): SelectOption => ({ value: o })))
-        .selected(0)
-        .value(selectedValue)
-        .font({ size: 14 })
-        .height(30)
-        .layoutWeight(1)
-        .onSelect((index, value) => onSelect(value))
+      Row() {
+        Row() {
+          Radio({ value: option1, group: label })
+            .checked(selectedValue === option1)
+            .width(14)
+            .height(14)
+            .onChange((isChecked: boolean) => {
+              if (isChecked) {
+                onSelect(option1)
+              }
+            })
+          Text(option1)
+            .fontSize(14)
+            .margin({ left: 4 })
+        }
+        .alignItems(VerticalAlign.Center)
+        .margin({ right: 16 })
+        
+        Row() {
+          Radio({ value: option2, group: label })
+            .checked(selectedValue === option2)
+            .width(14)
+            .height(14)
+            .onChange((isChecked: boolean) => {
+              if (isChecked) {
+                onSelect(option2)
+              }
+            })
+          Text(option2)
+            .fontSize(14)
+            .margin({ left: 4 })
+        }
+        .alignItems(VerticalAlign.Center)
+      }
+      .alignItems(VerticalAlign.Center)
+      .layoutWeight(1)
     }
     .width('100%')
     .margin({ bottom: 5 })

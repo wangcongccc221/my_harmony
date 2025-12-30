@@ -172,12 +172,41 @@ export struct SystemStructurePage {
   
                 Row() {
                   Text('像素选择:').fontSize(14).width(70)
-                  Select([{ value: '130w' }, { value: '500w' }])
-                    .selected(0)
-                    .value(this.pixelSelection)
-                    .font({ size: 14 })
-                    .height(30)
-                    .onSelect((index, value) => this.pixelSelection = value)
+                  Row() {
+                    Row() {
+                      Radio({ value: '130w', group: 'pixel' })
+                        .checked(this.pixelSelection === '130w')
+                        .width(14)
+                        .height(14)
+                        .onChange((isChecked: boolean) => {
+                          if (isChecked) {
+                            this.pixelSelection = '130w'
+                          }
+                        })
+                      Text('130w')
+                        .fontSize(14)
+                        .margin({ left: 4 })
+                    }
+                    .alignItems(VerticalAlign.Center)
+                    .margin({ right: 16 })
+                    
+                    Row() {
+                      Radio({ value: '500w', group: 'pixel' })
+                        .checked(this.pixelSelection === '500w')
+                        .width(14)
+                        .height(14)
+                        .onChange((isChecked: boolean) => {
+                          if (isChecked) {
+                            this.pixelSelection = '500w'
+                          }
+                        })
+                      Text('500w')
+                        .fontSize(14)
+                        .margin({ left: 4 })
+                    }
+                    .alignItems(VerticalAlign.Center)
+                  }
+                  .alignItems(VerticalAlign.Center)
                 }.width('100%')
               }
               .sectionStyle()
@@ -257,20 +286,43 @@ export struct SystemStructurePage {
           Column({ space: 20 }) {
             Row() {
               Text('子系统个数').fontSize(14).margin({ right: 10 })
-              Select([{ value: '1' }, { value: '2' }])
-                .selected(0)
-                .value('1')
-                .height(30)
-                .onSelect((index, value) => {
-                  const newVal = parseInt(value)
-                  this.subsystemCount = newVal
-                  // 切换子系统时，重新加载对应的出口数量到临时变量
-                  if (newVal === 1) {
-                    this.tempExitCount = this.outletCountFSM1
-                  } else {
-                    this.tempExitCount = this.outletCountFSM2
-                  }
-                })
+              Row() {
+                Row() {
+                  Radio({ value: '1', group: 'subsystem' })
+                    .checked(this.subsystemCount === 1)
+                    .width(14)
+                    .height(14)
+                    .onChange((isChecked: boolean) => {
+                      if (isChecked) {
+                        this.subsystemCount = 1
+                        this.tempExitCount = this.outletCountFSM1
+                      }
+                    })
+                  Text('1')
+                    .fontSize(14)
+                    .margin({ left: 4 })
+                }
+                .alignItems(VerticalAlign.Center)
+                .margin({ right: 16 })
+                
+                Row() {
+                  Radio({ value: '2', group: 'subsystem' })
+                    .checked(this.subsystemCount === 2)
+                    .width(14)
+                    .height(14)
+                    .onChange((isChecked: boolean) => {
+                      if (isChecked) {
+                        this.subsystemCount = 2
+                        this.tempExitCount = this.outletCountFSM2
+                      }
+                    })
+                  Text('2')
+                    .fontSize(14)
+                    .margin({ left: 4 })
+                }
+                .alignItems(VerticalAlign.Center)
+              }
+              .alignItems(VerticalAlign.Center)
             }
             .width('100%')
             .alignItems(VerticalAlign.Center)
@@ -309,10 +361,41 @@ export struct SystemStructurePage {
                 
                 Row() {
                   Text('抽检出口').fontSize(14).margin({ right: 10 })
-                  Select([{ value: '0' }, { value: '1' }])
-                    .selected(0)
-                    .value(this.sampleExit.toString())
-                    .height(30)
+                  Row() {
+                    Row() {
+                      Radio({ value: '0', group: 'sampleExit' })
+                        .checked(this.sampleExit === 0)
+                        .width(14)
+                        .height(14)
+                        .onChange((isChecked: boolean) => {
+                          if (isChecked) {
+                            this.sampleExit = 0
+                          }
+                        })
+                      Text('0')
+                        .fontSize(14)
+                        .margin({ left: 4 })
+                    }
+                    .alignItems(VerticalAlign.Center)
+                    .margin({ right: 16 })
+                    
+                    Row() {
+                      Radio({ value: '1', group: 'sampleExit' })
+                        .checked(this.sampleExit === 1)
+                        .width(14)
+                        .height(14)
+                        .onChange((isChecked: boolean) => {
+                          if (isChecked) {
+                            this.sampleExit = 1
+                          }
+                        })
+                      Text('1')
+                        .fontSize(14)
+                        .margin({ left: 4 })
+                    }
+                    .alignItems(VerticalAlign.Center)
+                  }
+                  .alignItems(VerticalAlign.Center)
                 }
   
                 Button('立即生效')

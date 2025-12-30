@@ -230,15 +230,15 @@ export struct LevelContent {
    * - 更新状态管理器中的分选标准
    * - 触发事件处理器的分选标准变化事件
    * 
-   * @param standards 选中的分选标准数组
+   * @param standard 选中的分选标准字符串
    * 
    * 使用场景：
    * - 用户选择分选标准时
    * - 程序自动设置分选标准时
    */
-  private handleStandardsChange(standards: string[]): void {
-    this.stateManager.updateSelectedStandards(standards)
-    this.eventHandler.onSortingStandardChange(standards)
+  private handleStandardsChange(standard: string): void {
+    this.stateManager.updateSelectedStandards(standard)
+    this.eventHandler.onSortingStandardChange(standard)
   }
 
   /**
@@ -569,8 +569,8 @@ export struct LevelContent {
             onOutletThresholdChange: (threshold: number) => {                  // 出口阈值变化回调
               this.handleOutletThresholdChange(threshold)
             },
-            onStandardsChange: (standards: string[]) => {                      // 分选标准变化回调
-              this.handleStandardsChange(standards)
+            onStandardsChange: (standard: string) => {                      // 分选标准变化回调
+              this.handleStandardsChange(standard)
             },
             onUnitChange: (unit: string) => {                                  // 单位变化回调
               this.handleUnitChange(unit)

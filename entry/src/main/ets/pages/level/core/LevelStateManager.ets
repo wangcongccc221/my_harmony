@@ -92,11 +92,11 @@ export class LevelStateManager {
   outletThreshold: number = DEFAULT_LEVEL_SETTINGS.outletThreshold
   
   /**
-   * 选中的分拣标准（多选）
+   * 选中的分拣标准（单选）
    * 
    * 功能说明：
    * - 存储用户选择的分拣标准
-   * - 支持多选，存储为字符串数组
+   * - 支持单选，存储为字符串
    * - 默认值为DEFAULT_LEVEL_SETTINGS.selectedStandards
    * 
    * 使用场景：
@@ -104,7 +104,7 @@ export class LevelStateManager {
    * - 数据处理时使用选中的标准
    * - 状态重置时恢复默认值
    */
-  selectedStandards: string[] = DEFAULT_LEVEL_SETTINGS.selectedStandards
+  selectedStandards: string = DEFAULT_LEVEL_SETTINGS.selectedStandards
   
   /**
    * 选中的单位类型
@@ -285,18 +285,18 @@ export class LevelStateManager {
    * 
    * 功能说明：
    * - 更新用户选择的分拣标准
-   * - 支持多选标准
+   * - 支持单选标准
    * - 触发相关状态更新
    * 
-   * @param standards 分拣标准数组
+   * @param standard 分拣标准字符串
    * 
    * 使用场景：
    * - 用户选择分拣标准时
    * - 程序自动设置标准时
    * - 状态重置时恢复默认值
    */
-  updateSelectedStandards(standards: string[]): void {
-    this.selectedStandards = standards
+  updateSelectedStandards(standard: string): void {
+    this.selectedStandards = standard
   }
 
   /**

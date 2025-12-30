@@ -134,16 +134,43 @@ export struct ChannelRangePage {
             .fontSize(14)
             .fontColor(this.resolveTheme().textColor)
 
-          Select([
-            { value: 'Color Camera' },
-            { value: 'NIR Camera' }
-          ])
-            .value(this.cameraType)
-            .onSelect((index: number, value: string) => {
-              this.cameraType = value
-            })
-            .width(120)
-            .height(32)
+          Row() {
+            Row() {
+              Radio({ value: 'Color Camera', group: 'cameraType' })
+                .checked(this.cameraType === 'Color Camera')
+                .width(14)
+                .height(14)
+                .onChange((isChecked: boolean) => {
+                  if (isChecked) {
+                    this.cameraType = 'Color Camera'
+                  }
+                })
+              Text('Color Camera')
+                .fontSize(14)
+                .fontColor(this.resolveTheme().textColor)
+                .margin({ left: 4 })
+            }
+            .alignItems(VerticalAlign.Center)
+            .margin({ right: 16 })
+            
+            Row() {
+              Radio({ value: 'NIR Camera', group: 'cameraType' })
+                .checked(this.cameraType === 'NIR Camera')
+                .width(14)
+                .height(14)
+                .onChange((isChecked: boolean) => {
+                  if (isChecked) {
+                    this.cameraType = 'NIR Camera'
+                  }
+                })
+              Text('NIR Camera')
+                .fontSize(14)
+                .fontColor(this.resolveTheme().textColor)
+                .margin({ left: 4 })
+            }
+            .alignItems(VerticalAlign.Center)
+          }
+          .alignItems(VerticalAlign.Center)
 
           Text('相机位置:')
             .fontSize(14)

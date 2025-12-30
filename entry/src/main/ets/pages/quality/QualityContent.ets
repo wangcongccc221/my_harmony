@@ -41,6 +41,7 @@ import { QualityControlPanel } from './QualityControlPanel'
 import { QualityDataTable } from './QualityDataTable'
 import { QualityOutletDialog } from './QualityOutletDialog'
 import { QualityLevelData } from './QualityConstants'
+import { QualitySettingsDialog } from '../../components/dialogs/QualitySettingsDialog'
 import { DEFAULT_QUALITY_SETTINGS } from './QualityConstants'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 import { ThreeDButton } from '../../components/ui/buttons/ThreeDButton'
@@ -124,6 +125,8 @@ export struct QualityContent {
   @State private showFloatingButtons: boolean = true
   // 悬浮按钮悬停状态
   @State private isHovering: boolean = false
+  // 品质参数设置对话框显示状态
+  @State private showQualitySettingsDialog: boolean = false
 
   // 控制面板组件引用
   private controlPanelRef: QualityControlPanel | null = null
@@ -311,7 +314,8 @@ export struct QualityContent {
     // 触发事件处理
     this.eventHandler.onSettingsClick()
     
-    // 设置参数逻辑（待实现具体业务逻辑）
+    // 打开参数设置对话框
+    this.showQualitySettingsDialog = true
     hilog.info(DOMAIN, TAG, '品质页面：打开参数设置面板')
   }
 
@@ -574,6 +578,27 @@ export struct QualityContent {
             this.handleOutletCancel()
           }
         })
+      }
+
+      // 品质参数设置对话框
+      if (this.showQualitySettingsDialog) {
+        Stack() {
+          QualitySettingsDialog({
+            isVisible: this.showQualitySettingsDialog,
+            onConfirm: () => {
+              console.log('确认品质参数设置')
+              // TODO: 实现保存参数逻辑
+              this.showQualitySettingsDialog = false
+            },
+            onCancel: () => {
+              this.showQualitySettingsDialog = false
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(3000)
       }
     }
     .width('100%')

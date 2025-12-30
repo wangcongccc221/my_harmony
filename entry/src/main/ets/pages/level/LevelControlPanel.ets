@@ -75,7 +75,7 @@ interface SelectOption {
  * 属性说明：
  * - selectedFruit: 选中的水果类型，默认第一个水果
  * - outletThreshold: 出口阈值，默认0
- * - selectedStandards: 选中的分选标准数组，默认空数组
+ * - selectedStandards: 选中的分选标准（单选），默认空字符串
  * - selectedUnit: 选中的计算单位，默认第一个单位
  * - packingWeight1: 包装重量1，默认0
  * - packingWeight2: 包装重量2，默认0
@@ -118,14 +118,14 @@ export struct LevelControlPanel {
   @Prop outletThreshold: number = 0
   
   /**
-   * 选中的分选标准数组
+   * 选中的分选标准
    * 
    * 功能说明：
    * - 存储当前选中的分选标准
-   * - 默认值为空数组
-   * - 支持多选，包括尺寸、重量、直径、面积、体积等标准
+   * - 默认值为空字符串
+   * - 支持单选，包括尺寸、重量、直径、面积、体积等标准
    */
-  @Prop selectedStandards: string[] = []
+  @Prop selectedStandards: string = ''
   
   /**
    * 选中的计算单位
@@ -183,10 +183,10 @@ export struct LevelControlPanel {
    * 
    * 功能说明：
    * - 当用户选择分选标准时触发
-   * - 传递选中的标准数组给父组件
+   * - 传递选中的标准字符串给父组件
    * - 用于处理分选标准变化逻辑
    */
-  onStandardsChange?: (standards: string[]) => void
+  onStandardsChange?: (standard: string) => void
   
   /**
    * 单位变化回调函数
@@ -452,15 +452,17 @@ export struct LevelControlPanel {
           Column() {
             // 第一行：尺寸和重量
             Row() {
-              // 尺寸复选框
+              // 尺寸单选框
               Row() {
-                Checkbox({ name: '尺寸', group: 'standard' })
-                  .select(this.selectedStandards.includes('尺寸'))
+                Radio({ value: '尺寸', group: 'standard' })
+                  .checked(this.selectedStandards === '尺寸')
                   .width(14)
                   .height(14)
                   .margin({ right: 4 })
                   .onChange((isChecked: boolean) => {
-                    this.updateStandards('尺寸', isChecked)
+                    if (isChecked) {
+                      this.updateStandards('尺寸')
+                    }
                   })
 
                 Text(t('尺寸', '尺寸'))
@@ -470,15 +472,17 @@ export struct LevelControlPanel {
               .layoutWeight(1)
               .alignItems(VerticalAlign.Center)
 
-              // 重量复选框
+              // 重量单选框
               Row() {
-                Checkbox({ name: '重量', group: 'standard' })
-                  .select(this.selectedStandards.includes('重量'))
+                Radio({ value: '重量', group: 'standard' })
+                  .checked(this.selectedStandards === '重量')
                   .width(14)
                   .height(14)
                   .margin({ right: 4 })
                   .onChange((isChecked: boolean) => {
-                    this.updateStandards('重量', isChecked)
+                    if (isChecked) {
+                      this.updateStandards('重量')
+                    }
                   })
 
                 Text(t('重量', '重量'))
@@ -493,15 +497,17 @@ export struct LevelControlPanel {
 
             // 第二行：直径、面积、体积
             Row() {
-              // 直径复选框
+              // 直径单选框
               Row() {
-                Checkbox({ name: '直径', group: 'standard' })
-                  .select(this.selectedStandards.includes('直径'))
+                Radio({ value: '直径', group: 'standard' })
+                  .checked(this.selectedStandards === '直径')
                   .width(14)
                   .height(14)
                   .margin({ right: 4 })
                   .onChange((isChecked: boolean) => {
-                    this.updateStandards('直径', isChecked)
+                    if (isChecked) {
+                      this.updateStandards('直径')
+                    }
                   })
 
                 Text(t('直径', '直径'))
@@ -511,15 +517,17 @@ export struct LevelControlPanel {
               .layoutWeight(1)
               .alignItems(VerticalAlign.Center)
 
-              // 面积复选框
+              // 面积单选框
               Row() {
-                Checkbox({ name: '面积', group: 'standard' })
-                  .select(this.selectedStandards.includes('面积'))
+                Radio({ value: '面积', group: 'standard' })
+                  .checked(this.selectedStandards === '面积')
                   .width(14)
                   .height(14)
                   .margin({ right: 4 })
                   .onChange((isChecked: boolean) => {
-                    this.updateStandards('面积', isChecked)
+                    if (isChecked) {
+                      this.updateStandards('面积')
+                    }
                   })
 
                 Text(t('面积', '面积'))
@@ -529,15 +537,17 @@ export struct LevelControlPanel {
               .layoutWeight(1)
               .alignItems(VerticalAlign.Center)
 
-              // 体积复选框
+              // 体积单选框
               Row() {
-                Checkbox({ name: '体积', group: 'standard' })
-                  .select(this.selectedStandards.includes('体积'))
+                Radio({ value: '体积', group: 'standard' })
+                  .checked(this.selectedStandards === '体积')
                   .width(14)
                   .height(14)
                   .margin({ right: 4 })
                   .onChange((isChecked: boolean) => {
-                    this.updateStandards('体积', isChecked)
+                    if (isChecked) {
+                      this.updateStandards('体积')
+                    }
                   })
 
                 Text(t('体积', '体积'))
@@ -763,17 +773,9 @@ export struct LevelControlPanel {
     .justifyContent(FlexAlign.Start)
   }
 
-  private updateStandards(standard: string, isChecked: boolean): void {
-    let newStandards = [...this.selectedStandards]
-    if (isChecked) {
-      if (!newStandards.includes(standard)) {
-        newStandards.push(standard)
-      }
-    } else {
-      newStandards = newStandards.filter(s => s !== standard)
-    }
+  private updateStandards(standard: string): void {
     if (this.onStandardsChange) {
-      this.onStandardsChange(newStandards)
+      this.onStandardsChange(standard)
     }
   }
 }

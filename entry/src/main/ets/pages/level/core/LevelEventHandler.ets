@@ -30,7 +30,7 @@
  * eventHandler.onOutletThresholdChange(50)
  * 
  * // 处理分选标准变化事件
- * eventHandler.onSortingStandardChange(['尺寸', '重量'])
+ * eventHandler.onSortingStandardChange('尺寸')
  * ```
  * 
  * 扩展说明：
@@ -115,14 +115,14 @@ export class LevelEventHandler {
    * - 记录选中的分选标准
    * - 可以添加分选标准变化的具体逻辑
    * 
-   * @param standards 选中的分选标准数组
+   * @param standard 选中的分选标准字符串
    * 
    * 使用场景：
    * - 用户选择分选标准时
    * - 程序自动设置分选标准时
    */
-  onSortingStandardChange(standards: string[]): void {
-    console.log(`分选标准变化:`, standards)
+  onSortingStandardChange(standard: string): void {
+    console.log(`分选标准变化:`, standard)
     // 这里可以添加分选标准变化的具体逻辑
   }
 

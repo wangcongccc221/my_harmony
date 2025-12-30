@@ -25,6 +25,7 @@ import { AlarmInfoDialog } from '../components/dialogs/AlarmInfoDialog'
 import { ElectricalFaultDialog } from '../components/dialogs/ElectricalFaultDialog'
 import { SystemFaultDialog } from '../components/dialogs/SystemFaultDialog'
 import { LabelingSettingsDialog } from '../components/dialogs/LabelingSettingsDialog'
+import { ExitScreenSettingsDialog } from '../components/dialogs/ExitScreenSettingsDialog'
 import { getCurrentTheme as resolveTheme } from '../utils/theme/ThemeUtils'
 import { NavigationUtils } from '../utils/helpers/NavigationUtils'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../utils/theme/OmniThemeManager'
@@ -189,6 +190,9 @@ struct Page {
   
   // 贴标设置对话框状态
   @State showLabelingSettingsDialog: boolean = false
+  
+  // 出口屏设置对话框状态
+  @State showExitScreenSettingsDialog: boolean = false
   
   // 语言选择器状态
   @State showLanguageSelector: boolean = false
@@ -1624,6 +1628,8 @@ struct Page {
       } else if (originalKey === '出口清空') {
         console.log('执行出口清空操作...')
         this.handleExportClear()
+      } else if (originalKey === '出口屏设置') {
+        this.showExitScreenSettingsDialog = true
       } else if (originalKey === '语言') {
         this.openLanguageSelector()
       } else if (originalKey === '翻译管理') {
@@ -2653,6 +2659,27 @@ struct Page {
         .height('100%')
         .position({ x: 0, y: 0 })
         .zIndex(2990) // 贴标设置对话框层级
+      }
+      
+      // 出口屏设置对话框
+      if (this.showExitScreenSettingsDialog) {
+        Stack() {
+          ExitScreenSettingsDialog({
+            isVisible: this.showExitScreenSettingsDialog,
+            onConfirm: () => {
+              console.log('确认出口屏设置')
+              // TODO: 实现保存出口屏设置逻辑
+              this.showExitScreenSettingsDialog = false
+            },
+            onCancel: () => {
+              this.showExitScreenSettingsDialog = false
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(2989) // 出口屏设置对话框层级
       }
       
       // 语言选择弹窗
