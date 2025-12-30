@@ -157,7 +157,7 @@ export struct ExitScreenSettingsDialog {
                   .width(100)
 
                 TextInput({ text: this.screenOnTime })
-                  .width(150)
+                  .width(400)
                   .height(36)
                   .fontSize(16)
                   .fontColor(this.getCurrentTheme().textColor)
@@ -218,7 +218,7 @@ export struct ExitScreenSettingsDialog {
                   .width(100)
 
                 TextInput({ text: this.screenOffTime })
-                  .width(150)
+                  .width(400)
                   .height(36)
                   .fontSize(16)
                   .fontColor(this.getCurrentTheme().textColor)
