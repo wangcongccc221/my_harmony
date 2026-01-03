@@ -1,64 +1,29 @@
-/**
- * 卡片详情对话框组件
- * 
- * 功能说明：
- * - 显示液体卡片的详细信息
- * - 可复用的对话框组件
- * - 支持主题配置和样式定制
- * 
- * 使用方式：
- * ```typescript
- * CardDetailDialog({
- *   isVisible: this.showCardDialog,
- *   cardNumber: this.selectedCardNumber,
- *   cardData: this.selectedCardData,
- *   onConfirm: () => { this.handleConfirm() },
- *   onCancel: () => { this.handleCancel() }
- * })
- * ```
- */
-
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { DialogButtons } from '../ui/dialogs/DialogButtons'
 import { ThreeLayerCardData } from '../ThreeLayerCard/types'
 
 @Component
 export struct CardDetailDialog {
-  /**
-   * 对话框显示状态
-   */
+
   @Prop isVisible: boolean = false
   
-  /**
-   * 卡片编号（1-40）
-   */
+
   @Prop cardNumber: number = 1
-  
-  /**
-   * 卡片数据
-   */
+
   @Prop cardData: ThreeLayerCardData | null = null
   
-  /**
-   * 确认回调函数
-   */
+
   onConfirm?: () => void
   
-  /**
-   * 取消回调函数
-   */
+
   onCancel?: () => void
 
-  /**
-   * 获取当前主题配置
-   */
+
   private getCurrentTheme(): ExtendedOmniThemeStyle {
     return OmniThemeManager.getInstance().getCurrentTheme()
   }
 
-  /**
-   * 获取卡片数据数量
-   */
+
   private getDataCount(): number {
     if (!this.cardData || !this.cardData.thirdLayer.chartData) {
       return 0
@@ -66,9 +31,6 @@ export struct CardDetailDialog {
     return this.cardData.thirdLayer.chartData.length
   }
 
-  /**
-   * 获取卡片数据总和
-   */
   private getDataSum(): number {
     if (!this.cardData || !this.cardData.thirdLayer.chartData) {
       return 0
@@ -76,9 +38,7 @@ export struct CardDetailDialog {
     return this.cardData.thirdLayer.chartData.reduce((sum, val) => sum + val, 0)
   }
 
-  /**
-   * 获取卡片数据平均值
-   */
+
   private getDataAverage(): string {
     const count = this.getDataCount()
     if (count === 0) {
@@ -88,9 +48,7 @@ export struct CardDetailDialog {
     return avg.toFixed(2)
   }
 
-  /**
-   * 获取卡片数据最大值
-   */
+
   private getDataMax(): number {
     if (!this.cardData || !this.cardData.thirdLayer.chartData || this.cardData.thirdLayer.chartData.length === 0) {
       return 0
@@ -98,9 +56,6 @@ export struct CardDetailDialog {
     return Math.max(...this.cardData.thirdLayer.chartData)
   }
 
-  /**
-   * 获取卡片数据最小值
-   */
   private getDataMin(): number {
     if (!this.cardData || !this.cardData.thirdLayer.chartData || this.cardData.thirdLayer.chartData.length === 0) {
       return 0

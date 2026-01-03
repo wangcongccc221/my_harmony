@@ -280,6 +280,16 @@ export struct LevelDataTable {
    */
   @State private selectedRowIndex: number = -1
   @State private forceRefresh: number = 0 // 强制刷新UI
+  
+  /**
+   * 重量精度
+   * 
+   * 功能说明：
+   * - 存储重量精度的设置值
+   * - 用于控制重量显示的精度
+   * - 默认值为0
+   */
+  @State private weightPrecision: number = 0
 
   // ==================== Grid表格相关 ====================
   
@@ -1040,7 +1050,8 @@ export struct LevelDataTable {
               .border({ width: 1, color: this.getCurrentTheme().borderColor })
               .borderRadius(6)
               .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-              .width('40%')
+              .width(200)
+              .height(36) // 与重量精度输入框高度一致
               .onSelect((index: number) => {
                 this.levelCountIndex = index
                 this.initializeLevelData()
@@ -1082,9 +1093,89 @@ export struct LevelDataTable {
                   }
                 }
               })
+            
+            // 较小的间距，让两个控件靠近一点
+            Blank().width(40)
+            
+            // 重量精度标签
+            Text(t('重量精度:', '重量精度:'))
+              .fontSize(24)
+              .fontColor(this.getCurrentTheme().textColor)
+              .margin({ right: 8 })
+            
+            // 重量精度输入框（带上下按钮的数字输入框，样式与Select保持一致）
+            Row() {
+              // 输入框部分
+              TextInput({ text: this.weightPrecision.toString() })
+                .type(InputType.Number)
+                .fontSize(22)
+                .fontColor(this.getCurrentTheme().textColor)
+                .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+                .border({ width: { top: 1, bottom: 1, left: 1, right: 0 }, color: this.getCurrentTheme().borderColor })
+                .borderRadius({ topLeft: 6, bottomLeft: 6, topRight: 0, bottomRight: 0 })
+                .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+                .layoutWeight(1)
+                .height('100%')
+                .onChange((val: string) => {
+                  let num = parseInt(val)
+                  if (isNaN(num)) {
+                    num = 0
+                  }
+                  // 限制范围
+                  if (num < 0) num = 0
+                  if (num > 999) num = 999
+                  this.weightPrecision = num
+                })
+              
+              // 上下按钮区域
+              Column() {
+                // 上按钮
+                Button() {
+                  Text('▲')
+                    .fontSize(10)
+                    .fontColor(this.getCurrentTheme().textColor)
+                }
+                .type(ButtonType.Normal)
+                .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+                .width(24)
+                .height('50%')
+                .padding(0)
+                .border({ width: { top: 1, right: 1, bottom: 0, left: 0 }, color: this.getCurrentTheme().borderColor })
+                .borderRadius({ topRight: 6, bottomRight: 0 })
+                .onClick(() => {
+                  if (this.weightPrecision + 1 <= 999) {
+                    this.weightPrecision += 1
+                  }
+                })
+                
+                // 下按钮
+                Button() {
+                  Text('▼')
+                    .fontSize(10)
+                    .fontColor(this.getCurrentTheme().textColor)
+                }
+                .type(ButtonType.Normal)
+                .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+                .width(24)
+                .height('50%')
+                .padding(0)
+                .border({ width: { top: 1, right: 1, bottom: 1, left: 0 }, color: this.getCurrentTheme().borderColor })
+                .borderRadius({ topRight: 0, bottomRight: 6 })
+                .onClick(() => {
+                  if (this.weightPrecision - 1 >= 0) {
+                    this.weightPrecision -= 1
+                  }
+                })
+              }
+              .width(24)
+              .height('100%')
+            }
+            .width(200)
+            .height(36)
           }
           .width('100%')
           .justifyContent(FlexAlign.Start)
+          .alignItems(VerticalAlign.Center)
         }
         .width('100%')
         .padding(AppleDesignStyle.CARD_PADDING_SMALL) // 合理内边距

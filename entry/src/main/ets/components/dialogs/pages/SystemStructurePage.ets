@@ -295,7 +295,7 @@ export struct SystemStructurePage {
                     .onChange((isChecked: boolean) => {
                       if (isChecked) {
                         this.subsystemCount = 1
-                        this.tempExitCount = this.outletCountFSM1
+                    this.tempExitCount = this.outletCountFSM1
                       }
                     })
                   Text('1')
@@ -313,9 +313,9 @@ export struct SystemStructurePage {
                     .onChange((isChecked: boolean) => {
                       if (isChecked) {
                         this.subsystemCount = 2
-                        this.tempExitCount = this.outletCountFSM2
-                      }
-                    })
+                    this.tempExitCount = this.outletCountFSM2
+                  }
+                })
                   Text('2')
                     .fontSize(14)
                     .margin({ left: 4 })

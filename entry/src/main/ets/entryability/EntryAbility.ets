@@ -24,6 +24,7 @@ import { ProcessingTask } from '../database/models/ProcessingTask';
 import { AlarmInfo } from '../database/models/AlarmInfo';
 import { I18nManager } from '../utils/i18n/I18nManager';
 import { OutletCountStorage } from '../utils/storage/OutletCountStorage';
+import { NativeModule } from '../utils/native/NativeModule';
 // import { taskPoolExecuteInsert, taskPoolExecuteQuery, taskPoolExecuteUpdate, taskPoolExecuteDelete } from '../database/examples/taskpool'; // 文件已删除
 
 const DOMAIN = 0x0000;
@@ -37,6 +38,9 @@ export default class EntryAbility extends UIAbility {
     this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
 
+    // 测试Native C++调用
+    this.testNativeCpp();
+
     this.copyResourceFiles();
     this.initNetworkOptimizer();
     this.initHttpServer();
@@ -47,6 +51,40 @@ export default class EntryAbility extends UIAbility {
         : (e instanceof Error ? e.message : JSON.stringify(e));
       hilog.warn(DOMAIN, 'EntryAbility', `I18n 初始化失败: ${reason}`);
     });
+  }
+  
+  /**
+   * 测试Native C++调用
+   */
+  private testNativeCpp(): void {
+    try {
+      console.info('========== Native C++ 测试开始 ==========');
+      
+      // 测试1: 获取Hello字符串
+      const hello = NativeModule.getHelloString();
+      console.info('✅ getHelloString():', hello);
+      hilog.info(DOMAIN, 'NativeTest', 'getHelloString: %{public}s', hello);
+      
+      // 测试2: 计算两个数的和
+      const sum = NativeModule.addNumbers(10, 20);
+      console.info('✅ addNumbers(10, 20):', sum);
+      hilog.info(DOMAIN, 'NativeTest', 'addNumbers(10, 20): %{public}d', sum);
+      
+      // 测试3: 获取版本号
+      const version = NativeModule.getVersion();
+      console.info('✅ getVersion():', version);
+      hilog.info(DOMAIN, 'NativeTest', 'getVersion: %{public}s', version);
+      
+      // 测试4: 更多计算
+      const sum2 = NativeModule.addNumbers(100, 200);
+      console.info('✅ addNumbers(100, 200):', sum2);
+      hilog.info(DOMAIN, 'NativeTest', 'addNumbers(100, 200): %{public}d', sum2);
+      
+      console.info('========== Native C++ 测试完成 ==========');
+    } catch (error) {
+      console.error('❌ Native C++ 测试失败:', error);
+      hilog.error(DOMAIN, 'NativeTest', '测试失败: %{public}s', JSON.stringify(error));
+    }
   }
   
   private async initOutletCountStorage(): Promise<void> {

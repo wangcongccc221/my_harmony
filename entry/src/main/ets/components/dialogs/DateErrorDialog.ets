@@ -1,9 +1,3 @@
-/**
- * 日期错误对话框组件
- * 功能：显示日期输入错误的提示对话框
- * 用途：当用户输入的结束时间早于开始时间时显示
- */
-
 import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { DialogButtons } from '../ui/dialogs/DialogButtons'

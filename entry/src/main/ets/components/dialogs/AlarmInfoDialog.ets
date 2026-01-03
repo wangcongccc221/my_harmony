@@ -1,8 +1,3 @@
-/**
- * 报警信息对话框组件
- * 功能：显示系统报警信息（仅UI，数据由外部提供）
- */
-
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'

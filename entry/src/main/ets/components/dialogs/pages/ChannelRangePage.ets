@@ -1,9 +1,3 @@
-/**
- * 通道范围设置页面组件
- * 功能：显示通道范围相关的设置内容
- * 用途：在工程设置对话框的"通道范围设置"Tab中使用
- */
-
 import { ExtendedOmniThemeStyle } from '../../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../../utils/theme/ThemeUtils'
 import { t, I18N_VERSION_KEY } from '../../../utils/i18n/I18nManager'
@@ -12,8 +6,8 @@ import { DirectionalNumericInput } from '../../ui/inputs/DirectionalNumericInput
 
 @Component
 export struct ChannelRangePage {
-  @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0 // 监听语言变化，触发 UI 更新
-  // 状态变量
+  @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0
+
   @State selectedChannel: string = '通道1'
   @State cameraType: string = 'Color Camera'
   @State cameraPosition: string = 'Middle'
@@ -221,14 +215,10 @@ export struct ChannelRangePage {
         .justifyContent(FlexAlign.Start)
         .alignItems(VerticalAlign.Center)
 
-        // 主要内容区域：左侧相机预览 + 右侧设置卡片
         Row() {
-          // 左侧：摄像机内容占位卡片
+
           Column() {
-            // Text('摄像机预览区域')
-            //   .fontSize(16)
-            //   .fontColor('#FFFFFF')
-            //   .opacity(0.5)
+
           }
           .width('40%')
           .height(420)

@@ -1,8 +1,3 @@
-/**
- * 出口屏设置对话框组件
- * 功能：配置出口屏的休眠开关、开屏时间、息屏时间等参数
- */
-
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
@@ -15,34 +10,29 @@ export struct ExitScreenSettingsDialog {
   @StorageLink(OMNI_THEME_VERSION_KEY) @Watch('onThemeChange') themeVersion: number = 0
   @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0
 
-  // 休眠开关状态
   @State sleepEnabled: boolean = true
 
-  // 开屏时间
+
   @State screenOnTime: string = '10:53:02'
   @State selectedOnTime: Date = new Date()
   @State showOnTimePicker: boolean = false
 
-  // 息屏时间
+
   @State screenOffTime: string = '00:00:00'
   @State selectedOffTime: Date = new Date()
   @State showOffTimePicker: boolean = false
 
-  // 对话框回调
   onConfirm?: () => void
   onCancel?: () => void
 
-  // 获取当前主题配置
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return getCurrentTheme(this.consumedTheme)
   }
 
-  // 监听主题变化
   onThemeChange(): void {
     console.log('ExitScreenSettingsDialog: 主题已变化，重新渲染')
   }
 
-  // 将时间字符串转换为 Date 对象
   private parseTimeString(timeStr: string): Date {
     const parts = timeStr.split(':')
     const date = new Date()
@@ -50,7 +40,6 @@ export struct ExitScreenSettingsDialog {
     return date
   }
 
-  // 将 Date 对象格式化为时间字符串 (HH:mm:ss)
   private formatTime(date: Date): string {
     const hours = date.getHours().toString().padStart(2, '0')
     const minutes = date.getMinutes().toString().padStart(2, '0')
@@ -58,7 +47,6 @@ export struct ExitScreenSettingsDialog {
     return `${hours}:${minutes}:${seconds}`
   }
 
-  // 初始化时间
   aboutToAppear(): void {
     this.selectedOnTime = this.parseTimeString(this.screenOnTime)
     this.selectedOffTime = this.parseTimeString(this.screenOffTime)
