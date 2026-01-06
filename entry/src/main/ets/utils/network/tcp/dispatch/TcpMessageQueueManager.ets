@@ -1,6 +1,6 @@
 import { TcpMessageDispatchQueue, TcpMessageTask, TcpMessageTaskResult, TcpMessageHandler } from './TcpMessageDispatchQueue';
 import { socket } from '@kit.NetworkKit';
-import { util } from '@kit.ArkTS';
+import { util, fastbuffer } from '@kit.ArkTS';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 
 const DOMAIN = 0x0000;
@@ -40,13 +40,13 @@ export class TcpMessageQueueManager {
 
   /**
    * 执行 TCP 消息处理
-   * @param message 消息数据（Uint8Array）
+   * @param message 消息数据（FastBuffer）
    * @param handler 消息处理函数
    * @param clientSocket 可选的客户端 Socket（用于错误处理）
    * @returns Promise，解析时表示消息已处理完成
    */
   static async executeMessage(
-    message: Uint8Array,
+    message: fastbuffer.FastBuffer,
     handler: TcpMessageHandler,
     clientSocket?: socket.TCPSocketConnection | socket.TCPSocket
   ): Promise<void> {
@@ -83,8 +83,13 @@ export class TcpMessageQueueManager {
   static async sendServiceBusy(clientSocket: socket.TCPSocketConnection | socket.TCPSocket): Promise<void> {
     try {
       const encoder = new util.TextEncoder();
-      const rejectMsg = encoder.encodeInto('SERVER_BUSY');
-      await clientSocket.send({ data: rejectMsg });
+      const encodedData = encoder.encodeInto('SERVER_BUSY');
+      // 创建 FastBuffer 并复制数据
+      const buffer = fastbuffer.alloc(encodedData.length);
+      for (let i = 0; i < encodedData.length; i++) {
+        buffer[i] = encodedData[i];
+      }
+      await clientSocket.send({ data: buffer.buffer });
     } catch (error) {
       hilog.error(DOMAIN, 'TcpMessageQueueManager', `发送服务繁忙消息失败: ${JSON.stringify(error)}`);
     }

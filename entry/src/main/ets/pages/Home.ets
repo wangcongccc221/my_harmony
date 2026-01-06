@@ -1672,7 +1672,11 @@ struct Page {
 
   @Builder
   private buildLevelPage(): void {
-    LevelContent()
+    LevelContent({
+      onPageChange: (pageName: string) => {
+        this.handlePageChange(pageName)
+      }
+    })
   }
 
   @Builder

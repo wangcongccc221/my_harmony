@@ -27,26 +27,16 @@ import { DateErrorDialog } from '../../components/dialogs/DateErrorDialog'
 import { ExportSuccessDialog } from '../../components/dialogs/ExportSuccessDialog'
 import { ToastDialog } from '../../components/dialogs/ToastDialog'
 import { RealtimeStatsDialog } from '../../components/feedback/RealtimeStatsDialog'
+import { ModifyCustomerInfoDialog, CustomerInfo } from '../../components/dialogs/ModifyCustomerInfoDialog'
+import { FruitInfoService } from '../../database/services/FruitInfoService'
+import { FruitInfo } from '../../database/models/FruitInfo'
 import fs from '@ohos.file.fs'
 import common from '@ohos.app.ability.common'
 import { util, buffer } from '@kit.ArkTS'
 import { InternalApiTester } from '../../utils/tests/InternalApiTester'
 import ExcelJS from '@archermind/exceljs'
 
-/**
- * 历史加工内容组件结构体
- * 属性说明：
- * - startDate: 开始日期字符串
- * - endDate: 结束日期字符串
- * - selectedStartDate: 选中的开始日期对象
- * - selectedEndDate: 选中的结束日期对象
- * - customerName: 客户名称输入值
- * - farmName: 农场名称输入值
- * - fruitName: 水果品种输入值
- * 方法说明：
- * - getCurrentTheme(): 获取当前主题配置
- * - build(): 构建历史加工内容的UI结构
- */
+
 @Component
 export struct HistoryContent {
   // ==================== 日期相关状态 ====================
@@ -92,6 +82,10 @@ export struct HistoryContent {
   @State private toastMessage: string = ''
   /** 历史报告对话框显示状态 */
   @State private showReportDialog: boolean = false
+  @State private showStatusDialog: boolean = false
+  @State private selectedRowData: HistoryTableData | null = null
+  @State private showModifyCustomerDialog: boolean = false
+  @State private modifyCustomerData: CustomerInfo | null = null
   
   // ==================== 表格数据状态 ====================
   @State private currentTableData: HistoryTableData[] = []
@@ -918,6 +912,24 @@ export struct HistoryContent {
             onRowClick: (rowData: HistoryTableData) => {
               console.log('点击行数据:', rowData)
             },
+            onDoubleClick: (rowData: HistoryTableData) => {
+              console.log('双击行数据:', rowData)
+              // 保存当前行数据，用于后续更新数据库
+              this.selectedRowData = rowData
+              // 根据加工状态显示不同的内容
+              if (rowData.status === '进行中') {
+                // 进行中：显示修改农户信息对话框
+                this.modifyCustomerData = {
+                  customerName: rowData.customerName,
+                  farmName: rowData.farmName,
+                  fruitName: rowData.fruitName
+                }
+                this.showModifyCustomerDialog = true
+              } else {
+                // 其他状态：显示状态详情对话框
+                this.showStatusDialog = true
+              }
+            },
             onEditClick: (rowData: HistoryTableData) => {
               console.log('编辑行数据:', rowData)
             },
@@ -1006,6 +1018,215 @@ export struct HistoryContent {
           }
         })
       }
+
+      // ==================== 加工状态对话框 ====================
+      if (this.showStatusDialog && this.selectedRowData) {
+        this.buildStatusDialog()
+      }
+
+      // ==================== 修改农户信息对话框 ====================
+      if (this.showModifyCustomerDialog && this.selectedRowData) {
+        ModifyCustomerInfoDialog({
+          isVisible: this.showModifyCustomerDialog,
+          initialData: this.modifyCustomerData ?? undefined,
+          onConfirm: async (data: CustomerInfo) => {
+            console.log('修改农户信息:', data)
+            try {
+              // 获取当前行的ID（CustomerID）
+              const customerID = this.selectedRowData!.id
+              
+              // 更新数据库
+              const updateData = new FruitInfo()
+              updateData.CustomerName = data.customerName
+              updateData.FarmName = data.farmName
+              updateData.FruitName = data.fruitName
+              FruitInfoService.update(customerID, updateData)
+              
+              console.log('数据库更新成功，CustomerID:', customerID)
+              
+              // 关闭对话框
+              this.showModifyCustomerDialog = false
+              this.modifyCustomerData = null
+              
+              // 显示成功提示
+              this.showToast('success', '农户信息修改成功')
+              
+              // 刷新表格数据
+              await this.refreshTableDataAfterUpdate()
+            } catch (error) {
+              console.error('更新农户信息失败:', error)
+              this.showToast('error', '农户信息修改失败，请重试')
+            }
+          },
+          onCancel: () => {
+            this.showModifyCustomerDialog = false
+            this.modifyCustomerData = null
+            // 注意：不要清空 selectedRowData，因为可能还需要用于状态对话框
+          }
+        })
+      }
+    }
+  }
+
+  /**
+   * 更新后刷新表格数据
+   */
+  private async refreshTableDataAfterUpdate(): Promise<void> {
+    try {
+      const tableManager = HistoryTableManager.getInstance()
+      
+      // 先刷新数据库缓存，确保获取最新数据
+      await tableManager.refreshData()
+      
+      // 如果当前处于筛选状态，使用筛选条件重新查询
+      if (this.isFiltered) {
+        const filterParams: FilterParams = {
+          startDate: this.startDate || undefined,
+          endDate: this.endDate || undefined,
+          customerName: this.customerName.trim() || undefined,
+          farmName: this.farmName.trim() || undefined,
+          fruitName: this.fruitName.trim() || undefined
+        }
+        const queryResult = await tableManager.queryFromDB(filterParams)
+        this.filteredTableData = [...queryResult]
+        this.currentTableData = [...queryResult]
+      } else {
+        // 否则重新加载所有数据
+        const allData = await tableManager.loadAllData()
+        this.currentTableData = allData
+        this.filteredTableData = []
+      }
+      
+      // 强制刷新表格：先设置为负数销毁组件，然后立即设置为正数重新创建
+      // 这样可以确保组件完全重新创建，重新执行 aboutToAppear 并加载最新数据
+      const oldKey = this.tableRefreshKey
+      this.tableRefreshKey = -1
+      
+      // 使用 setTimeout 确保在下一个事件循环中重新创建组件
+      setTimeout(() => {
+        // 使用时间戳确保每次都是新的key值
+        this.tableRefreshKey = Math.abs(Date.now())
+        console.log('表格组件已重新创建，key:', this.tableRefreshKey)
+      }, 50)
+    } catch (error) {
+      console.error('刷新表格数据失败:', error)
+      const errorMsg = error instanceof Error ? error : new Error(String(error))
+      throw errorMsg
+    }
+  }
+
+  /**
+   * 获取状态文本
+   */
+  private getStatusText(status: string): string {
+    return status
+  }
+
+  /**
+   * 获取状态颜色
+   */
+  private getStatusColor(status: string): ResourceColor {
+    if (status === '进行中') {
+      return '#FFA500' // 橙色
+    } else if (status === '已完成') {
+      return '#4CAF50' // 绿色
+    } else if (status === '待开始') {
+      return '#2196F3' // 蓝色
+    }
+    return this.getCurrentTheme().textColor
+  }
+
+  /**
+   * 获取状态内容文本
+   */
+  private getStatusContentText(rowData: HistoryTableData): string {
+    if (rowData.status === '进行中') {
+      return `当前加工任务正在进行中\n\n批次号：${rowData.batchNo || '无'}\n客户：${rowData.customerName}\n农场：${rowData.farmName}\n品种：${rowData.fruitName}\n开始时间：${rowData.startTime}\n当前重量：${rowData.weight} 吨\n当前数量：${rowData.count} 个`
+    } else if (rowData.status === '已完成') {
+      return `加工任务已完成\n\n批次号：${rowData.batchNo || '无'}\n客户：${rowData.customerName}\n农场：${rowData.farmName}\n品种：${rowData.fruitName}\n开始时间：${rowData.startTime}\n结束时间：${rowData.endTime}\n总重量：${rowData.weight} 吨\n总数量：${rowData.count} 个`
+    } else if (rowData.status === '待开始') {
+      return `加工任务待开始\n\n批次号：${rowData.batchNo || '无'}\n客户：${rowData.customerName}\n农场：${rowData.farmName}\n品种：${rowData.fruitName}\n计划开始时间：${rowData.startTime}`
+    }
+    return `状态：${rowData.status}`
+  }
+
+  /**
+   * 构建加工状态对话框
+   */
+  @Builder
+  private buildStatusDialog(): void {
+    if (this.selectedRowData) {
+      Stack() {
+        // 遮罩层
+        Column()
+          .width('100%')
+          .height('100%')
+          .backgroundColor('rgba(0, 0, 0, 0.5)')
+          .onClick(() => {
+            this.showStatusDialog = false
+            this.selectedRowData = null
+          })
+
+        // 对话框内容
+        Column() {
+          // 标题栏
+          Row() {
+            Text('加工状态详情')
+              .fontSize(20)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.getCurrentTheme().textColor)
+              .layoutWeight(1)
+
+            // 状态标签
+            Text(this.getStatusText(this.selectedRowData!.status))
+              .fontSize(16)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(Color.White)
+              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+              .backgroundColor(this.getStatusColor(this.selectedRowData!.status))
+              .borderRadius(12)
+          }
+          .width('100%')
+          .padding({ left: 20, right: 20, top: 20, bottom: 15 })
+          .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+
+          // 内容区域
+          Scroll() {
+            Text(this.getStatusContentText(this.selectedRowData!))
+              .fontSize(16)
+              .fontColor(this.getCurrentTheme().textColor)
+              .lineHeight(24)
+              .padding(20)
+          }
+          .width('100%')
+          .height(400)
+          .layoutWeight(1)
+
+          // 按钮区域
+          Row() {
+            Button('关闭')
+              .type(ButtonType.Normal)
+              .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+              .fontColor(this.getCurrentTheme().textColor)
+              .onClick(() => {
+                this.showStatusDialog = false
+                this.selectedRowData = null
+              })
+          }
+          .width('100%')
+          .padding({ left: 20, right: 20, top: 15, bottom: 20 })
+          .justifyContent(FlexAlign.End)
+        }
+        .width('80%')
+        .height(600)
+        .backgroundColor(this.getCurrentTheme().surfaceColor ?? this.getCurrentTheme().backgroundColor)
+        .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM)
+        .shadow(AppleDesignStyle.getShadowMedium())
+        .alignItems(HorizontalAlign.Start)
+      }
+      .width('100%')
+      .height('100%')
+      .alignContent(Alignment.Center)
     }
   }
 

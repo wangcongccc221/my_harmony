@@ -1,5 +1,5 @@
 import { socket } from '@kit.NetworkKit';
-import { util } from '@kit.ArkTS';
+import { util, fastbuffer } from '@kit.ArkTS';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 // AppStorage 是全局可用的，无需导入
 import { TCP_CONNECTION_STATUS } from '../../../constants/TopBarKeys';
@@ -16,26 +16,44 @@ export async function runTcpServerWorker(ip: string, port: number): Promise<void
       try {
         const remote = await client.getRemoteAddress();
         hilog.info(DOMAIN, 'TCPServerWorker', `客户端连接: ${remote.address}:${remote.port || 0}`);
-        AppStorage.setOrCreate(TCP_CONNECTION_STATUS, true);
+        // 注意：在 @Concurrent 函数中不能使用 AppStorage，连接状态由主 TCPServer 类管理
 
         client.on('message', (data: socket.SocketMessageInfo) => {
-          // 使用 Dispatch 队列处理消息
-          const messageData = new Uint8Array(data.message);
-          TcpMessageQueueManager.executeMessage(
-            messageData,
-            async (message: string) => {
-              hilog.info(DOMAIN, 'TCPServerWorker', `收到消息: ${message}`);
-            },
-            client
-          ).catch((err: Error | object) => {
-            // 错误已经在 executeMessage 中处理，这里只记录日志
-            hilog.error(DOMAIN, 'TCPServerWorker', `消息处理异常: ${JSON.stringify(err)}`);
-          });
+          // 添加详细日志追踪消息接收
+          hilog.info(DOMAIN, 'TCPServerWorker', `[消息接收] 收到原始数据，长度: ${data.message.byteLength} 字节`);
+          try {
+            // 直接使用 FastBuffer - 从 ArrayBuffer 复制数据
+            const messageBuffer = fastbuffer.alloc(data.message.byteLength);
+            // 使用 Uint8Array 视图（零拷贝）来读取 ArrayBuffer 并复制到 FastBuffer
+            const sourceView = new Uint8Array(data.message);
+            for (let i = 0; i < sourceView.length; i++) {
+              messageBuffer[i] = sourceView[i];
+            }
+            hilog.info(DOMAIN, 'TCPServerWorker', `[FastBuffer] 直接创建 FastBuffer，长度: ${messageBuffer.length}，开始处理消息`);
+            
+            TcpMessageQueueManager.executeMessage(
+              messageBuffer,
+              async (message: string) => {
+                hilog.info(DOMAIN, 'TCPServerWorker', `[消息处理] 收到消息: ${message}`);
+                console.log(`[TCP服务器] 收到消息: ${message}`);
+              },
+              client
+            ).catch((err: Error | object) => {
+              // 错误已经在 executeMessage 中处理，这里只记录日志
+              const errorMsg = err instanceof Error ? err.message : String(err);
+              hilog.error(DOMAIN, 'TCPServerWorker', `[消息处理] 消息处理异常: ${errorMsg}`);
+              console.error(`[TCP服务器] 消息处理异常: ${errorMsg}`);
+            });
+          } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            hilog.error(DOMAIN, 'TCPServerWorker', `[消息接收] 处理消息时发生错误: ${errorMsg}`);
+            console.error(`[TCP服务器] 处理消息时发生错误: ${errorMsg}`);
+          }
         });
 
         client.on('close', () => {
           hilog.info(DOMAIN, 'TCPServerWorker', `客户端断开: ${remote.address}:${remote.port || 0}`);
-          AppStorage.setOrCreate(TCP_CONNECTION_STATUS, false);
+          // 注意：在 @Concurrent 函数中不能使用 AppStorage，连接状态由主 TCPServer 类管理
         });
 
         client.on('error', (err: Error) => {
@@ -52,19 +70,10 @@ export async function runTcpServerWorker(ip: string, port: number): Promise<void
 
     await server.listen({ address: ip, port, family: 1 });
     hilog.info(DOMAIN, 'TCPServerWorker', `服务器启动成功: ${ip}:${port}`);
-
-    // 简单的关闭信号轮询
-    const SHUTDOWN_KEY = 'TCP_SERVER_SHUTDOWN';
-    const checkInterval = setInterval(async () => {
-      try {
-        const flag = AppStorage.get(SHUTDOWN_KEY) as boolean | null;
-        if (flag) {
-          clearInterval(checkInterval);
-          try { server.off('connect'); server.off('error'); } catch (_) {}
-          hilog.info(DOMAIN, 'TCPServerWorker', '收到关闭信号，服务器退出');
-        }
-      } catch (_) {}
-    }, 1000) as number;
+    
+    // 注意：在 @Concurrent 函数中不能使用 AppStorage
+    // 服务器将一直运行，直到应用退出或通过其他机制关闭
+    // 如果需要关闭服务器，可以通过主 TCPServer 类来管理
   } catch (error) {
     hilog.error(DOMAIN, 'TCPServerWorker', `启动失败: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -151,22 +160,39 @@ export class TCPServer {
           
           // 监听客户端消息
           client.on('message', (data: socket.SocketMessageInfo) => {
-            // 使用 Dispatch 队列处理消息
-            const messageData = new Uint8Array(data.message);
-            TcpMessageQueueManager.executeMessage(
-              messageData,
-              (message: string) => {
-                hilog.info(DOMAIN, 'TCPServer', `收到消息: ${message}`);
-                console.log(`[TCP服务器] 从客户端 ${clientInfo.address}:${clientInfo.port} 接收到数据: ${message}`);
-                this.onMessageCallback?.('receive', message, clientInfo.id);
-              },
-              client
-            ).catch((err: Error | object) => {
-              const errorMsg = err instanceof Error ? err.message : String(err);
-              hilog.error(DOMAIN, 'TCPServer', `接收消息处理失败: ${errorMsg}`);
-              console.log(`[TCP服务器] 接收消息处理失败: ${errorMsg}`);
-              this.onMessageCallback?.('receive', `接收消息处理失败: ${errorMsg}`, clientInfo.id);
-            });
+            // 添加详细日志追踪消息接收
+            hilog.info(DOMAIN, 'TCPServer', `[消息接收] 从客户端 ${clientInfo.address}:${clientInfo.port} 收到原始数据，长度: ${data.message.byteLength} 字节`);
+            console.log(`[TCP服务器] [消息接收] 收到原始数据，长度: ${data.message.byteLength} 字节`);
+            try {
+              // 直接使用 FastBuffer - 从 ArrayBuffer 复制数据
+              const messageBuffer = fastbuffer.alloc(data.message.byteLength);
+              // 使用 Uint8Array 视图（零拷贝）来读取 ArrayBuffer 并复制到 FastBuffer
+              const sourceView = new Uint8Array(data.message);
+              for (let i = 0; i < sourceView.length; i++) {
+                messageBuffer[i] = sourceView[i];
+              }
+              hilog.info(DOMAIN, 'TCPServer', `[FastBuffer] 直接创建 FastBuffer，大小: ${messageBuffer.length} 字节，开始处理`);
+              console.log(`[TCP服务器] [FastBuffer] 接收消息，大小: ${messageBuffer.length} 字节`);
+              
+              TcpMessageQueueManager.executeMessage(
+                messageBuffer,
+                (message: string) => {
+                  hilog.info(DOMAIN, 'TCPServer', `[消息处理] 收到消息: ${message}`);
+                  console.log(`[TCP服务器] 从客户端 ${clientInfo.address}:${clientInfo.port} 接收到数据: ${message}`);
+                  this.onMessageCallback?.('receive', message, clientInfo.id);
+                },
+                client
+              ).catch((err: Error | object) => {
+                const errorMsg = err instanceof Error ? err.message : String(err);
+                hilog.error(DOMAIN, 'TCPServer', `[消息处理] 接收消息处理失败: ${errorMsg}`);
+                console.log(`[TCP服务器] 接收消息处理失败: ${errorMsg}`);
+                this.onMessageCallback?.('receive', `接收消息处理失败: ${errorMsg}`, clientInfo.id);
+              });
+            } catch (error) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              hilog.error(DOMAIN, 'TCPServer', `[消息接收] 处理消息时发生错误: ${errorMsg}`);
+              console.error(`[TCP服务器] 处理消息时发生错误: ${errorMsg}`);
+            }
           });
           
           // 监听客户端断开
@@ -273,13 +299,21 @@ export class TCPServer {
     let successCount = 0;
     let failCount = 0;
     
+    // 使用 FastBuffer 提高发送性能 - 预先编码和分配缓冲区
+    const encoder = new util.TextEncoder();
+    const encodedData = encoder.encodeInto(message);
+    const buffer = fastbuffer.alloc(encodedData.length);
+    for (let i = 0; i < encodedData.length; i++) {
+      buffer[i] = encodedData[i];
+    }
+    // 验证 FastBuffer 使用
+    hilog.info(DOMAIN, 'TCPServer', `[FastBuffer] 发送消息给 ${this.clients.size} 个客户端，使用 FastBuffer，大小: ${buffer.length} 字节`);
+    
     for (const clientId of this.clients.keys()) {
       const client = this.clients.get(clientId);
       if (client) {
         try {
-          const encoder = new util.TextEncoder();
-          const data = encoder.encodeInto(message);
-          await client.connection.send({ data: data });
+          await client.connection.send({ data: buffer.buffer });
           successCount++;
         } catch (error) {
           failCount++;

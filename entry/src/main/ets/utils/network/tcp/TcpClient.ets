@@ -1,5 +1,5 @@
 import { socket } from '@kit.NetworkKit';
-import { util } from '@kit.ArkTS';
+import { util, fastbuffer } from '@kit.ArkTS';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { taskpool } from '@kit.ArkTS';
 import { TcpMessageQueueManager } from './dispatch';
@@ -44,10 +44,16 @@ export class TcpClient {
       
       // 监听服务器消息
       this.tcpSocket.on('message', (data: socket.SocketMessageInfo) => {
-        // 使用 Dispatch 队列处理消息
-        const messageData = new Uint8Array(data.message);
+        // 直接使用 FastBuffer - 从 ArrayBuffer 复制数据
+        const messageBuffer = fastbuffer.alloc(data.message.byteLength);
+        // 使用 Uint8Array 视图（零拷贝）来读取 ArrayBuffer 并复制到 FastBuffer
+        const sourceView = new Uint8Array(data.message);
+        for (let i = 0; i < sourceView.length; i++) {
+          messageBuffer[i] = sourceView[i];
+        }
+        hilog.info(DOMAIN, 'TcpClient', `[FastBuffer] 直接创建 FastBuffer，大小: ${messageBuffer.length} 字节`);
         TcpMessageQueueManager.executeMessage(
-          messageData,
+          messageBuffer,
           (message: string) => {
             hilog.info(DOMAIN, 'TcpClient', `收到消息: ${message}`);
             this.notifyMessageCallbacks(message);
@@ -152,8 +158,15 @@ export class TcpClient {
     
     try {
       const encoder = new util.TextEncoder();
-      const data = encoder.encodeInto(message);
-      await this.tcpSocket.send({ data: data });
+      const encodedData = encoder.encodeInto(message);
+      // 使用 FastBuffer 提高发送性能
+      const buffer = fastbuffer.alloc(encodedData.length);
+      for (let i = 0; i < encodedData.length; i++) {
+        buffer[i] = encodedData[i];
+      }
+      // 验证 FastBuffer 使用
+      hilog.info(DOMAIN, 'TcpClient', `[FastBuffer] 发送消息，使用 FastBuffer，大小: ${buffer.length} 字节`);
+      await this.tcpSocket.send({ data: buffer.buffer });
       hilog.info(DOMAIN, 'TcpClient', `发送消息: ${message}`);
       return true;
     } catch (error) {
@@ -298,10 +311,15 @@ export async function runTcpClientWorker(remoteIp: string, port: number): Promis
       client = socket.constructTCPSocketInstance();
 
       client.on('message', (data: socket.SocketMessageInfo) => {
-        // 使用 Dispatch 队列处理消息
-        const messageData = new Uint8Array(data.message);
+        // 直接使用 FastBuffer - 从 ArrayBuffer 复制数据
+        const messageBuffer = fastbuffer.alloc(data.message.byteLength);
+        // 使用 Uint8Array 视图（零拷贝）来读取 ArrayBuffer 并复制到 FastBuffer
+        const sourceView = new Uint8Array(data.message);
+        for (let i = 0; i < sourceView.length; i++) {
+          messageBuffer[i] = sourceView[i];
+        }
         TcpMessageQueueManager.executeMessage(
-          messageData,
+          messageBuffer,
           (message: string) => {
             hilog.info(DOMAIN, 'TcpClientWorker', `收到消息: ${message}`);
           },
@@ -349,8 +367,13 @@ export async function runTcpClientWorker(remoteIp: string, port: number): Promis
         const encoder = new util.TextEncoder();
         for (const msg of toSend) {
           try {
-            const data = encoder.encodeInto(msg);
-            await client.send({ data });
+            const encodedData = encoder.encodeInto(msg);
+            // 使用 FastBuffer 提高发送性能
+            const buffer = fastbuffer.alloc(encodedData.length);
+            for (let i = 0; i < encodedData.length; i++) {
+              buffer[i] = encodedData[i];
+            }
+            await client.send({ data: buffer.buffer });
           } catch (e) {
             hilog.error(DOMAIN, 'TcpClientWorker', `发送失败: ${e}`);
           }

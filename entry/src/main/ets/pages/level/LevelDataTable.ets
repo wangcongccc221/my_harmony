@@ -1,43 +1,3 @@
-/**
- * 等级页面右侧数据表格组件
- * 
- * 功能说明：
- * - 显示等级表格和数据统计表格
- * - 在Level页面中作为右侧数据展示区域显示
- * - 提供表格数据的展示和管理功能
- * - 支持表格数量的动态调整
- * 
- * 包含内容：
- * - 等级表格：显示等级名称、最小重量、包装重量等信息
- * - 统计表格：显示底部1和底部2的计数、平均值、设定值等数据
- * - 表格数量选择：支持3-6行的表格数量配置
- * - 数据操作：生成随机数据、清空数据等功能
- * 
- * 组件特点：
- * - 响应式设计：支持主题切换和样式更新
- * - 数据驱动：根据传入的数据动态显示表格内容
- * - 交互友好：提供直观的数据操作界面
- * - 类型安全：使用TypeScript接口确保类型安全
- * 
- * 使用方式：
- * ```typescript
- * LevelDataTable({
- *   levelData: this.levelData,
- *   statisticsData: this.statisticsData,
- *   tableCount: this.tableCount,
- *   onTableCountChange: (count: string) => { this.handleTableCountChange(count) },
- *   onGenerateRandomData: () => { this.handleGenerateRandomData() },
- *   onClearData: () => { this.handleClearData() }
- * })
- * ```
- * 
- * 布局说明：
- * - 使用Column布局垂直排列各个表格
- * - 每个表格使用独立的卡片容器
- * - 支持滚动显示，适应不同屏幕尺寸
- * - 右侧面板宽度：75%
- */
-
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY, useOmniTheme } from '../../utils/theme/useOmniTheme'
@@ -127,27 +87,6 @@ interface LevelTableData {
   /** 装箱量（克） */
   packingWeight: number
 }
-
-/**
- * 等级页面右侧数据表格组件结构体
- * 
- * 属性说明：
- * - levelData: 等级数据数组，默认空数组
- * - statisticsData: 统计数据对象
- * - tableCount: 表格数量，默认第一个选项
- * - onTableCountChange: 表格数量变化回调函数
- * - onGenerateRandomData: 生成随机数据回调函数
- * - onClearData: 清空数据回调函数
- * - consumedTheme: 当前主题样式
- * - consumedThemeType: 当前主题类型
- * - themeVersion: 主题版本号
- * - baseComponentHelper: 基础组件助手
- * - headerIndices: 表头索引数组
- * 
- * 方法说明：
- * - getCurrentTheme(): 获取当前主题配置
- * - build(): 构建数据表格的UI结构
- */
 @Component
 export struct LevelDataTable {
   // ==================== 数据属性 ====================
@@ -190,6 +129,18 @@ export struct LevelDataTable {
    * value: 新值（数字）
    */
   onEditStat?: (row: 'bottom1' | 'bottom2', field: 'count' | 'avg' | 'set', colIndex: number, value: number) => void
+  
+  /**
+   * 保存数据回调
+   * 当用户点击确认按钮时，通过此回调获取当前数据
+   */
+  onSave?: (levelData: LevelTableData[], weightPrecision: number) => void
+  
+  /**
+   * 触发保存的标志
+   * 当父组件设置此标志时，触发保存回调
+   */
+  @Prop @Watch('onTriggerSaveChange') triggerSave: number = 0
 
   /**
    * 等级数量索引
@@ -352,6 +303,9 @@ export struct LevelDataTable {
     this.initializeLevelData()
   }
 
+  // 记录上次的 triggerSave 值，避免重复触发
+  private lastTriggerSave: number = 0
+  
   /**
    * 组件更新时同步最新的统计数据到内表
    * - 当父组件传入的 statisticsData 发生变化时，重建 statisticsTableData
@@ -360,6 +314,19 @@ export struct LevelDataTable {
     this.initializeStatisticsData()
     this.statsRefreshTick++
     console.log('【等级页面】表格更新：已重建统计数据', JSON.stringify(this.statisticsTableData))
+  }
+
+  /**
+   * triggerSave 变化时的回调
+   * 当 triggerSave 值变化时，触发保存回调
+   */
+  private onTriggerSaveChange(): void {
+    if (this.triggerSave > 0 && this.onSave) {
+      console.log('【等级页面】onTriggerSaveChange 被调用，triggerSave:', this.triggerSave)
+      // 触发保存回调，传递当前数据
+      this.onSave(this.levelTableData, this.weightPrecision)
+      console.log('【等级页面】保存回调已调用，数据:', this.levelTableData.length, '条，精度:', this.weightPrecision)
+    }
   }
 
   /**
@@ -404,8 +371,9 @@ export struct LevelDataTable {
         packingWeight: 500 + i * 50
       })
       this.levelNameInputs.push(`${i + 1}`)
-      this.minWeightInputs.push(`${100 - i * 5}`)
-      this.packingWeightInputs.push(`${500 + i * 50}`)
+      // 初始化时不设置输入值，让显示时自动格式化
+      this.minWeightInputs.push('')
+      this.packingWeightInputs.push('')
       this.showAddRemoveButtons.push(false) // 初始化按钮显示状态
     }
   }
@@ -459,8 +427,9 @@ export struct LevelDataTable {
     
     // 更新输入数组
     this.levelNameInputs.splice(insertIndex, 0, '0') // 临时名称
-    this.minWeightInputs.splice(insertIndex, 0, `${newMinWeight}`)
-    this.packingWeightInputs.splice(insertIndex, 0, `${newPackingWeight}`)
+    // 初始化时不设置输入值，让显示时自动格式化
+    this.minWeightInputs.splice(insertIndex, 0, '')
+    this.packingWeightInputs.splice(insertIndex, 0, '')
     this.showAddRemoveButtons.splice(insertIndex, 0, false)
     
     // 重新排序所有等级名称，确保连续性（1, 2, 3, 4...）
@@ -622,7 +591,7 @@ export struct LevelDataTable {
 
       // 最小重量列（可编辑，带+/-按钮）
       Row() {
-        TextInput({ text: this.minWeightInputs[index] ?? `${data.minWeight}` })
+        TextInput({ text: this.getFormattedWeightDisplay(index, data.minWeight, this.minWeightInputs[index], this.editingMinWeightIndex === index) })
           .fontSize(16)
           .fontColor(this.getCurrentTheme().textColor)
           .backgroundColor(this.getCurrentTheme().surfaceColor)
@@ -630,9 +599,16 @@ export struct LevelDataTable {
           .textAlign(TextAlign.Center)
           .padding({ left: 4, right: 4, top: 6, bottom: 6 })
           .border({ width: 0 })
-          .type(InputType.Number)
+          .type(InputType.Normal)
           .onChange((value: string) => {
-            const numericStr = value.replace(/[^0-9.\-]/g, '')
+            // 允许数字、小数点和负号，但限制只能有一个小数点
+            let numericStr = value.replace(/[^0-9.\-]/g, '')
+            // 确保只有一个小数点
+            const parts = numericStr.split('.')
+            if (parts.length > 2) {
+              numericStr = parts[0] + '.' + parts.slice(1).join('')
+            }
+            // 保存原始输入值，用于编辑时显示
             this.minWeightInputs[index] = numericStr
             const parsed = Number(numericStr)
             if (!isNaN(parsed)) {
@@ -642,8 +618,19 @@ export struct LevelDataTable {
           .onClick(() => {
             this.handleMinWeightClick(index)
           })
+          .onFocus(() => {
+            // 获得焦点时标记为正在编辑
+            this.editingMinWeightIndex = index
+            // 清空输入值，让用户看到格式化后的值开始编辑
+            if (!this.minWeightInputs[index] || this.minWeightInputs[index] === this.formatWeight(data.minWeight)) {
+              this.minWeightInputs[index] = data.minWeight.toString()
+            }
+          })
           .onBlur(() => {
-            // 失去焦点时隐藏按钮
+            // 失去焦点时应用格式化并隐藏按钮
+            this.editingMinWeightIndex = -1
+            const currentValue = this.levelTableData[index].minWeight
+            this.minWeightInputs[index] = this.formatWeight(currentValue)
             this.showAddRemoveButtons = this.showAddRemoveButtons.map(() => false)
             this.selectedRowIndex = -1
           })
@@ -696,7 +683,7 @@ export struct LevelDataTable {
       Divider().vertical(true).height(80).color(this.getCurrentTheme().borderColor) //修改第二个分割线的高度
 
       // 装箱量列（可编辑）
-      TextInput({ text: this.packingWeightInputs[index] ?? `${data.packingWeight}` })
+      TextInput({ text: this.getFormattedWeightDisplay(index, data.packingWeight, this.packingWeightInputs[index], this.editingPackingWeightIndex === index) })
         .fontSize(16)
         .fontColor(this.getCurrentTheme().textColor)
         .backgroundColor(this.getCurrentTheme().surfaceColor)
@@ -704,14 +691,35 @@ export struct LevelDataTable {
         .textAlign(TextAlign.Center)
         .padding({ left: 4, right: 4, top: 6, bottom: 6 })
         .border({ width: 0 })
-        .type(InputType.Number)
+        .type(InputType.Normal)
         .onChange((value: string) => {
-          const numericStr = value.replace(/[^0-9.\-]/g, '')
+          // 允许数字、小数点和负号，但限制只能有一个小数点
+          let numericStr = value.replace(/[^0-9.\-]/g, '')
+          // 确保只有一个小数点
+          const parts = numericStr.split('.')
+          if (parts.length > 2) {
+            numericStr = parts[0] + '.' + parts.slice(1).join('')
+          }
+          // 保存原始输入值，用于编辑时显示
           this.packingWeightInputs[index] = numericStr
           const parsed = Number(numericStr)
           if (!isNaN(parsed)) {
             this.levelTableData[index].packingWeight = parsed
           }
+        })
+        .onFocus(() => {
+          // 获得焦点时标记为正在编辑
+          this.editingPackingWeightIndex = index
+          // 清空输入值，让用户看到格式化后的值开始编辑
+          if (!this.packingWeightInputs[index] || this.packingWeightInputs[index] === this.formatWeight(data.packingWeight)) {
+            this.packingWeightInputs[index] = data.packingWeight.toString()
+          }
+        })
+        .onBlur(() => {
+          // 失去焦点时应用格式化
+          this.editingPackingWeightIndex = -1
+          const currentValue = this.levelTableData[index].packingWeight
+          this.packingWeightInputs[index] = this.formatWeight(currentValue)
         })
     }
     .width('100%')
@@ -826,6 +834,85 @@ export struct LevelDataTable {
    */
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return resolveTheme(this.consumedTheme)
+  }
+
+  /**
+   * 根据重量精度格式化数字
+   * 
+   * 功能说明：
+   * - 根据 weightPrecision 设置格式化数字显示
+   * - 例如：weightPrecision = 2 时，200 显示为 "200.00"
+   * - 支持动态精度调整
+   * - 使用 Decimal 确保高精度计算
+   * 
+   * @param value 要格式化的数值
+   * @returns 格式化后的字符串
+   */
+  private formatWeight(value: number | string): string {
+    // 转换为数字
+    const num = typeof value === 'string' ? parseFloat(value) : value
+    if (isNaN(num)) {
+      // 如果值无效，返回0并应用精度格式
+      const precision = Math.max(0, Math.min(6, this.weightPrecision)) // 限制精度在0-6之间
+      return '0' + (precision > 0 ? '.' + '0'.repeat(precision) : '')
+    }
+    // 限制精度在0-6之间，toFixed 的参数必须在0-100之间
+    const precision = Math.max(0, Math.min(6, this.weightPrecision))
+    // 使用原生 toFixed 方法根据精度格式化
+    // 例如：100.toFixed(1) = "100.0", 100.toFixed(2) = "100.00"
+    return num.toFixed(precision)
+  }
+
+  /**
+   * 跟踪哪些输入框正在被编辑
+   */
+  @State private editingMinWeightIndex: number = -1
+  @State private editingPackingWeightIndex: number = -1
+
+  /**
+   * 获取格式化后的重量显示值
+   * 
+   * 功能说明：
+   * - 根据当前输入状态和精度设置返回格式化后的显示值
+   * - 如果用户正在编辑该输入框，显示原始输入以便继续编辑
+   * - 否则显示格式化后的值
+   * 
+   * @param index 行索引
+   * @param dataValue 数据中的实际值
+   * @param inputValue 输入框中的值
+   * @param isEditing 是否正在编辑
+   * @returns 格式化后的显示值
+   */
+  private getFormattedWeightDisplay(index: number, dataValue: number, inputValue: string | undefined, isEditing: boolean): string {
+    // 只有在真正编辑状态且有有效输入值时才显示原始输入
+    // 否则始终使用数据值格式化显示，确保精度正确
+    if (isEditing) {
+      // 编辑状态：如果有输入值就显示输入值，否则显示格式化后的数据值
+      if (inputValue !== undefined && inputValue !== null && inputValue !== '' && inputValue.trim() !== '') {
+        return inputValue
+      }
+    }
+    // 非编辑状态或输入值为空：始终使用数据值格式化显示
+    // 这样确保显示的值始终符合精度要求
+    return this.formatWeight(dataValue)
+  }
+
+  /**
+   * 更新所有重量输入框的格式化显示
+   * 
+   * 功能说明：
+   * - 当 weightPrecision 改变时，更新所有重量输入框的显示
+   * - 确保所有重量值都按照新的精度格式化显示
+   */
+  private updateAllWeightFormats(): void {
+    // 清空所有输入值，让显示时自动使用格式化后的值
+    // 这样当精度改变时，所有值都会自动重新格式化显示
+    for (let i = 0; i < this.levelTableData.length; i++) {
+      this.minWeightInputs[i] = ''
+      this.packingWeightInputs[i] = ''
+    }
+    // 强制刷新UI
+    this.forceRefresh++
   }
 
   /**
@@ -1121,10 +1208,12 @@ export struct LevelDataTable {
                   if (isNaN(num)) {
                     num = 0
                   }
-                  // 限制范围
+                  // 限制范围：最小0，最大6
                   if (num < 0) num = 0
-                  if (num > 999) num = 999
+                  if (num > 6) num = 6
                   this.weightPrecision = num
+                  // 更新所有重量输入框的格式化显示
+                  this.updateAllWeightFormats()
                 })
               
               // 上下按钮区域
@@ -1143,8 +1232,11 @@ export struct LevelDataTable {
                 .border({ width: { top: 1, right: 1, bottom: 0, left: 0 }, color: this.getCurrentTheme().borderColor })
                 .borderRadius({ topRight: 6, bottomRight: 0 })
                 .onClick(() => {
-                  if (this.weightPrecision + 1 <= 999) {
+                  // 限制最大值为6
+                  if (this.weightPrecision < 6) {
                     this.weightPrecision += 1
+                    // 更新所有重量输入框的格式化显示
+                    this.updateAllWeightFormats()
                   }
                 })
                 
@@ -1162,8 +1254,11 @@ export struct LevelDataTable {
                 .border({ width: { top: 1, right: 1, bottom: 1, left: 0 }, color: this.getCurrentTheme().borderColor })
                 .borderRadius({ topRight: 0, bottomRight: 6 })
                 .onClick(() => {
-                  if (this.weightPrecision - 1 >= 0) {
+                  // 限制最小值为0
+                  if (this.weightPrecision > 0) {
                     this.weightPrecision -= 1
+                    // 更新所有重量输入框的格式化显示
+                    this.updateAllWeightFormats()
                   }
                 })
               }

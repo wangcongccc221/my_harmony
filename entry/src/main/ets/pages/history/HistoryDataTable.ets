@@ -90,10 +90,17 @@ export struct HistoryDataTable {
 
   // 事件回调
   onRowClick?: (rowData: HistoryTableData) => void
+  onDoubleClick?: (rowData: HistoryTableData) => void  // 双击事件回调
   onEditClick?: (rowData: HistoryTableData) => void
   onDeleteClick?: (rowData: HistoryTableData) => void
   onDataChange?: (data: HistoryTableData[]) => void
   onSelectionChange?: (selectedIds: number[]) => void
+  
+  // 双击检测相关
+  private lastClickTime: number = 0
+  private lastClickItemId: number = -1
+  private readonly DOUBLE_CLICK_INTERVAL: number = 300 // 双击间隔时间（毫秒）
+  private clickTimer: number | null = null // 用于延迟单击事件，避免双击时触发单击
 
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return resolveTheme(this.consumedTheme)
@@ -142,11 +149,61 @@ export struct HistoryDataTable {
   }
 
   /**
-   * 处理行点击
+   * 处理行点击（延迟执行，避免双击时触发）
    */
   private handleRowClick(rowData: HistoryTableData): void {
-    console.log('行点击:', rowData)
-    this.onRowClick?.(rowData)
+    // 清除之前的定时器
+    if (this.clickTimer !== null) {
+      clearTimeout(this.clickTimer)
+      this.clickTimer = null
+    }
+    
+    // 延迟执行单击事件，如果在这期间发生双击，则取消单击
+    this.clickTimer = setTimeout(() => {
+      console.log('行点击:', rowData)
+      this.onRowClick?.(rowData)
+      this.clickTimer = null
+    }, this.DOUBLE_CLICK_INTERVAL) as number
+  }
+
+  /**
+   * 处理双击事件
+   */
+  private handleDoubleClick(rowData: HistoryTableData): void {
+    console.log('行双击:', rowData)
+    this.onDoubleClick?.(rowData)
+  }
+
+  /**
+   * 处理触摸事件，用于检测双击
+   */
+  private handleTouchEvent(event: TouchEvent | undefined, item: HistoryTableData): void {
+    if (!event) return
+    
+    // 当触摸抬起时检查时间间隔
+    if (event.type === TouchType.Up) {
+      const currentTime = Date.now()
+      const timeSinceLastClick = currentTime - this.lastClickTime
+      
+      // 如果两次点击间隔在阈值内，且是同一行，认为是双击
+      if (timeSinceLastClick > 0 && 
+          timeSinceLastClick <= this.DOUBLE_CLICK_INTERVAL && 
+          this.lastClickItemId === item.id) {
+        // 双击事件：取消待执行的单击事件
+        if (this.clickTimer !== null) {
+          clearTimeout(this.clickTimer)
+          this.clickTimer = null
+        }
+        this.handleDoubleClick(item)
+        // 重置时间戳，避免连续触发
+        this.lastClickTime = 0
+        this.lastClickItemId = -1
+      } else {
+        // 更新最后点击时间和行ID
+        this.lastClickTime = currentTime
+        this.lastClickItemId = item.id
+      }
+    }
   }
 
   /**
@@ -484,6 +541,9 @@ export struct HistoryDataTable {
               }
               .onClick(() => {
                 this.handleRowClick(item)
+              })
+              .onTouch((event: TouchEvent) => {
+                this.handleTouchEvent(event, item)
               })
               .border({ width: { bottom: 0.5 }, color: this.getCurrentTheme().borderColor })
             },

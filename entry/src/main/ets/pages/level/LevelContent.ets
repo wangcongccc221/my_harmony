@@ -46,6 +46,16 @@ import { LAYOUT_CONFIG } from './LevelConstants'
 import { ArrowToggleButton } from '../../components/ui/buttons/ArrowToggleButton'
 
 /**
+ * 等级表格数据接口（用于内部表格数据，包含id字段）
+ */
+interface LevelTableDataWithId {
+  id: number
+  levelName: string
+  minWeight: number
+  packingWeight: number
+}
+
+/**
  * 等级页面主内容组件结构体
  * 
  * 属性说明：
@@ -138,11 +148,19 @@ export struct LevelContent {
   private stateManager = new LevelStateManager()
   // 用于驱动右侧表格刷新
   @State private statsVersion: number = 0
+  // 用于触发保存操作
+  @State private triggerSave: number = 0
 
   // 悬浮按钮显示状态
   @State private showFloatingButtons: boolean = true
   // 悬浮按钮悬停状态
   @State private isHovering: boolean = false
+
+  /**
+   * 页面切换回调
+   * 当需要切换页面时（如保存后返回主页），通过此回调通知父组件
+   */
+  onPageChange?: (pageName: string) => void
 
   /**
    * 获取当前主题配置
@@ -441,6 +459,59 @@ export struct LevelContent {
     this.eventHandler.onClearData()
   }
 
+  /**
+   * 处理保存数据
+   * 
+   * 功能说明：
+   * - 保存等级数据和重量精度设置
+   * - 更新状态管理器中的数据
+   * - 记录保存操作日志
+   * - 保存完成后返回主页
+   * 
+   * @param levelTableData 等级表格数据数组（包含id字段）
+   * @param weightPrecision 重量精度
+   */
+  private handleSaveData(levelTableData: LevelTableDataWithId[], weightPrecision: number): void {
+    // 转换等级数据格式（移除id字段，只保留LevelData需要的字段）
+    const convertedLevelData: LevelData[] = levelTableData.map((item: LevelTableDataWithId): LevelData => {
+      return {
+        levelName: item.levelName,
+        minWeight: item.minWeight,
+        packingWeight: item.packingWeight
+      }
+    })
+    
+    // 更新状态管理器
+    this.stateManager.updateLevelData(convertedLevelData)
+    // 保存重量精度到状态管理器（如果状态管理器支持）
+    console.log('【等级页面】保存数据:', {
+      levelData: convertedLevelData,
+      weightPrecision: weightPrecision
+    })
+    
+    // 记录保存操作日志
+    console.log('【等级页面】数据已保存，等级数量:', convertedLevelData.length, '重量精度:', weightPrecision)
+    
+    // 保存完成后，返回主页
+    if (this.onPageChange) {
+      console.log('【等级页面】保存完成，返回主页')
+      this.onPageChange('home')
+    }
+  }
+
+  /**
+   * 处理保存并确认
+   * 
+   * 功能说明：
+   * - 触发保存操作并返回主页
+   * - 通过改变 triggerSave 的值来触发 LevelDataTable 的保存回调
+   */
+  private handleSaveAndConfirm(): void {
+    console.log('【等级页面】确认按钮被点击，触发保存操作，当前 triggerSave:', this.triggerSave)
+    // 通过改变 triggerSave 的值来触发 LevelDataTable 的保存回调
+    this.triggerSave++
+    console.log('【等级页面】triggerSave 已更新为:', this.triggerSave)
+  }
 
   /**
    * 处理出口设置
@@ -594,11 +665,15 @@ export struct LevelContent {
             statisticsData: this.stateManager.statisticsData,                  // 统计数据
             tableCount: this.stateManager.tableCount,                          // 表格数量
             refreshKey: this.statsVersion,                                     // 刷新驱动键
+            triggerSave: this.triggerSave,                                     // 触发保存标志
             onEditStat: (row: 'bottom1' | 'bottom2', field: 'count' | 'avg' | 'set', colIndex: number, value: number) => {
               this.handleEditStat(row, field, colIndex, value)
             },
             onTableCountChange: (count: string) => {                           // 表格数量变化回调
               this.handleTableCountChange(count)
+            },
+            onSave: (levelData, weightPrecision) => {                          // 保存数据回调
+              this.handleSaveData(levelData, weightPrecision)
             }
           })
           .layoutWeight(1)                                                     // 中间面板占满剩余空间
@@ -632,7 +707,7 @@ export struct LevelContent {
               curve: Curve.EaseInOut
             })
             .onClick(() => {
-              this.handleGenerateRandomData()
+              this.handleSaveAndConfirm()
             })
 
           // 取消按钮

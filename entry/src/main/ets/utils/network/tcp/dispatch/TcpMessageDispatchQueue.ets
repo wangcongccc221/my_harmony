@@ -1,6 +1,6 @@
 import { DispatchQueue, DispatchTask, QueueType } from '@magicnumber/dispatch';
 import { socket } from '@kit.NetworkKit';
-import { util } from '@kit.ArkTS';
+import { util, fastbuffer } from '@kit.ArkTS';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 
 const DOMAIN = 0x0000;
@@ -12,7 +12,7 @@ type ESObject = object;
  * TCP 消息任务参数接口
  */
 export interface TcpMessageTaskParams {
-  message: Uint8Array;
+  message: fastbuffer.FastBuffer;
 }
 
 /**
@@ -33,9 +33,9 @@ export type TcpMessageHandler = (message: string) => void | Promise<void>;
  * TCP 消息任务类（继承 DispatchTask）
  */
 export class TcpMessageTask extends DispatchTask {
-  message: Uint8Array;
+  message: fastbuffer.FastBuffer;
 
-  constructor(message: Uint8Array) {
+  constructor(message: fastbuffer.FastBuffer) {
     super({ message: message });
     this.message = message;
   }
@@ -82,15 +82,21 @@ export class TcpMessageDispatchQueue extends DispatchQueue {
     // 在原始 worker 中执行消息处理（异步，不阻塞队列）
     const processMessage = async () => {
       try {
-        // 解码消息
+        // 直接使用 FastBuffer 进行解码
+        hilog.info(DOMAIN, 'TcpMessageDispatchQueue', `[FastBuffer] 处理消息，使用 FastBuffer，大小: ${tcpTask.message.length} 字节`);
         const decoder = new util.TextDecoder();
-        const decodedMessage = decoder.decode(tcpTask.message);
+        // FastBuffer 支持索引访问，可以直接用于解码（通过 buffer 属性获取 ArrayBuffer，然后创建视图）
+        // 注意：TextDecoder.decode() 需要 Uint8Array，所以需要从 FastBuffer.buffer 创建视图
+        const decodedMessage = decoder.decode(new Uint8Array(tcpTask.message.buffer));
+        hilog.info(DOMAIN, 'TcpMessageDispatchQueue', `[解码] 解码完成，消息内容: ${decodedMessage}`);
         
         // 执行 handler
+        hilog.info(DOMAIN, 'TcpMessageDispatchQueue', `[处理] 开始执行 handler`);
         const handlerResult = handler(decodedMessage);
         if (handlerResult instanceof Promise) {
           await handlerResult;
         }
+        hilog.info(DOMAIN, 'TcpMessageDispatchQueue', `[处理] handler 执行完成`);
 
         const result: TcpMessageTaskResult = {
           success: true,
