@@ -305,7 +305,7 @@ export struct LevelDataTable {
 
   // 记录上次的 triggerSave 值，避免重复触发
   private lastTriggerSave: number = 0
-  
+
   /**
    * 组件更新时同步最新的统计数据到内表
    * - 当父组件传入的 statisticsData 发生变化时，重建 statisticsTableData
@@ -848,7 +848,7 @@ export struct LevelDataTable {
    * @param value 要格式化的数值
    * @returns 格式化后的字符串
    */
-  private formatWeight(value: number | string): string {
+  private formatWeight(value: number | string): string {  //设置精度
     // 转换为数字
     const num = typeof value === 'string' ? parseFloat(value) : value
     if (isNaN(num)) {
@@ -1072,11 +1072,11 @@ export struct LevelDataTable {
 
   /**
    * 获取统计表格表头文本
-   * 
+   *
    * 功能说明：
    * - 返回指定列索引的表头文本
    * - 第0列显示"项"，第1-8列显示数字索引
-   * 
+   *
    * @param index 列索引
    * @returns 表头文本
    */

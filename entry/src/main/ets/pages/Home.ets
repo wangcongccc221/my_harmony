@@ -48,6 +48,8 @@ import { UserInfoStorage } from '../utils/storage/UserInfoStorage'
 // import { getContext } from '@kit.ArkUI' // 移除错误的导入
 import common from '@ohos.app.ability.common'
 import { PrintManager } from '../utils/print/PrintManager'
+import { getConfigSender } from '../protocol/ConfigSender'
+import { ConstPreDefine } from '../protocol/ConstPreDefine'
 // 移除 BottomBar 集成
 
 
@@ -876,6 +878,48 @@ struct Page {
     }
   }
 
+  // 处理数据清零功能（向下位机发送清零命令）
+  private async handleClearData(): Promise<void> {
+    try {
+      const configSender = getConfigSender()
+      
+      // 显示确认对话框
+      AlertDialog.show({
+        title: t('确认', '确认'),
+        message: t('确定要清零所有数据吗？此操作将清空下位机的统计数据。', '确定要清零所有数据吗？此操作将清空下位机的统计数据。'),
+        primaryButton: {
+          value: t('取消', '取消'),
+          action: () => {}
+        },
+        secondaryButton: {
+          value: t('确定', '确定'),
+          action: async () => {
+            try {
+              // 发送数据清零命令到所有已连接的设备
+              const success = await configSender.sendClearData()
+              
+              if (success) {
+                this.omniUIUtils.showSuccess(t('数据清零命令已发送', '数据清零命令已发送'))
+                console.log('数据清零命令发送成功')
+              } else {
+                this.omniUIUtils.showError(t('数据清零命令发送失败，请检查设备连接', '数据清零命令发送失败，请检查设备连接'))
+                console.error('数据清零命令发送失败')
+              }
+            } catch (error) {
+              const errorMsg = error instanceof Error ? error.message : String(error)
+              this.omniUIUtils.showError(t('数据清零失败', '数据清零失败') + ': ' + errorMsg)
+              console.error('数据清零异常:', error)
+            }
+          }
+        }
+      })
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      this.omniUIUtils.showError(t('操作失败', '操作失败') + ': ' + errorMsg)
+      console.error('处理数据清零失败:', error)
+    }
+  }
+
   // 构建悬浮窗Tab按钮
   @Builder
   private buildFloatingTabButton(title: string, tabKey: string): void {
@@ -1628,6 +1672,9 @@ struct Page {
       } else if (originalKey === '出口清空') {
         console.log('执行出口清空操作...')
         this.handleExportClear()
+      } else if (originalKey === '数据清零') {
+        console.log('执行数据清零操作...')
+        this.handleClearData()
       } else if (originalKey === '出口屏设置') {
         this.showExitScreenSettingsDialog = true
       } else if (originalKey === '语言') {

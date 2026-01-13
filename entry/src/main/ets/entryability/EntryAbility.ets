@@ -25,6 +25,10 @@ import { AlarmInfo } from '../database/models/AlarmInfo';
 import { I18nManager } from '../utils/i18n/I18nManager';
 import { OutletCountStorage } from '../utils/storage/OutletCountStorage';
 import { NativeModule } from '../utils/native/NativeModule';
+import { getUIDataSync } from '../protocol/UIDataSync';
+import { TCPServer } from '../utils/network/tcp/TCPServer';
+import { ConstPreDefine } from '../protocol/ConstPreDefine';
+import { getConfigSender } from '../protocol/ConfigSender';
 // import { taskPoolExecuteInsert, taskPoolExecuteQuery, taskPoolExecuteUpdate, taskPoolExecuteDelete } from '../database/examples/taskpool'; // 文件已删除
 
 const DOMAIN = 0x0000;
@@ -32,7 +36,9 @@ const HTTP_SERVER_PORT: number = 8080;
 
 export default class EntryAbility extends UIAbility {
   private networkOptimizer: NetworkOptimizer = NetworkOptimizer.getInstance();
-  private httpServerInitialized: boolean = false; 
+  private httpServerInitialized: boolean = false;
+  private tcpServer: TCPServer | null = null;
+  private tcpServerInitialized: boolean = false; 
 
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
@@ -44,6 +50,8 @@ export default class EntryAbility extends UIAbility {
     this.copyResourceFiles();
     this.initNetworkOptimizer();
     this.initHttpServer();
+    // 启动TCP服务器接收下位机数据
+    this.initTcpServer();
     // 初始化自定义翻译（JSON 模式）
     I18nManager.getInstance().init(this.context).catch((e: Error | object | string) => {
       const reason = typeof e === 'string'
@@ -111,6 +119,12 @@ export default class EntryAbility extends UIAbility {
 
     this.networkOptimizer.stop();
     
+    // 停止 UI 数据同步服务
+    getUIDataSync().stop();
+    
+    // 停止TCP服务器
+    this.stopTcpServer();
+    
     if (isHttpServerRunning()) {
       stopHttpServer();
       this.httpServerInitialized = false; 
@@ -118,6 +132,20 @@ export default class EntryAbility extends UIAbility {
     }
 
     AppCleanup.shutdownAll();
+  }
+  
+  /**
+   * 启动 UI 数据同步服务
+   * 将协议层的下位机数据同步到 UI 组件
+   */
+  private startUIDataSync(): void {
+    try {
+      const uiDataSync = getUIDataSync();
+      uiDataSync.start();
+      hilog.info(DOMAIN, 'EntryAbility', 'UI数据同步服务已启动');
+    } catch (e) {
+      hilog.error(DOMAIN, 'EntryAbility', `UI数据同步服务启动失败: ${JSON.stringify(e)}`);
+    }
   }
 
   async onWindowStageCreate(windowStage: window.WindowStage): Promise<void> {
@@ -152,6 +180,9 @@ export default class EntryAbility extends UIAbility {
 
     // 确保出口数量存储已初始化并加载数据
     await this.initOutletCountStorage();
+
+    // 启动 UI 数据同步服务 - 将下位机数据同步到 UI
+    this.startUIDataSync();
 
     windowStage.loadContent('pages/Home', async (err) => { 
       if (err.code) {
@@ -254,6 +285,87 @@ export default class EntryAbility extends UIAbility {
     } catch (error) {
       hilog.error(DOMAIN, 'EntryAbility', `HTTP服务器启动失败: ${error.message}`);
       this.httpServerInitialized = false;
+    }
+  }
+
+  /**
+   * 初始化并启动TCP服务器
+   * 用于接收下位机（FSM）发送的数据
+   * 对应48项目的 TcpServer::Start() 功能
+   */
+  private async initTcpServer(): Promise<void> {
+    if (this.tcpServerInitialized) {
+      hilog.warn(DOMAIN, 'EntryAbility', 'TCP服务器已经初始化过，跳过重复启动');
+      return;
+    }
+
+    try {
+      hilog.info(DOMAIN, 'EntryAbility', '开始启动TCP服务器接收下位机数据');
+      
+      // 创建TCP服务器实例
+      this.tcpServer = new TCPServer();
+      
+      // 设置消息回调（用于日志记录）
+      this.tcpServer.setOnMessage((type: 'send' | 'receive', message: string, clientId?: string) => {
+        if (type === 'receive') {
+          hilog.debug(DOMAIN, 'EntryAbility', `[TCP] 收到消息: ${message.substring(0, 100)}...`);
+        }
+      });
+
+      // 设置客户端连接回调
+      this.tcpServer.setOnClientConnect((clientInfo) => {
+        hilog.info(DOMAIN, 'EntryAbility', 
+          `[TCP] 下位机已连接: ${clientInfo.address}:${clientInfo.port} (${clientInfo.name})`);
+      });
+
+      // 设置服务器状态回调
+      this.tcpServer.setOnServerStatus((isRunning: boolean, message: string) => {
+        hilog.info(DOMAIN, 'EntryAbility', `[TCP] 服务器状态: ${isRunning ? '运行中' : '已停止'} - ${message}`);
+      });
+
+      // 启动服务器，监听所有网络接口（0.0.0.0），端口1279（FSM_PORT_NUM）
+      // 对应48项目的: m_MasterSocket->listen(address, FSM_PORT_NUM)
+      const serverIp = '0.0.0.0'; // 监听所有网络接口
+      const serverPort = ConstPreDefine.FSM_PORT_NUM; // 1279端口
+      
+      const success = await this.tcpServer.start(serverIp, serverPort);
+      
+      if (success) {
+        this.tcpServerInitialized = true;
+        hilog.info(DOMAIN, 'EntryAbility', 
+          `✅ TCP服务器启动成功，监听 ${serverIp}:${serverPort}，等待下位机连接...`);
+        console.log(`[TCP服务器] ✅ 已启动，监听端口 ${serverPort}，等待下位机连接`);
+        
+        // 初始化ConfigSender并设置TCP发送器
+        const configSender = getConfigSender();
+        configSender.setTcpSender(this.tcpServer);
+        hilog.info(DOMAIN, 'EntryAbility', '✅ ConfigSender已初始化并连接到TCP服务器');
+      } else {
+        hilog.error(DOMAIN, 'EntryAbility', 'TCP服务器启动失败');
+        this.tcpServer = null;
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'EntryAbility', `TCP服务器启动异常: ${errorMsg}`);
+      this.tcpServer = null;
+    }
+  }
+
+  /**
+   * 停止TCP服务器
+   */
+  private stopTcpServer(): void {
+    if (this.tcpServer) {
+      try {
+        this.tcpServer.stop();
+        hilog.info(DOMAIN, 'EntryAbility', 'TCP服务器已停止');
+        console.log('[TCP服务器] 已停止');
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        hilog.error(DOMAIN, 'EntryAbility', `停止TCP服务器失败: ${errorMsg}`);
+      }
+      this.tcpServer = null;
+      this.tcpServerInitialized = false;
     }
   }
 

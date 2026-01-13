@@ -2,6 +2,8 @@ import { DispatchQueue, DispatchTask, QueueType } from '@magicnumber/dispatch';
 import { socket } from '@kit.NetworkKit';
 import { util, fastbuffer } from '@kit.ArkTS';
 import { hilog } from '@kit.PerformanceAnalysisKit';
+import { getStatisticsHandler } from '../../../../protocol/StatisticsHandler';
+import { getProtocolParser } from '../../../../protocol/ProtocolParser';
 
 const DOMAIN = 0x0000;
 
@@ -84,11 +86,39 @@ export class TcpMessageDispatchQueue extends DispatchQueue {
       try {
         // 直接使用 FastBuffer 进行解码
         hilog.info(DOMAIN, 'TcpMessageDispatchQueue', `[FastBuffer] 处理消息，使用 FastBuffer，大小: ${tcpTask.message.length} 字节`);
+        
+        // 获取原始 ArrayBuffer
+        const rawBuffer = tcpTask.message.buffer;
+        
+        // 首先尝试二进制协议解析
+        const protocolParser = getProtocolParser();
+        if (protocolParser.isBinaryProtocol(rawBuffer)) {
+          hilog.info(DOMAIN, 'TcpMessageDispatchQueue', `[协议] 检测到二进制协议，使用协议解析器`);
+          const statsHandler = getStatisticsHandler();
+          const handled = statsHandler.handleRawData(rawBuffer);
+          if (handled) {
+            hilog.info(DOMAIN, 'TcpMessageDispatchQueue', `[协议] 二进制协议处理完成`);
+            const result: TcpMessageTaskResult = {
+              success: true,
+              decodedMessage: '[二进制协议数据]'
+            };
+            this.finishTask(taskData, result as ESObject);
+            return;
+          }
+        }
+        
+        // 非二进制协议，尝试文本解码
         const decoder = new util.TextDecoder();
         // FastBuffer 支持索引访问，可以直接用于解码（通过 buffer 属性获取 ArrayBuffer，然后创建视图）
         // 注意：TextDecoder.decode() 需要 Uint8Array，所以需要从 FastBuffer.buffer 创建视图
-        const decodedMessage = decoder.decode(new Uint8Array(tcpTask.message.buffer));
+        const decodedMessage = decoder.decode(new Uint8Array(rawBuffer));
         hilog.info(DOMAIN, 'TcpMessageDispatchQueue', `[解码] 解码完成，消息内容: ${decodedMessage}`);
+        
+        // 尝试 JSON 统计数据处理
+        const statsHandler = getStatisticsHandler();
+        if (statsHandler.handleJsonStatistics(decodedMessage)) {
+          hilog.info(DOMAIN, 'TcpMessageDispatchQueue', `[协议] JSON 统计数据处理完成`);
+        }
         
         // 执行 handler
         hilog.info(DOMAIN, 'TcpMessageDispatchQueue', `[处理] 开始执行 handler`);

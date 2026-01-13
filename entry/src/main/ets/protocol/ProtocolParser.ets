@@ -1,0 +1,469 @@
+/**
+ * 协议解析器
+ * 负责解析和构建TCP通信协议数据包
+ * 对应48项目的二进制协议解析逻辑
+ */
+
+import { ConstPreDefine } from './ConstPreDefine'
+import { FSM_HC_COMMAND_TYPE, HC_FSM_COMMAND_TYPE, getCommandName } from './CommandTypes'
+import {
+  MessageHeader,
+  MESSAGE_HEADER_SIZE,
+  StStatistics,
+  StWeightInfo,
+  StGradeInfo,
+  createDefaultStatistics,
+  createDefaultWeightInfo,
+  createDefaultGradeInfo
+} from './Structures'
+import { hilog } from '@kit.PerformanceAnalysisKit'
+import { util } from '@kit.ArkTS'
+
+const TAG = 'ProtocolParser'
+
+/**
+ * 协议解析器类
+ * 支持二进制和JSON两种协议格式
+ */
+export class ProtocolParser {
+  private static instance: ProtocolParser | null = null
+
+  /**
+   * 获取单例实例
+   */
+  static getInstance(): ProtocolParser {
+    if (!ProtocolParser.instance) {
+      ProtocolParser.instance = new ProtocolParser()
+    }
+    return ProtocolParser.instance
+  }
+
+  private constructor() {}
+
+  // ==================== 消息头解析 ====================
+  /**
+   * 解析消息头
+   * @param buffer 数据缓冲区
+   * @returns 消息头结构，解析失败返回null
+   */
+  parseHeader(buffer: ArrayBuffer): MessageHeader | null {
+    if (buffer.byteLength < MESSAGE_HEADER_SIZE) {
+      hilog.warn(0x0001, TAG, `数据长度不足: ${buffer.byteLength} < ${MESSAGE_HEADER_SIZE}`)
+      return null
+    }
+
+    const view = new DataView(buffer)
+
+    try {
+      const header: MessageHeader = {
+        length: view.getUint32(0, true), // 小端序
+        srcId: view.getUint16(4, true),
+        destId: view.getUint16(6, true),
+        cmdId: view.getUint16(8, true)
+      }
+
+      // 验证消息长度
+      if (header.length > buffer.byteLength || header.length < MESSAGE_HEADER_SIZE) {
+        hilog.warn(0x0001, TAG, `消息长度异常: header.length=${header.length}, buffer.length=${buffer.byteLength}`)
+        return null
+      }
+
+      return header
+    } catch (e) {
+      hilog.error(0x0001, TAG, `解析消息头失败: ${e}`)
+      return null
+    }
+  }
+
+  /**
+   * 构建消息头
+   * @param srcId 源ID
+   * @param destId 目标ID
+   * @param cmdId 命令ID
+   * @param dataLength 数据长度（不含头部）
+   * @returns 消息头的ArrayBuffer
+   */
+  buildHeader(srcId: number, destId: number, cmdId: number, dataLength: number): ArrayBuffer {
+    const buffer = new ArrayBuffer(MESSAGE_HEADER_SIZE)
+    const view = new DataView(buffer)
+
+    view.setUint32(0, MESSAGE_HEADER_SIZE + dataLength, true) // 总长度
+    view.setUint16(4, srcId, true)
+    view.setUint16(6, destId, true)
+    view.setUint16(8, cmdId, true)
+
+    return buffer
+  }
+
+  // ==================== 统计数据解析 ====================
+  /**
+   * 解析统计数据 (FSM_CMD_STATISTICS)
+   * @param buffer 数据缓冲区（包含消息头）
+   * @returns 统计数据结构
+   */
+  parseStatistics(buffer: ArrayBuffer): StStatistics | null {
+    const header = this.parseHeader(buffer)
+    if (!header) return null
+
+    if (header.cmdId !== FSM_HC_COMMAND_TYPE.FSM_CMD_STATISTICS) {
+      hilog.warn(0x0001, TAG, `命令ID不匹配: ${header.cmdId} != ${FSM_HC_COMMAND_TYPE.FSM_CMD_STATISTICS}`)
+      return null
+    }
+
+    const view = new DataView(buffer)
+    const offset = MESSAGE_HEADER_SIZE
+
+    try {
+      const stats = createDefaultStatistics()
+
+      // 解析核心数据
+      stats.yield = view.getUint32(offset, true)
+      stats.totalWeight = view.getUint32(offset + 4, true)
+      stats.qualifiedCount = view.getUint32(offset + 8, true)
+      stats.unqualifiedCount = view.getUint32(offset + 12, true)
+      stats.bigCount = view.getUint32(offset + 16, true)
+      stats.smallCount = view.getUint32(offset + 20, true)
+      stats.emptyCount = view.getUint32(offset + 24, true)
+
+      // 解析等级数量数组
+      let arrayOffset = offset + 28
+      for (let i = 0; i < ConstPreDefine.MAX_SIZE_GRADE_NUM && arrayOffset + 4 <= buffer.byteLength; i++) {
+        stats.gradeCount[i] = view.getUint32(arrayOffset, true)
+        arrayOffset += 4
+      }
+
+      // 解析出口数量数组
+      for (let i = 0; i < ConstPreDefine.MAX_EXIT_NUM && arrayOffset + 4 <= buffer.byteLength; i++) {
+        stats.exitCount[i] = view.getUint32(arrayOffset, true)
+        arrayOffset += 4
+      }
+
+      // 解析出口重量数组
+      for (let i = 0; i < ConstPreDefine.MAX_EXIT_NUM && arrayOffset + 4 <= buffer.byteLength; i++) {
+        stats.exitWeight[i] = view.getUint32(arrayOffset, true)
+        arrayOffset += 4
+      }
+
+      // 从源ID解析通道和子系统信息
+      stats.subsysIndex = ConstPreDefine.getSubsysIndex(header.srcId)
+      stats.channelIndex = (header.srcId >> 4) & 0x0F
+      stats.timestamp = Date.now()
+
+      hilog.info(0x0001, TAG,
+        `解析统计数据成功: 产量=${stats.yield}, 总重=${stats.totalWeight}g, 合格=${stats.qualifiedCount}`)
+
+      return stats
+    } catch (e) {
+      hilog.error(0x0001, TAG, `解析统计数据失败: ${e}`)
+      return null
+    }
+  }
+
+  // ==================== 重量信息解析 ====================
+  /**
+   * 解析重量信息 (FSM_CMD_WEIGHTINFO)
+   * @param buffer 数据缓冲区（包含消息头）
+   * @returns 重量信息结构
+   */
+  parseWeightInfo(buffer: ArrayBuffer): StWeightInfo | null {
+    const header = this.parseHeader(buffer)
+    if (!header) return null
+
+    if (header.cmdId !== FSM_HC_COMMAND_TYPE.FSM_CMD_WEIGHTINFO) {
+      hilog.warn(0x0001, TAG, `命令ID不匹配: ${header.cmdId} != ${FSM_HC_COMMAND_TYPE.FSM_CMD_WEIGHTINFO}`)
+      return null
+    }
+
+    const view = new DataView(buffer)
+    const offset = MESSAGE_HEADER_SIZE
+
+    try {
+      const info = createDefaultWeightInfo()
+
+      info.weight = view.getUint32(offset, true)
+      info.diameter = view.getUint16(offset + 4, true)
+      info.volume = view.getUint32(offset + 6, true)
+      info.area = view.getUint32(offset + 10, true)
+      info.weightGrade = view.getUint8(offset + 14)
+      info.sizeGrade = view.getUint8(offset + 15)
+      info.qualityGrade = view.getUint8(offset + 16)
+      info.finalGrade = view.getUint8(offset + 17)
+      info.targetExit = view.getUint8(offset + 18)
+      info.fruitId = view.getUint32(offset + 19, true)
+      info.cupIndex = view.getUint8(offset + 23)
+
+      // 从源ID解析通道信息
+      info.channelIndex = (header.srcId >> 4) & 0x0F
+      info.timestamp = Date.now()
+
+      hilog.info(0x0001, TAG,
+        `解析重量信息成功: 重量=${info.weight}g, 直径=${info.diameter}mm, 出口=${info.targetExit}`)
+
+      return info
+    } catch (e) {
+      hilog.error(0x0001, TAG, `解析重量信息失败: ${e}`)
+      return null
+    }
+  }
+
+  // ==================== 分级信息解析 ====================
+  /**
+   * 解析分级信息 (FSM_CMD_GRADEINFO)
+   * @param buffer 数据缓冲区（包含消息头）
+   * @returns 分级信息结构
+   */
+  parseGradeInfo(buffer: ArrayBuffer): StGradeInfo | null {
+    const header = this.parseHeader(buffer)
+    if (!header) return null
+
+    if (header.cmdId !== FSM_HC_COMMAND_TYPE.FSM_CMD_GRADEINFO) {
+      return null
+    }
+
+    const view = new DataView(buffer)
+    const offset = MESSAGE_HEADER_SIZE
+
+    try {
+      const info = createDefaultGradeInfo()
+
+      info.fruitId = view.getUint32(offset, true)
+      info.weight = view.getUint32(offset + 4, true)
+      info.diameter = view.getUint16(offset + 8, true)
+      info.colorGrade = view.getUint8(offset + 10)
+      info.shapeGrade = view.getUint8(offset + 11)
+      info.flawGrade = view.getUint8(offset + 12)
+      info.sugarGrade = view.getUint8(offset + 13)
+      info.acidityGrade = view.getUint8(offset + 14)
+      info.densityGrade = view.getUint8(offset + 15)
+      info.rigidityGrade = view.getUint8(offset + 16)
+      info.qualityGrade = view.getUint8(offset + 17)
+      info.sizeGrade = view.getUint8(offset + 18)
+      info.finalGrade = view.getUint8(offset + 19)
+      info.targetExit = view.getUint8(offset + 20)
+      info.cupIndex = view.getUint8(offset + 21)
+      info.colorR = view.getUint8(offset + 22)
+      info.colorG = view.getUint8(offset + 23)
+      info.colorB = view.getUint8(offset + 24)
+
+      // 从源ID解析通道信息
+      info.channelIndex = (header.srcId >> 4) & 0x0F
+      info.timestamp = Date.now()
+
+      return info
+    } catch (e) {
+      hilog.error(0x0001, TAG, `解析分级信息失败: ${e}`)
+      return null
+    }
+  }
+
+  // ==================== 通用消息解析 ====================
+  /**
+   * 解析任意消息
+   * 根据命令ID自动选择解析方法
+   * @param buffer 数据缓冲区
+   * @returns 解析结果对象
+   */
+  parseMessage(buffer: ArrayBuffer): ParsedMessage | null {
+    const header = this.parseHeader(buffer)
+    if (!header) return null
+
+    const cmdName = getCommandName(header.cmdId)
+    hilog.info(0x0001, TAG, `收到命令: ${cmdName} (0x${header.cmdId.toString(16)}) from 0x${header.srcId.toString(16)}`)
+
+    const result: ParsedMessage = {
+      header: header,
+      cmdName: cmdName,
+      data: null
+    }
+
+    switch (header.cmdId) {
+      case FSM_HC_COMMAND_TYPE.FSM_CMD_STATISTICS:
+        result.data = this.parseStatistics(buffer)
+        break
+
+      case FSM_HC_COMMAND_TYPE.FSM_CMD_WEIGHTINFO:
+        result.data = this.parseWeightInfo(buffer)
+        break
+
+      case FSM_HC_COMMAND_TYPE.FSM_CMD_GRADEINFO:
+        result.data = this.parseGradeInfo(buffer)
+        break
+
+      case FSM_HC_COMMAND_TYPE.FSM_CMD_CONFIG:
+        // 配置回复，暂不处理
+        hilog.info(0x0001, TAG, '收到配置回复')
+        break
+
+      case FSM_HC_COMMAND_TYPE.FSM_CMD_GETVERSION:
+        // 版本信息回复
+        result.data = this.parseVersionInfo(buffer)
+        break
+
+      default:
+        hilog.warn(0x0001, TAG, `未处理的命令类型: ${cmdName}`)
+    }
+
+    return result
+  }
+
+  /**
+   * 解析版本信息
+   */
+  private parseVersionInfo(buffer: ArrayBuffer): string | null {
+    try {
+      const view = new DataView(buffer)
+      const offset = MESSAGE_HEADER_SIZE
+      const versionBytes = new Uint8Array(buffer, offset, ConstPreDefine.BYTE_NUM_FSM_VERSION)
+
+      // 找到null终止符
+      let endIndex = versionBytes.indexOf(0)
+      if (endIndex === -1) endIndex = ConstPreDefine.BYTE_NUM_FSM_VERSION
+
+      const decoder = new util.TextDecoder('utf-8')
+      const version: string = decoder.decode(versionBytes.slice(0, endIndex))
+      hilog.info(0x0001, TAG, `FSM版本: ${version}`)
+      return version
+    } catch (e) {
+      hilog.error(0x0001, TAG, `解析版本信息失败: ${e}`)
+      return null
+    }
+  }
+
+  // ==================== 命令构建 ====================
+  /**
+   * 构建无参数命令
+   * @param cmdId 命令ID
+   * @param destId 目标设备ID
+   * @returns 完整的命令数据包
+   */
+  buildSimpleCommand(cmdId: number, destId: number): ArrayBuffer {
+    return this.buildHeader(ConstPreDefine.HC_ID, destId, cmdId, 0)
+  }
+
+  /**
+   * 构建带版本号的连接命令 (HC_CMD_DISPLAY_ON)
+   * @param destId 目标设备ID
+   * @returns 完整的命令数据包
+   */
+  buildConnectCommand(destId: number): ArrayBuffer {
+    const dataLength = 4 // 版本号4字节
+    const totalLength = MESSAGE_HEADER_SIZE + dataLength
+    const buffer = new ArrayBuffer(totalLength)
+    const view = new DataView(buffer)
+
+    // 写入消息头
+    view.setUint32(0, totalLength, true)
+    view.setUint16(4, ConstPreDefine.HC_ID, true)
+    view.setUint16(6, destId, true)
+    view.setUint16(8, HC_FSM_COMMAND_TYPE.HC_CMD_DISPLAY_ON, true)
+
+    // 写入版本号
+    view.setUint32(MESSAGE_HEADER_SIZE, ConstPreDefine.VERSION, true)
+
+    return buffer
+  }
+
+  /**
+   * 构建数据清零命令 (HC_CMD_CLEAR_DATA)
+   */
+  buildClearDataCommand(destId: number): ArrayBuffer {
+    return this.buildSimpleCommand(HC_FSM_COMMAND_TYPE.HC_CMD_CLEAR_DATA, destId)
+  }
+
+  /**
+   * 构建保存数据命令 (HC_CMD_SAVE_CURRENT_DATA)
+   */
+  buildSaveDataCommand(destId: number): ArrayBuffer {
+    return this.buildSimpleCommand(HC_FSM_COMMAND_TYPE.HC_CMD_SAVE_CURRENT_DATA, destId)
+  }
+
+  /**
+   * 构建获取版本命令 (HC_CMD_GETVERSION)
+   */
+  buildGetVersionCommand(destId: number): ArrayBuffer {
+    return this.buildSimpleCommand(HC_FSM_COMMAND_TYPE.HC_CMD_GETVERSION, destId)
+  }
+
+  /**
+   * 构建开启统计信息上报命令 (HC_CMD_WEIGHTINFO_ON)
+   */
+  buildWeightInfoOnCommand(destId: number): ArrayBuffer {
+    return this.buildSimpleCommand(HC_FSM_COMMAND_TYPE.HC_CMD_WEIGHTINFO_ON, destId)
+  }
+
+  /**
+   * 构建关闭统计信息上报命令 (HC_CMD_WEIGHTINFO_OFF)
+   */
+  buildWeightInfoOffCommand(destId: number): ArrayBuffer {
+    return this.buildSimpleCommand(HC_FSM_COMMAND_TYPE.HC_CMD_WEIGHTINFO_OFF, destId)
+  }
+
+  /**
+   * 构建开启分级信息上报命令 (HC_CMD_GRADEINFO_ON)
+   */
+  buildGradeInfoOnCommand(destId: number): ArrayBuffer {
+    return this.buildSimpleCommand(HC_FSM_COMMAND_TYPE.HC_CMD_GRADEINFO_ON, destId)
+  }
+
+  /**
+   * 构建关闭分级信息上报命令 (HC_CMD_GRADEINFO_OFF)
+   */
+  buildGradeInfoOffCommand(destId: number): ArrayBuffer {
+    return this.buildSimpleCommand(HC_FSM_COMMAND_TYPE.HC_CMD_GRADEINFO_OFF, destId)
+  }
+
+  // ==================== 辅助方法 ====================
+  /**
+   * ArrayBuffer转16进制字符串（调试用）
+   */
+  bufferToHex(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer)
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ')
+  }
+
+  /**
+   * 检查是否为二进制协议消息
+   * 根据消息头特征判断
+   */
+  isBinaryProtocol(buffer: ArrayBuffer): boolean {
+    if (buffer.byteLength < MESSAGE_HEADER_SIZE) {
+      return false
+    }
+
+    const view = new DataView(buffer)
+    const length = view.getUint32(0, true)
+
+    // 检查长度是否合理
+    if (length < MESSAGE_HEADER_SIZE || length > buffer.byteLength) {
+      return false
+    }
+
+    // 检查命令ID是否在有效范围
+    const cmdId = view.getUint16(8, true)
+    if (cmdId < 0x1000 && cmdId > 0x00FF) {
+      return false
+    }
+    if (cmdId >= 0x1000 && cmdId < 0x5000) {
+      return true
+    }
+
+    return length === buffer.byteLength
+  }
+}
+
+/**
+ * 解析后的消息结构
+ */
+export interface ParsedMessage {
+  /** 消息头 */
+  header: MessageHeader
+  /** 命令名称 */
+  cmdName: string
+  /** 解析后的数据 */
+  data: StStatistics | StWeightInfo | StGradeInfo | string | null
+}
+
+// 导出单例获取方法
+export function getProtocolParser(): ProtocolParser {
+  return ProtocolParser.getInstance()
+}

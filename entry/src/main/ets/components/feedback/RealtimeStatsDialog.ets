@@ -1,6 +1,7 @@
 /**
  * 实时统计对话框组件
- * 功能：以弹窗形式展示实时统计摘要，交互样式与“水果信息”一致（标题/遮罩/按钮布局）
+ * 功能：以弹窗形式展示实时统计摘要，交互样式与"水果信息"一致（标题/遮罩/按钮布局）
+ * 现已集成协议层的 GlobalDataInterface，显示真实的下位机数据
  */
 
 import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
@@ -25,6 +26,13 @@ import GlobalStore from '../../database/orm/model/GlobalStore'
 import fs from '@ohos.file.fs'
 import util from '@ohos.util'
 import common from '@ohos.app.ability.common'
+// 导入协议层 - 连接真实下位机数据
+import {
+  GlobalDataInterface,
+  getGlobalDataInterface,
+  DataChangeListener
+} from '../../protocol/GlobalDataInterface'
+import { GlobalRealtimeData } from '../../protocol/Structures'
 
 interface RealtimeStats {
   productionTonH: string
@@ -46,6 +54,13 @@ export struct RealtimeStatsDialog {
   // 为子图表提供主题，避免 @Consume 解析失败
   @Provide providedTheme: ExtendedOmniThemeStyle = getCurrentTheme()
 
+  // 协议层数据接口
+  private dataInterface: GlobalDataInterface = getGlobalDataInterface()
+  private dataChangeListener: DataChangeListener | null = null
+
+  // 真实的统计数据（从协议层获取）
+  @State private realtimeData: GlobalRealtimeData | null = null
+
   // 简要统计占位（可由外部传入或后续联动替换）
   @State stats: RealtimeStats = {
     productionTonH: '--',
@@ -56,6 +71,72 @@ export struct RealtimeStatsDialog {
 
   onConfirm?: (stats: RealtimeStats) => void
   onCancel?: () => void
+
+  /**
+   * 组件初始化 - 连接协议层数据
+   */
+  aboutToAppear(): void {
+    // 获取初始数据
+    this.realtimeData = this.dataInterface.getGlobalData()
+    this.updateStatsFromRealtimeData()
+
+    // 注册数据变化监听器 - 实时更新
+    this.dataChangeListener = (data: GlobalRealtimeData) => {
+      this.realtimeData = data
+      this.updateStatsFromRealtimeData()
+      console.log('[RealtimeStatsDialog] 收到协议层数据更新:', 
+        `产量=${data.totalYield}, 总重=${data.totalWeight}g`)
+    }
+    this.dataInterface.addDataChangeListener(this.dataChangeListener)
+  }
+
+  /**
+   * 组件销毁 - 清理监听器
+   */
+  aboutToDisappear(): void {
+    if (this.dataChangeListener) {
+      this.dataInterface.removeDataChangeListener(this.dataChangeListener)
+      this.dataChangeListener = null
+    }
+  }
+
+  /**
+   * 从协议层数据更新显示的统计信息
+   */
+  private updateStatsFromRealtimeData(): void {
+    if (!this.realtimeData) return
+
+    const totalWeight: number = this.realtimeData.totalWeight
+    const totalYield: number = this.realtimeData.totalYield
+    const runningTime: number = this.realtimeData.runningTime
+
+    // 计算每小时产量（吨/小时）
+    let productionTonH = '--'
+    if (runningTime > 0) {
+      const hoursElapsed = runningTime / 3600
+      const tonPerHour = (totalWeight / 1000000) / hoursElapsed // 克 -> 吨
+      productionTonH = tonPerHour.toFixed(2) + ' 吨/时'
+    }
+
+    // 总重（吨）
+    const sumWeightTon = (totalWeight / 1000000).toFixed(3) + ' 吨'
+
+    // 总个数
+    const sumCounts = totalYield.toString() + ' 个'
+
+    // 平均重量（克/个）
+    let avgG = '--'
+    if (totalYield > 0) {
+      avgG = (totalWeight / totalYield).toFixed(1) + ' g/个'
+    }
+
+    this.stats = {
+      productionTonH: productionTonH,
+      sumWeightTon: sumWeightTon,
+      sumCounts: sumCounts,
+      avgG: avgG
+    }
+  }
 
   // 实时统计弹窗：按钮切换所对应的键集合与当前选中项
   private readonly tabLabels: string[] = [
@@ -394,7 +475,7 @@ export struct RealtimeStatsDialog {
   }
 
   /**
-   * 生成导出数据（CSV格式）
+   * 生成导出数据（CSV格式）- 使用真实协议层数据
    */
   private generateExportData(): string {
     const tabName = this.tabLabels[this.selectedTabIndex]
@@ -402,16 +483,30 @@ export struct RealtimeStatsDialog {
     csvContent += `导出时间,${new Date().toLocaleString('zh-CN')}\n`
     csvContent += `子系统,${this.selectedSubsystem}\n\n`
     
+    // 添加汇总数据
+    csvContent += `=== 汇总统计 ===\n`
+    csvContent += `总产量,${this.stats.sumCounts}\n`
+    csvContent += `总重量,${this.stats.sumWeightTon}\n`
+    csvContent += `产量效率,${this.stats.productionTonH}\n`
+    csvContent += `平均单重,${this.stats.avgG}\n\n`
+    
     // 根据当前标签页生成不同的数据
-    if (tabName === '出口统计信息') {
-      csvContent += '出口编号,FSM1数量,FSM2数量\n'
-      // TODO: 从实际数据源获取出口统计数据
-      for (let i = 0; i < 20; i++) {
-        csvContent += `${i},0,0\n`
+    if (tabName === '出口统计信息' && this.realtimeData) {
+      csvContent += '出口编号,数量,重量(g)\n'
+      for (let i = 0; i < this.realtimeData.exitCount.length; i++) {
+        if (this.realtimeData.exitCount[i] > 0) {
+          csvContent += `${i + 1},${this.realtimeData.exitCount[i]},${this.realtimeData.exitWeight[i]}\n`
+        }
       }
+    } else if (this.realtimeData) {
+      csvContent += '数据项,数值\n'
+      csvContent += `合格数,${this.realtimeData.totalQualified}\n`
+      csvContent += `不合格数,${this.realtimeData.totalUnqualified}\n`
+      csvContent += `效率(个/分),${this.realtimeData.efficiency.toFixed(1)}\n`
+      csvContent += `运行时间(秒),${this.realtimeData.runningTime.toFixed(0)}\n`
     } else {
       csvContent += '数据项,数值\n'
-      csvContent += '统计信息,待实现\n'
+      csvContent += '暂无数据,-\n'
     }
     
     return csvContent

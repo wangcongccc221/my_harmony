@@ -204,18 +204,21 @@ export struct SortingInfoCard {
         Text(t('当前分选信息', '当前分选信息'))
           .fontSize(20)                                      // 增大字体：从16改为20，更突出
           .fontWeight(FontWeight.Bold)                      // 加粗字体：从Medium改为Bold，更醒目
-          .fontColor(Color.White)
+          .fontColor(Color.Black)
+          .textAlign(TextAlign.Center)                      // 文本居中显示
           .opacity(this.i18nVersion >= 0 ? 1 : 1)
       }
       .width('100%')
-      .linearGradient({                                    // 高级效果：颜色渐变 - 增强对比度，更明显
-        angle: 135,
-        colors: [
-          [this.getCurrentTheme().primary, 0],
-          [this.getCurrentTheme().primary, 0.5],
-          [this.getCurrentTheme().primary + '88', 1]      // 增强渐变对比
-        ]
-      })
+      .justifyContent(FlexAlign.Center)                    // 行内容居中
+      // .linearGradient({                                    // 高级效果：颜色渐变 - 增强对比度，更明显
+      //   angle: 135,
+      //   colors: [
+      //     [this.getCurrentTheme().primary, 0],
+      //     [this.getCurrentTheme().primary, 0.5],
+      //     [this.getCurrentTheme().primary + '88', 1]      // 增强渐变对比
+      //   ]
+      // })
+
       .backdropBlur(20)                                    // 背景模糊（毛玻璃效果）
       .blur(3)                                             // 内容模糊（增强毛玻璃质感）
       .borderRadius({ topLeft: 12, topRight: 12 })
@@ -227,15 +230,15 @@ export struct SortingInfoCard {
 
       // ==================== 数据区域（在卡片内部，浅色背景）====================
       Row() {
-        this.buildInfoItem('分选速度', () => this.sortSpeed, 11.11)        // 分选速度信息项
-        this.buildInfoItem('本批重量', () => this.batchWeight, 11.11)      // 本批重量信息项
-        this.buildInfoItem('本批个数', () => this.batchCount, 11.11)       // 本批个数信息项
-        this.buildInfoItem('开始时间', () => this.startTime, 11.11)        // 开始时间信息项
-        this.buildInfoItem('分选程序', () => this.programName, 11.11)     // 分选程序信息项
-        this.buildInfoItem('分选效率', () => this.efficiency, 11.11)      // 分选效率信息项
-        this.buildInfoItem('平均重量', () => this.avgWeight, 11.11)       // 平均重量信息项
-        this.buildInfoItem('实时产量', () => this.realTimeOutput, 11.11)   // 实时产量信息项
-        this.buildInfoItem('间隔速度', () => this.intervalSpeed, 11.11)   // 间隔速度信息项
+        this.buildInfoItem(t('分选速度'), () => this.sortSpeed, 11.11)        // 分选速度信息项
+        this.buildInfoItem(t('本批重量'), () => this.batchWeight, 11.11)      // 本批重量信息项
+        this.buildInfoItem(t('本批个数'), () => this.batchCount, 11.11)       // 本批个数信息项
+        this.buildInfoItem(t('开始时间'), () => this.startTime, 11.11)        // 开始时间信息项
+        this.buildInfoItem(t('分选程序'), () => this.programName, 11.11)     // 分选程序信息项
+        this.buildInfoItem(t('分选效率'), () => this.efficiency, 11.11)      // 分选效率信息项
+        this.buildInfoItem(t('平均重量'), () => this.avgWeight, 11.11)       // 平均重量信息项
+        this.buildInfoItem(t('实时产量'), () => this.realTimeOutput, 11.11)   // 实时产量信息项
+        this.buildInfoItem(t('间隔速度'), () => this.intervalSpeed, 11.11)   // 间隔速度信息项
     }
     .width('100%')                                       // 宽度100%
       .justifyContent(FlexAlign.Start)                     // 左对齐

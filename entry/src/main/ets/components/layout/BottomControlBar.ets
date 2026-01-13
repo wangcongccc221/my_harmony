@@ -1,49 +1,39 @@
 /**
- * 底部控制栏组件
- * 包含：正常分选标签、SCM按钮、果杯按钮(1-8)
- * 可在任何页面直接使用
+ * 底部状态栏组件 (BottomControlBar)
+ * 对应HTML中的 "System Status Footer"
+ * 包含：系统状态、SCM、果杯、IQS、IPM 指示器
  */
 
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
-import { StandardRoundButton } from '../ui/buttons/StandardRoundButton'
-import { FruitCupButton } from '../ui/buttons/FruitCupButton'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
 
 @Component
 export struct BottomControlBar {
-  // 分选状态
-  @State private sortingStatus: boolean = true  // true=正常分选, false=异常分选
+  // 分选状态 (保留原有API兼容性)
+  @State private sortingStatus: boolean = true
 
   // 主题相关
   @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
   @StorageLink(OMNI_THEME_TYPE_KEY) consumedThemeType: string = OmniThemeManager.getInstance().getCurrentThemeType()
   @StorageLink(OMNI_THEME_VERSION_KEY) themeVersion: number = 0
-  @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0  // 监听语言变化，触发 UI 更新
+  @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0
 
-  // 出口按钮点击回调
+  // 回调函数 (保留原有API兼容性，可绑定到对应区域)
   onOutletClick?: (outletNumber: number) => void = () => {}
-  
-  // 果杯按钮点击回调
   onFruitCupClick?: (cupNumber: number) => void = () => {}
-  
-  // SCM按钮点击回调
   onSCMClick?: () => void = () => {}
-  
-  // 分选状态按钮点击回调
   onSortingStatusClick?: () => void = () => {}
 
-  // 获取当前主题配置
-  private getCurrentTheme(): ExtendedOmniThemeStyle {
-    return this.consumedTheme
-  }
-
-  // 获取分选状态字符串（依赖 i18nVersion 确保语言变化时重新计算）
-  private getSortingStatusText(): string {
-    const _version = this.i18nVersion
-    return this.sortingStatus ? t('正常分选', '正常分选') : t('异常分选', '异常分选')
-  }
-
+  // 颜色常量
+  private readonly BG_COLOR = '#f0f0f0'
+  private readonly BORDER_COLOR = '#cccccc'
+  private readonly YELLOW_COLOR = '#ffeb3b'
+  private readonly RED_COLOR = '#ff5722'
+  private readonly GREEN_COLOR = '#4caf50'
+  private readonly ORANGE_COLOR = '#ff9800'
+  private readonly TEXT_COLOR_DARK = '#333333'
+  private readonly TEXT_COLOR_WHITE = '#ffffff'
 
   // 生成数字序列
   private buildNumberRange(start: number, count: number): number[] {
@@ -54,81 +44,100 @@ export struct BottomControlBar {
     return result
   }
 
-  build() {
-    Row() {
-      // 左侧控制区域
-      Row() {
-        // 左侧按钮：分选状态（可点击）
-        Button(this.getSortingStatusText())
-          .fontSize(18)  // 调大到18px
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().textColor)  // 使用主题文字颜色
-          .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-          .border({ width: 1, color: this.getCurrentTheme().borderColor })
-          .borderRadius(4)
-          .padding({ left: 16, right: 16, top: 8, bottom: 8 })  // 增加内边距
-          .margin({ right: 16 })
-          .onClick(() => {
-            if (this.onSortingStatusClick) {
-              this.onSortingStatusClick()
-            }
-          })
-
-        // SCM标签
-        Text('SCM:')
-          .fontSize(18)  // 调大到18px
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().buttonBarTextColor ?? this.getCurrentTheme().textColor)  // 使用底部状态栏文字颜色
-          .margin({ right: 8 })
-          .alignSelf(ItemAlign.Center)
-
-        // SCM按钮
-        StandardRoundButton({
-            text: '1',
-            onClickAction: () => {
-              console.log('SCM按钮被点击')
-              // TODO: 后期添加SCM相关逻辑
-              if (this.onSCMClick) {
-                this.onSCMClick()
-              }
-            }
-        })
-          .margin({ right: 16 })
-
-        // 果杯标签
-        Text(t('果杯:', '果杯:'))
-          .fontSize(18)  // 调大到18px
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().buttonBarTextColor ?? this.getCurrentTheme().textColor)  // 使用底部状态栏文字颜色
-          .margin({ right: 8 })
-          .alignSelf(ItemAlign.Center)
-          .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
-
-        // 8个果杯按钮（使用循环生成）
-        ForEach(this.buildNumberRange(1, 8), (index: number) => {
-          FruitCupButton({
-            cupNumber: index,
-            onCupClick: (cupNumber: number) => {
-              if (this.onFruitCupClick) {
-                this.onFruitCupClick(cupNumber)
-              }
-            }
-          })
-        })
-      }
-      .justifyContent(FlexAlign.Start)
-      .alignItems(VerticalAlign.Center)
-
-      // 中间空白区域，用于分隔左右两部分
-      Blank()
-    }
-    .width('100%')
-    .justifyContent(FlexAlign.SpaceBetween)
-    .alignItems(VerticalAlign.Center)
-    .padding({ left: 150, right: 20, top: 8, bottom: 8 })
-    .backgroundColor(this.getCurrentTheme().buttonBarBg ?? this.getCurrentTheme().surfaceColor)
-    .border({ width: { top: 1 }, color: this.getCurrentTheme().borderColor })
+  // 指示器盒子构建函数
+  @Builder
+  IndicatorBox(text: string, bgColor: string, onClick?: () => void) {
+    Text(text)
+      .width(20)
+      .height(18)
+      .fontSize(10)
+      .fontColor(this.TEXT_COLOR_WHITE)
+      .backgroundColor(bgColor)
+      .textAlign(TextAlign.Center)
+      .onClick(() => {
+        if (onClick) onClick()
+      })
+      .margin({ right: 2 }) // gap: 2px (handled by margin, or use Row space)
   }
 
+  // 状态标签构建函数
+  @Builder
+  StatusLabel(text: string, marginLeft: number = 0) {
+    Text(text)
+      .fontSize(12)
+      .fontWeight(FontWeight.Bold)
+      .fontColor(this.TEXT_COLOR_DARK)
+      .margin({ right: 4, left: marginLeft })
+  }
 
+  build() {
+    Row() {
+        // 1. Status Yellow (基准整定中...)
+        Row() {
+          Text('基准整定中...')
+            .fontSize(12)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.TEXT_COLOR_DARK)
+        }
+        .height('100%')
+        .backgroundColor(this.YELLOW_COLOR)
+        .padding({ left: 15, right: 15 })
+        .alignItems(VerticalAlign.Center)
+        .margin({ right: 10 })
+        .onClick(() => {
+           if (this.onSortingStatusClick) this.onSortingStatusClick()
+        })
+
+        // 2. SCM Group
+        Row() {
+          this.StatusLabel('SCM:')
+          this.IndicatorBox('1', this.RED_COLOR, this.onSCMClick)
+        }
+        .alignItems(VerticalAlign.Center)
+        .margin({ right: 15 })
+
+        // 3. 果杯 Group (1-12)
+        Row() {
+          this.StatusLabel('果杯:', 5)
+          ForEach(this.buildNumberRange(1, 12), (num: number) => {
+            this.IndicatorBox(num.toString(), this.GREEN_COLOR, () => {
+               if (this.onFruitCupClick) this.onFruitCupClick(num)
+            })
+          })
+        }
+        .alignItems(VerticalAlign.Center)
+        .margin({ right: 15 })
+
+        // 4. IQS Group (1-12)
+        // 1-4 Red, 5-12 Orange
+        Row() {
+          this.StatusLabel('IQS:')
+          // 1-4 Red
+          ForEach(this.buildNumberRange(1, 4), (num: number) => {
+            this.IndicatorBox(num.toString(), this.RED_COLOR)
+          })
+          // 5-12 Orange
+          ForEach(this.buildNumberRange(5, 8), (num: number) => { // range(5, 8) creates 5,6,7,8,9,10,11,12 ? No, count is 8
+             this.IndicatorBox((num + 4).toString(), this.ORANGE_COLOR)
+          })
+        }
+        .alignItems(VerticalAlign.Center)
+        .margin({ right: 15 })
+
+        // 5. IPM Group (1-12 Red)
+        Row() {
+          this.StatusLabel('IPM:')
+          ForEach(this.buildNumberRange(1, 12), (num: number) => {
+            this.IndicatorBox(num.toString(), this.RED_COLOR)
+          })
+        }
+        .alignItems(VerticalAlign.Center)
+    }
+    .width('100%')
+    .height(30)
+    .backgroundColor(this.BG_COLOR)
+    .border({ width: { top: 1 }, color: this.BORDER_COLOR })
+    .alignItems(VerticalAlign.Center)
+    // .padding({ left: 0 }) // HTML says left: 0, handled by flow
+  }
 }

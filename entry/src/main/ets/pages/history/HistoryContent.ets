@@ -1,21 +1,3 @@
-/**
- * 历史加工内容组件
- * 
- * 功能说明：
- * - 显示历史加工相关的内容和功能
- * - 包含查询条件区域和数据表格区域
- * - 集成 Omni-UI 主题系统
- * 
- * 组件结构：
- * - 查询条件区域：包含日期查询、客户信息查询、操作按钮
- * - 数据表格区域：显示加工历史数据表
- * 
- * 使用方式：
- * ```typescript
- * HistoryContent()
- * ```
- */
-
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
@@ -32,21 +14,19 @@ import { FruitInfoService } from '../../database/services/FruitInfoService'
 import { FruitInfo } from '../../database/models/FruitInfo'
 import fs from '@ohos.file.fs'
 import common from '@ohos.app.ability.common'
-import { util, buffer } from '@kit.ArkTS'
 import { InternalApiTester } from '../../utils/tests/InternalApiTester'
 import ExcelJS from '@archermind/exceljs'
 
 
 @Component
 export struct HistoryContent {
-  // ==================== 日期相关状态 ====================
-  /** 开始日期字符串 */
+
   @State startDate: string = ''
   /** 结束日期字符串 */
   @State endDate: string = ''
   /** 选中的开始日期对象 */
   @State selectedStartDate: Date = new Date()
-  /** 选中的结束日期对象 */
+
   @State selectedEndDate: Date = new Date()
   
   // ==================== 选择相关状态 ====================
@@ -104,16 +84,6 @@ export struct HistoryContent {
   /** 选择的文件格式：'csv' | 'excel' */
   @State private selectedFormat: string = 'csv'
 
-  /**
-   * 获取当前主题配置
-   * 
-   * 功能说明：
-   * - 从基础组件助手获取当前主题样式
-   * - 用于组件样式配置
-   * - 支持主题切换时的样式更新
-   * 
-   * @returns 当前主题的扩展样式对象
-   */
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return resolveTheme(this.consumedTheme)
   }

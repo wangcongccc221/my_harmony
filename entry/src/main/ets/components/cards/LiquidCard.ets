@@ -7,19 +7,7 @@ export struct LiquidCard {
   /** 顶部栏背景色与高度（可选） */
   @Prop topBarBg: string | number | Color = '#fff5f5'
   @Prop topBarHeight: number = 24
-  /**
-   * 顶部完全自定义内容（若提供，则覆盖 iconRes 与 iconText 的渲染）
-   * - 适合：更复杂的布局、矢量/SVG、动态状态等
-   * - 使用示例：
-   *   LiquidCard({
-   *     topContent: () => {
-   *       // 方案1：直接使用图片资源（包含 svg）
-   *       Image($r('app.media.icon_svg')).width(20).height(20).objectFit(ImageFit.Contain)
-   *       // 方案2：任意自定义布局
-   *       // Row() { Text('A').fontSize(12).fontColor(Color.White) }.height(24)
-   *     }
-   *   })
-   */
+
   @BuilderParam topContent?: () => void
   /** 水位百分比 0~100 */
   @Prop percent: number = 67

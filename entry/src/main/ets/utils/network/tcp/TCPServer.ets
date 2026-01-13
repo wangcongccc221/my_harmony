@@ -5,6 +5,8 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { TCP_CONNECTION_STATUS } from '../../../constants/TopBarKeys';
 import { taskpool } from '@kit.ArkTS';
 import { TcpMessageQueueManager } from './dispatch';
+import { ITcpSender } from '../../../protocol/ConfigSender';
+import { ProtocolParser, getProtocolParser } from '../../../protocol/ProtocolParser';
 
 @Concurrent
 export async function runTcpServerWorker(ip: string, port: number): Promise<void> {
@@ -87,6 +89,7 @@ interface ClientInfo {
   port: number;
   name: string;
   connection: socket.TCPSocketConnection;
+  deviceId?: number; // 设备ID（从消息头中解析）
 }
 
 interface SendResult {
@@ -95,10 +98,12 @@ interface SendResult {
 }
 
 // TCP服务器封装类 - 纯后台运行
-export class TCPServer {
+export class TCPServer implements ITcpSender {
   private server: socket.TCPSocketServer | null = null;
-  private clients: Map<string, ClientInfo> = new Map();
+  private clients: Map<string, ClientInfo> = new Map(); // clientId -> ClientInfo
+  private deviceMap: Map<number, ClientInfo> = new Map(); // deviceId -> ClientInfo
   private messageIdCounter: number = 0;
+  private protocolParser: ProtocolParser;
   private onMessageCallback?: (type: 'send' | 'receive', content: string, clientId?: string) => void;
   private onClientConnectCallback?: (client: ClientInfo) => void;
   private onClientDisconnectCallback?: (clientId: string) => void;
@@ -108,6 +113,8 @@ export class TCPServer {
     hilog.info(DOMAIN, 'TCPServer', 'TCP服务器实例已创建');
     // 初始化连接状态为false
     AppStorage.setOrCreate(TCP_CONNECTION_STATUS, false);
+    // 初始化协议解析器（用于解析消息头获取设备ID）
+    this.protocolParser = getProtocolParser();
   }
 
   // 设置消息回调
@@ -164,6 +171,18 @@ export class TCPServer {
             hilog.info(DOMAIN, 'TCPServer', `[消息接收] 从客户端 ${clientInfo.address}:${clientInfo.port} 收到原始数据，长度: ${data.message.byteLength} 字节`);
             console.log(`[TCP服务器] [消息接收] 收到原始数据，长度: ${data.message.byteLength} 字节`);
             try {
+              // 解析消息头获取设备ID
+              const header = this.protocolParser.parseHeader(data.message);
+              if (header && header.srcId) {
+                const deviceId = header.srcId;
+                // 建立设备ID到连接的映射
+                if (!clientInfo.deviceId || clientInfo.deviceId !== deviceId) {
+                  clientInfo.deviceId = deviceId;
+                  this.deviceMap.set(deviceId, clientInfo);
+                  hilog.info(DOMAIN, 'TCPServer', `[设备映射] 设备ID 0x${deviceId.toString(16)} 映射到客户端 ${clientInfo.address}:${clientInfo.port}`);
+                }
+              }
+
               // 直接使用 FastBuffer - 从 ArrayBuffer 复制数据
               const messageBuffer = fastbuffer.alloc(data.message.byteLength);
               // 使用 Uint8Array 视图（零拷贝）来读取 ArrayBuffer 并复制到 FastBuffer
@@ -197,6 +216,11 @@ export class TCPServer {
           
           // 监听客户端断开
           client.on('close', () => {
+            // 从设备映射中移除
+            if (clientInfo.deviceId !== undefined) {
+              this.deviceMap.delete(clientInfo.deviceId);
+              hilog.info(DOMAIN, 'TCPServer', `[设备映射] 移除设备ID 0x${clientInfo.deviceId.toString(16)} 的映射`);
+            }
             this.clients.delete(clientInfo.id);
             hilog.info(DOMAIN, 'TCPServer', `客户端断开: ${clientInfo.address}:${clientInfo.port}`);
             console.log(`[TCP服务器] 客户端断开: ${clientInfo.address}:${clientInfo.port}`);
@@ -213,6 +237,10 @@ export class TCPServer {
           client.on('error', (error: Error) => {
             hilog.error(DOMAIN, 'TCPServer', `客户端错误: ${error.message}`);
             this.onMessageCallback?.('receive', `客户端 ${clientInfo.address}:${clientInfo.port} 发生错误: ${error.message}`);
+            // 从设备映射中移除
+            if (clientInfo.deviceId !== undefined) {
+              this.deviceMap.delete(clientInfo.deviceId);
+            }
             this.clients.delete(clientInfo.id);
             this.onClientDisconnectCallback?.(clientInfo.id);
             
@@ -280,6 +308,7 @@ export class TCPServer {
       }
       
       this.clients.clear();
+      this.deviceMap.clear();
       // 服务器停止时，设置连接状态为false
       AppStorage.setOrCreate(TCP_CONNECTION_STATUS, false);
       hilog.info(DOMAIN, 'TCPServer', 'TCP服务器已停止');
@@ -371,6 +400,97 @@ export class TCPServer {
   // 检查服务器是否运行
   isRunning(): boolean {
     return this.server !== null;
+  }
+
+  // ==================== ITcpSender 接口实现 ====================
+  /**
+   * 发送数据到指定设备
+   * @param deviceId 设备ID
+   * @param data 要发送的数据（ArrayBuffer）
+   * @returns 发送是否成功
+   */
+  async sendToDevice(deviceId: number, data: ArrayBuffer): Promise<boolean> {
+    const clientInfo = this.deviceMap.get(deviceId);
+    if (!clientInfo) {
+      hilog.warn(DOMAIN, 'TCPServer', `设备ID 0x${deviceId.toString(16)} 未连接，无法发送数据`);
+      return false;
+    }
+
+    try {
+      // 使用 FastBuffer 提高发送性能
+      const buffer = fastbuffer.alloc(data.byteLength);
+      const sourceView = new Uint8Array(data);
+      for (let i = 0; i < sourceView.length; i++) {
+        buffer[i] = sourceView[i];
+      }
+
+      await clientInfo.connection.send({ data: buffer.buffer });
+      hilog.info(DOMAIN, 'TCPServer', `[发送] 成功发送 ${data.byteLength} 字节到设备 0x${deviceId.toString(16)} (${clientInfo.address}:${clientInfo.port})`);
+      this.onMessageCallback?.('send', `发送到设备 0x${deviceId.toString(16)}`, clientInfo.id);
+      return true;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'TCPServer', `发送数据到设备 0x${deviceId.toString(16)} 失败: ${errorMsg}`);
+      this.onMessageCallback?.('receive', `发送到设备 0x${deviceId.toString(16)} 失败: ${errorMsg}`, clientInfo.id);
+      return false;
+    }
+  }
+
+  /**
+   * 广播数据到所有已连接的设备
+   * @param data 要发送的数据（ArrayBuffer）
+   */
+  async sendToAllDevices(data: ArrayBuffer): Promise<void> {
+    if (this.deviceMap.size === 0) {
+      hilog.warn(DOMAIN, 'TCPServer', '没有已连接的设备，无法广播');
+      return;
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+
+    // 使用 FastBuffer 提高发送性能
+    const buffer = fastbuffer.alloc(data.byteLength);
+    const sourceView = new Uint8Array(data);
+    for (let i = 0; i < sourceView.length; i++) {
+      buffer[i] = sourceView[i];
+    }
+
+    const deviceEntries = Array.from(this.deviceMap.entries())
+    for (let i = 0; i < deviceEntries.length; i++) {
+      const deviceId = deviceEntries[i][0]
+      const clientInfo = deviceEntries[i][1]
+      try {
+        await clientInfo.connection.send({ data: buffer.buffer });
+        successCount++;
+        hilog.debug(DOMAIN, 'TCPServer', `[广播] 成功发送到设备 0x${deviceId.toString(16)}`);
+      } catch (error) {
+        failCount++;
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        hilog.warn(DOMAIN, 'TCPServer', `[广播] 发送到设备 0x${deviceId.toString(16)} 失败: ${errorMsg}`);
+      }
+    }
+
+    hilog.info(DOMAIN, 'TCPServer', `[广播] 完成: 成功 ${successCount} 个，失败 ${failCount} 个`);
+    if (successCount > 0) {
+      this.onMessageCallback?.('send', `广播到 ${successCount} 个设备`);
+    }
+  }
+
+  /**
+   * 检查指定设备是否已连接
+   * @param deviceId 设备ID
+   * @returns 设备是否已连接
+   */
+  isDeviceConnected(deviceId: number): boolean {
+    const connected = this.deviceMap.has(deviceId);
+    if (connected) {
+      const clientInfo = this.deviceMap.get(deviceId);
+      hilog.debug(DOMAIN, 'TCPServer', `设备 0x${deviceId.toString(16)} 已连接 (${clientInfo?.address}:${clientInfo?.port})`);
+    } else {
+      hilog.debug(DOMAIN, 'TCPServer', `设备 0x${deviceId.toString(16)} 未连接`);
+    }
+    return connected;
   }
 }
 

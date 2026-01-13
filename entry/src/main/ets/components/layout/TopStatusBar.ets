@@ -43,7 +43,7 @@ export struct TopStatusBar {
   // 模拟数据定时器
   private dataTimer: number | null = null
 
-  private async minimizeApp() {
+  private async minimizeApp() { //最小化
     try {
       const ctx = getContext(this) as common.UIAbilityContext
       const ok = await MinimizeAppUtil.getInstance(ctx, {
@@ -67,7 +67,7 @@ export struct TopStatusBar {
     }
   }
 
-  private async closeApp() {
+  private async closeApp() { //关闭程序
     try {
       const ctx = getContext(this) as common.UIAbilityContext
       await ctx.terminateSelf()
@@ -76,7 +76,7 @@ export struct TopStatusBar {
     }
   }
 
-  private getCurrentTheme(): ExtendedOmniThemeStyle {
+  private getCurrentTheme(): ExtendedOmniThemeStyle { //获取主题
     const __v: number = this.themeVersion
     return OmniThemeManager.getInstance().getCurrentTheme()
   }

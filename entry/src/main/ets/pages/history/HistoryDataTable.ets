@@ -75,8 +75,10 @@ export struct HistoryDataTable {
   @State private tableData: HistoryTableData[] = []
   // 外部传入的筛选数据（使用空数组作为默认值，避免可选参数）
   @Prop @Watch('onFilteredDataChange') filteredData: HistoryTableData[] = []
+  // 是否处于筛选模式
+  @Prop @Watch('onFilterModeChange') isFilterMode: boolean = false
   // 外部传入的全部数据（用于重置功能，显示所有数据）
-  @Prop @Watch('onExternalDataChange') externalData: HistoryTableData[] = []
+  @Prop externalData: HistoryTableData[] = []
   // 防重复加载标志，避免aboutToUpdate循环触发
   private isLoading: boolean = false
   private lastUpdateKey: number = 0
@@ -90,46 +92,20 @@ export struct HistoryDataTable {
 
   // 事件回调
   onRowClick?: (rowData: HistoryTableData) => void
-  onDoubleClick?: (rowData: HistoryTableData) => void  // 双击事件回调
+  onDoubleClick?: (rowData: HistoryTableData) => void
   onEditClick?: (rowData: HistoryTableData) => void
   onDeleteClick?: (rowData: HistoryTableData) => void
   onDataChange?: (data: HistoryTableData[]) => void
   onSelectionChange?: (selectedIds: number[]) => void
-  
-  // 双击检测相关
-  private lastClickTime: number = 0
-  private lastClickItemId: number = -1
+
+  // 双击检测相关状态
+  @State private lastClickTime: number = 0
+  @State private lastClickItemId: number = -1
   private readonly DOUBLE_CLICK_INTERVAL: number = 300 // 双击间隔时间（毫秒）
-  private clickTimer: number | null = null // 用于延迟单击事件，避免双击时触发单击
+  private clickTimer: number = -1 // 用于延迟执行单击事件
 
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return resolveTheme(this.consumedTheme)
-  }
-
-  /**
-   * 监听筛选数据变化
-   */
-  private onFilteredDataChange(): void {
-    console.log('HistoryDataTable: filteredData 变化，长度=', this.filteredData?.length || 0)
-    // 如果 filteredData 有值（包括空数组），立即同步到表格
-    if (this.filteredData !== undefined && this.filteredData !== null) {
-      console.log('HistoryDataTable: 立即同步筛选数据到表格，长度=', this.filteredData.length)
-      this.tableData = this.filteredData
-      this.syncLazyDataSource()
-    }
-  }
-
-  /**
-   * 监听外部数据变化
-   */
-  private onExternalDataChange(): void {
-    console.log('HistoryDataTable: externalData 变化，长度=', this.externalData?.length || 0)
-    // 如果 externalData 有值（包括空数组），立即同步到表格
-    if (this.externalData !== undefined && this.externalData !== null) {
-      console.log('HistoryDataTable: 立即同步外部数据到表格，长度=', this.externalData.length)
-      this.tableData = this.externalData
-      this.syncLazyDataSource()
-    }
   }
 
   /**
@@ -149,21 +125,11 @@ export struct HistoryDataTable {
   }
 
   /**
-   * 处理行点击（延迟执行，避免双击时触发）
+   * 处理行点击
    */
   private handleRowClick(rowData: HistoryTableData): void {
-    // 清除之前的定时器
-    if (this.clickTimer !== null) {
-      clearTimeout(this.clickTimer)
-      this.clickTimer = null
-    }
-    
-    // 延迟执行单击事件，如果在这期间发生双击，则取消单击
-    this.clickTimer = setTimeout(() => {
-      console.log('行点击:', rowData)
-      this.onRowClick?.(rowData)
-      this.clickTimer = null
-    }, this.DOUBLE_CLICK_INTERVAL) as number
+    console.log('行点击:', rowData)
+    this.onRowClick?.(rowData)
   }
 
   /**
@@ -171,38 +137,46 @@ export struct HistoryDataTable {
    */
   private handleDoubleClick(rowData: HistoryTableData): void {
     console.log('行双击:', rowData)
+    // 清除延迟的单击事件
+    if (this.clickTimer !== -1) {
+      clearTimeout(this.clickTimer)
+      this.clickTimer = -1
+    }
     this.onDoubleClick?.(rowData)
   }
 
   /**
-   * 处理触摸事件，用于检测双击
+   * 处理触摸事件（用于检测双击）
    */
   private handleTouchEvent(event: TouchEvent | undefined, item: HistoryTableData): void {
     if (!event) return
     
-    // 当触摸抬起时检查时间间隔
-    if (event.type === TouchType.Up) {
-      const currentTime = Date.now()
-      const timeSinceLastClick = currentTime - this.lastClickTime
+    const currentTime = Date.now()
+    const isDoubleClick = (currentTime - this.lastClickTime < this.DOUBLE_CLICK_INTERVAL) && 
+                         (this.lastClickItemId === item.id)
+    
+    if (isDoubleClick) {
+      // 检测到双击
+      this.handleDoubleClick(item)
+      // 重置状态
+      this.lastClickTime = 0
+      this.lastClickItemId = -1
+    } else {
+      // 可能是单击，延迟执行
+      this.lastClickTime = currentTime
+      this.lastClickItemId = item.id
       
-      // 如果两次点击间隔在阈值内，且是同一行，认为是双击
-      if (timeSinceLastClick > 0 && 
-          timeSinceLastClick <= this.DOUBLE_CLICK_INTERVAL && 
-          this.lastClickItemId === item.id) {
-        // 双击事件：取消待执行的单击事件
-        if (this.clickTimer !== null) {
-          clearTimeout(this.clickTimer)
-          this.clickTimer = null
-        }
-        this.handleDoubleClick(item)
-        // 重置时间戳，避免连续触发
-        this.lastClickTime = 0
-        this.lastClickItemId = -1
-      } else {
-        // 更新最后点击时间和行ID
-        this.lastClickTime = currentTime
-        this.lastClickItemId = item.id
+      // 清除之前的延迟
+      if (this.clickTimer !== -1) {
+        clearTimeout(this.clickTimer)
       }
+      
+      // 延迟执行单击事件，如果在延迟期间发生双击，则取消单击
+      const timer: number = setTimeout(() => {
+        this.handleRowClick(item)
+        this.clickTimer = -1
+      }, this.DOUBLE_CLICK_INTERVAL)
+      this.clickTimer = timer
     }
   }
 
@@ -246,10 +220,31 @@ export struct HistoryDataTable {
   }
 
   /**
+   * 监听筛选数据变化
+   */
+  private onFilteredDataChange(): void {
+    if (this.isFilterMode) {
+      console.log('HistoryDataTable: 筛选数据更新，共', this.filteredData.length, '条')
+      this.syncLazyDataSource()
+      if (this.onDataChange) {
+        this.onDataChange(this.filteredData)
+      }
+    }
+  }
+
+  /**
+   * 监听筛选模式变化
+   */
+  private onFilterModeChange(): void {
+    console.log('HistoryDataTable: 筛选模式变更为', this.isFilterMode)
+    this.syncLazyDataSource()
+  }
+
+  /**
    * 获取当前表格数据
    */
   getCurrentData(): HistoryTableData[] {
-    return this.tableData;
+    return this.getDisplayData();
   }
 
   /**
@@ -283,8 +278,8 @@ export struct HistoryDataTable {
     if (this.externalData && this.externalData.length > 0) {
       return [...this.externalData]
     }
-    // 如果提供了筛选数据，使用筛选数据
-    if (this.filteredData && this.filteredData.length > 0) {
+    // 如果处于筛选模式，使用筛选数据（即使为空也返回，显示无数据）
+    if (this.isFilterMode) {
       return [...this.filteredData]
     }
     // 否则使用分页数据
@@ -292,9 +287,7 @@ export struct HistoryDataTable {
   }
 
   private syncLazyDataSource(): void {
-    const displayData = this.getDisplayData()
-    console.log(`HistoryDataTable syncLazyDataSource: 更新数据源，共 ${displayData.length} 条数据`)
-    this.lazyDataSource.updateData(displayData)
+    this.lazyDataSource.updateData(this.getDisplayData())
   }
 
   /**
@@ -309,28 +302,26 @@ export struct HistoryDataTable {
    */
   aboutToAppear() {
     console.log('HistoryDataTable aboutToAppear: 组件已挂载，页面可见')
-    console.log(`HistoryDataTable aboutToAppear: filteredData.length = ${this.filteredData?.length || 0}, externalData.length = ${this.externalData?.length || 0}`)
     // 标记页面为可见状态
     this.isPageVisible = true
     
     // 如果提供了 externalData（重置功能），直接展示全部
     if (this.externalData && this.externalData.length > 0) {
       console.log(`重置功能：直接展示 ${this.externalData.length} 条数据`)
-      this.tableData = this.externalData
+      this.syncLazyDataSource()
+      return
+    }
+    // 如果处于筛选模式，直接显示筛选数据（即使为空）
+    if (this.isFilterMode) {
+      console.log(`筛选模式：直接展示 ${this.filteredData.length} 条数据`)
       this.syncLazyDataSource()
       return
     }
     // 若父组件已传入筛选数据，则直接显示，避免重新加载覆盖筛选结果
     if (this.filteredData && this.filteredData.length > 0) {
-      console.log(`查询功能：直接展示 ${this.filteredData.length} 条筛选数据`)
-      this.tableData = this.filteredData
       this.syncLazyDataSource()
       return
     }
-    // 如果 filteredData 是空数组且明确传入了（不是 undefined），说明是查询后清空，也应该清空数据源
-    // 但如果是初始化时 filteredData 为 undefined，则应该加载初始数据
-    // 注意：这里不能简单地判断 length === 0，因为初始化时 filteredData 可能是空数组
-    // 所以只有当 filteredData 明确存在且为空时，才清空（这种情况应该由父组件控制）
     // 否则加载分页数据（页面可见时才加载）
     this.loadData().then(() => {
       console.log('HistoryDataTable aboutToAppear: 数据加载完成')
@@ -353,33 +344,24 @@ export struct HistoryDataTable {
    * 优化：只有页面可见时才刷新UI，避免后台不必要的刷新
    */
   aboutToUpdate() {
-    console.log(`HistoryDataTable aboutToUpdate: 被调用, isPageVisible = ${this.isPageVisible}`)
-    console.log(`HistoryDataTable aboutToUpdate: filteredData.length = ${this.filteredData?.length || 0}, externalData.length = ${this.externalData?.length || 0}`)
-    
     // 如果页面不可见，不执行任何刷新操作（性能优化）
     if (!this.isPageVisible) {
-      console.log(`HistoryDataTable aboutToUpdate: 页面不可见，跳过更新`)
       return
     }
     
     // 如果提供了 externalData（重置功能），直接使用
     if (this.externalData && this.externalData.length > 0) {
-      console.log(`HistoryDataTable aboutToUpdate: 使用 externalData，共 ${this.externalData.length} 条`)
       this.syncLazyDataSource()
       return
     }
-    // 如果外部传入了筛选数据，直接作为显示数据来源
-    if (this.filteredData && this.filteredData.length > 0) {
-      console.log(`HistoryDataTable aboutToUpdate: 使用 filteredData，共 ${this.filteredData.length} 条`)
-      this.tableData = this.filteredData
-      this.syncLazyDataSource()
-      if (this.onDataChange) {
-        // 告知父组件当前显示的数据（父组件在筛选态会忽略该回调，避免循环）
-        this.onDataChange(this.filteredData)
-      }
+
+    // 如果处于筛选模式，由 @Watch 处理，不需要在这里处理
+    if (this.isFilterMode) {
       return
     }
     
+    // 否则加载分页数据（用于"重置"等场景）
+    // 添加防重复加载机制，避免循环触发
     if (!this.isLoading) {
       this.isLoading = true
       const currentKey = Date.now()
@@ -439,6 +421,14 @@ export struct HistoryDataTable {
 
   build() {
     Column() {
+      // 表格标题
+      Text('加工历史数据表')
+        .fontSize(20)  // 标题字体
+        .fontWeight(FontWeight.Medium) // Apple风格：Medium而非Bold
+        .fontColor(this.getCurrentTheme().textColor)
+        .margin({ bottom: AppleDesignStyle.SPACING_SMALL }) // Apple风格：统一间距
+        .alignSelf(ItemAlign.Start)
+
       // 表格容器（Grid 实现）
       Column() {
         // 固定表头
@@ -480,7 +470,8 @@ export struct HistoryDataTable {
                     .layoutWeight(6)
                     .height(20)
 
-                  Text(item.batchNo || '')
+                  // 序号：自增序号（1, 2, 3...），不是批次号
+                  Text((rowIdx !== undefined ? (rowIdx + 1) : 1).toString())
                     .fontSize(14)
                     .fontColor(this.getCurrentTheme().textColor)
                     .textAlign(TextAlign.Center)
@@ -539,9 +530,6 @@ export struct HistoryDataTable {
                 .backgroundColor((rowIdx ?? 0) % 2 === 0 ? (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor) : (this.getCurrentTheme().surfaceColor))
                 .padding({ left: 4, right: 4 })
               }
-              .onClick(() => {
-                this.handleRowClick(item)
-              })
               .onTouch((event: TouchEvent) => {
                 this.handleTouchEvent(event, item)
               })
@@ -584,13 +572,12 @@ export struct HistoryDataTable {
         .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
       }
       .width('100%')
-      .layoutWeight(1) // 使用 layoutWeight 让表格占满剩余空间
+      .height('70%')
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
       .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
       .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // Apple风格：小圆角
     }
     .width('100%')
-    .height('100%') // 让外层 Column 占满父容器高度
     .padding(AppleDesignStyle.SPACING_MEDIUM) // Apple风格：统一间距
     .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
     .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // Apple风格：细边框
