@@ -1,7 +1,7 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { NetworkOptimizer } from '../network/NetworkOptimizer';
-import { isHttpServerRunning, stopHttpServer } from '../network/http/HttpServer';
-import { getTcpClientManager } from '../network/tcp/TcpClientManager';
+// import { NetworkOptimizer } from '../network/NetworkOptimizer';
+// import { isHttpServerRunning, stopHttpServer } from '../network/http/HttpServer';
+// import { getTcpClientManager } from '../network/tcp/TcpClientManager';
 
 const DOMAIN = 0x0000;
 
@@ -20,6 +20,7 @@ export class AppCleanup {
     hilog.info(DOMAIN, 'AppCleanup', '开始执行全局清理...');
 
     // 1) 停止 HTTP 服务器（若在运行）
+    /*
     try {
       if (isHttpServerRunning()) {
         stopHttpServer();
@@ -44,6 +45,7 @@ export class AppCleanup {
     } catch (e) {
       hilog.error(DOMAIN, 'AppCleanup', `停止网络优化器失败: ${JSON.stringify(e)}`);
     }
+    */
 
     // 4) 执行注册的额外清理任务（页面/模块自定义）
     for (const task of AppCleanup.extraCleanups) {

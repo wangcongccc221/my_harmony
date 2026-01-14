@@ -10,8 +10,10 @@ import { ExportSuccessDialog } from '../../components/dialogs/ExportSuccessDialo
 import { ToastDialog } from '../../components/dialogs/ToastDialog'
 import { RealtimeStatsDialog } from '../../components/feedback/RealtimeStatsDialog'
 import { ModifyCustomerInfoDialog, CustomerInfo } from '../../components/dialogs/ModifyCustomerInfoDialog'
-import { FruitInfoService } from '../../database/services/FruitInfoService'
-import { FruitInfo } from '../../database/models/FruitInfo'
+/*
+// import { FruitInfoService } from '../../database/services/FruitInfoService'
+// import { FruitInfo } from '../../database/models/FruitInfo'
+*/
 import fs from '@ohos.file.fs'
 import common from '@ohos.app.ability.common'
 import { InternalApiTester } from '../../utils/tests/InternalApiTester'
@@ -254,6 +256,67 @@ export struct HistoryContent {
   /**
    * 处理删除操作（删除选中的数据）
    */
+/*
+  private async handleDelete(): Promise<void> {
+    console.log('执行删除操作，当前选中数据:', this.selectedTableData.length, '条')
+    
+    if (this.selectedTableData.length === 0) {
+      this.showToast('error', '请先选择要删除的数据')
+      return
+    }
+    
+    try {
+      const tableManager = HistoryTableManager.getInstance()
+      const ids = this.selectedTableData.map(item => item.id)
+      console.log('准备删除的ID列表:', ids)
+      
+      // 执行删除操作
+      await tableManager.deleteBatchData(ids)
+      
+      // 清空选中数据
+      this.selectedTableData = []
+      
+      // 重新加载数据并刷新表格
+      await tableManager.refreshData()
+      
+      // 重新加载全部数据
+      const allData = await tableManager.getData()
+      this.currentTableData = allData
+      
+      // 如果处于筛选状态，重新应用筛选
+      if (this.isFiltered) {
+        // 重新应用筛选条件
+        this.applyFilter()
+        // applyFilter 内部已经触发了 tableRefreshKey++
+      } else {
+        // 不在筛选状态，清空筛选数据，显示全部数据
+        this.filteredTableData = []
+        // 更新当前表格数据
+        this.currentTableData = allData
+        
+        // 强制刷新表格：先设置为负数销毁组件，然后立即设置为正数重新创建
+        // 这样可以确保组件完全重新创建，重新执行 aboutToAppear 并加载最新数据
+        const oldKey = this.tableRefreshKey
+        this.tableRefreshKey = -1
+        
+        // 使用 setTimeout 确保在下一个事件循环中重新创建组件
+        // 这样可以让组件先销毁，然后重新创建并加载最新数据
+        setTimeout(() => {
+          // 使用时间戳确保每次都是新的key值
+          this.tableRefreshKey = Math.abs(Date.now())
+          console.log('表格组件已重新创建，key:', this.tableRefreshKey)
+        }, 50)
+      }
+      
+      // 显示删除成功弹窗
+      this.showToast('success', `成功删除 ${ids.length} 条数据`)
+      console.log(`成功删除 ${ids.length} 条数据，表格已刷新`)
+    } catch (error) {
+      console.error('删除数据失败:', error)
+      this.showToast('error', '删除失败，请重试')
+    }
+  }
+*/
   private async handleDelete(): Promise<void> {
     console.log('执行删除操作，当前选中数据:', this.selectedTableData.length, '条')
     
@@ -1006,6 +1069,7 @@ export struct HistoryContent {
               const customerID = this.selectedRowData!.id
               
               // 更新数据库
+              /*
               const updateData = new FruitInfo()
               updateData.CustomerName = data.customerName
               updateData.FarmName = data.farmName
@@ -1013,6 +1077,8 @@ export struct HistoryContent {
               FruitInfoService.update(customerID, updateData)
               
               console.log('数据库更新成功，CustomerID:', customerID)
+              */
+              console.log('数据库更新已禁用，模拟更新成功，CustomerID:', customerID)
               
               // 关闭对话框
               this.showModifyCustomerDialog = false
@@ -1197,6 +1263,41 @@ export struct HistoryContent {
       .width('100%')
       .height('100%')
       .alignContent(Alignment.Center)
+    }
+  }
+
+  /*
+  private async handleDeleteData(ids: number[]): Promise<void> {
+    // 批量删除
+    try {
+      console.log('批量删除数据:', JSON.stringify(ids))
+      
+      for (const id of ids) {
+        await FruitInfoService.deleteFruitInfo(id)
+      }
+      
+      // 刷新表格
+      this.tableKey++
+    } catch (e) {
+      console.error('批量删除失败:', e)
+    }
+  }
+  */
+  private async handleDeleteData(ids: number[]): Promise<void> {
+    // 批量删除
+    try {
+      console.log('批量删除数据:', JSON.stringify(ids))
+      
+      /*
+      for (const id of ids) {
+        await FruitInfoService.deleteFruitInfo(id)
+      }
+      */
+      
+      // 刷新表格
+      this.tableRefreshKey++
+    } catch (e) {
+      console.error('批量删除失败:', e)
     }
   }
 

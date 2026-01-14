@@ -22,7 +22,9 @@ import { WeightSizeStatisticsTable } from '../tables/WeightSizeStatisticsTable'
 import { GradeStatisticsTable } from '../tables/GradeStatisticsTable'
 import { TimeEfficiencyLineChart } from '../charts/TimeEfficiencyLineChart'
 import { PrintManager } from '../../utils/print/PrintManager'
-import GlobalStore from '../../database/orm/model/GlobalStore'
+/*
+// import GlobalStore from '../../database/orm/model/GlobalStore'
+*/
 import fs from '@ohos.file.fs'
 import util from '@ohos.util'
 import common from '@ohos.app.ability.common'
@@ -424,54 +426,54 @@ export struct RealtimeStatsDialog {
    * 导出统计数据
    */
   private async handleExport(): Promise<void> {
-    try {
-      console.log('[RealtimeStatsDialog] 开始导出统计数据')
-      
-      const context: common.UIAbilityContext | undefined = GlobalStore.context
-      if (!context) {
-        console.error('[RealtimeStatsDialog] 无法获取应用上下文')
-        return
-      }
-      
-      const filesDir: string = context.filesDir
-      const timestamp = this.generateTimestamp()
-      const fileName = `报告_${timestamp}.xlsx`
-      const filePath = `${filesDir}/${fileName}`
-      
-      // 生成CSV内容（当前标签页的统计数据）
-      const csvContent = this.generateExportData()
-      
-      if (!csvContent || csvContent.length === 0) {
-        console.error('[RealtimeStatsDialog] 导出数据为空')
-        return
-      }
-      
-      // 使用 UTF-8 编码并添加 BOM（Excel 需要 BOM 才能正确识别 UTF-8）
-      const textEncoder = new util.TextEncoder()
-      const utf8BOM = new Uint8Array([0xEF, 0xBB, 0xBF]) // UTF-8 BOM
-      const encodedContent = textEncoder.encode(csvContent)
-      
-      // 合并 BOM 和编码后的内容
-      const finalContent = new Uint8Array(utf8BOM.length + encodedContent.length)
-      finalContent.set(utf8BOM, 0)
-      finalContent.set(encodedContent, utf8BOM.length)
-      
-      // 转换为 ArrayBuffer
-      const arrayBuffer = finalContent.buffer.slice(0, finalContent.length)
-      
-      // 创建并写入文件
-      const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY)
-      fs.writeSync(file.fd, arrayBuffer)
-      fs.closeSync(file)
-      
-      console.log(`[RealtimeStatsDialog] 导出成功: ${filePath}`)
-      
-      // 保存到公共目录
-      await this.saveToPublicDirectory(filePath, fileName, csvContent)
-      
-    } catch (error) {
-      console.error('[RealtimeStatsDialog] 导出失败:', error)
-    }
+    // try {
+    //   console.log('[RealtimeStatsDialog] 开始导出统计数据')
+    //
+    //   const context: common.UIAbilityContext | undefined = GlobalStore.context
+    //   if (!context) {
+    //     console.error('[RealtimeStatsDialog] 无法获取应用上下文')
+    //     return
+    //   }
+    //
+    //   const filesDir: string = context.filesDir
+    //   const timestamp = this.generateTimestamp()
+    //   const fileName = `报告_${timestamp}.xlsx`
+    //   const filePath = `${filesDir}/${fileName}`
+    //
+    //   // 生成CSV内容（当前标签页的统计数据）
+    //   const csvContent = this.generateExportData()
+    //
+    //   if (!csvContent || csvContent.length === 0) {
+    //     console.error('[RealtimeStatsDialog] 导出数据为空')
+    //     return
+    //   }
+    //
+    //   // 使用 UTF-8 编码并添加 BOM（Excel 需要 BOM 才能正确识别 UTF-8）
+    //   const textEncoder = new util.TextEncoder()
+    //   const utf8BOM = new Uint8Array([0xEF, 0xBB, 0xBF]) // UTF-8 BOM
+    //   const encodedContent = textEncoder.encode(csvContent)
+    //
+    //   // 合并 BOM 和编码后的内容
+    //   const finalContent = new Uint8Array(utf8BOM.length + encodedContent.length)
+    //   finalContent.set(utf8BOM, 0)
+    //   finalContent.set(encodedContent, utf8BOM.length)
+    //
+    //   // 转换为 ArrayBuffer
+    //   const arrayBuffer = finalContent.buffer.slice(0, finalContent.length)
+    //
+    //   // 创建并写入文件
+    //   const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY)
+    //   fs.writeSync(file.fd, arrayBuffer)
+    //   fs.closeSync(file)
+    //
+    //   console.log(`[RealtimeStatsDialog] 导出成功: ${filePath}`)
+    //
+    //   // 保存到公共目录
+    //   await this.saveToPublicDirectory(filePath, fileName, csvContent)
+    //
+    // } catch (error) {
+    //   console.error('[RealtimeStatsDialog] 导出失败:', error)
+    // }
   }
 
   /**
@@ -517,7 +519,7 @@ export struct RealtimeStatsDialog {
    */
   private async saveToPublicDirectory(filePath: string, fileName: string, csvContent: string): Promise<void> {
     try {
-      const context: common.UIAbilityContext | undefined = GlobalStore.context
+      const context = getContext(this) as common.UIAbilityContext;
       if (!context) {
         return
       }
@@ -567,11 +569,7 @@ export struct RealtimeStatsDialog {
     try {
       console.log('[RealtimeStatsDialog] 开始打印统计数据')
       
-      const context: common.UIAbilityContext | undefined = GlobalStore.context
-      if (!context) {
-        console.error('[RealtimeStatsDialog] 无法获取应用上下文')
-        return
-      }
+      const context = getContext(this) as common.UIAbilityContext;
       
       // 先导出为文件，然后打印
       const filesDir: string = context.filesDir

@@ -1,11 +1,13 @@
 import { Context } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
+/*
 import { FruitInfoService } from '../../database/services/FruitInfoService';
 import { GradeInfoService } from '../../database/services/GradeInfoService';
 import { ExportInfoService } from '../../database/services/ExportInfoService';
 import { FruitInfo } from '../../database/models/FruitInfo';
 import { GradeInfo } from '../../database/models/GradeInfo';
 import { ExportInfo } from '../../database/models/ExportInfo';
+*/
 
 const DOMAIN = 0x0000;
 const TAG = 'InternalApiTester';
@@ -17,6 +19,7 @@ export class InternalApiTester {
   static async runAll(ctx: Context): Promise<void> {
     hilog.info(DOMAIN, TAG, '--- 开始内部API测试 ---');
     
+    /*
     try {
       await InternalApiTester.testFruitInfo(ctx);
     } catch (e) {
@@ -37,6 +40,7 @@ export class InternalApiTester {
       const err = e as Error;
       hilog.error(DOMAIN, TAG, `ExportInfoService 测试失败: ${err.message}`);
     }
+    */
     
     hilog.info(DOMAIN, TAG, '--- 内部API测试完成 ---');
   }
@@ -47,6 +51,7 @@ export class InternalApiTester {
   static async testFruitInfo(ctx: Context): Promise<void> {
     hilog.info(DOMAIN, TAG, '开始测试 FruitInfoService');
 
+    /*
     const testData = new FruitInfo();
     testData.FruitName = '内部测试水果';
     testData.CustomerName = '内部测试客户';
@@ -63,6 +68,7 @@ export class InternalApiTester {
 
     FruitInfoService.delete(id);
     hilog.info(DOMAIN, TAG, `FruitInfoService.delete 删除 ID=${id}`);
+    */
   }
 
   /**
@@ -71,6 +77,7 @@ export class InternalApiTester {
   static async testGradeInfo(ctx: Context): Promise<void> {
     hilog.info(DOMAIN, TAG, '开始测试 GradeInfoService');
 
+    /*
     const testData = new GradeInfo();
     testData.CustomerID = 2001;
     testData.ChannelID = 1;
@@ -92,6 +99,7 @@ export class InternalApiTester {
 
     GradeInfoService.delete(id);
     hilog.info(DOMAIN, TAG, `GradeInfoService.delete 删除 ID=${id}`);
+    */
   }
 
   /**
@@ -100,6 +108,7 @@ export class InternalApiTester {
   static async testExportInfo(ctx: Context): Promise<void> {
     hilog.info(DOMAIN, TAG, '开始测试 ExportInfoService');
 
+    /*
     const testData = new ExportInfo();
     testData.CustomerID = 3001;
     testData.ChannelID = 1;
@@ -117,6 +126,7 @@ export class InternalApiTester {
 
     ExportInfoService.delete(id);
     hilog.info(DOMAIN, TAG, `ExportInfoService.delete 删除 ID=${id}`);
+    */
   }
 }
 

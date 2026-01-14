@@ -141,15 +141,16 @@ export struct MoreContent {
   private async openTranslationEditor(): Promise<void> {
     console.log('[MoreContent] openTranslationEditor: start')
     try {
-      if (!GlobalStore.context) {
-        console.error('[MoreContent] GlobalStore.context is not available')
+      const context = getContext(this) as common.UIAbilityContext;
+      if (!context) {
+        console.error('[MoreContent] context is not available')
         this.omniUIUtils.showError(t('翻译初始化失败：上下文未就绪', '翻译初始化失败：上下文未就绪'))
         return
       }
       const mgr = I18nManager.getInstance()
       if (!mgr.isInitialized()) {
         console.log('[MoreContent] I18nManager not initialized, initializing...')
-        await mgr.init(GlobalStore.context)
+        await mgr.init(context)
       }
 
       // 获取当前语言
@@ -157,7 +158,7 @@ export struct MoreContent {
       console.log(`[MoreContent] Current language: ${currentLang}`)
 
       // 从默认模板文件加载所有字段（中文键）
-      const appCtx = GlobalStore.context.getApplicationContext?.() ?? GlobalStore.context
+      const appCtx = context.getApplicationContext()
       const filesDir = appCtx.filesDir
       const defaultTemplatePath = `${filesDir}/i18n/translations.default.json`
       console.log(`[MoreContent] Loading default template from: ${defaultTemplatePath}`)
@@ -397,8 +398,8 @@ export struct MoreContent {
     console.log('[MoreContent] Refreshing available languages')
     try {
       const mgr = I18nManager.getInstance()
-      if (!mgr.isInitialized() && GlobalStore.context) {
-        await mgr.init(GlobalStore.context)
+      if (!mgr.isInitialized()) {
+        await mgr.init(getContext(this) as common.UIAbilityContext)
       }
       const languages = mgr.listLanguageFiles()
       this.availableLanguages = languages

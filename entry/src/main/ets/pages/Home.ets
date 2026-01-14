@@ -36,7 +36,9 @@ import { OmniUIUtils } from '../utils/helpers/OmniUIUtils'
 // 导入 IBest-UI 组件
 import { IBestButton, IBestIcon, IBestTag, IBestInit, IBestAvatar, IBestAvatarGroup } from '@ibestservices/ibest-ui'
 import { I18nManager, t, I18N_LANGUAGE_KEY, I18N_VERSION_KEY } from '../utils/i18n/I18nManager'
+/*
 import GlobalStore from '../database/orm/model/GlobalStore'
+*/
 import { window } from '@kit.ArkUI'
 import { fileIo as fs } from '@kit.CoreFileKit'
 import { buffer } from '@kit.ArkTS'
@@ -493,8 +495,9 @@ struct Page {
     console.log('[Home] Refreshing available languages')
     try {
       const mgr = I18nManager.getInstance()
-      if (!mgr.isInitialized() && GlobalStore.context) {
-        await mgr.init(GlobalStore.context)
+      const context = getContext(this) as common.UIAbilityContext
+      if (!mgr.isInitialized() && context) {
+        await mgr.init(context)
       }
       const languages = mgr.listLanguageFiles()
       this.availableLanguages = languages
@@ -540,15 +543,16 @@ struct Page {
   private async openTranslationEditor(): Promise<void> {
     console.log('[Home] openTranslationEditor: start')
     try {
-      if (!GlobalStore.context) {
-        console.error('[Home] GlobalStore.context is not available')
+      const context = getContext(this) as common.UIAbilityContext;
+      if (!context) {
+        console.error('[Home] context is not available')
         this.omniUIUtils.showError(t('翻译初始化失败：上下文未就绪', '翻译初始化失败：上下文未就绪'))
         return
       }
       const mgr = I18nManager.getInstance()
       if (!mgr.isInitialized()) {
         console.log('[Home] I18nManager not initialized, initializing...')
-        await mgr.init(GlobalStore.context)
+        await mgr.init(context)
       }
 
       // 获取当前语言
@@ -556,7 +560,7 @@ struct Page {
       console.log(`[Home] Current language: ${currentLang}`)
 
       // 从默认模板文件加载所有字段（中文键）
-      const appCtx = GlobalStore.context.getApplicationContext?.() ?? GlobalStore.context
+      const appCtx = context.getApplicationContext()
       const filesDir = appCtx.filesDir
       const defaultTemplatePath = `${filesDir}/i18n/translations.default.json`
       console.log(`[Home] Loading default template from: ${defaultTemplatePath}`)
