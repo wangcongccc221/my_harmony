@@ -186,7 +186,7 @@ export class ConfigSender {
     view.setUint16(8, HC_FSM_COMMAND_TYPE.HC_CMD_GRADE_INFO, true)
 
     // 写入等级数据
-    let offset = MESSAGE_HEADER_SIZE
+    let offset: number = MESSAGE_HEADER_SIZE
     for (const grade of grades) {
       view.setUint8(offset, grade.gradeIndex)
       view.setUint8(offset + 1, grade.enabled ? 1 : 0)
@@ -219,7 +219,7 @@ export class ConfigSender {
     view.setUint16(8, HC_FSM_COMMAND_TYPE.HC_CMD_EXIT_INFO, true)
 
     // 写入出口数据
-    let offset = MESSAGE_HEADER_SIZE
+    let offset: number = MESSAGE_HEADER_SIZE
     for (const exit of exits) {
       view.setUint8(offset, exit.exitIndex)
       view.setUint8(offset + 1, exit.enabled ? 1 : 0)

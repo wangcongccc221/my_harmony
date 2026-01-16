@@ -6,9 +6,10 @@
 
 import { ProtocolParser, ParsedMessage, getProtocolParser } from './ProtocolParser'
 import { GlobalDataInterface, getGlobalDataInterface } from './GlobalDataInterface'
-import { FSM_HC_COMMAND_TYPE } from './CommandTypes'
-import { MESSAGE_HEADER_SIZE, StStatistics, StWeightInfo, StGradeInfo, StFsmStatus } from './Structures'
+import { FSM_HC_COMMAND_TYPE, getCommandName } from './CommandTypes'
+import { MESSAGE_HEADER_SIZE, StStatistics, StWeightInfo, StGradeInfo, StFsmStatus, createDefaultStatistics, createDefaultWeightInfo } from './Structures'
 import { hilog } from '@kit.PerformanceAnalysisKit'
+import { ConstPreDefine } from './ConstPreDefine'
 
 const TAG = 'StatisticsHandler'
 
@@ -68,6 +69,59 @@ export class StatisticsHandler {
   }
 
   /**
+   * 处理已经拆分的消息（Head + Data）
+   * 适用于 NAPI 回调直接返回了解析后的头部和数据体
+   * @param cmdId 命令ID
+   * @param srcId 源ID
+   * @param data 数据体
+   */
+  handleSplitMessage(cmdId: number, srcId: number, data: Uint8Array): boolean {
+    try {
+      // 构造一个临时的 ParsedMessage
+      const parsed: ParsedMessage = {
+        header: {
+          length: data.byteLength + MESSAGE_HEADER_SIZE, // 估算总长，虽然不重要
+          srcId: srcId,
+          destId: ConstPreDefine.HC_ID, // 假定发给我
+          cmdId: cmdId
+        },
+        cmdName: getCommandName(cmdId),
+        data: null
+      }
+
+      // 根据命令类型解析数据体
+      // 注意：这里的 parseXxx 方法原本期望包含 Header 的 Buffer
+      // 我们需要重构解析方法，或者在这里做适配
+      // 鉴于 parseXxx 内部都是从 MESSAGE_HEADER_SIZE 开始读
+      // 我们可以构造一个伪造的完整 Buffer
+      
+      const fullBuffer = new ArrayBuffer(MESSAGE_HEADER_SIZE + data.byteLength)
+      const view = new DataView(fullBuffer)
+      const dataView = new DataView(data.buffer, data.byteOffset, data.byteLength)
+      
+      // 填充Header
+      view.setUint32(0, fullBuffer.byteLength, true)
+      view.setUint16(4, srcId, true)
+      view.setUint16(6, ConstPreDefine.HC_ID, true)
+      view.setUint16(8, cmdId, true)
+      
+      // 填充Body
+      const bodyArray = new Uint8Array(fullBuffer, MESSAGE_HEADER_SIZE)
+      bodyArray.set(data)
+      
+      // 现在可以调用 parseMessage 了
+      // 但为了性能，最好是重构 parser 支持 offset，或者直接在这里 switch
+      // 为了最小化改动，我们复用 handleRawData 的逻辑
+      
+      return this.handleRawData(fullBuffer)
+      
+    } catch (e) {
+      hilog.error(0x0001, TAG, `处理拆分消息失败: ${e}`)
+      return false
+    }
+  }
+
+  /**
    * 处理解析后的消息
    */
   private handleParsedMessage(parsed: ParsedMessage): boolean {
@@ -111,12 +165,12 @@ export class StatisticsHandler {
 
     // 更新设备状态（表明设备在线）
     const deviceId = parsed.header.srcId
-    this.updateDeviceOnlineStatus(deviceId, stats.subsysIndex)
+    this.updateDeviceOnlineStatus(deviceId, stats.nSubsysId)
 
     hilog.info(0x0001, TAG,
-      `[统计] 子系统${stats.subsysIndex} 通道${stats.channelIndex}: ` +
-      `产量=${stats.yield}个, 总重=${stats.totalWeight}g, ` +
-      `合格=${stats.qualifiedCount}, 不合格=${stats.unqualifiedCount}`)
+      `[统计] 子系统${stats.nSubsysId} 通道${stats.nChannelIndex}: ` +
+      `产量=${stats.nYield}个, 总重=${stats.nTotalWeight}g, ` +
+      `合格=${stats.nQualifiedCount}, 不合格=${stats.nUnqualifiedCount}`)
 
     return true
   }
@@ -194,14 +248,16 @@ export class StatisticsHandler {
   private updateDeviceOnlineStatus(deviceId: number, subsysIndex: number): void {
     const existingStatus = this.dataInterface.getDeviceStatus(deviceId)
 
-    const status: StFsmStatus = existingStatus || {
-      deviceId: deviceId,
-      ipAddress: `192.168.0.${(subsysIndex + 1) * 16}`,
-      online: true,
-      version: '',
-      connectTime: Date.now(),
-      lastHeartbeat: Date.now(),
-      subsysIndex: subsysIndex
+    let status: StFsmStatus;
+    if (existingStatus) {
+      status = existingStatus;
+    } else {
+      status = new StFsmStatus();
+      status.deviceId = deviceId;
+      status.ipAddress = `192.168.0.${(subsysIndex + 1) * 16}`;
+      status.version = '';
+      status.connectTime = Date.now();
+      status.subsysIndex = subsysIndex;
     }
 
     status.online = true
@@ -220,43 +276,41 @@ export class StatisticsHandler {
       const data = JSON.parse(json) as JsonStatisticsData
 
       if (data.type === 'statistics' || data.cmd === 'statistics') {
-        const stats: StStatistics = {
-          yield: data.yield || 0,
-          totalWeight: data.totalWeight || 0,
-          qualifiedCount: data.qualified || 0,
-          unqualifiedCount: data.unqualified || 0,
-          bigCount: data.big || 0,
-          smallCount: data.small || 0,
-          emptyCount: data.empty || 0,
-          gradeCount: data.gradeCount || [],
-          exitCount: data.exitCount || [],
-          exitWeight: data.exitWeight || [],
-          channelIndex: data.channel || 0,
-          subsysIndex: data.subsys || 0,
-          timestamp: Date.now()
-        }
+        const stats = createDefaultStatistics();
+        stats.nYield = data.yield || 0;
+        stats.nTotalWeight = data.totalWeight || 0;
+        stats.nQualifiedCount = data.qualified || 0;
+        stats.nUnqualifiedCount = data.unqualified || 0;
+        stats.nBigCount = data.big || 0;
+        stats.nSmallCount = data.small || 0;
+        stats.nEmptyCount = data.empty || 0;
+        if (data.gradeCount) stats.nGradeCount.set(data.gradeCount);
+        if (data.exitCount) stats.nExitCount.set(data.exitCount);
+        if (data.exitWeight) stats.nExitWeightCount.set(data.exitWeight);
+        stats.nChannelIndex = data.channel || 0;
+        stats.nSubsysId = data.subsys || 0;
+        stats.nTimestamp = Date.now();
 
         this.dataInterface.updateStatistics(stats)
-        hilog.info(0x0001, TAG, `[JSON统计] 产量=${stats.yield}, 总重=${stats.totalWeight}g`)
+        hilog.info(0x0001, TAG, `[JSON统计] 产量=${stats.nYield}, 总重=${stats.nTotalWeight}g`)
         return true
       }
 
       if (data.type === 'weight' || data.cmd === 'weight') {
-        const info: StWeightInfo = {
-          weight: data.weight || 0,
-          diameter: data.diameter || 0,
-          volume: data.volume || 0,
-          area: data.area || 0,
-          weightGrade: data.weightGrade || 0,
-          sizeGrade: data.sizeGrade || 0,
-          qualityGrade: data.qualityGrade || 0,
-          finalGrade: data.grade || 0,
-          targetExit: data.exit || 0,
-          fruitId: data.fruitId || 0,
-          channelIndex: data.channel || 0,
-          cupIndex: data.cup || 0,
-          timestamp: Date.now()
-        }
+        const info = createDefaultWeightInfo();
+        info.weight = data.weight || 0;
+        info.diameter = data.diameter || 0;
+        info.volume = data.volume || 0;
+        info.area = data.area || 0;
+        info.weightGrade = data.weightGrade || 0;
+        info.sizeGrade = data.sizeGrade || 0;
+        info.qualityGrade = data.qualityGrade || 0;
+        info.finalGrade = data.grade || 0;
+        info.targetExit = data.exit || 0;
+        info.fruitId = data.fruitId || 0;
+        info.channelIndex = data.channel || 0;
+        info.cupIndex = data.cup || 0;
+        info.timestamp = Date.now();
 
         this.dataInterface.updateWeightInfo(info)
         return true

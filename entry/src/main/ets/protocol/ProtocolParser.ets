@@ -102,7 +102,7 @@ export class ProtocolParser {
    * @returns 统计数据结构
    */
   parseStatistics(buffer: ArrayBuffer): StStatistics | null {
-    const header = this.parseHeader(buffer)
+    const header: MessageHeader | null = this.parseHeader(buffer)
     if (!header) return null
 
     if (header.cmdId !== FSM_HC_COMMAND_TYPE.FSM_CMD_STATISTICS) {
@@ -111,46 +111,33 @@ export class ProtocolParser {
     }
 
     const view = new DataView(buffer)
-    const offset = MESSAGE_HEADER_SIZE
+    const offset: number = MESSAGE_HEADER_SIZE
 
     try {
       const stats = createDefaultStatistics()
 
-      // 解析核心数据
-      stats.yield = view.getUint32(offset, true)
-      stats.totalWeight = view.getUint32(offset + 4, true)
-      stats.qualifiedCount = view.getUint32(offset + 8, true)
-      stats.unqualifiedCount = view.getUint32(offset + 12, true)
-      stats.bigCount = view.getUint32(offset + 16, true)
-      stats.smallCount = view.getUint32(offset + 20, true)
-      stats.emptyCount = view.getUint32(offset + 24, true)
+      // 使用 Structure 自身定义的解析逻辑 (符合 C++ 内存布局)
+      stats.readFromDataView(view, offset)
 
-      // 解析等级数量数组
-      let arrayOffset = offset + 28
-      for (let i = 0; i < ConstPreDefine.MAX_SIZE_GRADE_NUM && arrayOffset + 4 <= buffer.byteLength; i++) {
-        stats.gradeCount[i] = view.getUint32(arrayOffset, true)
-        arrayOffset += 4
+      // 从源ID解析通道和子系统信息 (补充覆盖)
+      // 注意: nSubsysId 在二进制流中也有，这里可以校验或覆盖
+      const headerSubsysId = ConstPreDefine.getSubsysIndex(header.srcId)
+      if (stats.nSubsysId !== headerSubsysId) {
+         // 以 Header 为准，或者保留 Packet 内部的
+         // stats.nSubsysId = headerSubsysId; 
       }
-
-      // 解析出口数量数组
-      for (let i = 0; i < ConstPreDefine.MAX_EXIT_NUM && arrayOffset + 4 <= buffer.byteLength; i++) {
-        stats.exitCount[i] = view.getUint32(arrayOffset, true)
-        arrayOffset += 4
-      }
-
-      // 解析出口重量数组
-      for (let i = 0; i < ConstPreDefine.MAX_EXIT_NUM && arrayOffset + 4 <= buffer.byteLength; i++) {
-        stats.exitWeight[i] = view.getUint32(arrayOffset, true)
-        arrayOffset += 4
-      }
-
-      // 从源ID解析通道和子系统信息
-      stats.subsysIndex = ConstPreDefine.getSubsysIndex(header.srcId)
-      stats.channelIndex = (header.srcId >> 4) & 0x0F
-      stats.timestamp = Date.now()
+      stats.nChannelIndex = (header.srcId >> 4) & 0x0F
+      
+      // 重新计算时间戳 (readFromDataView 中已赋值，这里可再次确认)
+      stats.nTimestamp = Date.now()
 
       hilog.info(0x0001, TAG,
-        `解析统计数据成功: 产量=${stats.yield}, 总重=${stats.totalWeight}g, 合格=${stats.qualifiedCount}`)
+        `解析统计数据成功: 产量=${stats.nYield}, 总重=${stats.nTotalWeight}g, 合格=${stats.nQualifiedCount}`)
+
+      return stats
+
+      hilog.info(0x0001, TAG,
+        `解析统计数据成功: 产量=${stats.nYield}, 总重=${stats.nTotalWeight}g, 合格=${stats.nQualifiedCount}`)
 
       return stats
     } catch (e) {
@@ -166,7 +153,7 @@ export class ProtocolParser {
    * @returns 重量信息结构
    */
   parseWeightInfo(buffer: ArrayBuffer): StWeightInfo | null {
-    const header = this.parseHeader(buffer)
+    const header: MessageHeader | null = this.parseHeader(buffer)
     if (!header) return null
 
     if (header.cmdId !== FSM_HC_COMMAND_TYPE.FSM_CMD_WEIGHTINFO) {
@@ -175,7 +162,7 @@ export class ProtocolParser {
     }
 
     const view = new DataView(buffer)
-    const offset = MESSAGE_HEADER_SIZE
+    const offset: number = MESSAGE_HEADER_SIZE
 
     try {
       const info = createDefaultWeightInfo()
@@ -213,7 +200,7 @@ export class ProtocolParser {
    * @returns 分级信息结构
    */
   parseGradeInfo(buffer: ArrayBuffer): StGradeInfo | null {
-    const header = this.parseHeader(buffer)
+    const header: MessageHeader | null = this.parseHeader(buffer)
     if (!header) return null
 
     if (header.cmdId !== FSM_HC_COMMAND_TYPE.FSM_CMD_GRADEINFO) {
@@ -221,7 +208,7 @@ export class ProtocolParser {
     }
 
     const view = new DataView(buffer)
-    const offset = MESSAGE_HEADER_SIZE
+    const offset: number = MESSAGE_HEADER_SIZE
 
     try {
       const info = createDefaultGradeInfo()
@@ -264,10 +251,10 @@ export class ProtocolParser {
    * @returns 解析结果对象
    */
   parseMessage(buffer: ArrayBuffer): ParsedMessage | null {
-    const header = this.parseHeader(buffer)
+    const header: MessageHeader | null = this.parseHeader(buffer)
     if (!header) return null
 
-    const cmdName = getCommandName(header.cmdId)
+    const cmdName: string = getCommandName(header.cmdId)
     hilog.info(0x0001, TAG, `收到命令: ${cmdName} (0x${header.cmdId.toString(16)}) from 0x${header.srcId.toString(16)}`)
 
     const result: ParsedMessage = {

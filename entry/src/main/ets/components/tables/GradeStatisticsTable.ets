@@ -5,88 +5,21 @@
 
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { TableRowComponent } from '../ui/tables/TableRow'
-
-// 表格数据项接口
-interface GradeTableItem {
-  gradeName: string      // 等级名称
-  unitPrice: number      // 单价（可选）
-  weight: number         // 重量
-  gradeCount: number    // 等级个数
-  countPercent: number  // 个数百分比
-  gradeWeight: number   // 等级重量(kg)
-  weightPercent: number // 重量百分比
-  boxCount: number      // 箱数
-  boxCountPercent: number // 箱数百分比
-}
+import { GradeItem } from '../../protocol/Structures'
 
 @Component
 export struct GradeStatisticsTable {
   @Prop selectedSubsystem: string = 'ALL'
   
-  @State private tableData: GradeTableItem[] = []
+  @StorageProp('GlobalGradeList') tableData: GradeItem[] = []
   @State private enablePrice: boolean = true  // 是否启用价格功能
   
   aboutToAppear() {
-    this.updateData()
+    
   }
   
   aboutToUpdate() {
-    // 当子系统改变时更新数据
-    this.updateData()
-  }
-  
-  private updateData(): void {
-    // 生成模拟数据
-    const tempData: GradeTableItem[] = []
     
-    const grades = ['23', '27', '32', '40']
-    const subsystems = this.selectedSubsystem === 'ALL' ? ['1', '2'] : [this.selectedSubsystem]
-    
-    // 先收集所有数据
-    for (const subsystem of subsystems) {
-      for (const grade of grades) {
-        const gradeName = `Sys-${subsystem}-${grade}`
-        
-        // 生成随机数据
-        const gradeCount = Math.floor(Math.random() * 10000) + 1000
-        const gradeWeight = Math.floor(Math.random() * 5000) + 500
-        const boxCount = Math.floor(Math.random() * 5000000) + 100000
-        const weight = Math.random() * 200 + 200
-        const unitPrice = Math.random() * 10  // 单价（0-10之间）
-        
-        tempData.push({
-          gradeName,
-          unitPrice: parseFloat(unitPrice.toFixed(2)),
-          weight: parseFloat(weight.toFixed(2)),
-          gradeCount,
-          countPercent: 0,  // 稍后计算
-          gradeWeight: parseFloat(gradeWeight.toFixed(1)),
-          weightPercent: 0,  // 稍后计算
-          boxCount,
-          boxCountPercent: 0  // 稍后计算
-        })
-      }
-    }
-    
-    // 计算总和
-    const totalCount = tempData.reduce((sum, item) => sum + item.gradeCount, 0)
-    const totalWeight = tempData.reduce((sum, item) => sum + item.gradeWeight, 0)
-    const totalBox = tempData.reduce((sum, item) => sum + item.boxCount, 0)
-    
-    // 计算百分比
-    this.tableData = tempData.map((item: GradeTableItem): GradeTableItem => {
-      return {
-        gradeName: item.gradeName,
-        unitPrice: item.unitPrice,
-        weight: item.weight,
-        gradeCount: item.gradeCount,
-        countPercent: totalCount > 0 ? parseFloat(((item.gradeCount / totalCount) * 100).toFixed(2)) : 0,
-        gradeWeight: item.gradeWeight,
-        weightPercent: totalWeight > 0 ? parseFloat(((item.gradeWeight / totalWeight) * 100).toFixed(2)) : 0,
-        boxCount: item.boxCount,
-        boxCountPercent: totalBox > 0 ? parseFloat(((item.boxCount / totalBox) * 100).toFixed(2)) : 0
-      }
-    })
   }
   
   private getHeaders(): string[] {
@@ -116,7 +49,7 @@ export struct GradeStatisticsTable {
     }
   }
   
-  private formatRowData(item: GradeTableItem): string[] {
+  private formatRowData(item: GradeItem): string[] {
     if (this.enablePrice) {
       return [
         item.gradeName,
@@ -156,7 +89,7 @@ export struct GradeStatisticsTable {
       
       // 数据行
       List() {
-        ForEach(this.tableData, (item: GradeTableItem, index: number) => {
+        ForEach(this.tableData, (item: GradeItem, index: number) => {
           ListItem() {
             TableRowComponent({
               rowData: this.formatRowData(item),
@@ -166,7 +99,7 @@ export struct GradeStatisticsTable {
               cellPadding: 8
             })
           }
-        })
+        }, (item: GradeItem) => JSON.stringify(item))
       }
       .width('100%')
       .layoutWeight(1)

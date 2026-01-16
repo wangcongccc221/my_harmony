@@ -100,51 +100,10 @@ export class ConstPreDefine {
   /** 尺寸（重量）最多等级数 */
   static readonly MAX_SIZE_GRADE_NUM: number = 16
 
-  /** 最多出口数（标准版48，大型版64） */
-  static readonly MAX_EXIT_NUM: number = 48
-
-  /** ACS 最多出口数 */
-  static readonly ACS_MAX_EXIT_NUM: number = 64
-
-  /** 最大出口显示名称长度 */
-  static readonly MAX_EXIT_DISPLAYNAME_LENGTH: number = 20
-
-  /** 最大出口附加名称长度 */
-  static readonly MAX_EXIT_ADDITIONALNAME_LENGTH: number = 100
-
-  // ==================== 颜色/品质参数 ====================
-  /** 颜色最多区间数（红，黄，绿） */
-  static readonly MAX_COLOR_INTERVAL_NUM: number = 3
-
-  /** 最多果杯个数 */
-  static readonly MAX_CUP_NUM: number = 10
-
-  /** 最大颜色显示界面果杯个数 */
-  static readonly MAX_SPLICE_CUP_NUM: number = 19
-
-  /** 去标签参数个数 */
-  static readonly PARAS_TAGINFO_NUM: number = 6
-
-  /** 每页字节数 */
-  static readonly BYTE_NUM_PER_PAGE: number = 64
-
-  /** FSM版本信息长度 */
-  static readonly BYTE_NUM_FSM_VERSION: number = 64
-
-  /** 最大标签数 */
-  static readonly MAX_LABEL_NUM: number = 4
-
-  // ==================== 等级数量定义 ====================
-  /** 颜色等级数 */
-  static readonly MAX_COLOR_GRADE_NUM: number = 16
-
-  /** 形状等级数 */
-  static readonly MAX_SHAPE_GRADE_NUM: number = 6
-
   /** 瑕疵等级数 */
-  static readonly MAX_FLAWAREA_GRADE_NUM: number = 6
+  static readonly MAX_FlAWAREA_GRADE_NUM: number = 6
 
-  /** 擦伤等级数 */
+  /** 碰伤等级数 */
   static readonly MAX_BRUISE_GRADE_NUM: number = 6
 
   /** 腐烂等级数 */
@@ -162,7 +121,7 @@ export class ConstPreDefine {
   /** 空心等级数 */
   static readonly MAX_HOLLOW_GRADE_NUM: number = 6
 
-  /** 浮皮等级数 */
+  /** 果皮等级数 */
   static readonly MAX_SKIN_GRADE_NUM: number = 6
 
   /** 褐变等级数 */
@@ -174,8 +133,115 @@ export class ConstPreDefine {
   /** 硬度等级数 */
   static readonly MAX_RIGIDITY_GRADE_NUM: number = 6
 
-  /** 含水率等级数 */
+  /** 水心等级数 */
   static readonly MAX_WATER_GRADE_NUM: number = 6
+
+  /** 形状等级数 */
+  static readonly MAX_SHAPE_GRADE_NUM: number = 6
+
+  /** 出口数量 */
+  static readonly MAX_EXIT_NUM: number = 48
+
+  /** 文本最大长度 */
+  static readonly MAX_TEXT_LENGTH: number = 12
+
+  /** 水果名称最大长度 */
+  static readonly MAX_FRUIT_NAME_LENGTH: number = 50
+
+  /** 客户端信息最大长度 */
+  static readonly MAX_CLIENTINFO_LENGTH: number = 20
+
+  /** 旧版客户端信息最大长度 */
+  static readonly MAX_CLIENTINFO_LENGTH_OLD: number = 50
+
+  /** 颜色区间数 */
+  static readonly MAX_COLOR_INTERVAL_NUM: number = 3
+
+  /** 颜色等级数 */
+  static readonly MAX_COLOR_GRADE_NUM: number = 16
+
+  /** 标签信息参数个数 */
+  static readonly PARAS_TAGINFO_NUM: number = 6
+
+  /** 标签最大数量 */
+  static readonly MAX_LABEL_NUM: number = 4
+
+  /** 通知最大长度 */
+  static readonly MAX_NOTICE_LENGTH: number = 30
+
+  /** ACS 最多出口数 */
+  static readonly ACS_MAX_EXIT_NUM: number = 64
+
+  /** 最大出口显示名称长度 */
+  static readonly MAX_EXIT_DISPLAYNAME_LENGTH: number = 20
+
+  /** 最大出口附加名称长度 */
+  static readonly MAX_EXIT_ADDITIONALNAME_LENGTH: number = 100
+
+  // ==================== 颜色/品质参数 ====================
+  /** 颜色最多区间数（红，黄，绿） */
+  // static readonly MAX_COLOR_INTERVAL_NUM: number = 3
+
+  /** 最多果杯个数 */
+  static readonly MAX_CUP_NUM: number = 10
+
+  /** 最大颜色显示界面果杯个数 */
+  static readonly MAX_SPLICE_CUP_NUM: number = 19
+
+  /** 去标签参数个数 */
+  // static readonly PARAS_TAGINFO_NUM: number = 6
+
+  /** 每页字节数 */
+  static readonly BYTE_NUM_PER_PAGE: number = 64
+
+  /** FSM版本信息长度 */
+  static readonly BYTE_NUM_FSM_VERSION: number = 64
+
+  /** 最大标签数 */
+  // static readonly MAX_LABEL_NUM: number = 4
+
+  // ==================== 等级数量定义 ====================
+  /** 颜色等级数 */
+  // static readonly MAX_COLOR_GRADE_NUM: number = 16
+
+  /** 形状等级数 */
+  // static readonly MAX_SHAPE_GRADE_NUM: number = 6
+
+  /** 瑕疵等级数 */
+  // static readonly MAX_FLAWAREA_GRADE_NUM: number = 6
+
+  /** 擦伤等级数 */
+  // static readonly MAX_BRUISE_GRADE_NUM: number = 6
+
+  /** 腐烂等级数 */
+  // static readonly MAX_ROT_GRADE_NUM: number = 6
+
+  /** 密度等级数 */
+  // static readonly MAX_DENSITY_GRADE_NUM: number = 6
+
+  /** 糖度等级数 */
+  // static readonly MAX_SUGAR_GRADE_NUM: number = 6
+
+  /** 酸度等级数 */
+  // static readonly MAX_ACIDITY_GRADE_NUM: number = 6
+
+  /** 空心等级数 */
+  // static readonly MAX_HOLLOW_GRADE_NUM: number = 6
+
+  /** 浮皮等级数 */
+  // static readonly MAX_SKIN_GRADE_NUM: number = 6
+
+  /** 褐变等级数 */
+  // static readonly MAX_BROWN_GRADE_NUM: number = 6
+
+  /** 糖心等级数 */
+  // static readonly MAX_TANGXIN_GRADE_NUM: number = 6
+
+  /** 硬度等级数 */
+  // static readonly MAX_RIGIDITY_GRADE_NUM: number = 6
+
+  /** 含水率等级数 */
+  // static readonly MAX_WATER_GRADE_NUM: number = 6
 
   // ==================== 水果类型 ====================
   /** 水果种类最多数（大种类） */
@@ -188,13 +254,13 @@ export class ConstPreDefine {
   static readonly MAX_FRUIT_TYPE_SUB_CLASS_NUM: number = 8
 
   /** 水果名称最大长度 */
-  static readonly MAX_FRUIT_NAME_LENGTH: number = 50
+  // static readonly MAX_FRUIT_NAME_LENGTH: number = 50
 
   /** 客户信息最大长度 */
-  static readonly MAX_CLIENTINFO_LENGTH: number = 20
+  // static readonly MAX_CLIENTINFO_LENGTH: number = 20
 
   /** 客户信息最大长度（旧版） */
-  static readonly MAX_CLIENTINFO_LENGTH_OLD: number = 50
+  // static readonly MAX_CLIENTINFO_LENGTH_OLD: number = 50
 
   // ==================== 其他常量 ====================
   /** 拼图最大长度 */
@@ -203,8 +269,14 @@ export class ConstPreDefine {
   /** 拼图最大宽度 */
   static readonly CAPTURE_HEIGHT: number = 1920
 
+  /** 瑕疵检测测试图像宽 */
+  static readonly MAX_SPLICE_IMAGE_WIDTH: number = 3200
+
+  /** 瑕疵检测测试图像高 */
+  static readonly MAX_SPLICE_IMAGE_HEIGHT: number = 512
+
   /** 最大文本长度 */
-  static readonly MAX_TEXT_LENGTH: number = 12
+  // static readonly MAX_TEXT_LENGTH: number = 12
 
   /** 最大水果文本长度 */
   static readonly MAX_FRUIT_TEXT_LENGTH: number = 20
@@ -216,7 +288,7 @@ export class ConstPreDefine {
   static readonly WAVE_POINT_WIDTH: number = 256
 
   /** 最大通知长度 */
-  static readonly MAX_NOTICE_LENGTH: number = 30
+  // static readonly MAX_NOTICE_LENGTH: number = 30
 
   /** PLC发送数据数量 */
   static readonly PLC_SEND_DATA_NUM: number = 16

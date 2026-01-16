@@ -170,14 +170,28 @@ export class UIDataSync {
     const keys = UIDataSync.STORAGE_KEYS
 
     // 计算产量效率（吨/时）
+    // 逻辑：每分钟间隔总和 (nIntervalSumperminute) 表示速度（个/分）
+    // Ton/h = (速度 * 60 * 平均重量) / 1000000
+    // 或者直接使用 runningTime 计算：总重 / 时间
+    // 这里优先使用 efficiency (个/分) 来计算瞬时 Ton/h
     let productionTonH = '0.00'
-    if (data.runningTime > 0) {
+    const avgWeightG = data.totalYield > 0 ? (data.totalWeight / data.totalYield) : 0
+    if (data.efficiency > 0) {
+      // efficiency 是 个/分
+      // 个/时 = efficiency * 60
+      // 克/时 = 个/时 * 平均重量
+      // 吨/时 = 克/时 / 1000000
+      const tonPerHour = (data.efficiency * 60 * avgWeightG) / 1000000
+      productionTonH = tonPerHour.toFixed(2)
+    } else if (data.runningTime > 0) {
+      // 备选：使用平均效率
       const hoursElapsed = data.runningTime / 3600
       const tonPerHour = (data.totalWeight / 1000000) / hoursElapsed
       productionTonH = tonPerHour.toFixed(2)
     }
 
     // 总重（吨）
+    // 注意：totalWeight 单位是 克(g)，转换为 吨(Ton) 需要除以 1,000,000
     const sumWeightTon = (data.totalWeight / 1000000).toFixed(3)
 
     // 总数
@@ -190,32 +204,33 @@ export class UIDataSync {
     }
 
     // 更新顶部状态栏
-    AppStorage.set(keys.TOP_PRODUCTION_TON_H, productionTonH)
-    AppStorage.set(keys.TOP_SUM_WEIGHT_TON, sumWeightTon)
-    AppStorage.set(keys.TOP_SUM_COUNTS, sumCounts)
-    AppStorage.set(keys.TOP_AVG_G, avgG)
+    // 使用 AppStorage.set 确保 UI 监听到变化
+    AppStorage.setOrCreate(keys.TOP_PRODUCTION_TON_H, productionTonH)
+    AppStorage.setOrCreate(keys.TOP_SUM_WEIGHT_TON, sumWeightTon)
+    AppStorage.setOrCreate(keys.TOP_SUM_COUNTS, sumCounts)
+    AppStorage.setOrCreate(keys.TOP_AVG_G, avgG)
 
     // 更新分选信息卡片
-    AppStorage.set(keys.SORT_SPEED, `${data.efficiency.toFixed(0)} 件/分钟`)
-    AppStorage.set(keys.BATCH_WEIGHT, `${(data.totalWeight / 1000).toFixed(2)} kg`)
-    AppStorage.set(keys.BATCH_COUNT, `${data.totalYield} 件`)
-    AppStorage.set(keys.AVG_WEIGHT, `${avgG} g`)
-    AppStorage.set(keys.REALTIME_OUTPUT, `${data.efficiency.toFixed(1)} 件/分钟`)
+    AppStorage.setOrCreate(keys.SORT_SPEED, `${data.efficiency.toFixed(0)} 件/分钟`)
+    AppStorage.setOrCreate(keys.BATCH_WEIGHT, `${(data.totalWeight / 1000).toFixed(2)} kg`)
+    AppStorage.setOrCreate(keys.BATCH_COUNT, `${data.totalYield} 件`)
+    AppStorage.setOrCreate(keys.AVG_WEIGHT, `${avgG} g`)
+    AppStorage.setOrCreate(keys.REALTIME_OUTPUT, `${data.efficiency.toFixed(1)} 件/分钟`)
 
     // 更新效率
     const total = data.totalQualified + data.totalUnqualified
     const efficiencyPercent = total > 0 ? ((data.totalQualified / total) * 100).toFixed(1) : '0.0'
-    AppStorage.set(keys.EFFICIENCY, `${efficiencyPercent}%`)
+    AppStorage.setOrCreate(keys.EFFICIENCY, `${efficiencyPercent}%`)
 
     // 更新运行时间
-    AppStorage.set(keys.RUNNING_TIME, this.formatTime(data.runningTime))
-    AppStorage.set(keys.IS_PROCESSING, data.runningTime > 0 || data.totalYield > 0)
+    AppStorage.setOrCreate(keys.RUNNING_TIME, this.formatTime(data.runningTime))
+    AppStorage.setOrCreate(keys.IS_PROCESSING, data.runningTime > 0 || data.totalYield > 0)
 
     // 更新开始时间（如果正在加工）
     if (data.startTime > 0) {
       const startDate = new Date(data.startTime)
       const timeStr = `${startDate.getHours().toString().padStart(2, '0')}:${startDate.getMinutes().toString().padStart(2, '0')}:${startDate.getSeconds().toString().padStart(2, '0')}`
-      AppStorage.set(keys.START_TIME, timeStr)
+      AppStorage.setOrCreate(keys.START_TIME, timeStr)
     }
 
     // 更新出口数据
@@ -247,7 +262,7 @@ export class UIDataSync {
   private syncStatisticsToStorage(stats: StStatistics): void {
     // 可以在这里处理更细粒度的通道数据
     hilog.debug(0x0001, TAG,
-      `通道${stats.channelIndex}统计: 产量=${stats.yield}, 总重=${stats.totalWeight}g`)
+      `通道${stats.nChannelIndex}统计: 产量=${stats.nYield}, 总重=${stats.nTotalWeight}g`)
   }
 
   /**

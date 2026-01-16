@@ -95,6 +95,12 @@ export struct TopStatusBar {
     // this.dataTimer = setInterval(() => {
     //   this.updateMockData()
     // }, 3000)
+
+    // 确保从 AppStorage 获取初始值
+    // this.productionTonPerHour = AppStorage.get(TOP_PRODUCTION_TON_H) || '0.00'
+    // this.sumWeightTon = AppStorage.get(TOP_SUM_WEIGHT_TON) || '0.000'
+    // this.sumCounts = AppStorage.get(TOP_SUM_COUNTS) || '0'
+    // this.avgGram = AppStorage.get(TOP_AVG_G) || '0.0'
   }
 
   aboutToDisappear() {

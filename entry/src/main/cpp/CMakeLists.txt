@@ -10,16 +10,23 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # 添加源文件
 add_library(native_module SHARED
     native_module.cpp
+    Tcp/tcpclient.cpp
+    Tcp/tcpserver.cpp
+    Tcp/udpclient.cpp
+    Tcp/udpserver.cpp
+    Tcp/socketserver.cpp
+
 )
 
 # 包含头文件目录
 target_include_directories(native_module PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/Tcp
 )
 
 # 链接系统库
-# 暂时不链接NAPI库，先确保基本编译通过
 target_link_libraries(native_module PUBLIC
-    # 基本库会在后续添加NAPI支持时链接
+    libace_napi.z.so
+    libhilog_ndk.z.so
 )
 

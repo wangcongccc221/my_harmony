@@ -24,8 +24,9 @@ import { relationalStore } from '@kit.ArkData';
 // import { AlarmInfo } from '../database/models/AlarmInfo';
 import { I18nManager } from '../utils/i18n/I18nManager';
 import { OutletCountStorage } from '../utils/storage/OutletCountStorage';
-import { NativeModule } from '../utils/native/NativeModule';
+import { NativeModule, CommandHead } from '../utils/native/NativeModule';
 import { getUIDataSync } from '../protocol/UIDataSync';
+import { getStatisticsHandler } from '../protocol/StatisticsHandler';
 // import { TCPServer } from '../utils/network/tcp/TCPServer';
 import { ConstPreDefine } from '../protocol/ConstPreDefine';
 import { getConfigSender } from '../protocol/ConfigSender';
@@ -42,8 +43,8 @@ export default class EntryAbility extends UIAbility {
     this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
 
-    // 测试Native C++调用
-    this.testNativeCpp();
+    // 初始化 Native 服务
+    this.initNativeServers();
 
     this.copyResourceFiles();
     // this.initNetworkOptimizer();
@@ -58,36 +59,56 @@ export default class EntryAbility extends UIAbility {
   }
   
   /**
-   * 测试Native C++调用
+   * 初始化 Native 服务
+   * 启动 SocketServer (PLC) 和 TcpServer (业务)
    */
-  private testNativeCpp(): void {
+  private initNativeServers(): void {
     try {
-      console.info('========== Native C++ 测试开始 ==========');
+      console.info('========== 开始初始化 Native 服务 ==========');
+
+      // 1. 启动 SocketServer (PLC控制) - 端口 8080
+      console.info('🚀 [SocketServer] 尝试启动 (PLC)...');
+      const socketSuccess = NativeModule.socketServerStart("", 8080, (clientIP, data) => {
+        const dataLen = data.length;
+        console.info(`📡 [SocketServer] 收到数据 | 来自: ${clientIP} | 长度: ${dataLen}`);
+        // 业务逻辑...
+      });
       
-      // 测试1: 获取Hello字符串
-      const hello = NativeModule.getHelloString();
-      console.info('✅ getHelloString():', hello);
-      hilog.info(DOMAIN, 'NativeTest', 'getHelloString: %{public}s', hello);
+      if (socketSuccess) {
+        console.info('✅ [SocketServer] 启动成功 (Port: 8080)');
+      } else {
+        console.error('❌ [SocketServer] 启动失败');
+      }
+
+      // 2. 启动 TcpServer (业务数据) - 端口 9090
+      console.info('🚀 [TcpServer] 尝试启动 (业务)...');
+      // dstId 示例值 1001
+      const tcpSuccess = NativeModule.tcpServerStart("", 9090, 1001, (head: CommandHead) => {
+        // console.info(`📡 [TcpServer] 收到业务包 | cmdId: ${head.cmdId} | srcId: ${head.srcId} | len: ${head.length}`);
+        
+        // 将数据交给 StatisticsHandler 处理
+        if (head && head.data) {
+          getStatisticsHandler().handleSplitMessage(head.cmdId, head.srcId, head.data);
+        }
+      });
+
+      if (tcpSuccess) {
+        console.info('✅ [TcpServer] 启动成功 (Port: 9090)');
+      } else {
+        console.error('❌ [TcpServer] 启动失败');
+      }
       
-      // 测试2: 计算两个数的和
-      const sum = NativeModule.addNumbers(10, 20);
-      console.info('✅ addNumbers(10, 20):', sum);
-      hilog.info(DOMAIN, 'NativeTest', 'addNumbers(10, 20): %{public}d', sum);
-      
-      // 测试3: 获取版本号
-      const version = NativeModule.getVersion();
-      console.info('✅ getVersion():', version);
-      hilog.info(DOMAIN, 'NativeTest', 'getVersion: %{public}s', version);
-      
-      // 测试4: 更多计算
-      const sum2 = NativeModule.addNumbers(100, 200);
-      console.info('✅ addNumbers(100, 200):', sum2);
-      hilog.info(DOMAIN, 'NativeTest', 'addNumbers(100, 200): %{public}d', sum2);
-      
-      console.info('========== Native C++ 测试完成 ==========');
+      // 3. (可选) TcpClient 连接示例
+      // 如果需要在启动时连接某个服务器，可以在这里调用
+      /*
+      NativeModule.tcpClientConnect("192.168.1.100", 8888, (data) => {
+        console.info(`[TcpClient] 收到数据: ${data.length}`);
+      });
+      */
+
+      console.info('========== Native 服务初始化完成 ==========');
     } catch (error) {
-      console.error('❌ Native C++ 测试失败:', error);
-      hilog.error(DOMAIN, 'NativeTest', '测试失败: %{public}s', JSON.stringify(error));
+      console.error('❌ Native 服务初始化失败:', error);
     }
   }
   

@@ -1,0 +1,6 @@
+{
+  "name": "libnative_module.so",
+  "types": "./index.d.ts",
+  "version": "1.0.0",
+  "description": "Native module for C++ integration"
+}

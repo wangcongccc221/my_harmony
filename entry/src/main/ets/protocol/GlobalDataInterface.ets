@@ -18,7 +18,8 @@ import {
   copyStWeightInfo,
   copyStGradeInfo,
   copyStFsmStatus,
-  copyStGradeInfoArray
+  copyStGradeInfoArray,
+  GradeItem
 } from './Structures'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 
@@ -93,10 +94,10 @@ export class GlobalDataInterface {
    */
   updateStatistics(stats: StStatistics): void {
     // 计算通道键
-    const channelKey = this.getChannelKey(stats.subsysIndex, stats.channelIndex)
+    const channelKey: number = this.getChannelKey(stats.nSubsysId, stats.nChannelIndex)
 
     // 获取旧数据用于计算增量
-    const oldStats = this.channelStatistics.get(channelKey)
+    const oldStats: StStatistics | undefined = this.channelStatistics.get(channelKey)
 
     // 更新通道数据
     this.channelStatistics.set(channelKey, stats)
@@ -104,12 +105,17 @@ export class GlobalDataInterface {
     // 更新全局汇总
     this.updateGlobalData(stats, oldStats)
 
+    // 如果还没有开始时间，自动设置为开始加工
+    if (this.globalData.startTime === 0 && stats.nYield > 0) {
+      this.startProcessing()
+    }
+
     // 通知监听器
     this.notifyStatisticsListeners(stats)
     this.notifyDataChangeListeners()
 
     hilog.info(0x0001, TAG,
-      `统计数据更新: 通道${stats.channelIndex}, 产量=${stats.yield}, 总重=${stats.totalWeight}g`)
+      `统计数据更新: 通道${stats.nChannelIndex}, 产量=${stats.nYield}, 总重=${stats.nTotalWeight}g`)
   }
 
   /**
@@ -131,19 +137,20 @@ export class GlobalDataInterface {
    * @param info 新的分级信息
    */
   updateGradeInfo(info: StGradeInfo): void {
-    this.latestGradeInfo = info
+    const safeInfo = copyStGradeInfo(info)
+    this.latestGradeInfo = safeInfo
 
     // 添加到最近水果队列
-    this.recentFruits.unshift(info)
+    this.recentFruits.unshift(safeInfo)
     if (this.recentFruits.length > this.MAX_RECENT_FRUITS) {
       this.recentFruits.pop()
     }
 
     // 通知监听器
-    this.notifyGradeInfoListeners(info)
+    this.notifyGradeInfoListeners(safeInfo)
 
     hilog.debug(0x0001, TAG,
-      `分级信息更新: ID=${info.fruitId}, 重量=${info.weight}g, 等级=${info.finalGrade}`)
+      `分级信息更新: ID=${safeInfo.fruitId}, 重量=${safeInfo.weight}g, 等级=${safeInfo.finalGrade}`)
   }
 
   /**
@@ -164,40 +171,52 @@ export class GlobalDataInterface {
    * 更新全局汇总数据
    */
   private updateGlobalData(newStats: StStatistics, oldStats: StStatistics | undefined): void {
-    // 如果有旧数据，先减去旧值
-    if (oldStats) {
-      this.globalData.totalYield -= oldStats.yield
-      this.globalData.totalWeight -= oldStats.totalWeight
-      this.globalData.totalQualified -= oldStats.qualifiedCount
-      this.globalData.totalUnqualified -= oldStats.unqualifiedCount
+    // 简化策略：直接用最新数据覆盖（适用于单通道场景，或假设通道数据独立）
+    // 如果是多通道，应该根据 subsys/channel 累加
+    // 这里为了修复 UI 显示，我们暂时直接累加通道数据，但需要避免重复累加
+    
+    // 方案 B: 重新计算所有通道的总和
+    let totalYield: number = 0
+    let totalWeight: number = 0
+    let totalQualified: number = 0
+    let totalUnqualified: number = 0
+    const gradeCount: number[] = new Array(ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM).fill(0)
+    const gradeWeight: number[] = new Array(ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM).fill(0)
+    const boxGradeCount: number[] = new Array(ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM).fill(0)
+    const exitCount: number[] = new Array(ConstPreDefine.MAX_EXIT_NUM).fill(0)
+    const exitWeight: number[] = new Array(ConstPreDefine.MAX_EXIT_NUM).fill(0)
 
-      for (let i = 0; i < oldStats.gradeCount.length; i++) {
-        this.globalData.gradeCount[i] -= oldStats.gradeCount[i]
+    this.channelStatistics.forEach((stats: StStatistics) => {
+      totalYield += stats.nYield
+      totalWeight += stats.nTotalWeight
+      totalQualified += stats.nQualifiedCount
+      totalUnqualified += stats.nUnqualifiedCount
+      
+      for (let i = 0; i < stats.nGradeCount.length; i++) {
+        gradeCount[i] += stats.nGradeCount[i]
+        gradeWeight[i] += stats.nWeightGradeCount[i]
       }
-      for (let i = 0; i < oldStats.exitCount.length; i++) {
-        this.globalData.exitCount[i] -= oldStats.exitCount[i]
-        this.globalData.exitWeight[i] -= oldStats.exitWeight[i]
+      for (let i = 0; i < stats.nExitCount.length; i++) {
+        exitCount[i] += stats.nExitCount[i]
+        exitWeight[i] += stats.nExitWeightCount[i]
       }
-    }
+    })
 
-    // 加上新值
-    this.globalData.totalYield += newStats.yield
-    this.globalData.totalWeight += newStats.totalWeight
-    this.globalData.totalQualified += newStats.qualifiedCount
-    this.globalData.totalUnqualified += newStats.unqualifiedCount
+    // 更新全局对象
+    this.globalData.totalYield = totalYield
+    this.globalData.totalWeight = totalWeight
+    this.globalData.totalQualified = totalQualified
+    this.globalData.totalUnqualified = totalUnqualified
+    this.globalData.gradeCount = gradeCount
+    this.globalData.gradeWeight = gradeWeight
+    this.globalData.boxGradeCount = boxGradeCount
+    this.globalData.exitCount = exitCount
+    this.globalData.exitWeight = exitWeight
 
-    for (let i = 0; i < newStats.gradeCount.length; i++) {
-      this.globalData.gradeCount[i] += newStats.gradeCount[i]
-    }
-    for (let i = 0; i < newStats.exitCount.length; i++) {
-      this.globalData.exitCount[i] += newStats.exitCount[i]
-      this.globalData.exitWeight[i] += newStats.exitWeight[i]
-    }
-
-    // 更新通道产量
-    const channelIdx = newStats.channelIndex
+    // 更新通道产量 (仅当前通道)
+    const channelIdx: number = newStats.nChannelIndex
     if (channelIdx >= 0 && channelIdx < this.globalData.channelYield.length) {
-      this.globalData.channelYield[channelIdx] = newStats.yield
+      this.globalData.channelYield[channelIdx] = newStats.nYield
     }
 
     // 更新效率
