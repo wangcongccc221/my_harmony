@@ -31,6 +31,8 @@ export struct LiquidCardsArea {
   @StorageLink(GRID_DRAG_ACTIVE_KEY) private gridDragActive: boolean = false
   // FSM状态监听
   @StorageLink(HOME_SELECTED_FSM) @Watch('onFSMChange') private selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
+  // 监听全局卡片数据更新信号
+  @StorageLink('GLOBAL_CARD_DATA_UPDATE_SIGNAL') @Watch('onGlobalDataUpdate') private dataUpdateSignal: number = 0
   // 简化：不记录几何，直接在卡片自身接收抬手投放
   
   // 卡片点击回调
@@ -203,6 +205,15 @@ export struct LiquidCardsArea {
     console.log(`LiquidCardsArea: 已切换到 ${this.selectedFSM} 的卡片数据，共 ${this.cardDataList.length} 个卡片`)
   }
 
+  /**
+   * 监听全局数据更新信号
+   */
+  onGlobalDataUpdate(): void {
+    // 重新获取卡片数据以触发 UI 更新
+    this.cardDataList = this.globalDataManager.getCardDataList()
+    // console.log('LiquidCardsArea: 收到全局数据更新信号，已刷新 UI')
+  }
+
   // 防重复处理标志，避免aboutToUpdate循环触发
   private isProcessingRemove: boolean = false
 
@@ -347,7 +358,7 @@ export struct LiquidCardsArea {
               }
             })
           }
-        })
+        }, (item: ThreeLayerCardData) => item.id)
       }
       .width('100%')
       .height('100%')

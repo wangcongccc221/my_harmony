@@ -5,6 +5,9 @@
   "main": "",
   "author": "",
   "license": "",
-  "dependencies": {}
+  "dependencies": {
+    "@ibestservices/ibest-orm": "^2.0.3"
+  },
+  "devDependencies": {},
+  "dynamicDependencies": {}
 }
-

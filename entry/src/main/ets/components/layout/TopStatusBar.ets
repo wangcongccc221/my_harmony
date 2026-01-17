@@ -16,10 +16,10 @@ import { ProfileInfoBar } from './ProfileInfoBar'
 @Component
 export struct TopStatusBar {
   @Prop currentPage: string = ''
-  @StorageLink(TOP_PRODUCTION_TON_H) productionTonPerHour: string = '--'
+  @StorageLink(TOP_PRODUCTION_TON_H) @Watch('onProductionChange') productionTonPerHour: string = '--'
   @StorageLink(TOP_SUM_WEIGHT_TON) sumWeightTon: string = '--'
   @StorageLink(TOP_SUM_COUNTS) sumCounts: string = '--'
-  @StorageLink(TOP_AVG_G) avgGram: string = '--'
+  @StorageLink(TOP_AVG_G) @Watch('onDataChange') avgGram: string = '--'
   @StorageLink(TOP_STATUS_TEXT) statusText: string = ''
   @StorageLink(TOP_ALERT_HIDE) alertHide: boolean = true
   @StorageLink(TCP_CONNECTION_STATUS) tcpConnected: boolean = false
@@ -42,6 +42,14 @@ export struct TopStatusBar {
   
   // 模拟数据定时器
   private dataTimer: number | null = null
+
+  onProductionChange() {
+    console.log(`[TopStatusBar] Production Updated: ${this.productionTonPerHour}`)
+  }
+
+  onDataChange() {
+    console.log(`[TopStatusBar] Data Changed: ${this.sumCounts} pcs, ${this.sumWeightTon} tons`)
+  }
 
   private async minimizeApp() { //最小化
     try {
@@ -195,10 +203,10 @@ export struct TopStatusBar {
 
         // 3. 生产指标 (使用 Flex 自动换行或 Row 紧凑排列)
         Row({ space: 24 }) { // 增加间距，减少拥挤感
-          this.buildMetricItem('Production', this.productionTonPerHour, 'Ton/h')
-          this.buildMetricItem('SumWeight', this.sumWeightTon, 'Ton')
-          this.buildMetricItem('SumCounts', this.sumCounts, 'PCS')
-          this.buildMetricItem('Avg', this.avgGram, 'g')
+          MetricItem({ label: 'Production', value: this.productionTonPerHour, unit: 'Ton/h' })
+          MetricItem({ label: 'SumWeight', value: this.sumWeightTon, unit: 'Ton' })
+          MetricItem({ label: 'SumCounts', value: this.sumCounts, unit: 'PCS' })
+          MetricItem({ label: 'Avg', value: this.avgGram, unit: 'g' })
         }
       }
       .layoutWeight(0) // 左侧根据内容自适应宽度
@@ -292,31 +300,7 @@ export struct TopStatusBar {
     .shadow({ radius: 6, color: 'rgba(0,0,0,0.05)', offsetY: 2 }) // 更柔和的阴影
   }
 
-  // Helper: 构建单个指标项
-  @Builder
-  buildMetricItem(label: string, value: string, unit: string) {
-    Column() {
-      Text(label)
-        .fontSize(14) // 更小更精致的 Label
-        .fontColor(this.getCurrentTheme().subTextColor)
-        .margin({ bottom: 2 })
-      
-      Row() {
-        Text(value)
-          .fontSize(20) // 数值大小适中
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.getCurrentTheme().primary)
-        Text(unit)
-          .fontSize(12)
-          .fontColor(this.getCurrentTheme().subTextColor)
-          .opacity(0.8)
-          .margin({ left: 2, top: 4 }) // 单位稍微下沉
-      }
-    }
-    .alignItems(HorizontalAlign.Start)
-  }
-
-  // Helper: 构建状态/告警条
+  // Helper: 状态/告警条
   @Builder
   buildStatusAlert() {
     if (this.tcpConnected) {
@@ -374,5 +358,42 @@ export struct TopStatusBar {
       .alignItems(HorizontalAlign.Start)
     }
     .padding({ left: 12, right: 12, top: 4, bottom: 4 })
+  }
+}
+
+/**
+ * 独立的指标项组件，确保响应式更新
+ */
+@Component
+struct MetricItem {
+  @Prop label: string
+  @Prop value: string
+  @Prop unit: string
+  @StorageLink(OMNI_THEME_VERSION_KEY) private themeVersion: number = 0
+
+  private getCurrentTheme(): ExtendedOmniThemeStyle {
+    return OmniThemeManager.getInstance().getCurrentTheme()
+  }
+
+  build() {
+    Column() {
+      Text(this.label)
+        .fontSize(14)
+        .fontColor(this.getCurrentTheme().subTextColor)
+        .margin({ bottom: 2 })
+      
+      Row() {
+        Text(this.value)
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.getCurrentTheme().primary)
+        Text(this.unit)
+          .fontSize(12)
+          .fontColor(this.getCurrentTheme().subTextColor)
+          .opacity(0.8)
+          .margin({ left: 2, top: 4 }) // 单位稍微下沉
+      }
+    }
+    .alignItems(HorizontalAlign.Start)
   }
 }

@@ -130,10 +130,13 @@ void TcpServer::CreateClientSocket()
                 }
                 if (head.nLength > 0) {
                     std::cout << "[TCP] Expecting Data Length: " << head.nLength << std::endl;
-                    RecvData(clientSocket, head);
-                    std::cout << "[TCP] Received Data Body (Size: " << m_Data.size() << ")" << std::endl;
-                    if (m_setBuffer) {
-                        m_setBuffer(head, m_Data);
+                    if (RecvData(clientSocket, head)) {
+                        std::cout << "[TCP] Received Data Body (Size: " << m_Data.size() << ")" << std::endl;
+                        if (m_setBuffer) {
+                            m_setBuffer(head, m_Data);
+                        }
+                    } else {
+                        std::cout << "[TCP] Error: Failed to receive complete data body. Expected " << head.nLength << " bytes." << std::endl;
                     }
                 }
             }

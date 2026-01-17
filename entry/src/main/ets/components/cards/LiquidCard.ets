@@ -62,7 +62,7 @@ export struct LiquidCard {
           .fontWeight(FontWeight.Medium) // Apple风格：使用Medium（HarmonyOS不支持SemiBold）
           .fontColor('#222222')
         Blank().layoutWeight(1)
-        Text(`${this.clampPercent(this.percent)}%`)
+        Text(`${this.clampPercent(this.percent).toFixed(2)}%`)
           .fontSize(16)
           .fontWeight(FontWeight.Medium) // Apple风格：使用Medium
           .fontColor(this.mainColor)

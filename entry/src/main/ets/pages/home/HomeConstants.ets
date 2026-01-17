@@ -1,48 +1,3 @@
-/**
- * 主页常量配置文件
- * 
- * 功能说明：
- * - 存储主页相关的所有常量、配置数据
- * - 统一管理主页的配置信息，避免硬编码
- * - 提供类型安全的配置接口
- * 
- * 文件结构：
- * - 顶部状态栏配置：AppStorage键名和默认值
- * - 分拣信息配置：分拣相关数据的默认值
- * - 设置配置：各种设置开关的默认状态
- * - 按钮配置：功能按钮的默认选择
- * - FSM配置：有限状态机的默认状态
- * 
- * 使用方式：
- * ```typescript
- * import { DEFAULT_TOP_BAR_DATA, DEFAULT_SORTING_INFO } from './HomeConstants'
- * 
- * // 使用默认配置
- * const topBarData = DEFAULT_TOP_BAR_DATA
- * const sortingInfo = DEFAULT_SORTING_INFO
- * ```
- * 
- * 维护说明：
- * - 新增配置时，请同时更新对应的接口定义
- * - 修改配置时，请确保所有使用该配置的地方都得到更新
- * - 配置值应该具有明确的业务含义
- */
-
-/**
- * 顶部状态栏配置接口
- * 
- * 定义顶部状态栏中各个指标的AppStorage键名
- * 这些键名用于在AppStorage中存储和获取状态栏数据
- * 
- * 属性说明：
- * - PRODUCTION_TON_H: 产量（吨/小时）的存储键名
- * - SUM_WEIGHT_TON: 总重量（吨）的存储键名
- * - SUM_COUNTS: 总计数的存储键名
- * - AVG_G: 平均重量（克）的存储键名
- * - USER_NAME: 用户名的存储键名
- * - STATUS_TEXT: 状态文本的存储键名
- * - ALERT_HIDE: 警告隐藏状态的存储键名
- */
 export interface TopBarConfig {
   /** 产量（吨/小时）的AppStorage键名 */
   PRODUCTION_TON_H: string
@@ -192,40 +147,13 @@ export interface SettingsOptions {
   /** 设置4的标识符 */
   SETTING4: string
 }
-
-/**
- * FSM状态选项常量
- * 
- * 定义有限状态机的具体选项值
- * 用于FSM切换组件的选项配置
- * 
- * 使用方式：
- * ```typescript
- * // 获取FSM选项
- * const fsm1 = FSM_OPTIONS.FSM1  // 'FSM1'
- * const fsm2 = FSM_OPTIONS.FSM2  // 'FSM2'
- * ```
- */
 export const FSM_OPTIONS: FSMOptions = {
-  /** FSM1状态标识符 */
+
   FSM1: 'FSM1',
-  /** FSM2状态标识符 */
+
   FSM2: 'FSM2'
 }
 
-/**
- * 设置选项常量
- * 
- * 定义设置开关的具体选项值
- * 用于设置面板组件的选项配置
- * 
- * 使用方式：
- * ```typescript
- * // 获取设置选项
- * const setting1 = SETTINGS_OPTIONS.SETTING1  // '设置1'
- * const setting2 = SETTINGS_OPTIONS.SETTING2  // '设置2'
- * ```
- */
 export const SETTINGS_OPTIONS: SettingsOptions = {
   /** 设置1的标识符 */
   SETTING1: '设置1',
@@ -237,54 +165,16 @@ export const SETTINGS_OPTIONS: SettingsOptions = {
   SETTING4: '设置4'
 }
 
-/**
- * 功能按钮选项常量
- * 
- * 定义主页功能按钮的所有选项
- * 用于功能按钮组件的选项配置
- * 
- * 按钮列表：
- * - 等级表：显示等级相关数据
- * - 等级统计表：显示统计相关数据
- * - 加工曲线：显示加工曲线图表
- * - 加工柱状图：显示加工柱状图
- * - 动态装箱：显示装箱相关数据
- * - 成品：显示成品相关数据
- * 
- * 使用方式：
- * ```typescript
- * // 遍历功能按钮
- * FUNCTION_BUTTONS.forEach(button => {
- *   console.log(button)
- * })
- * ```
- */
 export const FUNCTION_BUTTONS: string[] = [
-  /** 等级表按钮 */
   '等级表',
-  /** 等级统计表按钮 */
   '等级统计表',
-  /** 加工曲线按钮 */
   '加工曲线',
-  /** 加工柱状图按钮 */
   '加工柱状图',
-  /** 动态装箱按钮 */
   '动态装箱',
-  /** 成品按钮 */
+
   '成品'
 ]
 
-/**
- * 分选信息字段配置接口
- * 
- * 定义分选信息卡片中每个字段的配置
- * 用于动态生成分选信息卡片的布局
- * 
- * 属性说明：
- * - key: 字段的数据键名
- * - label: 字段的显示标签
- * - width: 字段的宽度百分比
- */
 export interface SortingInfoField {
   /** 字段的数据键名 */
   key: string
@@ -294,31 +184,6 @@ export interface SortingInfoField {
   width: number
 }
 
-/**
- * 分选信息字段配置常量
- * 
- * 定义分选信息卡片中所有字段的配置
- * 用于动态生成分选信息卡片的布局
- * 
- * 字段说明：
- * - 分选速度：当前分拣速度（件/分钟）
- * - 本批重量：当前批次的重量（kg）
- * - 本批个数：当前批次的件数
- * - 开始时间：分拣开始的时间
- * - 分选程序：当前使用的分选程序名称
- * - 分选效率：当前分选效率（%）
- * - 平均重量：平均每件重量（kg）
- * - 实时产量：实时产量（件/分钟）
- * - 间隔速度：分拣间隔时间（ms）
- * 
- * 使用方式：
- * ```typescript
- * // 遍历分选信息字段
- * SORTING_INFO_FIELDS.forEach(field => {
- *   console.log(`${field.label}: ${field.key}`)
- * })
- * ```
- */
 export const SORTING_INFO_FIELDS: SortingInfoField[] = [
   /** 分选速度字段配置 */
   { key: 'sortSpeed', label: '分选速度', width: 11.11 },

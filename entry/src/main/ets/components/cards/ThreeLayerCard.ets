@@ -127,8 +127,12 @@ export struct ThreeLayerCard {
     return UseCardLogic.clampPercent(v)
   }
   
-  // 根据卡片ID获取波浪图高度百分比：从全局配置获取
+  // 根据卡片ID获取波浪图高度百分比：使用实时数据
   private getWaveHeightPercent(): number {
+    // 优先使用卡片数据中的实时百分比
+    if (this.cardData && this.cardData.secondLayer && typeof this.cardData.secondLayer.percent === 'number') {
+      return this.cardData.secondLayer.percent
+    }
     return UseCardLogic.getWaveHeightPercent(this.cardData)
   }
   

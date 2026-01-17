@@ -40,7 +40,8 @@ def create_statistics(
     n_total_weight=75000,
     n_qualified_count=480,
     n_unqualified_count=20,
-    n_interval_sum_per_minute=300
+    n_interval_sum_per_minute=300,
+    exit_counts=None
 ):
     """
     创建模拟的 StStatistics 数据
@@ -49,26 +50,33 @@ def create_statistics(
     :param n_qualified_count: 合格数
     :param n_unqualified_count: 不合格数
     :param n_interval_sum_per_minute: 每分钟间隔总和 (模拟速度)
+    :param exit_counts: 出口计数数组 (可选，如果不传则全0)
     """
     # 模拟核心数据
     n_grade_count = [0] * (MAX_QUALITY_GRADE_NUM * MAX_SIZE_GRADE_NUM)
     n_weight_grade_count = [0] * (MAX_QUALITY_GRADE_NUM * MAX_SIZE_GRADE_NUM)
     
     # 随机填充一些等级计数
-    n_grade_count[0] = int(n_qualified_count * 0.6) # 特级果
-    n_grade_count[1] = int(n_qualified_count * 0.4) # 一级果
+    if n_qualified_count > 0:
+        n_grade_count[0] = int(n_qualified_count * 0.6) # 特级果
+        n_grade_count[1] = n_qualified_count - n_grade_count[0] # 一级果
 
     # 填充对应的重量 (假设平均果重 150g)
     n_weight_grade_count[0] = n_grade_count[0] * 150
     n_weight_grade_count[1] = n_grade_count[1] * 140
     
-    n_exit_count = [0] * MAX_EXIT_NUM
-    n_exit_weight_count = [0] * MAX_EXIT_NUM
-    
     # 填充出口数据
-    n_exit_count[0] = int(n_total_cup_num * 0.8)
-    n_exit_weight_count[0] = int(n_total_weight * 0.8)
-    n_exit_count[1] = int(n_total_cup_num * 0.2)
+    if exit_counts:
+        n_exit_count = list(exit_counts)
+        # 确保长度不超过 MAX_EXIT_NUM
+        if len(n_exit_count) < MAX_EXIT_NUM:
+            n_exit_count.extend([0] * (MAX_EXIT_NUM - len(n_exit_count)))
+        else:
+            n_exit_count = n_exit_count[:MAX_EXIT_NUM]
+    else:
+        n_exit_count = [0] * MAX_EXIT_NUM
+            
+    n_exit_weight_count = [x * 150 for x in n_exit_count] # 估算重量
     
     n_channel_total_count = [0] * MAX_CHANNEL_NUM
     n_channel_total_count[0] = n_total_cup_num
@@ -218,9 +226,10 @@ def run_simulation():
     print("Starting FSM Simulation...")
     print("Press Ctrl+C to stop.")
     
-    # 初始状态
-    current_yield = 500
-    current_total_weight = 75000 # 75kg
+    # 初始状态 - 从0开始
+    current_yield = 0
+    current_total_weight = 0
+    exit_counts = [0] * MAX_EXIT_NUM # 维护持久的出口计数状态
     start_time = time.time()
     
     try:
@@ -228,6 +237,20 @@ def run_simulation():
             # 1. 模拟数据增长
             increment = random.randint(1, 5) # 每次增加 1-5 个
             current_yield += increment
+            
+            # 将增量分配给随机出口
+            for _ in range(increment):
+                # 加权随机选择出口
+                rand_val = random.random()
+                if rand_val < 0.6: # 60% 概率落在前10个出口 (0-9)
+                    exit_idx = random.randint(0, 9)
+                elif rand_val < 0.9: # 30% 概率落在中间10个出口 (10-19)
+                    exit_idx = random.randint(10, 19)
+                else: # 10% 概率落在其他出口
+                    exit_idx = random.randint(20, MAX_EXIT_NUM - 1)
+                
+                if exit_idx < MAX_EXIT_NUM:
+                    exit_counts[exit_idx] += 1
             
             weight_increment = increment * random.randint(120, 180) # 每个果 120-180g
             current_total_weight += weight_increment
@@ -247,7 +270,8 @@ def run_simulation():
                 n_total_weight=current_total_weight,
                 n_qualified_count=qualified,
                 n_unqualified_count=unqualified,
-                n_interval_sum_per_minute=speed
+                n_interval_sum_per_minute=speed,
+                exit_counts=exit_counts  # 传入持久化的出口计数
             )
             send_once(stats_header, stats_body, "Statistics")
             

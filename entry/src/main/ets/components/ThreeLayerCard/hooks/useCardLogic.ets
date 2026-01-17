@@ -34,11 +34,14 @@ export class UseCardLogic {
   }
 
   /**
-   * 根据卡片ID获取波浪图高度百分比：从全局配置获取
+   * 根据卡片ID获取波浪图高度百分比
+   * 注意：现在主要依赖实时数据，此方法仅作为后备默认值
    */
   static getWaveHeightPercent(cardData: ThreeLayerCardData): number {
-    const cardIndex = UseCardLogic.getCardIndex(cardData)
-    return GlobalCardDataManager.getInstance().getWaveHeightPercent(cardIndex)
+    if (cardData && cardData.secondLayer && typeof cardData.secondLayer.percent === 'number') {
+      return cardData.secondLayer.percent
+    }
+    return 0 // 默认值改为0，确保无数据时不显示波浪
   }
 
   /**

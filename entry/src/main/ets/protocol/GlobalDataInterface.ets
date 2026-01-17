@@ -180,6 +180,8 @@ export class GlobalDataInterface {
     let totalWeight: number = 0
     let totalQualified: number = 0
     let totalUnqualified: number = 0
+    let totalSpeed: number = 0 // 累加所有通道的瞬时速度
+
     const gradeCount: number[] = new Array(ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM).fill(0)
     const gradeWeight: number[] = new Array(ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM).fill(0)
     const boxGradeCount: number[] = new Array(ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM).fill(0)
@@ -191,7 +193,8 @@ export class GlobalDataInterface {
       totalWeight += stats.nTotalWeight
       totalQualified += stats.nQualifiedCount
       totalUnqualified += stats.nUnqualifiedCount
-      
+      totalSpeed += stats.nIntervalSumperminute // 累加瞬时速度
+
       for (let i = 0; i < stats.nGradeCount.length; i++) {
         gradeCount[i] += stats.nGradeCount[i]
         gradeWeight[i] += stats.nWeightGradeCount[i]
@@ -220,7 +223,17 @@ export class GlobalDataInterface {
     }
 
     // 更新效率
-    this.updateEfficiency()
+    // 如果下位机上报了有效的瞬时速度，直接使用（优先）
+    if (totalSpeed > 0) {
+        // 更新运行时间（仅用于显示，不参与效率计算）
+        if (this.startTime > 0) {
+            this.globalData.runningTime = (Date.now() - this.startTime) / 1000
+        }
+        this.globalData.efficiency = totalSpeed
+    } else {
+        // 否则使用时间倒推（兼容旧设备或模拟器未设置速度的情况）
+        this.updateEfficiency()
+    }
   }
 
   /**

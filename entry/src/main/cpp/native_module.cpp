@@ -332,11 +332,11 @@ static napi_value TcpServer_Start(napi_env env, napi_callback_info info) {
             case FSM_HC_COMMAND_TYPE::FSM_CMD_STATISTICS:
                 head.nLength = sizeof(StStatistics);
                 break;
-            case FSM_HC_COMMAND_TYPE::FSM_CMD_GRADEINFO:
-                head.nLength = sizeof(StFruitParam); // Using StFruitParam for Realtime Grade Info
-                break;
             case FSM_HC_COMMAND_TYPE::FSM_CMD_WEIGHTINFO:
                 head.nLength = sizeof(StWeightResult);
+                break;
+            case FSM_HC_COMMAND_TYPE::FSM_CMD_GRADEINFO:
+                head.nLength = sizeof(StFruitParam); // Using StFruitParam for Realtime Grade Info
                 break;
             case FSM_HC_COMMAND_TYPE::FSM_CMD_WAVEINFO:
                 head.nLength = sizeof(StWaveInfo);

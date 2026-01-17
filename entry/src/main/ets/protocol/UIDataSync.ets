@@ -163,24 +163,13 @@ export class UIDataSync {
     hilog.info(0x0001, TAG, 'AppStorage 键值已初始化')
   }
 
-  /**
-   * 同步全局数据到 AppStorage
-   */
   private syncGlobalDataToStorage(data: GlobalRealtimeData): void {
     const keys = UIDataSync.STORAGE_KEYS
 
-    // 计算产量效率（吨/时）
-    // 逻辑：每分钟间隔总和 (nIntervalSumperminute) 表示速度（个/分）
-    // Ton/h = (速度 * 60 * 平均重量) / 1000000
-    // 或者直接使用 runningTime 计算：总重 / 时间
-    // 这里优先使用 efficiency (个/分) 来计算瞬时 Ton/h
     let productionTonH = '0.00'
     const avgWeightG = data.totalYield > 0 ? (data.totalWeight / data.totalYield) : 0
     if (data.efficiency > 0) {
-      // efficiency 是 个/分
-      // 个/时 = efficiency * 60
-      // 克/时 = 个/时 * 平均重量
-      // 吨/时 = 克/时 / 1000000
+
       const tonPerHour = (data.efficiency * 60 * avgWeightG) / 1000000
       productionTonH = tonPerHour.toFixed(2)
     } else if (data.runningTime > 0) {
@@ -210,6 +199,9 @@ export class UIDataSync {
     AppStorage.setOrCreate(keys.TOP_SUM_COUNTS, sumCounts)
     AppStorage.setOrCreate(keys.TOP_AVG_G, avgG)
 
+    hilog.debug(0x0001, TAG, 
+      `UI数据同步详情: 效率=${data.efficiency}, 运行时间=${data.runningTime}s, 产量=${sumCounts}, 总重=${sumWeightTon}吨, 时产=${productionTonH}吨/时`)
+    // console.log(`UI数据同步详情: 效率=${data.efficiency}, 运行时间=${data.runningTime}s, 产量=${sumCounts}, 总重=${sumWeightTon}吨, 时产=${productionTonH}吨/时`)
     // 更新分选信息卡片
     AppStorage.setOrCreate(keys.SORT_SPEED, `${data.efficiency.toFixed(0)} 件/分钟`)
     AppStorage.setOrCreate(keys.BATCH_WEIGHT, `${(data.totalWeight / 1000).toFixed(2)} kg`)

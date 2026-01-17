@@ -22,6 +22,7 @@ import { relationalStore } from '@kit.ArkData';
 // import { FarmerInfo } from '../database/models/FarmerInfo';
 // import { ProcessingTask } from '../database/models/ProcessingTask';
 // import { AlarmInfo } from '../database/models/AlarmInfo';
+import { DbManager } from '../db/DbManager';
 import { I18nManager } from '../utils/i18n/I18nManager';
 import { OutletCountStorage } from '../utils/storage/OutletCountStorage';
 import { NativeModule, CommandHead } from '../utils/native/NativeModule';
@@ -45,6 +46,9 @@ export default class EntryAbility extends UIAbility {
 
     // 初始化 Native 服务
     this.initNativeServers();
+
+    // 初始化数据库配置
+    DbManager.getInstance().init(this.context);
 
     this.copyResourceFiles();
     // this.initNetworkOptimizer();
