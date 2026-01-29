@@ -27,6 +27,20 @@ export struct ThirdLayer {
   @Prop waveHeightPercent: number
   @Prop waveBaselinePercent: number
   @Prop cardNumber: number
+
+  // 实时数据状态
+  @State realtimePercent: number = 0
+
+  // 监听全局更新信号，强制刷新
+  @StorageProp('GLOBAL_CARD_DATA_UPDATE_SIGNAL') @Watch('onDataUpdate') dataUpdateSignal: number = 0
+
+  onDataUpdate() {
+    const key = `EXIT_PERCENT_${this.cardNumber}`
+    if (AppStorage.has(key)) {
+      this.realtimePercent = AppStorage.get(key) as number
+    }
+  }
+
   // 父组件同步拖拽缓存（值与索引），用于 onDragEnd 删除命中
   onCachePending: (value: string, index: number) => void = () => {}
   onDropCallback: (event: DragEvent, extraParams: string) => void = () => {}
@@ -49,13 +63,17 @@ export struct ThirdLayer {
   private readonly DOUBLE_CLICK_INTERVAL: number = 300 // 双击间隔时间（毫秒）
 
   build() {
-    Column() {
-      // 优先显示数据：有数据就渲染列表；否则再判断是否显示波浪
+    Stack({ alignContent: Alignment.TopStart }) {
+      // 1. 底层：波浪（如果启用）
+      if (this.enableWave) {
+        this.buildWaveCard()
+      }
+
+      // 2. 上层：数据列表（如果有数据）
       if (this.localChartData && this.localChartData.length > 0) {
         this.buildDataList()
-      } else if (this.enableWave) {
-        this.buildWaveCard()
-      } else {
+      } else if (!this.enableWave) {
+        // 只有当没有波浪且没有数据时，才显示占位符
         this.buildPlaceholder()
       }
     }
@@ -63,7 +81,6 @@ export struct ThirdLayer {
     .layoutWeight(1) // 第三层：自动填充剩余空间
     .padding({ left: 0, right: 0, top: 0, bottom: 0 })
     .backgroundColor(Color.Transparent) // 第三层：透明背景
-    .justifyContent(FlexAlign.Start)
     .border({ width: 1, color: this.cardColors.cardBorder }) // 恢复底部边框
     .onDrop((event: DragEvent, extraParams: string) => {
       if (DEBUG_LOGS) { console.log('第三层onDrop事件触发:', extraParams) }
@@ -154,6 +171,14 @@ export struct ThirdLayer {
   // 组件生命周期：当数据变化时滚动到顶部
   aboutToAppear() {
     this.lastDataLength = this.localChartData.length
+    
+    // 初始化实时数据
+    const key = `EXIT_PERCENT_${this.cardNumber}`
+    if (AppStorage.has(key)) {
+      this.realtimePercent = AppStorage.get(key) as number
+    } else {
+      this.realtimePercent = this.waveHeightPercent
+    }
   }
 
   aboutToRender() {
@@ -281,7 +306,8 @@ export struct ThirdLayer {
       amplitude: this.getWaveAmplitude(),
       frequency: this.getWaveFrequency(),
       speed: 0.02,
-      waveHeightPercent: this.waveHeightPercent,
+      // 优先使用实时数据
+      waveHeightPercent: this.realtimePercent || this.waveHeightPercent,
       baselinePercent: this.waveBaselinePercent,
       cardBackground: Color.Transparent,
       gradientLeft: this.cardColors.waveGradientLeft,

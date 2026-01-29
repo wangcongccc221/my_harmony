@@ -16,10 +16,10 @@ import { ProfileInfoBar } from './ProfileInfoBar'
 @Component
 export struct TopStatusBar {
   @Prop currentPage: string = ''
-  @StorageLink(TOP_PRODUCTION_TON_H) @Watch('onProductionChange') productionTonPerHour: string = '--'
+  @StorageLink(TOP_PRODUCTION_TON_H) productionTonPerHour: string = '--'
   @StorageLink(TOP_SUM_WEIGHT_TON) sumWeightTon: string = '--'
   @StorageLink(TOP_SUM_COUNTS) sumCounts: string = '--'
-  @StorageLink(TOP_AVG_G) @Watch('onDataChange') avgGram: string = '--'
+  @StorageLink(TOP_AVG_G) avgGram: string = '--'
   @StorageLink(TOP_STATUS_TEXT) statusText: string = ''
   @StorageLink(TOP_ALERT_HIDE) alertHide: boolean = true
   @StorageLink(TCP_CONNECTION_STATUS) tcpConnected: boolean = false
@@ -42,14 +42,6 @@ export struct TopStatusBar {
   
   // 模拟数据定时器
   private dataTimer: number | null = null
-
-  onProductionChange() {
-    console.log(`[TopStatusBar] Production Updated: ${this.productionTonPerHour}`)
-  }
-
-  onDataChange() {
-    console.log(`[TopStatusBar] Data Changed: ${this.sumCounts} pcs, ${this.sumWeightTon} tons`)
-  }
 
   private async minimizeApp() { //最小化
     try {

@@ -11,14 +11,12 @@ import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
 import { ChartComponent, ChartComponentParams, ChartData } from '../../components/ChartComponent'
 import { BarChart } from '../../components/charts/BarChart'
-import { OmniTabBar, TabConfig, TabBarDirection } from '../../components/ui/layout/OmniTabBar'
+import { TabConfig } from '../../components/ui/layout/OmniTabBar'
 import { drawLineChart, measureChartWidth, LineChartOptions } from  '../../utils/charts/lineChart'
 import { ProcessingCurveFeed } from '../../utils/data/ProcessingCurveFeed'
 import { TableHeaderCell } from '../../components/ui/tables/TableHeaderCell'
 import { TableCell } from '../../components/ui/tables/TableCell'
-import { CardContainer } from '../../components/ui/layout/CardContainer'
 import { SectionTitle } from '../../components/ui/layout/SectionTitle'
-import { ThreeDButton } from '../../components/ui/buttons/ThreeDButton'
 
 // 图表颜色配置接口
 interface ChartColors {
@@ -74,6 +72,7 @@ export struct DataTablesTabBar {
 
   // 表格数据
   @Prop levelTableData: TableRow[] = []
+  @Prop levelHeaderTitles: string[] = []
   @Prop containerTableData: TableRow[] = []
   @Prop statisticsTableData: TableRow[] = []
   @Prop dynamicPackingTableData: TableRow[] = []
@@ -443,15 +442,19 @@ export struct DataTablesTabBar {
           GridTable({
             tableName: '等级表',
             tableRows: this.levelTableData,
-            tableTitle: t('等级表', '等级表'),
-            headerTitles: [t('等级', '等级'), '30', '20', '10', '0'],
+            //tableTitle: t('等级表', '等级表'),
+            headerTitles: this.levelHeaderTitles.length > 0 ? this.levelHeaderTitles : [t('等级', '等级'), '30', '20', '10', '0'],
             tableWidth: '100%',
-            maxHeight: '72%', // 等级表最大高度改为65%
+            maxHeight: '90%', // 等级表最大高度改为65%
             enableDrag: true,
+            enableScroll: true,
+            enableHorizontalScroll: true,
+            minColumnWidth: 180,
             headerHeight: 60,  // 等级表表头高度
             dataRowHeight: 75,  // 等级表数据行高度
             dividerHeight: 75,   // 等级表分割线高度
-            customBorderWidth: 2      // 等级表边框宽度
+            customBorderWidth: 2,      // 等级表边框宽度
+            enableCardStyle: false     // 禁用内部卡片样式
           })
           .layoutWeight(1)  // 使用 layoutWeight 自适应宽度
 
@@ -469,7 +472,8 @@ export struct DataTablesTabBar {
             headerHeight: 62,  // 容器表表头高度
             dataRowHeight: 73,  // 容器表数据行高度
             dividerHeight: 73,   // 容器表分割线高度
-            customBorderWidth: 2      // 容器表边框宽度
+            customBorderWidth: 2,      // 容器表边框宽度
+            enableCardStyle: false     // 禁用内部卡片样式
           })
           .layoutWeight(1)  // 使用 layoutWeight 自适应宽度
         }
@@ -490,7 +494,8 @@ export struct DataTablesTabBar {
             headerHeight: 60,  // 等级统计表表头高度
             dataRowHeight: 75,  // 等级统计表数据行高度
             dividerHeight: 75,   // 等级统计表分割线高度
-          customBorderWidth: 2      // 等级统计表边框宽度
+            customBorderWidth: 2,      // 等级统计表边框宽度
+            enableCardStyle: false     // 禁用内部卡片样式，融入外部大卡片
         })
         .key(`statistics_table_${this.refreshKey}`)
       } else if (this.selectedTab === '加工曲线') {
@@ -674,34 +679,60 @@ export struct DataTablesTabBar {
 
   build() {
     Column() {
-      // Custom ThreeDButton TabBar
-      Scroll() {
-        Row({ space: 0 }) {  // 使用0间距，通过margin控制每个按钮的间距
-          ForEach(this.getTabConfig(), (tab: TabConfig) => {
-            ThreeDButton({
-              text: tab.label,
-              isSelected: this.selectedTab === tab.key,
-              onClickCallback: () => {
-                this.handleTabChange(tab.key)
-              }
-            })
-            .width(140) // Fixed width for consistent look, or auto
-            .height(48)
-            .margin({ right: 32 })  // 增大右边距到32px，确保按钮变大后不重叠
-          })
-        }
-        .padding({ left: 16, right: 16, top: 16, bottom: 8 })
+      // 1. 表格内容区域
+      Column() {
+        this.buildContent()
       }
-      .scrollable(ScrollDirection.Horizontal)
-      .scrollBar(BarState.Off)
       .width('100%')
-      .align(Alignment.Start) // 确保内容靠左对齐
-      
-      // 内容区域
-      this.buildContent()
+      .layoutWeight(1)
+
+      // 2. 按钮区域 (已注释)
+      /*
+      Column() {
+        Scroll() {
+          Row() {
+            ForEach(this.getTabConfig(), (tab: TabConfig) => {
+              Column() {
+                Text(tab.label)
+                  .fontSize(this.selectedTab === tab.key ? 20 : 18)
+                  .fontWeight(this.selectedTab === tab.key ? FontWeight.Bold : FontWeight.Medium)
+                  .fontColor(this.selectedTab === tab.key ? this.getCurrentTheme().textColor : (this.getCurrentTheme().subTextColor ?? this.getCurrentTheme().textColor))
+              }
+              .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+              .backgroundColor(this.selectedTab === tab.key ? (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor) : this.getCurrentTheme().surfaceColor)
+              .border({
+                width: {
+                  left: 1,
+                  right: 1,
+                  top: 1,
+                  bottom: this.selectedTab === tab.key ? 0 : 1
+                },
+                color: this.getCurrentTheme().borderColor
+              })
+              .borderRadius({ topLeft: 6, topRight: 6 })
+              .margin({ right: 4 })
+              .onClick(() => {
+                this.handleTabChange(tab.key)
+              })
+            })
+          }
+          .padding({ left: 0, right: 0, top: 0, bottom: 0 })
+        }
+        .scrollable(ScrollDirection.Horizontal)
+        .scrollBar(BarState.Off)
+        .width('100%')
+        .align(Alignment.Start)
+      }
+      .width('100%')
+      .padding({ top: 12, bottom: 0 }) // 内部间距，与上方表格分开
+      */
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(this.getCurrentTheme().pageBg ?? this.getCurrentTheme().backgroundColor)
+    .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
+    .border({ width: 1, color: this.getCurrentTheme().borderColor })
+    .borderRadius(6)
+    .padding({ left: 4, right: 4, top: 4, bottom: 4 })
+    .justifyContent(FlexAlign.Center)
   }
 }

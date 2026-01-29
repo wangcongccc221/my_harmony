@@ -25,7 +25,7 @@ export struct CardContainer {
   @Prop cardBackgroundColor?: string  // 自定义背景色（可选）
   
   // 使用 @BuilderParam 支持传入子组件内容
-  @BuilderParam content: () => void = () => {}
+  @BuilderParam content?: () => void
   
   private getCurrentTheme(): ExtendedOmniThemeStyle {
     return getCurrentTheme(this.providedTheme)
@@ -33,7 +33,9 @@ export struct CardContainer {
   
   build() {
     Column() {
-      this.content()
+      if (this.content) {
+        this.content()
+      }
     }
     .width('100%')
     .padding(this.cardPadding)
@@ -53,4 +55,3 @@ export struct CardContainer {
     .margin(this.cardMargin ?? {})
   }
 }
-

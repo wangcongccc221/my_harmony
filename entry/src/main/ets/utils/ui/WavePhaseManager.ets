@@ -7,7 +7,7 @@
 export class WavePhaseManager {
   private static instance: WavePhaseManager | null = null
   private phase: number = 1.5  // 初始相位
-  private speed: number = 0.02  // 相位变化速度
+  private speed: number = 0.04  // 相位变化速度
   private animationId: number = 0
   private listeners: Set<() => void> = new Set()  // 监听器集合
 
@@ -41,8 +41,8 @@ export class WavePhaseManager {
       clearInterval(this.animationId)
       this.animationId = 0
     }
-    // 使用60fps（约16.67ms间隔）统一更新相位，保持恒定速度
-    // 使用 17ms 而不是 16ms，给系统一些缓冲，避免时间累积误差
+    // 使用30fps（约33ms间隔）统一更新相位，保持恒定速度
+    // 使用 33ms 给系统一些缓冲，避免时间累积误差
     this.animationId = setInterval(() => {
       // 固定速度增量，确保动画速度一致
       this.phase += this.speed
@@ -52,7 +52,7 @@ export class WavePhaseManager {
       }
       // 通知所有监听器（WaveCard实例）重绘
       this.notifyListeners()
-    }, 17) as number
+    }, 33) as number
   }
 
   /**
@@ -127,4 +127,3 @@ export class WavePhaseManager {
     this.phase = 1.5
   }
 }
-

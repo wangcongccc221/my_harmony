@@ -38,6 +38,11 @@
 
 import { TableRow } from '../../../components/layout/LevelTable'
 
+interface GradeTableConfig {
+  sizeGradeNames: string[]
+  qualityGradeNames: string[]
+}
+
 export class HomeDataManager {
   private static instance: HomeDataManager | null = null
   
@@ -60,6 +65,8 @@ export class HomeDataManager {
    * 当前FSM状态
    */
   private currentFSM: 'FSM1' | 'FSM2' = 'FSM1'
+
+  private static readonly GRADE_TABLE_CONFIG_KEY_PREFIX: string = 'HOME_GRADE_TABLE_CONFIG_'
   
   /**
    * 每个表格的最大数据条数（防止内存泄漏）
@@ -70,6 +77,63 @@ export class HomeDataManager {
    * 私有构造函数，防止外部直接实例化
    */
   private constructor() {}
+
+  private getGradeConfigKey(fsm: 'FSM1' | 'FSM2'): string {
+    return `${HomeDataManager.GRADE_TABLE_CONFIG_KEY_PREFIX}${fsm}`
+  }
+
+  private getOrCreateGradeTableConfig(fsm: 'FSM1' | 'FSM2'): GradeTableConfig {
+    const key = this.getGradeConfigKey(fsm)
+    const existing = AppStorage.get(key) as GradeTableConfig | undefined
+    if (existing && Array.isArray(existing.sizeGradeNames) && Array.isArray(existing.qualityGradeNames)) {
+      return existing
+    }
+    const defaultConfig: GradeTableConfig = {
+      sizeGradeNames: ['30', '20', '10', '0'],
+      qualityGradeNames: ['A级', 'B级', 'C级']
+    }
+    AppStorage.setOrCreate(key, defaultConfig)
+    return defaultConfig
+  }
+
+  private buildLevelTableRows(config: GradeTableConfig): TableRow[] {
+    return config.qualityGradeNames.map((qualityName: string) => {
+      const row: string[] = [qualityName]
+      config.sizeGradeNames.forEach((sizeName: string) => {
+        row.push(`${sizeName}.${qualityName}`)
+      })
+      return row
+    })
+  }
+
+  public getLevelTableHeaderTitles(): string[] {
+    const config = this.getOrCreateGradeTableConfig(this.currentFSM)
+    return ['等级', ...config.sizeGradeNames]
+  }
+
+  public updateSizeGradeNames(names: string[], fsm?: 'FSM1' | 'FSM2'): void {
+    const targetFsm = fsm ?? this.currentFSM
+    const trimmed = names.map(n => (n ?? '').trim()).filter(n => n.length > 0)
+    const prev = this.getOrCreateGradeTableConfig(targetFsm)
+    const next: GradeTableConfig = {
+      sizeGradeNames: trimmed.length > 0 ? trimmed : prev.sizeGradeNames,
+      qualityGradeNames: prev.qualityGradeNames
+    }
+    AppStorage.setOrCreate(this.getGradeConfigKey(targetFsm), next)
+    this.allTableData[`等级表_${targetFsm}`] = this.buildLevelTableRows(next)
+  }
+
+  public updateQualityGradeNames(names: string[], fsm?: 'FSM1' | 'FSM2'): void {
+    const targetFsm = fsm ?? this.currentFSM
+    const trimmed = names.map(n => (n ?? '').trim()).filter(n => n.length > 0)
+    const prev = this.getOrCreateGradeTableConfig(targetFsm)
+    const next: GradeTableConfig = {
+      sizeGradeNames: prev.sizeGradeNames,
+      qualityGradeNames: trimmed.length > 0 ? trimmed : prev.qualityGradeNames
+    }
+    AppStorage.setOrCreate(this.getGradeConfigKey(targetFsm), next)
+    this.allTableData[`等级表_${targetFsm}`] = this.buildLevelTableRows(next)
+  }
 
   /**
    * 获取单例实例
@@ -291,39 +355,9 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
    * ```
    */
   initializeLevelTableData(): void {
-    let levelData: TableRow[]
-    
-    if (this.currentFSM === 'FSM1') {
-      // FSM1的等级表数据
-      levelData = [
-        ['A级', '1250.5', '28.5%', '156', '25.2%'],
-        ['B级', '980.2', '22.3%', '98', '15.8%'],
-        ['C级', '756.8', '17.2%', '78', '12.6%'],
-        ['D级', '654.3', '14.9%', '65', '10.5%']
-      ]
-    } else if (this.currentFSM === 'FSM2') {
-      // FSM2的等级表数据（不同的等级和数值）
-      levelData = [
-        ['特级', '1580.3', '32.1%', '189', '28.7%'],
-        ['优级', '1120.7', '22.8%', '134', '20.3%'],
-        ['良级', '890.4', '18.1%', '107', '16.2%'],
-        ['合格', '720.6', '14.6%', '87', '13.2%'],
-        ['次品', '450.2', '9.1%', '54', '8.2%']
-      ]
-    } else {
-      // 默认情况，使用FSM1数据
-      levelData = [
-        ['A级', '1250.5', '28.5%', '156', '25.2%'],
-        ['B级', '980.2', '22.3%', '98', '15.8%'],
-        ['C级', '756.8', '17.2%', '78', '12.6%'],
-        ['D级', '654.3', '14.9%', '65', '10.5%']
-      ]
-    }
-    
-    // 使用FSM特定的键名存储数据
+    const config = this.getOrCreateGradeTableConfig(this.currentFSM)
     const fsmKey = `等级表_${this.currentFSM}`
-    this.allTableData[fsmKey] = levelData
-    console.log(`初始化${this.currentFSM}等级表数据:`, levelData)
+    this.allTableData[fsmKey] = this.buildLevelTableRows(config)
   }
 
   /**

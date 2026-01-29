@@ -27,6 +27,7 @@ export struct HomeContent {
 
   // 数据表格状态
   @State levelTableData: TableRow[] = []
+  @State levelHeaderTitles: string[] = []
   @State containerTableData: TableRow[] = []
   @State statisticsTableData: TableRow[] = []
   @State dynamicPackingTableData: TableRow[] = []
@@ -63,6 +64,7 @@ export struct HomeContent {
 
   private refreshAllTables() {
     this.levelTableData = this.dataManager.getTableData('等级表')
+    this.levelHeaderTitles = this.dataManager.getLevelTableHeaderTitles()
     this.containerTableData = this.dataManager.getTableData('容器表')
     this.statisticsTableData = this.dataManager.getTableData('等级统计表')
     this.dynamicPackingTableData = this.dataManager.getTableData('动态装箱')
@@ -91,12 +93,13 @@ export struct HomeContent {
 
       // 2. 液体卡片区域 (中间)
       LiquidCardsArea()
-        .height('30%')
-        .margin({ bottom: 8 })
+        .height('38%')
+        .margin({ bottom: '1%' })
 
       // 3. 数据表格区域 (底部)
       DataTablesTabBar({
         levelTableData: this.levelTableData,
+        levelHeaderTitles: this.levelHeaderTitles,
         containerTableData: this.containerTableData,
         statisticsTableData: this.statisticsTableData,
         dynamicPackingTableData: this.dynamicPackingTableData,
@@ -110,7 +113,7 @@ export struct HomeContent {
     }
     .width('100%')
     .height('100%')
-    .padding(12)
+    .padding({ left: 12, right: 12, top: 12, bottom: 0 })
     // .backgroundColor(this.getCurrentTheme().pageBg ?? this.getCurrentTheme().backgroundColor)
   }
 }

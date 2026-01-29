@@ -2036,7 +2036,7 @@ struct Page {
         .width('100%')
         .height('100%')
         .backgroundColor(this.getCurrentTheme().pageBg ?? this.getCurrentTheme().surfaceColor)
-        .padding({ bottom: 12 })
+        .padding({ bottom: this.currentPage === 'home' ? '1%' : 12 })
         .layoutWeight(1)
 
       }

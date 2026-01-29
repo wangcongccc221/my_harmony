@@ -81,14 +81,29 @@ export struct GridTable {
   // 是否启用滚动（可配置）
   @Prop enableScroll: boolean = false 
 
+  @Prop enableHorizontalScroll: boolean = false
+
+  @Prop minColumnWidth: number = 120
+
   // 当前主题样式
   @StorageLink(OMNI_THEME_KEY) currentTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
+
+  // 字体大小（默认16）
+  @Prop fontSize: number = 16
+
+  // 是否启用卡片样式（背景、阴影、边距等）
+  @Prop enableCardStyle: boolean = true
 
   /**
    * 获取当前主题配置
    */
   private getCurrentTheme(): ExtendedOmniThemeStyle {
     return this.currentTheme
+  }
+
+  private getContentWidth(): string {
+    const columnCount = this.headerTitles.length
+    return `${columnCount * this.minColumnWidth}vp`
   }
 
   /**
@@ -559,49 +574,89 @@ export struct GridTable {
    */
   @Builder
   private buildTableCell(cellValue: string, rowIndex: number, colIndex: number) {
-    Text(cellValue)
-      .fontSize(15) // 数据字体稍小
-      .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : '#303133') // 选中白色，未选中深灰
-      .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Medium : FontWeight.Normal)
-      .textAlign(TextAlign.Center)
-      .layoutWeight(1)
-      .height('100%')
-      // 隔行换色逻辑
-      .backgroundColor(
-        this.isCellSelected(rowIndex, colIndex) ? '#409EFF' : // 选中色：亮蓝
-        (rowIndex % 2 === 0 ? '#FFFFFF' : '#FAFAFA') // 偶数行纯白，奇数行极浅灰
-      )
-      .border({
-        width: { 
-          right: this.isCellSelected(rowIndex, colIndex) ? 1 : 0.5, 
-          bottom: this.isCellSelected(rowIndex, colIndex) ? 1 : 0.5,
-          top: 0, 
-          left: colIndex === 0 ? 0.5 : 0
-        },
-        color: this.isCellSelected(rowIndex, colIndex) ? '#409EFF' : '#EBEEF5' // 未选中时边框更浅
-      })
-      .padding(2)
-      .draggable(this.enableDrag && !this.isDragDisabledForCell(colIndex))
-      .onTouch(() => {
-        // 触摸立即反馈，避免Click手势识别延迟
-        this.toggleCellSelection(rowIndex, colIndex, cellValue)
-      })
-      .onClick(() => {
-        // 点击切换选中状态
-        this.toggleCellSelection(rowIndex, colIndex, cellValue)
-      })
-      .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
-        return this.handleDragStart(rowIndex, colIndex, cellValue)
-      })
-      .onDrop((event: DragEvent, extraParams: string) => {
-        try {
-          const rawData: Record<string, string> = JSON.parse(extraParams)
-          const dragData: DragData = rawData.extraInfo ? JSON.parse(rawData.extraInfo) : rawData
-          this.handleDrop(dragData, rowIndex, colIndex)
-        } catch (error) {
-          console.error('拖拽数据解析失败:', error)
-        }
-      })
+    if (this.enableHorizontalScroll) {
+      Text(cellValue)
+        .fontSize(15)
+        .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : '#303133')
+        .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Medium : FontWeight.Normal)
+        .textAlign(TextAlign.Center)
+        .width(`${this.minColumnWidth}vp`)
+        .height('100%')
+        .backgroundColor(
+          this.isCellSelected(rowIndex, colIndex) ? '#409EFF' :
+          (rowIndex % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
+        )
+        .border({
+          width: { 
+            right: this.isCellSelected(rowIndex, colIndex) ? 1 : 0.5, 
+            bottom: this.isCellSelected(rowIndex, colIndex) ? 1 : 0.5,
+            top: 0, 
+            left: colIndex === 0 ? 0.5 : 0
+          },
+          color: this.isCellSelected(rowIndex, colIndex) ? '#409EFF' : '#EBEEF5'
+        })
+        .padding(2)
+        .draggable(this.enableDrag && !this.isDragDisabledForCell(colIndex))
+        .onTouch(() => {
+          this.toggleCellSelection(rowIndex, colIndex, cellValue)
+        })
+        .onClick(() => {
+          this.toggleCellSelection(rowIndex, colIndex, cellValue)
+        })
+        .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
+          return this.handleDragStart(rowIndex, colIndex, cellValue)
+        })
+        .onDrop((event: DragEvent, extraParams: string) => {
+          try {
+            const rawData: Record<string, string> = JSON.parse(extraParams)
+            const dragData: DragData = rawData.extraInfo ? JSON.parse(rawData.extraInfo) : rawData
+            this.handleDrop(dragData, rowIndex, colIndex)
+          } catch (error) {
+            console.error('拖拽数据解析失败:', error)
+          }
+        })
+    } else {
+      Text(cellValue)
+        .fontSize(15)
+        .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : '#303133')
+        .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Medium : FontWeight.Normal)
+        .textAlign(TextAlign.Center)
+        .layoutWeight(1)
+        .height('100%')
+        .backgroundColor(
+          this.isCellSelected(rowIndex, colIndex) ? '#409EFF' :
+          (rowIndex % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
+        )
+        .border({
+          width: { 
+            right: this.isCellSelected(rowIndex, colIndex) ? 1 : 0.5, 
+            bottom: this.isCellSelected(rowIndex, colIndex) ? 1 : 0.5,
+            top: 0, 
+            left: colIndex === 0 ? 0.5 : 0
+          },
+          color: this.isCellSelected(rowIndex, colIndex) ? '#409EFF' : '#EBEEF5'
+        })
+        .padding(2)
+        .draggable(this.enableDrag && !this.isDragDisabledForCell(colIndex))
+        .onTouch(() => {
+          this.toggleCellSelection(rowIndex, colIndex, cellValue)
+        })
+        .onClick(() => {
+          this.toggleCellSelection(rowIndex, colIndex, cellValue)
+        })
+        .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
+          return this.handleDragStart(rowIndex, colIndex, cellValue)
+        })
+        .onDrop((event: DragEvent, extraParams: string) => {
+          try {
+            const rawData: Record<string, string> = JSON.parse(extraParams)
+            const dragData: DragData = rawData.extraInfo ? JSON.parse(rawData.extraInfo) : rawData
+            this.handleDrop(dragData, rowIndex, colIndex)
+          } catch (error) {
+            console.error('拖拽数据解析失败:', error)
+          }
+        })
+    }
   }
 
   /**
@@ -643,43 +698,81 @@ export struct GridTable {
    */
   @Builder
   private buildColumnHeader(title: string, colIndex: number) {
-    Text(title)
-      .fontSize(16)
-      .fontWeight(FontWeight.Medium)
-      .fontColor('#606266') // 深灰色文字，比纯黑更高级
-      .textAlign(TextAlign.Center)
-      .layoutWeight(1)
-      .height('100%')
-      // 使用渐变背景代替纯色
-      .linearGradient({
-        angle: 180,
-        colors: [
-          ['#F0F2F5', 0.0], 
-          ['#E6E8EB', 1.0]
-        ]
-      })
-      .border({
-        width: { 
-          right: 0.5, 
-          bottom: 0.5,
-          top: 0.5, 
-          left: colIndex === 0 ? 0.5 : 0 
-        },
-        color: '#DCDFE6'
-      })
-      .padding(6)
-      .draggable(this.enableDrag && !this.isDragDisabledForCell(colIndex))
-      .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
-        return this.handleColumnDragStart(colIndex)
-      })
-      .onDrop((event: DragEvent, extraParams: string) => {
-        try {
-          const dragData: DragData = JSON.parse(extraParams)
-          this.handleColumnDrop(dragData, colIndex)
-        } catch (error) {
-          console.error('拖拽数据解析失败:', error)
-        }
-      })
+    if (this.enableHorizontalScroll) {
+      Text(title)
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#606266')
+        .textAlign(TextAlign.Center)
+        .width(`${this.minColumnWidth}vp`)
+        .height('100%')
+        .linearGradient({
+          angle: 180,
+          colors: [
+            ['#F0F2F5', 0.0], 
+            ['#E6E8EB', 1.0]
+          ]
+        })
+        .border({
+          width: { 
+            right: 0.5, 
+            bottom: 0.5,
+            top: 0.5, 
+            left: colIndex === 0 ? 0.5 : 0 
+          },
+          color: '#DCDFE6'
+        })
+        .padding(6)
+        .draggable(this.enableDrag && !this.isDragDisabledForCell(colIndex))
+        .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
+          return this.handleColumnDragStart(colIndex)
+        })
+        .onDrop((event: DragEvent, extraParams: string) => {
+          try {
+            const dragData: DragData = JSON.parse(extraParams)
+            this.handleColumnDrop(dragData, colIndex)
+          } catch (error) {
+            console.error('拖拽数据解析失败:', error)
+          }
+        })
+    } else {
+      Text(title)
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#606266')
+        .textAlign(TextAlign.Center)
+        .layoutWeight(1)
+        .height('100%')
+        .linearGradient({
+          angle: 180,
+          colors: [
+            ['#F0F2F5', 0.0], 
+            ['#E6E8EB', 1.0]
+          ]
+        })
+        .border({
+          width: { 
+            right: 0.5, 
+            bottom: 0.5,
+            top: 0.5, 
+            left: colIndex === 0 ? 0.5 : 0 
+          },
+          color: '#DCDFE6'
+        })
+        .padding(6)
+        .draggable(this.enableDrag && !this.isDragDisabledForCell(colIndex))
+        .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
+          return this.handleColumnDragStart(colIndex)
+        })
+        .onDrop((event: DragEvent, extraParams: string) => {
+          try {
+            const dragData: DragData = JSON.parse(extraParams)
+            this.handleColumnDrop(dragData, colIndex)
+          } catch (error) {
+            console.error('拖拽数据解析失败:', error)
+          }
+        })
+    }
   }
 
   /**
@@ -687,44 +780,83 @@ export struct GridTable {
    */
   @Builder
   private buildRowDragCell(cellValue: string, rowIndex: number, colIndex: number) {
-    Text(cellValue)
-      .fontSize(15) // 数据字体稍小
-      .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : '#303133') // 选中白色，未选中深灰
-      .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Medium : FontWeight.Normal)
-      .textAlign(TextAlign.Center)
-      .layoutWeight(1)
-      .height('100%')
-      // 隔行换色逻辑
-      .backgroundColor(
-        this.isCellSelected(rowIndex, colIndex) ? '#409EFF' : // 选中色：亮蓝
-        (rowIndex % 2 === 0 ? '#FFFFFF' : '#FAFAFA') // 偶数行纯白，奇数行极浅灰
-      )
-      .border({
-        width: { 
-          right: this.isCellSelected(rowIndex, colIndex) ? 1 : 0.5, 
-          bottom: this.isCellSelected(rowIndex, colIndex) ? 1 : 0.5,
-          top: 0, 
-          left: 0.5
-        },
-        color: this.isCellSelected(rowIndex, colIndex) ? '#409EFF' : '#EBEEF5' // 未选中时边框更浅
-      })
-      .padding(2)
-      .draggable(this.enableDrag)
-      .onClick(() => {
-        this.toggleCellSelection(rowIndex, colIndex, cellValue)
-      })
-      .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
-        return this.handleRowDragStart(rowIndex, this.tableRows[rowIndex])
-      })
-      .onDrop((event: DragEvent, extraParams: string) => {
-        try {
-          const rawData: Record<string, string> = JSON.parse(extraParams)
-          const dragData: DragData = rawData.extraInfo ? JSON.parse(rawData.extraInfo) : rawData
-          this.handleRowDrop(dragData, rowIndex)
-        } catch (error) {
-          console.error('拖拽数据解析失败:', error)
-        }
-      })
+    if (this.enableHorizontalScroll) {
+      Text(cellValue)
+        .fontSize(15)
+        .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : '#303133')
+        .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Medium : FontWeight.Normal)
+        .textAlign(TextAlign.Center)
+        .width(`${this.minColumnWidth}vp`)
+        .height('100%')
+        .backgroundColor(
+          this.isCellSelected(rowIndex, colIndex) ? '#409EFF' :
+          (rowIndex % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
+        )
+        .border({
+          width: { 
+            right: this.isCellSelected(rowIndex, colIndex) ? 1 : 0.5, 
+            bottom: this.isCellSelected(rowIndex, colIndex) ? 1 : 0.5,
+            top: 0, 
+            left: 0.5
+          },
+          color: this.isCellSelected(rowIndex, colIndex) ? '#409EFF' : '#EBEEF5'
+        })
+        .padding(2)
+        .draggable(this.enableDrag)
+        .onClick(() => {
+          this.toggleCellSelection(rowIndex, colIndex, cellValue)
+        })
+        .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
+          return this.handleRowDragStart(rowIndex, this.tableRows[rowIndex])
+        })
+        .onDrop((event: DragEvent, extraParams: string) => {
+          try {
+            const rawData: Record<string, string> = JSON.parse(extraParams)
+            const dragData: DragData = rawData.extraInfo ? JSON.parse(rawData.extraInfo) : rawData
+            this.handleRowDrop(dragData, rowIndex)
+          } catch (error) {
+            console.error('拖拽数据解析失败:', error)
+          }
+        })
+    } else {
+      Text(cellValue)
+        .fontSize(15)
+        .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : '#303133')
+        .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Medium : FontWeight.Normal)
+        .textAlign(TextAlign.Center)
+        .layoutWeight(1)
+        .height('100%')
+        .backgroundColor(
+          this.isCellSelected(rowIndex, colIndex) ? '#409EFF' :
+          (rowIndex % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
+        )
+        .border({
+          width: { 
+            right: this.isCellSelected(rowIndex, colIndex) ? 1 : 0.5, 
+            bottom: this.isCellSelected(rowIndex, colIndex) ? 1 : 0.5,
+            top: 0, 
+            left: 0.5
+          },
+          color: this.isCellSelected(rowIndex, colIndex) ? '#409EFF' : '#EBEEF5'
+        })
+        .padding(2)
+        .draggable(this.enableDrag)
+        .onClick(() => {
+          this.toggleCellSelection(rowIndex, colIndex, cellValue)
+        })
+        .onDragStart((event: DragEvent, extraParams: string): DragItemInfo => {
+          return this.handleRowDragStart(rowIndex, this.tableRows[rowIndex])
+        })
+        .onDrop((event: DragEvent, extraParams: string) => {
+          try {
+            const rawData: Record<string, string> = JSON.parse(extraParams)
+            const dragData: DragData = rawData.extraInfo ? JSON.parse(rawData.extraInfo) : rawData
+            this.handleRowDrop(dragData, rowIndex)
+          } catch (error) {
+            console.error('拖拽数据解析失败:', error)
+          }
+        })
+    }
   }
 
   build() {
@@ -742,50 +874,95 @@ export struct GridTable {
 
       // ==================== 表格容器（浅色背景）====================
       Column({ space: 0 }) {
-        // 固定表头
-
-        Row() {
-          // 列头 - 整列拖拽
-          ForEach(this.headerTitles, (title: string, colIndex: number) => {
-            this.buildColumnHeader(title, colIndex)
-          })
-        }
-        .width('100%')
-        .height(this.headerHeight) 
-
-        // 可滚动数据区域
-        Scroll() {
-          Column() {
-            ForEach(this.tableRows, (row: TableRow, rowIndex: number) => {
+        if (this.enableHorizontalScroll) {
+          Scroll() {
+            Column({ space: 0 }) {
               Row() {
-                // 数据单元格 - 第一列支持整行拖拽，其他列支持单格拖拽
-                ForEach(row, (cellValue: string, colIndex: number) => {
-                  if (colIndex === 0) {
-                    // 第一列（如"A级"、"B级"）支持整行拖拽
-                    this.buildRowDragCell(cellValue, rowIndex, colIndex)
-                  } else {
-                    // 其他列支持单格拖拽
-                    this.buildTableCell(cellValue, rowIndex, colIndex)
+                ForEach(this.headerTitles, (title: string, colIndex: number) => {
+                  this.buildColumnHeader(title, colIndex)
+                })
+              }
+              .width(this.getContentWidth())
+              .height(this.headerHeight)
+
+              Scroll() {
+                Column() {
+                  ForEach(this.tableRows, (row: TableRow, rowIndex: number) => {
+                    Row() {
+                      ForEach(row, (cellValue: string, colIndex: number) => {
+                        if (colIndex === 0) {
+                          this.buildRowDragCell(cellValue, rowIndex, colIndex)
+                        } else {
+                          this.buildTableCell(cellValue, rowIndex, colIndex)
+                        }
+                      })
+                    }
+                    .width(this.getContentWidth())
+                    .height(this.dataRowHeight)
+                  })
+                }
+                .width(this.getContentWidth())
+                .justifyContent(FlexAlign.Start)
+              }
+              .width(this.getContentWidth())
+              .scrollable(this.enableScroll ? ScrollDirection.Vertical : ScrollDirection.None)
+              .scrollBar(this.enableScroll ? BarState.Auto : BarState.Off)
+              .scrollBarColor(this.getCurrentTheme().borderColor)
+              .scrollBarWidth(20)
+              .friction(0.35)
+              .align(Alignment.TopStart)
+              .layoutWeight(1)
+            }
+            .width(this.getContentWidth())
+            .height(this.maxHeight)
+          }
+          .width('100%')
+          .height(this.maxHeight)
+          .scrollable(ScrollDirection.Horizontal)
+          .scrollBar(BarState.On)
+          .scrollBarColor(this.getCurrentTheme().borderColor)
+          .scrollBarWidth(20)
+          .friction(0.35)
+          .padding({ bottom: 0 })
+        } else {
+          Column({ space: 0 }) {
+            Row() {
+              ForEach(this.headerTitles, (title: string, colIndex: number) => {
+                this.buildColumnHeader(title, colIndex)
+              })
+            }
+            .width('100%')
+            .height(this.headerHeight)
+
+            Scroll() {
+              Column() {
+                ForEach(this.tableRows, (row: TableRow, rowIndex: number) => {
+                  Row() {
+                    ForEach(row, (cellValue: string, colIndex: number) => {
+                      if (colIndex === 0) {
+                        this.buildRowDragCell(cellValue, rowIndex, colIndex)
+                      } else {
+                        this.buildTableCell(cellValue, rowIndex, colIndex)
+                      }
+                    })
                   }
+                  .width('100%')
+                  .height(this.dataRowHeight)
                 })
               }
               .width('100%')
-              .height(this.dataRowHeight)
-            })
+              .justifyContent(FlexAlign.Start)
+            }
+            .width('100%')
+            .scrollable(this.enableScroll ? ScrollDirection.Vertical : ScrollDirection.None)
+            .scrollBar(this.enableScroll ? BarState.Auto : BarState.Off)
+            .scrollBarColor(this.getCurrentTheme().borderColor)
+            .scrollBarWidth(20)
+            .friction(0.35)
+            .align(Alignment.TopStart)
+            .constraintSize({ maxHeight: this.maxHeight })
           }
-          .width('100%')
-          .justifyContent(FlexAlign.Start) // 确保内容靠上对齐，无间隙
         }
-        .width('100%')
-        // .height(this.maxHeight) // 移除固定高度，改为自适应剩余空间
-        // .layoutWeight(1) // 移除Scroll的自适应权重，让其高度由内容决定（配合maxHeight限制）
-        .scrollable(this.enableScroll ? ScrollDirection.Vertical : ScrollDirection.None)
-        .scrollBar(this.enableScroll ? BarState.Auto : BarState.Off)
-        .scrollBarColor(this.getCurrentTheme().borderColor)
-        .scrollBarWidth(6)
-        .friction(0.6)
-        .align(Alignment.TopStart) // 确保内容从顶部开始
-        .constraintSize({ maxHeight: this.maxHeight }) // 限制最大高度，防止撑破布局
       }
       .width('100%')
       // .layoutWeight(1) // 移除容器自适应剩余空间，改为自适应内容
@@ -800,7 +977,7 @@ export struct GridTable {
     .backgroundColor(Color.Transparent)                   // 外层容器透明（实际背景由内层控制）
     .border({ width: 0 }) // 移除外层边框，完全依靠阴影和内部分割线
     .borderRadius(8)
-    .margin({ top: 4, left: 8, right: 8, bottom: 8 }) // 增加边距，增加呼吸感
+    .margin({ top: 4, left: 8, right: 8, bottom: 0 }) // 增加边距，增加呼吸感
     .alignItems(HorizontalAlign.Center)
     .justifyContent(FlexAlign.Start) // 改为Start，避免垂直居中导致的间隙问题
     .clip(true)                                           // 裁剪超出圆角的部分

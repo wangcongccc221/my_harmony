@@ -275,7 +275,7 @@ def run_simulation():
             )
             send_once(stats_header, stats_body, "Statistics")
             
-            time.sleep(0.5) 
+            time.sleep(1.0) 
             
             # --- 3. 发送重量数据 (模拟单个果实) ---
             # 随机发送 1-3 个单果数据
@@ -287,10 +287,10 @@ def run_simulation():
                 weight_header = create_header(FSM_CMD_WEIGHTINFO)
                 weight_body = create_weight_info(current_weight=single_weight, current_exit=exit_id)
                 send_once(weight_header, weight_body, "WeightInfo")
-                time.sleep(0.1)
+                time.sleep(0.3)
             
             # 等待下一轮
-            time.sleep(1)
+            time.sleep(2)
 
     except KeyboardInterrupt:
         print("\nSimulation stopped by user.")

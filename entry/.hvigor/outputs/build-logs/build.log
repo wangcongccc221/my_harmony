@@ -1,0 +1,84 @@
+[2026-01-29T10:17:19.327] [DEBUG] debug-file - env: nodejsVersion=v18.20.1
+[2026-01-29T10:17:19.400] [DEBUG] debug-file - env: daemon=true
+[2026-01-29T10:17:19.329] [DEBUG] debug-file - env: hvigor-config.json5 content = {
+  modelVersion: '5.1.1',
+  dependencies: {},
+  execution: {},
+  logging: {},
+  debugging: {},
+  nodeOptions: {}
+}
+[2026-01-29T10:17:20.443] [DEBUG] debug-file - java daemon tryConnect success
+[2026-01-29T10:17:20.550] [DEBUG] debug-file - session manager: set active socket. socketId=ZLWmTXYBklqJ3MhKAAAB
+[2026-01-29T10:17:21.670] [DEBUG] debug-file - watch worker: worker id should be larger than 0. Nothing will be sent to any worker thread.
+[2026-01-29T10:17:21.676] [DEBUG] debug-file - Since there is no instance or instance is terminated, create a new worker pool.
+[2026-01-29T10:17:21.677] [DEBUG] debug-file - Worker pool is initialized with config:  {
+  minPoolNum: 2,
+  maxPoolNum: undefined,
+  maxCoreSize: undefined,
+  cacheCapacity: undefined,
+  cacheTtl: undefined
+}
+[2026-01-29T10:17:21.679] [DEBUG] debug-file - Create  resident worker with id: 0.
+[2026-01-29T10:17:21.682] [DEBUG] debug-file - Create  resident worker with id: 1.
+[2026-01-29T10:17:21.686] [DEBUG] debug-file - Workers' log level updated to INFO
+[2026-01-29T10:17:21.699] [DEBUG] debug-file - hvigor build process will be closed with an error.
+[2026-01-29T10:17:21.700] [ERROR] debug-file - [31m00303010 Configuration Error
+Error Message: The property of module should be an array in root project build-profile.json5. At file: C:\Users\AI008\Desktop\my_harmony\entry\build-profile.json5
+
+* Try the following:
+  > Check the project-level build-profile.json5 file and ensure that the module's option is an array.
+[39m
+
+[31m* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --debug option to get more log output.
+
+[2026-01-29T10:17:21.701] [DEBUG] debug-file - ERROR: stacktrace = AdaptorError: [31m00303010 Configuration Error
+Error Message: The property of module should be an array in root project build-profile.json5. At file: C:\Users\AI008\Desktop\my_harmony\entry\build-profile.json5
+
+* Try the following:
+  > Check the project-level build-profile.json5 file and ensure that the module's option is an array.
+[39m
+    at HvigorLogger.printErrorExit (D:\harmSdk\command-line-tools\hvigor\hvigor\src\base\log\hvigor-log.js:1:5069)
+    at checkProjectConfigFile (D:\harmSdk\command-line-tools\hvigor\hvigor\src\base\external\core\hvigor-config.js:1:3049)
+    at new HvigorConfig (D:\harmSdk\command-line-tools\hvigor\hvigor\src\base\external\core\hvigor-config.js:1:1415)
+    at hvigorConfigInit (D:\harmSdk\command-line-tools\hvigor\hvigor\src\base\external\core\hvigor-config.js:1:3474)
+    at init (D:\harmSdk\command-line-tools\hvigor\hvigor\src\base\internal\lifecycle\init.js:1:2867)
+    at start (D:\harmSdk\command-line-tools\hvigor\hvigor\src\base\boot\index.js:1:2518)
+    at boot (D:\harmSdk\command-line-tools\hvigor\hvigor\src\base\boot\index.js:1:1818)
+    at Worker.<anonymous> (D:\harmSdk\command-line-tools\hvigor\hvigor\src\base\daemon\cluster\worker-process-lifecycle.js:1:3747)
+    at Worker.emit (node:events:529:35)
+    at process.<anonymous> (node:internal/cluster/worker:35:12)
+[2026-01-29T10:17:21.701] [ERROR] debug-file - AdaptorError: [31m00303010 Configuration Error
+Error Message: The property of module should be an array in root project build-profile.json5. At file: C:\Users\AI008\Desktop\my_harmony\entry\build-profile.json5
+
+* Try the following:
+  > Check the project-level build-profile.json5 file and ensure that the module's option is an array.
+[39m
+    at HvigorLogger.printErrorExit (D:\harmSdk\command-line-tools\hvigor\hvigor\src\base\log\hvigor-log.js:1:5069)
+    at checkProjectConfigFile (D:\harmSdk\command-line-tools\hvigor\hvigor\src\base\external\core\hvigor-config.js:1:3049)
+    at new HvigorConfig (D:\harmSdk\command-line-tools\hvigor\hvigor\src\base\external\core\hvigor-config.js:1:1415)
+    at hvigorConfigInit (D:\harmSdk\command-line-tools\hvigor\hvigor\src\base\external\core\hvigor-config.js:1:3474)
+    at init (D:\harmSdk\command-line-tools\hvigor\hvigor\src\base\internal\lifecycle\init.js:1:2867)
+    at start (D:\harmSdk\command-line-tools\hvigor\hvigor\src\base\boot\index.js:1:2518)
+    at boot (D:\harmSdk\command-line-tools\hvigor\hvigor\src\base\boot\index.js:1:1818)
+    at Worker.<anonymous> (D:\harmSdk\command-line-tools\hvigor\hvigor\src\base\daemon\cluster\worker-process-lifecycle.js:1:3747)
+    at Worker.emit (node:events:529:35)
+    at process.<anonymous> (node:internal/cluster/worker:35:12)
+[2026-01-29T10:17:21.719] [ERROR] debug-file - BUILD FAILED in 29 ms 
+[2026-01-29T10:17:21.747] [DEBUG] debug-file - Cleanup worker 0.
+[2026-01-29T10:17:21.748] [DEBUG] debug-file - Worker 0 has been cleaned up.
+[2026-01-29T10:17:21.748] [DEBUG] debug-file - Current idle worker size: 1.
+[2026-01-29T10:17:21.748] [DEBUG] debug-file - Current resident worker size: 2.
+[2026-01-29T10:17:21.748] [DEBUG] debug-file - Cleanup worker 1.
+[2026-01-29T10:17:21.748] [DEBUG] debug-file - Worker 1 has been cleaned up.
+[2026-01-29T10:17:21.748] [DEBUG] debug-file - Current idle worker size: 0.
+[2026-01-29T10:17:21.748] [DEBUG] debug-file - Current resident worker size: 2.
+[2026-01-29T10:17:21.749] [DEBUG] debug-file - hvigor build process will be closed.
+[2026-01-29T10:17:21.752] [DEBUG] debug-file - worker[0] exits with exit code 1.
+[2026-01-29T10:17:21.754] [DEBUG] debug-file - worker[1] exits with exit code 1.
+[2026-01-29T10:17:21.765] [DEBUG] debug-file - session manager: send message to worker process.
+[2026-01-29T10:17:21.766] [DEBUG] debug-file - session manager: send message to worker process.
+[2026-01-29T10:17:21.765] [DEBUG] debug-file - watch worker: worker id should be larger than 0. Nothing will be sent to any worker thread.
+[2026-01-29T10:17:21.767] [DEBUG] debug-file - watch worker: worker id should be larger than 0. Nothing will be sent to any worker thread.

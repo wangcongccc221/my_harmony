@@ -50,6 +50,12 @@ export default class EntryAbility extends UIAbility {
     // 初始化数据库配置
     DbManager.getInstance().init(this.context);
 
+    // 启动 UI 数据同步服务 (连接协议层与UI层)
+    this.startUIDataSync();
+
+    // [DEBUG] 注入模拟的出口配置数据 (用于展示自定义名称和列表)
+    this.injectMockExitConfig();
+
     this.copyResourceFiles();
     // this.initNetworkOptimizer();
     // this.initHttpServer();
@@ -116,6 +122,42 @@ export default class EntryAbility extends UIAbility {
     }
   }
   
+  /**
+   * [DEBUG] 注入模拟的出口配置数据
+   */
+  private injectMockExitConfig(): void {
+    try {
+      console.info('========== [DEBUG] 注入模拟出口配置 ==========');
+      
+      const mockNames = ['特级果', '一级果', '二级果', '三级果', '等外果'];
+      const mockCriteria = [
+        ['重量>250g', '糖度>15', '无瑕疵'],
+        ['重量>200g', '糖度>13', '微瑕疵'],
+        ['重量>150g', '糖度>11'],
+        ['重量>100g'],
+        ['重量<100g', '严重瑕疵']
+      ];
+
+      for (let i = 0; i < 20; i++) {
+        // 1. 设置自定义名称
+        const nameIndex = i % mockNames.length;
+        const customName = `${mockNames[nameIndex]} (${i + 1}号)`;
+        AppStorage.setOrCreate(`EXIT_NAME_${i + 1}`, customName);
+
+        // 2. 设置列表内容
+        const criteria = mockCriteria[nameIndex];
+        AppStorage.setOrCreate(`EXIT_ITEMS_${i + 1}`, criteria);
+        
+        // 3. 顺便给点初始数值，避免空空如也
+        // AppStorage.setOrCreate(`EXIT_COUNT_${i + 1}`, Math.floor(Math.random() * 100));
+      }
+      
+      console.info('✅ 模拟出口配置注入完成');
+    } catch (e) {
+      console.error('❌ 模拟配置注入失败:', e);
+    }
+  }
+
   private async initOutletCountStorage(): Promise<void> {
     try {
       const storage = OutletCountStorage.getInstance();

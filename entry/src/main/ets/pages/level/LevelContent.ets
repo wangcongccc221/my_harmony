@@ -44,6 +44,8 @@ import { LevelEventHandler } from './core/LevelEventHandler'
 import { LevelStateManager } from './core/LevelStateManager'
 import { LAYOUT_CONFIG } from './LevelConstants'
 import { ArrowToggleButton } from '../../components/ui/buttons/ArrowToggleButton'
+import { HomeDataManager } from '../home/core/HomeDataManager'
+import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
 
 /**
  * 等级表格数据接口（用于内部表格数据，包含id字段）
@@ -483,6 +485,9 @@ export struct LevelContent {
     
     // 更新状态管理器
     this.stateManager.updateLevelData(convertedLevelData)
+
+    const selectedFSM = (AppStorage.get(HOME_SELECTED_FSM) as ('FSM1' | 'FSM2') | undefined) ?? 'FSM1'
+    HomeDataManager.getInstance().updateSizeGradeNames(convertedLevelData.map(item => item.levelName), selectedFSM)
     // 保存重量精度到状态管理器（如果状态管理器支持）
     console.log('【等级页面】保存数据:', {
       levelData: convertedLevelData,

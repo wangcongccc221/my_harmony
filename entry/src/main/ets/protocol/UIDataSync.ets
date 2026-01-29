@@ -10,6 +10,7 @@ import {
   DataChangeListener,
   StatisticsListener
 } from './GlobalDataInterface'
+import { GlobalCardDataManager } from '../utils/managers/GlobalCardDataManager'
 import { StStatistics, GlobalRealtimeData } from './Structures'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 
@@ -159,6 +160,11 @@ export class UIDataSync {
     // 初始化状态
     AppStorage.setOrCreate(keys.IS_PROCESSING, false)
     AppStorage.setOrCreate(keys.RUNNING_TIME, '00:00:00')
+    
+    for (let i = 0; i < 48; i++) {
+      AppStorage.setOrCreate(`${keys.EXIT_COUNT_PREFIX}${i + 1}`, 0)
+      AppStorage.setOrCreate(`${keys.EXIT_WEIGHT_PREFIX}${i + 1}`, 0)
+    }
 
     hilog.info(0x0001, TAG, 'AppStorage 键值已初始化')
   }
@@ -228,6 +234,10 @@ export class UIDataSync {
     // 更新出口数据
     this.syncExitDataToStorage(data)
 
+    // [NEW] 触发 GlobalCardDataManager 的同步逻辑
+    // 类似于 C++ 中的 Event 触发，这里直接调用单例方法通知 UI 数据已准备好
+    GlobalCardDataManager.getInstance().syncExitDataFromStorage()
+
     hilog.debug(0x0001, TAG,
       `UI数据已同步: 产量=${sumCounts}, 总重=${sumWeightTon}吨, 效率=${productionTonH}吨/时`)
   }
@@ -243,8 +253,8 @@ export class UIDataSync {
       const countKey = `${keys.EXIT_COUNT_PREFIX}${i + 1}`
       const weightKey = `${keys.EXIT_WEIGHT_PREFIX}${i + 1}`
 
-      AppStorage.setOrCreate(countKey, data.exitCount[i])
-      AppStorage.setOrCreate(weightKey, data.exitWeight[i])
+      AppStorage.set(countKey, data.exitCount[i])
+      AppStorage.set(weightKey, data.exitWeight[i])
     }
   }
 

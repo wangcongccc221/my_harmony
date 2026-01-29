@@ -19,9 +19,12 @@ export class GlobalCardDataManager {
 
   // 定时器引用，用于定期从 AppStorage 同步出口数据
   private syncTimer: number | null = null
+  private lastSyncTime: number = 0
+  private readonly minSyncIntervalMs: number = 100
 
   private constructor() {
     console.log('GlobalCardDataManager 构造函数被调用')
+    AppStorage.setOrCreate('GLOBAL_CARD_DATA_UPDATE_SIGNAL', 0)
     // 启动数据同步定时器
     this.startDataSync()
   }
@@ -33,10 +36,15 @@ export class GlobalCardDataManager {
   private startDataSync(): void {
     if (this.syncTimer !== null) return
 
-    // 每 500ms 同步一次
-    this.syncTimer = setInterval(() => {
-      this.syncExitDataFromStorage()
-    }, 500)
+    // 立即执行一次同步，确保初始数据正确
+    this.syncExitDataFromStorage()
+
+    // [MODIFIED] 移除定时器轮询，改为由 UIDataSync 事件驱动
+    // 这样可以实现毫秒级响应，避免 200ms 的延迟，同时节省 CPU
+    // 每 200ms 同步一次 (即每秒刷新 5 次)，以匹配波浪动画的更新频率
+    // this.syncTimer = setInterval(() => {
+    //   this.syncExitDataFromStorage()
+    // }, 200)
   }
 
   /**
@@ -51,30 +59,48 @@ export class GlobalCardDataManager {
 
   /**
    * 从 AppStorage 同步出口数据到卡片
+   * 公开此方法以便外部手动触发同步
    */
-  private syncExitDataFromStorage(): void {
-    // 只有当卡片数据已初始化时才同步
-    if (!this.isInitialized || this.cardDataList.length === 0) return
-
-    // 获取总产量（用于计算百分比）
-    // 使用全局总产量作为分母，遵循 C++ 逻辑：(当前个数 / 总个数) * 100
-    const totalYieldStr = AppStorage.get('TOP_SUM_COUNTS') as string || '0'
-    let totalYield = parseInt(totalYieldStr)
-    
-    // 如果总产量为0，尝试累加当前显示的出口数据（兜底策略）
-    if (totalYield === 0) {
-      let tempSum = 0
-      for (let i = 0; i < this.cardDataList.length; i++) {
-        const key = `EXIT_COUNT_${i + 1}`
-        const count = AppStorage.get(key) as number || 0
-        tempSum += count
-      }
-      totalYield = tempSum
+  public syncExitDataFromStorage(): void {
+    const now = Date.now()
+    if (now - this.lastSyncTime < this.minSyncIntervalMs) {
+      return
+    }
+    this.lastSyncTime = now
+    // 如果未初始化或数据列表为空，尝试初始化
+    if (!this.isInitialized || this.cardDataList.length === 0) {
+      console.log('GlobalCardDataManager: 同步时发现未初始化，尝试初始化...')
+      this.initializeCardData()
     }
     
-    // 避免除以0
-    if (totalYield === 0) totalYield = 1
+    // 如果初始化后仍然没有数据，则无法同步
+    if (this.cardDataList.length === 0) {
+      console.warn('GlobalCardDataManager: 初始化失败或无卡片数据，跳过同步')
+      return
+    }
 
+    // [NEW_LOGIC] 使用总产量计算百分比，确保总和为100%
+    // 1. 计算所有可见卡片的总产量
+    let totalCount = 0
+    let maxCount = 0 
+    
+    for (let i = 0; i < this.cardDataList.length; i++) {
+      const key = `EXIT_COUNT_${i + 1}`
+      const count = AppStorage.get(key) as number || 0
+      totalCount += count
+      if (count > maxCount) {
+        maxCount = count
+      }
+    }
+
+    // 2. 分母设为总产量
+    let denominator = totalCount > 0 ? totalCount : 1
+    
+    // 强制每次都发送信号，确保 UI 即使在微小变化时也能刷新
+    // 只要有数据（totalCount > 0）或者之前有数据现在清零了，都应该刷新
+    // 这里简单处理：只要被调用，就发送信号，让 UI 自己决定是否重绘
+    AppStorage.set('GLOBAL_CARD_DATA_UPDATE_SIGNAL', Date.now())
+    
     // 更新卡片数据
     let hasChanges = false
     for (let i = 0; i < this.cardDataList.length; i++) {
@@ -83,18 +109,56 @@ export class GlobalCardDataManager {
       const key = `EXIT_COUNT_${i + 1}`
       const count = AppStorage.get(key) as number || 0
       
-      // 计算百分比：(当前个数 / 总个数) * 100
-      const percent = (count / totalYield) * 100
+      // 3. 计算百分比：(当前个数 / 分母) * 100
+      const percent = (count / denominator) * 100
+      
+      // [NEW] 将百分比存入 AppStorage，供 UI 组件直接读取
+      AppStorage.set(`EXIT_PERCENT_${i + 1}`, percent)
+
       
       // 检查数据是否有变化
       const currentCard = this.cardDataList[i]
+
+      // [NEW] 同步自定义名称 (对应 setCustomName)
+      const nameKey = `EXIT_NAME_${i + 1}`
+      // 注意：这里需要先获取当前卡片，否则 currentCard 可能未定义
+      // 优化：如果 AppStorage 中没有值，保持原样；如果有值，更新之。
+      // 为了避免每次都从 AppStorage 取值导致性能问题，可以考虑仅在变更时读取，但这里为了简单直接读取。
+      // 修正：AppStorage.get 返回的是 undefined | string，需要处理默认值
+      const storedName = AppStorage.get(nameKey) as string
+      const customName = storedName !== undefined ? storedName : currentCard.firstLayer.title
+
+      // [NEW] 同步列表内容 (对应 addItemToListWidget)
+      // 假设 AppStorage 中存储的是字符串数组
+      const itemsKey = `EXIT_ITEMS_${i + 1}`
+      const items = AppStorage.get(itemsKey) as string[] || []
+
       const currentPercent = currentCard.secondLayer.percent
       const currentValue = parseInt(currentCard.secondLayer.value) || 0
+      const currentName = currentCard.firstLayer.title
+      const currentItems = currentCard.thirdLayer.chartDataStrings || []
+      let isItemsChanged = items.length !== currentItems.length
+      if (!isItemsChanged) {
+        for (let j = 0; j < items.length; j++) {
+          if (items[j] !== currentItems[j]) {
+            isItemsChanged = true
+            break
+          }
+        }
+      }
 
       // 允许 0.01 的浮点误差 (保留2位小数精度)
-      if (Math.abs(currentPercent - percent) > 0.01 || currentValue !== count) {
+      if (Math.abs(currentPercent - percent) > 0.01 || currentValue !== count || currentName !== customName || isItemsChanged) {
         // 创建新对象，确保引用变化，触发UI更新
         // ArkTS 不支持对象展开运算符，需要手动构建
+        
+        // 更新第一层 (标题)
+        const newFirstLayer: FirstLayerData = {
+          iconText: currentCard.firstLayer.iconText,
+          title: customName, // 更新标题
+          status: currentCard.firstLayer.status
+        }
+
         const newSecondLayer: SecondLayerData = {
           serialNumber: currentCard.secondLayer.serialNumber,
           percent: percent,
@@ -102,17 +166,19 @@ export class GlobalCardDataManager {
           unit: currentCard.secondLayer.unit
         }
         
-        // 更新 ThirdLayerData，确保 chartData 也被更新（如果需要波浪图跟随变化）
-        // 这里假设波浪图的数据也需要跟随百分比变化，或者只是刷新 UI
-        // 如果 chartData 是用于绘制波浪的，应该在这里更新它
-        // 目前 ThirdLayerData 中的 chartData 似乎主要用于拖拽内容，波浪高度由 waveHeightPercent 控制
-        // 但 waveHeightPercent 现在是直接读取 secondLayer.percent
+        // 更新 ThirdLayerData，包含列表内容
+        const newThirdLayer: ThirdLayerData = {
+          chartType: currentCard.thirdLayer.chartType,
+          chartData: currentCard.thirdLayer.chartData, // 这里通常存储数值，如果 items 是字符串，主要用 chartDataStrings
+          chartDataStrings: items, // 更新列表字符串
+          chartConfig: currentCard.thirdLayer.chartConfig
+        }
         
         const newCard: ThreeLayerCardData = {
           id: currentCard.id,
-          firstLayer: currentCard.firstLayer,
+          firstLayer: newFirstLayer,
           secondLayer: newSecondLayer,
-          thirdLayer: currentCard.thirdLayer
+          thirdLayer: newThirdLayer
         }
         
         // 更新列表
@@ -123,10 +189,11 @@ export class GlobalCardDataManager {
       }
     }
 
-    if (hasChanges) {
-      // 触发一个全局更新信号
-      AppStorage.setOrCreate('GLOBAL_CARD_DATA_UPDATE_SIGNAL', Date.now())
-    }
+    // if (hasChanges) {
+    //   console.log('GlobalCardDataManager: 数据发生变化，触发全局更新信号')
+    //   // 触发一个全局更新信号
+    //   AppStorage.setOrCreate('GLOBAL_CARD_DATA_UPDATE_SIGNAL', Date.now())
+    // }
   }
 
   /**
@@ -193,6 +260,7 @@ export class GlobalCardDataManager {
         thirdLayer: thirdLayer
       }
       newCardDataList.push(cardData)
+      AppStorage.setOrCreate(`EXIT_PERCENT_${i + 1}`, 0)
     }
     
     // 保存到对应FSM状态的数据中

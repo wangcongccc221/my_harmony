@@ -104,7 +104,7 @@ export struct LiquidCardsArea {
    */
   private getVisibleCardCount(): number {
     // 根据屏幕高度动态计算可见卡片数量，减少渲染开销
-    return 20 // 减少到20个卡片，提升滚动性能
+    return 10 // 减少到10个卡片，提升滚动性能
   }
 
   /**
@@ -136,7 +136,15 @@ export struct LiquidCardsArea {
     console.log('开始初始化卡片数据...')
     
     // 使用全局数据管理器
-    this.cardDataList = this.globalDataManager.initializeCardData()
+    // 注意：这里需要强制刷新一次状态，以防 AppStorage 中已经有数据但未同步
+    this.globalDataManager.initializeCardData()
+    
+    // 手动触发一次全局数据同步，确保 UI 拿到最新数据
+    this.globalDataManager.syncExitDataFromStorage()
+    
+    // 同步完成后，立即重新获取最新的数据列表
+    this.cardDataList = this.globalDataManager.getCardDataList()
+    
     console.log('从全局数据管理器获取数据:', this.cardDataList.length, '个卡片')
   }
 
@@ -210,8 +218,9 @@ export struct LiquidCardsArea {
    */
   onGlobalDataUpdate(): void {
     // 重新获取卡片数据以触发 UI 更新
+    // 注意：GlobalCardDataManager 保证了如果数据变化，返回的数组中对应的对象引用也会变化
+    // 这将触发 ThreeLayerCard 的 @Prop cardData 更新
     this.cardDataList = this.globalDataManager.getCardDataList()
-    // console.log('LiquidCardsArea: 收到全局数据更新信号，已刷新 UI')
   }
 
   // 防重复处理标志，避免aboutToUpdate循环触发
@@ -336,40 +345,39 @@ export struct LiquidCardsArea {
    */
   build() {
     Stack() {
-      // 卡片区域 - 使用 Grid 布局替代 Flex，确保固定两行显示
-      Grid() {
-        ForEach(this.cardDataList.slice(0, this.selectedFSM === 'FSM1' ? this.outletCountFSM1 : this.outletCountFSM2), (cardData: ThreeLayerCardData, idx: number) => {
-          GridItem() {
-            // 使用新的三层卡片
-            ThreeLayerCard({
-              cardData: cardData,
-              cardWidth: '100%',   // 填满格子
-              cardHeight: '100%',  // 填满格子
-              mainColor: this.getCurrentTheme().primary,
-              enableWave: this.isWaveAnimationEnabled() && idx < this.getWaveCount() && (!cardData.thirdLayer.chartData || cardData.thirdLayer.chartData.length === 0),
-              onCardDrop: (data: ThreeLayerCardData) => {
-                this.handleCardDrop(idx, data)
-              },
-              onThirdLayerClick: () => {
-                // 点击第三层时触发回调
-                if (this.onCardClick) {
-                  this.onCardClick(idx, cardData)
+      Scroll() {
+        Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Start }) {
+          ForEach(this.cardDataList, (cardData: ThreeLayerCardData, idx: number) => {
+            Stack() {
+              ThreeLayerCard({
+                cardData: cardData,
+                cardWidth: '100%',
+                cardHeight: '100%',
+                mainColor: this.getCurrentTheme().primary,
+                updateSignal: this.dataUpdateSignal,
+                enableWave: this.isWaveAnimationEnabled() && (((AppStorage.get(`EXIT_PERCENT_${idx + 1}`) as number) || 0) > 0) && (!cardData.thirdLayer.chartData || cardData.thirdLayer.chartData.length === 0),
+                onCardDrop: (data: ThreeLayerCardData) => {
+                  this.handleCardDrop(idx, data)
+                },
+                onThirdLayerClick: () => {
+                  if (this.onCardClick) {
+                    this.onCardClick(idx, cardData)
+                  }
                 }
-              }
-            })
-          }
-        }, (item: ThreeLayerCardData) => item.id)
+              })
+            }
+            .width('150vp')
+            .height('180vp')
+            .margin({ right: '1%', bottom: '1%' }) //1的间距
+          }, (item: ThreeLayerCardData) => item.id)
+        }
+        .width('100%')
+        .padding({ left: '0.93%', right: '0.93%', top: '1%', bottom: '1%' })
       }
       .width('100%')
       .height('100%')
-      .rowsTemplate('1fr 1fr') // 固定两行，高度均分
-      .columnsTemplate('1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr') // 固定10列
-      .columnsGap('0.28%') // 列间距
-      .rowsGap('0.56%')    // 行间距
-      .padding({ left: '0.93%', right: '0.93%', top: '1%', bottom: '1%' }) // 调整内边距适应 Grid
-      // 拖拽激活时禁用滚动，避免抢占onDrop事件
+      .scrollBar(BarState.Auto)
       .enabled(!this.gridDragActive)
-      // 样式设置
       .linearGradient({                                      // 高级效果：颜色渐变 - 增强对比度，更明显
         angle: 135,
         colors: [

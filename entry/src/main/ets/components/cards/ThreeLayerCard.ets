@@ -54,6 +54,8 @@ export struct ThreeLayerCard {
   @Prop mainColor: string | number | Color = '#EA7A10'
   // 控制第三层是否显示波浪图
   @Prop enableWave: boolean = false
+  // [NEW] 接收全局刷新信号，强制触发组件更新检测
+  @Prop updateSignal: number = 0
   
   // 拖拽回调
   onCardDrop?: (data: ThreeLayerCardData) => void
@@ -155,6 +157,7 @@ export struct ThreeLayerCard {
   private isEmptyCard(): boolean {
     const hasData = this.localChartData && this.localChartData.length > 0
     const hasWave = this.enableWave
+    // 注意：如果有数据 OR 有波浪，都不算空卡片
     return !hasData && !hasWave
   }
 
@@ -394,7 +397,7 @@ export struct ThreeLayerCard {
     }
     .width(this.cardWidth)
     .height(this.cardHeight)
-    .backgroundColor(this.isEmptyCard() ? '#f8fafc' : '#E6F0FF') // 空白卡片：浅色背景；有数据的卡片：柔和的深蓝色背景
+    .backgroundColor(this.isEmptyCard() ? '#f8fafc' : '#E6F0FF') // 空白卡片：浅色背景(#f8fafc)；有数据的卡片：柔和的深蓝色背景(#E6F0FF)
     .borderRadius(12) // Apple风格：中等圆角
     .border({ width: 0.5, color: UseCardLogic.getCardColors().cardBorder }) // Apple风格：细边框
     .shadow({ radius: 8, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 2 }) // Apple风格：柔和阴影

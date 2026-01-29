@@ -45,6 +45,8 @@ import { QualitySettingsDialog } from '../../components/dialogs/QualitySettingsD
 import { DEFAULT_QUALITY_SETTINGS } from './QualityConstants'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 import { ThreeDButton } from '../../components/ui/buttons/ThreeDButton'
+import { HomeDataManager } from '../home/core/HomeDataManager'
+import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
 
 const DOMAIN = 0x0000
 const TAG = 'QualityContent'
@@ -528,7 +530,10 @@ export struct QualityContent {
             buttonHeight: 50,
             fontSize: 16,
             onClickCallback: () => {
-              const first = this.stateManager.getQualityLevels()[0]
+              const levels = this.stateManager.getQualityLevels()
+              const selectedFSM = (AppStorage.get(HOME_SELECTED_FSM) as ('FSM1' | 'FSM2') | undefined) ?? 'FSM1'
+              HomeDataManager.getInstance().updateQualityGradeNames(levels.map(item => item.levelName), selectedFSM)
+              const first = levels[0]
               this.eventHandler.onDataUpdate(first, -1)
               console.log('品质页面：确认操作')
             }

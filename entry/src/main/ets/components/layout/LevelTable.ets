@@ -98,6 +98,9 @@ export struct LevelTable {
   
   // 表格宽度
   @Prop tableWidth: string = '55%'
+
+  // 是否启用内部卡片样式（背景、阴影、边框等）
+  @Prop enableCardStyle: boolean = true
   
   // 表格最大高度（超过此高度可滚动）
   @Prop maxHeight: string = '300px'
@@ -110,7 +113,7 @@ export struct LevelTable {
   
   // 单元格内边距（默认10，弹窗可传小值）
   @Prop cellPadding: number = 10
-  
+
   // 多选状态管理
   @State private selectedCells: Set<string> = new Set()
   @State private isMultiSelectMode: boolean = false
@@ -562,11 +565,11 @@ export struct LevelTable {
       .alignItems(HorizontalAlign.Start)
     }
     .width(this.tableWidth)
-    .backgroundColor(this.containerBg || this.getCurrentTheme().surfaceColor)
-    .border({ width: 1, color: this.getCurrentTheme().borderColor })
-    .borderRadius(12)
-    .padding(12)
-    .margin({ top: 12, left: 12, right: 12, bottom: 8 })
+    .backgroundColor(this.enableCardStyle ? (this.containerBg || this.getCurrentTheme().surfaceColor) : Color.Transparent)
+    .border(this.enableCardStyle ? { width: 1, color: this.getCurrentTheme().borderColor } : { width: 0 })
+    .borderRadius(this.enableCardStyle ? 12 : 0)
+    .padding(this.enableCardStyle ? 12 : 0)
+    .margin(this.enableCardStyle ? { top: 12, left: 12, right: 12, bottom: 8 } : { top: 0, left: 0, right: 0, bottom: 0 })
     .alignItems(HorizontalAlign.Center)
     .justifyContent(FlexAlign.Start)
     .focusable(true)
