@@ -96,7 +96,6 @@ export struct ThirdLayer {
       if (event.type === TouchType.Up) {
         const currentTime = Date.now()
         const timeSinceLastClick = currentTime - this.lastClickTime
-        
         // 如果两次点击间隔在阈值内，认为是双击
         if (timeSinceLastClick > 0 && timeSinceLastClick <= this.DOUBLE_CLICK_INTERVAL) {
           // 双击事件

@@ -252,26 +252,26 @@ export interface DefaultLevelData {
  * - 创建新等级时
  */
 export const DEFAULT_LEVEL_DATA: DefaultLevelData[] = [
-  { levelName: 'A级', minWeight: 120, packingWeight: 5000 },
-  { levelName: 'B级', minWeight: 100, packingWeight: 4500 },
-  { levelName: 'C级', minWeight: 80, packingWeight: 4000 },
-  { levelName: 'D级', minWeight: 70, packingWeight: 3500 },
-  { levelName: 'E级', minWeight: 60, packingWeight: 3000 },
-  { levelName: 'F级', minWeight: 50, packingWeight: 2500 },
-  { levelName: 'G级', minWeight: 45, packingWeight: 2200 },
-  { levelName: 'H级', minWeight: 40, packingWeight: 2000 },
-  { levelName: 'I级', minWeight: 35, packingWeight: 1800 },
-  { levelName: 'J级', minWeight: 30, packingWeight: 1600 },
-  { levelName: 'K级', minWeight: 25, packingWeight: 1400 },
-  { levelName: 'L级', minWeight: 20, packingWeight: 1200 },
-  { levelName: 'M级', minWeight: 18, packingWeight: 1000 },
-  { levelName: 'N级', minWeight: 15, packingWeight: 800 },
-  { levelName: 'O级', minWeight: 12, packingWeight: 600 },
+  { levelName: 'A级', minWeight: 120, packingWeight: 42 },
+  { levelName: 'B级', minWeight: 100, packingWeight: 50 },
+  { levelName: 'C级', minWeight: 80, packingWeight: 63 },
+  { levelName: 'D级', minWeight: 70, packingWeight: 71 },
+  { levelName: 'E级', minWeight: 60, packingWeight: 83 },
+  { levelName: 'F级', minWeight: 50, packingWeight: 100 },
+  { levelName: 'G级', minWeight: 45, packingWeight: 111 },
+  { levelName: 'H级', minWeight: 40, packingWeight: 125 },
+  { levelName: 'I级', minWeight: 35, packingWeight: 143 },
+  { levelName: 'J级', minWeight: 30, packingWeight: 167 },
+  { levelName: 'K级', minWeight: 25, packingWeight: 200 },
+  { levelName: 'L级', minWeight: 20, packingWeight: 250 },
+  { levelName: 'M级', minWeight: 18, packingWeight: 278 },
+  { levelName: 'N级', minWeight: 15, packingWeight: 333 },
+  { levelName: 'O级', minWeight: 12, packingWeight: 417 },
   { levelName: 'P级', minWeight: 10, packingWeight: 500 },
-  { levelName: 'Q级', minWeight: 8, packingWeight: 400 },
-  { levelName: 'R级', minWeight: 6, packingWeight: 300 },
-  { levelName: 'S级', minWeight: 4, packingWeight: 200 },
-  { levelName: 'T级', minWeight: 2, packingWeight: 100 }
+  { levelName: 'Q级', minWeight: 8, packingWeight: 625 },
+  { levelName: 'R级', minWeight: 6, packingWeight: 833 },
+  { levelName: 'S级', minWeight: 4, packingWeight: 1250 },
+  { levelName: 'T级', minWeight: 2, packingWeight: 2500 }
 ]
 
 /**

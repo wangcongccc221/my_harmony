@@ -62,7 +62,7 @@ export struct HomeContent {
     console.log('HomeContent: refreshStatisticsTable triggered')
   }
 
-  private refreshAllTables() {
+  public refreshAllTables() {
     this.levelTableData = this.dataManager.getTableData('等级表')
     this.levelHeaderTitles = this.dataManager.getLevelTableHeaderTitles()
     this.containerTableData = this.dataManager.getTableData('容器表')
@@ -92,7 +92,11 @@ export struct HomeContent {
         .margin({ bottom: 8 })
 
       // 2. 液体卡片区域 (中间)
-      LiquidCardsArea()
+      LiquidCardsArea({
+        onCardClick: (cardIndex) => {
+          AppStorage.set('HOME_LIQUID_CARD_DOUBLE_CLICK_INDEX', cardIndex + 1)
+        }
+      })
         .height('38%')
         .margin({ bottom: '1%' })
 

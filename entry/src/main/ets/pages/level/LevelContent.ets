@@ -42,7 +42,7 @@ import { LevelOutletDialog } from './LevelOutletDialog'
 import { LevelDataManager, LevelData, StatisticsData } from './core/LevelDataManager'
 import { LevelEventHandler } from './core/LevelEventHandler'
 import { LevelStateManager } from './core/LevelStateManager'
-import { LAYOUT_CONFIG } from './LevelConstants'
+import { DEFAULT_LEVEL_SETTINGS, LAYOUT_CONFIG } from './LevelConstants'
 import { ArrowToggleButton } from '../../components/ui/buttons/ArrowToggleButton'
 import { HomeDataManager } from '../home/core/HomeDataManager'
 import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
@@ -157,6 +157,12 @@ export struct LevelContent {
   @State private showFloatingButtons: boolean = true
   // 悬浮按钮悬停状态
   @State private isHovering: boolean = false
+
+  // ==================== 状态管理 ====================
+  // 使用 AppStorage 保持响应式同步
+  @StorageProp('LevelTableCount') tableCount: string = DEFAULT_LEVEL_SETTINGS.tableCount
+  @StorageProp('LevelPackingWeight1') packingWeight1: number = DEFAULT_LEVEL_SETTINGS.packingWeight1
+  @StorageProp('LevelPackingWeight2') packingWeight2: number = DEFAULT_LEVEL_SETTINGS.packingWeight2
 
   /**
    * 页面切换回调
@@ -668,9 +674,11 @@ export struct LevelContent {
           LevelDataTable({
             levelData: this.stateManager.levelData,                            // 等级数据
             statisticsData: this.stateManager.statisticsData,                  // 统计数据
-            tableCount: this.stateManager.tableCount,                          // 表格数量
+            tableCount: this.tableCount,                                       // 表格数量 (响应式)
             refreshKey: this.statsVersion,                                     // 刷新驱动键
             triggerSave: this.triggerSave,                                     // 触发保存标志
+            packingWeight1: this.packingWeight1,                               // 包装重量1 (响应式)
+            packingWeight2: this.packingWeight2,                               // 包装重量2 (响应式)
             onEditStat: (row: 'bottom1' | 'bottom2', field: 'count' | 'avg' | 'set', colIndex: number, value: number) => {
               this.handleEditStat(row, field, colIndex, value)
             },

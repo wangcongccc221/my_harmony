@@ -442,14 +442,15 @@ export struct DataTablesTabBar {
           GridTable({
             tableName: '等级表',
             tableRows: this.levelTableData,
-            //tableTitle: t('等级表', '等级表'),
+            tableTitle: t('等级表', '等级表'),
+            showTitle: false,
             headerTitles: this.levelHeaderTitles.length > 0 ? this.levelHeaderTitles : [t('等级', '等级'), '30', '20', '10', '0'],
             tableWidth: '100%',
             maxHeight: '90%', // 等级表最大高度改为65%
             enableDrag: true,
             enableScroll: true,
             enableHorizontalScroll: true,
-            minColumnWidth: 180,
+            minColumnWidth: 120,
             headerHeight: 60,  // 等级表表头高度
             dataRowHeight: 75,  // 等级表数据行高度
             dividerHeight: 75,   // 等级表分割线高度
@@ -465,6 +466,7 @@ export struct DataTablesTabBar {
             tableName: '容器表',
             tableRows: this.containerTableData,
             tableTitle: t('容器表', '容器表'),
+            showTitle: false,
             headerTitles: [t('容器名称', '容器名称'), t('分选标准', '分选标准'), t('容器规格', '容器规格'), t('容器等级', '容器等级')],
             tableWidth: '100%',
             maxHeight: '72%',

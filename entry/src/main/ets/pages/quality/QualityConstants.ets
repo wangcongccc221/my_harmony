@@ -104,6 +104,8 @@ export interface QualityLevelData {
   levelName: string
   colorLevel: string | CustomComponentConfig
   sugarLevel: string
+  acidityLevel: string
+  moldCoreLevel: string
 }
 
 /**
@@ -253,7 +255,9 @@ export const DEFAULT_QUALITY_LEVELS: QualityLevelData[] = [
       value: '优秀',
       options: ['优秀', '良好', '一般', '较差', '差', '极差', '零价值']
     }, 
-    sugarLevel: '高糖度' 
+    sugarLevel: '高糖度',
+    acidityLevel: '高酸度',
+    moldCoreLevel: '无霉芯'
   },
   { 
     levelName: '2', 
@@ -263,7 +267,9 @@ export const DEFAULT_QUALITY_LEVELS: QualityLevelData[] = [
       value: '良好',
       enabled: true
     }, 
-    sugarLevel: '中糖度' 
+    sugarLevel: '中糖度',
+    acidityLevel: '中酸度',
+    moldCoreLevel: '轻微霉芯'
   },
   { 
     levelName: '3', 
@@ -273,7 +279,9 @@ export const DEFAULT_QUALITY_LEVELS: QualityLevelData[] = [
       value: false,
       enabled: true
     }, 
-    sugarLevel: '低糖度' 
+    sugarLevel: '低糖度',
+    acidityLevel: '低酸度',
+    moldCoreLevel: '中度霉芯'
   },
   { 
     levelName: '4', 
@@ -283,33 +291,37 @@ export const DEFAULT_QUALITY_LEVELS: QualityLevelData[] = [
       value: '较差',
       placeholder: '请输入颜色等级'
     }, 
-    sugarLevel: '极低糖度' 
+    sugarLevel: '极低糖度',
+    acidityLevel: '极低酸度',
+    moldCoreLevel: '重度霉芯'
   },
   { 
     levelName: '5', 
     colorLevel: '差', 
-    sugarLevel: '无糖度' 
+    sugarLevel: '无糖度',
+    acidityLevel: '无酸度',
+    moldCoreLevel: '严重霉芯'
   },
-  { levelName: '6', colorLevel: '极差', sugarLevel: '负糖度' },
-  { levelName: '7', colorLevel: '零价值', sugarLevel: '零价值' },
-  { levelName: '8', colorLevel: '特优', sugarLevel: '超高糖度' },
-  { levelName: '9', colorLevel: '精品', sugarLevel: '优质糖度' },
-  { levelName: '10', colorLevel: '标准', sugarLevel: '标准糖度' },
-  { levelName: '11', colorLevel: '次品', sugarLevel: '低质糖度' },
-  { levelName: '12', colorLevel: '废品', sugarLevel: '无价值' },
-  { levelName: '13', colorLevel: '超优', sugarLevel: '顶级糖度' },
-  { levelName: '14', colorLevel: '良品', sugarLevel: '良好糖度' },
-  { levelName: '15', colorLevel: '合格', sugarLevel: '合格糖度' },
-  { levelName: '16', colorLevel: '顶级', sugarLevel: '特级糖度' },
-  { levelName: '17', colorLevel: '优质', sugarLevel: '精品糖度' },
-  { levelName: '18', colorLevel: '普通', sugarLevel: '普通糖度' },
-  { levelName: '19', colorLevel: '低质', sugarLevel: '劣质糖度' },
-  { levelName: '20', colorLevel: '劣质', sugarLevel: '废品糖度' },
-  { levelName: '21', colorLevel: '极品', sugarLevel: '极品糖度' },
-  { levelName: '22', colorLevel: '上品', sugarLevel: '上品糖度' },
-  { levelName: '23', colorLevel: '中品', sugarLevel: '中品糖度' },
-  { levelName: '24', colorLevel: '下品', sugarLevel: '下品糖度' },
-  { levelName: '25', colorLevel: '垃圾', sugarLevel: '垃圾糖度' }
+  { levelName: '6', colorLevel: '极差', sugarLevel: '负糖度', acidityLevel: '负酸度', moldCoreLevel: '零价值' },
+  { levelName: '7', colorLevel: '零价值', sugarLevel: '零价值', acidityLevel: '零价值', moldCoreLevel: '零价值' },
+  { levelName: '8', colorLevel: '特优', sugarLevel: '超高糖度', acidityLevel: '高酸度', moldCoreLevel: '无霉芯' },
+  { levelName: '9', colorLevel: '精品', sugarLevel: '优质糖度', acidityLevel: '中酸度', moldCoreLevel: '轻微霉芯' },
+  { levelName: '10', colorLevel: '标准', sugarLevel: '标准糖度', acidityLevel: '低酸度', moldCoreLevel: '中度霉芯' },
+  { levelName: '11', colorLevel: '次品', sugarLevel: '低质糖度', acidityLevel: '极低酸度', moldCoreLevel: '重度霉芯' },
+  { levelName: '12', colorLevel: '废品', sugarLevel: '无价值', acidityLevel: '无酸度', moldCoreLevel: '严重霉芯' },
+  { levelName: '13', colorLevel: '超优', sugarLevel: '顶级糖度', acidityLevel: '高酸度', moldCoreLevel: '无霉芯' },
+  { levelName: '14', colorLevel: '良品', sugarLevel: '良好糖度', acidityLevel: '中酸度', moldCoreLevel: '轻微霉芯' },
+  { levelName: '15', colorLevel: '合格', sugarLevel: '合格糖度', acidityLevel: '低酸度', moldCoreLevel: '中度霉芯' },
+  { levelName: '16', colorLevel: '顶级', sugarLevel: '特级糖度', acidityLevel: '极低酸度', moldCoreLevel: '重度霉芯' },
+  { levelName: '17', colorLevel: '优质', sugarLevel: '精品糖度', acidityLevel: '无酸度', moldCoreLevel: '严重霉芯' },
+  { levelName: '18', colorLevel: '普通', sugarLevel: '普通糖度', acidityLevel: '负酸度', moldCoreLevel: '零价值' },
+  { levelName: '19', colorLevel: '低质', sugarLevel: '劣质糖度', acidityLevel: '零价值', moldCoreLevel: '零价值' },
+  { levelName: '20', colorLevel: '劣质', sugarLevel: '废品糖度', acidityLevel: '零价值', moldCoreLevel: '零价值' },
+  { levelName: '21', colorLevel: '极品', sugarLevel: '极品糖度', acidityLevel: '高酸度', moldCoreLevel: '无霉芯' },
+  { levelName: '22', colorLevel: '上品', sugarLevel: '上品糖度', acidityLevel: '中酸度', moldCoreLevel: '轻微霉芯' },
+  { levelName: '23', colorLevel: '中品', sugarLevel: '中品糖度', acidityLevel: '低酸度', moldCoreLevel: '中度霉芯' },
+  { levelName: '24', colorLevel: '下品', sugarLevel: '下品糖度', acidityLevel: '极低酸度', moldCoreLevel: '重度霉芯' },
+  { levelName: '25', colorLevel: '垃圾', sugarLevel: '垃圾糖度', acidityLevel: '零价值', moldCoreLevel: '零价值' }
 ]
 
 // ==================== 默认设置 ====================

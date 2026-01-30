@@ -27,6 +27,8 @@ interface QualityLevelUpdate {
   levelName?: string
   colorLevel?: string
   sugarLevel?: string
+  acidityLevel?: string
+  moldCoreLevel?: string
 }
 
 /**
@@ -177,7 +179,9 @@ export class QualityDataManager {
       this.qualityLevels[index] = {
         levelName: data.levelName !== undefined ? data.levelName : currentData.levelName,
         colorLevel: data.colorLevel !== undefined ? data.colorLevel : currentData.colorLevel,
-        sugarLevel: data.sugarLevel !== undefined ? data.sugarLevel : currentData.sugarLevel
+        sugarLevel: data.sugarLevel !== undefined ? data.sugarLevel : currentData.sugarLevel,
+        acidityLevel: data.acidityLevel !== undefined ? data.acidityLevel : currentData.acidityLevel,
+        moldCoreLevel: data.moldCoreLevel !== undefined ? data.moldCoreLevel : currentData.moldCoreLevel
       }
     }
   }

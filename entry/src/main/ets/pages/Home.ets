@@ -133,6 +133,7 @@ struct Page {
   @State quickDialogContent: string = ''
   private quickDialogConfirm?: () => void
   @State private quickDialogIndex: number = -1
+  @StorageLink('HOME_LIQUID_CARD_DOUBLE_CLICK_INDEX') @Watch('onLiquidCardDoubleClickIndexChange') private liquidCardDoubleClickIndex: number = 0
   private bottomButtonsCount: number = 10
   // 打印按钮悬停状态
   @State showPrintSubButtons: boolean = false
@@ -1721,6 +1722,13 @@ struct Page {
     HomeContent()
   }
 
+  private onLiquidCardDoubleClickIndexChange(): void {
+    if (this.liquidCardDoubleClickIndex > 0) {
+      this.openQuickDialogForIndex(this.liquidCardDoubleClickIndex)
+      AppStorage.set('HOME_LIQUID_CARD_DOUBLE_CLICK_INDEX', 0)
+    }
+  }
+
   @Builder
   private buildLevelPage(): void {
     LevelContent({
@@ -1732,7 +1740,11 @@ struct Page {
 
   @Builder
   private buildQualityPage(): void {
-    QualityContent()
+    QualityContent({
+      onPageChange: (pageName: string) => {
+        this.handlePageChange(pageName)
+      }
+    })
   }
 
   @Builder

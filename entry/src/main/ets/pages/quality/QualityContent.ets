@@ -1,35 +1,3 @@
- /**
- * 品质内容组件
- * 
- * 功能说明：
- * - 显示品质相关的内容和功能
- * - 集成模块化组件架构
- * - 支持主题切换和样式适配
- * 
- * 主要特性：
- * - 模块化架构：使用独立的组件模块
- * - 状态管理：集中管理所有状态
- * - 事件处理：统一处理用户交互
- * - 数据管理：集中管理数据操作
- * - 主题适配：支持明暗主题切换
- * 
- * 组件结构：
- * - 控制面板：等级数量选择、自动设定、设置参数
- * - 数据表格：显示品质等级数据
- * - 出口对话框：出口设置和选择
- * 
- * 使用场景：
- * - 品质页面主界面
- * - 品质等级管理
- * - 出口设置配置
- *
- * 集成说明：
- * - 使用QualityStateManager管理状态
- * - 使用QualityDataManager管理数据
- * - 使用QualityEventHandler处理事件
- * - 使用模块化组件构建UI
- */
-
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
@@ -50,6 +18,9 @@ import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
 
 const DOMAIN = 0x0000
 const TAG = 'QualityContent'
+interface HomeContentRef {
+  refreshAllTables?: () => void
+}
 
 /**
  * 品质内容组件
@@ -129,6 +100,12 @@ export struct QualityContent {
   @State private isHovering: boolean = false
   // 品质参数设置对话框显示状态
   @State private showQualitySettingsDialog: boolean = false
+
+  /**
+   * 页面切换回调
+   * 当需要切换页面时（如保存后返回主页），通过此回调通知父组件
+   */
+  onPageChange?: (pageName: string) => void
 
   // 控制面板组件引用
   private controlPanelRef: QualityControlPanel | null = null
@@ -436,14 +413,18 @@ export struct QualityContent {
     this.stateManager.updateQualityLevel(index, {
       levelName: data.levelName,
       colorLevel: typeof data.colorLevel === 'string' ? data.colorLevel : String(data.colorLevel.value),
-      sugarLevel: data.sugarLevel
+      sugarLevel: data.sugarLevel,
+      acidityLevel: data.acidityLevel,
+      moldCoreLevel: data.moldCoreLevel
     })
     
     // 更新数据管理器
     this.dataManager.updateQualityLevel(index, {
       levelName: data.levelName,
       colorLevel: typeof data.colorLevel === 'string' ? data.colorLevel : String(data.colorLevel.value),
-      sugarLevel: data.sugarLevel
+      sugarLevel: data.sugarLevel,
+      acidityLevel: data.acidityLevel,
+      moldCoreLevel: data.moldCoreLevel
     })
     
     // 触发事件处理
@@ -451,6 +432,38 @@ export struct QualityContent {
 
     // 同步最新数据到可观察数组
     this.currentLevels = this.stateManager.getQualityLevels()
+  }
+
+  /**
+   * 处理保存并确认
+   * 
+   * 功能说明：
+   * - 保存品质等级数据
+   * - 更新首页显示的品质名称
+   * - 返回主页
+   */
+  private handleSaveAndConfirm(): void {
+    const levels = this.stateManager.getQualityLevels()
+    const selectedFSM = (AppStorage.get(HOME_SELECTED_FSM) as ('FSM1' | 'FSM2') | undefined) ?? 'FSM1'
+    HomeDataManager.getInstance().updateQualityGradeNames(levels.map(item => item.levelName), selectedFSM)
+    const homeContent = AppStorage.get('HOME_CONTENT_REF') as HomeContentRef | null
+    if (homeContent?.refreshAllTables) {
+      homeContent.refreshAllTables()
+    }
+    
+    // 如果有数据，触发更新事件
+    if (levels.length > 0) {
+      const first = levels[0]
+      this.eventHandler.onDataUpdate(first, -1)
+    }
+    
+    console.log('品质页面：确认操作')
+
+    // 保存完成后，返回主页
+    if (this.onPageChange) {
+      console.log('【品质页面】保存完成，返回主页')
+      this.onPageChange('home')
+    }
   }
 
   /**
@@ -530,12 +543,7 @@ export struct QualityContent {
             buttonHeight: 50,
             fontSize: 16,
             onClickCallback: () => {
-              const levels = this.stateManager.getQualityLevels()
-              const selectedFSM = (AppStorage.get(HOME_SELECTED_FSM) as ('FSM1' | 'FSM2') | undefined) ?? 'FSM1'
-              HomeDataManager.getInstance().updateQualityGradeNames(levels.map(item => item.levelName), selectedFSM)
-              const first = levels[0]
-              this.eventHandler.onDataUpdate(first, -1)
-              console.log('品质页面：确认操作')
+              this.handleSaveAndConfirm()
             }
           })
 

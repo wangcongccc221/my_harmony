@@ -39,6 +39,15 @@
 import { LevelData, StatisticsData } from './LevelDataManager'
 import { DEFAULT_LEVEL_SETTINGS, DEFAULT_STATISTICS_DATA } from '../LevelConstants'
 
+// 持久化存储表格数量设置
+PersistentStorage.PersistProp('LevelTableCount', DEFAULT_LEVEL_SETTINGS.tableCount)
+// 持久化存储等级数量索引
+PersistentStorage.PersistProp('LevelCountIndex', 0)
+// 持久化存储装箱重量1
+PersistentStorage.PersistProp('LevelPackingWeight1', DEFAULT_LEVEL_SETTINGS.packingWeight1)
+// 持久化存储装箱重量2
+PersistentStorage.PersistProp('LevelPackingWeight2', DEFAULT_LEVEL_SETTINGS.packingWeight2)
+
 /**
  * 等级页面状态管理类
  * 
@@ -134,7 +143,7 @@ export class LevelStateManager {
    * - 数据处理时使用重量1
    * - 状态重置时恢复默认值
    */
-  packingWeight1: number = DEFAULT_LEVEL_SETTINGS.packingWeight1
+  packingWeight1: number = AppStorage.Get<number>('LevelPackingWeight1') || DEFAULT_LEVEL_SETTINGS.packingWeight1
   
   /**
    * 装箱重量2
@@ -149,7 +158,7 @@ export class LevelStateManager {
    * - 数据处理时使用重量2
    * - 状态重置时恢复默认值
    */
-  packingWeight2: number = DEFAULT_LEVEL_SETTINGS.packingWeight2
+  packingWeight2: number = AppStorage.Get<number>('LevelPackingWeight2') || DEFAULT_LEVEL_SETTINGS.packingWeight2
   
   /**
    * 表格数量设置
@@ -335,6 +344,7 @@ export class LevelStateManager {
    */
   updatePackingWeight1(weight: number): void {
     this.packingWeight1 = weight
+    AppStorage.SetOrCreate('LevelPackingWeight1', weight)
   }
 
   /**
@@ -354,6 +364,7 @@ export class LevelStateManager {
    */
   updatePackingWeight2(weight: number): void {
     this.packingWeight2 = weight
+    AppStorage.SetOrCreate('LevelPackingWeight2', weight)
   }
 
   /**
@@ -373,6 +384,7 @@ export class LevelStateManager {
    */
   updateTableCount(count: string): void {
     this.tableCount = count
+    AppStorage.SetOrCreate('LevelTableCount', count)
   }
 
   /**

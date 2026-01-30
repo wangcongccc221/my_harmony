@@ -61,6 +61,32 @@ export struct QualityDataTable {
         .textAlign(TextAlign.Center)
         .layoutWeight(1)
         .padding({ left: 4, right: 4, top: 4, bottom: 4 })
+
+      Divider()
+        .vertical(true)
+        .height(60)
+        .color(this.getCurrentTheme().borderColor)
+
+      Text(t('酸度等级', '酸度等级'))
+        .fontSize(18)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(this.getCurrentTheme().textColor)
+        .textAlign(TextAlign.Center)
+        .layoutWeight(1)
+        .padding({ left: 4, right: 4, top: 4, bottom: 4 })
+
+      Divider()
+        .vertical(true)
+        .height(60)
+        .color(this.getCurrentTheme().borderColor)
+
+      Text(t('霉芯等级', '霉芯等级'))
+        .fontSize(18)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(this.getCurrentTheme().textColor)
+        .textAlign(TextAlign.Center)
+        .layoutWeight(1)
+        .padding({ left: 4, right: 4, top: 4, bottom: 4 })
     }
     .width('100%')
     .height(40) // 设置固定高度
@@ -153,7 +179,6 @@ export struct QualityDataTable {
     Row() {
       // 等级名称列 - 可编辑
       TextInput({ text: this.levelNameInputs[index] ?? data.levelName })
-        .type(InputType.Number)
         .fontSize(24)
         .fontColor(this.getCurrentTheme().textColor)
         .backgroundColor(Color.Transparent)
@@ -162,32 +187,31 @@ export struct QualityDataTable {
         .padding({ left: 4, right: 4, top: 6, bottom: 6 })
         .enterKeyType(EnterKeyType.Done)
         .onChange((value: string) => {
-          // 仅保留数字（允许空串）
-          const numeric = value.replace(/\D+/g, '')
-          this.levelNameInputs[index] = numeric
+          this.levelNameInputs[index] = value
         })
         .onSubmit((enterKey: EnterKeyType) => {
-          // 使用当前受控值作为提交内容
           const current = this.levelNameInputs[index] ?? ''
-          const numeric = current.replace(/\D+/g, '')
-          this.levelNameInputs[index] = numeric
+          this.levelNameInputs[index] = current
           if (this.onDataUpdate) {
             this.onDataUpdate({
-              levelName: numeric,
+              levelName: current,
               colorLevel: data.colorLevel,
-              sugarLevel: data.sugarLevel
+              sugarLevel: data.sugarLevel,
+              acidityLevel: data.acidityLevel,
+              moldCoreLevel: data.moldCoreLevel
             }, index)
           }
         })
         .onBlur(() => {
           const current = this.levelNameInputs[index] ?? ''
-          const numeric = current.replace(/\D+/g, '')
-          this.levelNameInputs[index] = numeric
+          this.levelNameInputs[index] = current
           if (this.onDataUpdate) {
             this.onDataUpdate({
-              levelName: numeric,
+              levelName: current,
               colorLevel: data.colorLevel,
-              sugarLevel: data.sugarLevel
+              sugarLevel: data.sugarLevel,
+              acidityLevel: data.acidityLevel,
+              moldCoreLevel: data.moldCoreLevel
             }, index)
           }
         })
@@ -225,6 +249,32 @@ export struct QualityDataTable {
 
       // 糖度等级列
       Text(data.sugarLevel)
+        .fontSize(24)
+        .fontColor(this.getCurrentTheme().textColor)
+        .fontWeight(FontWeight.Medium)
+        .layoutWeight(1)
+        .textAlign(TextAlign.Center)
+        .padding({ left: 4, right: 4, top: 6, bottom: 6 })
+
+      Divider()
+        .vertical(true)
+        .height(60)
+        .color(this.getCurrentTheme().borderColor)
+
+      Text(data.acidityLevel)
+        .fontSize(24)
+        .fontColor(this.getCurrentTheme().textColor)
+        .fontWeight(FontWeight.Medium)
+        .layoutWeight(1)
+        .textAlign(TextAlign.Center)
+        .padding({ left: 4, right: 4, top: 6, bottom: 6 })
+
+      Divider()
+        .vertical(true)
+        .height(60)
+        .color(this.getCurrentTheme().borderColor)
+
+      Text(data.moldCoreLevel)
         .fontSize(24)
         .fontColor(this.getCurrentTheme().textColor)
         .fontWeight(FontWeight.Medium)
@@ -274,7 +324,7 @@ export struct QualityDataTable {
 
   aboutToAppear(): void {
     // 初始化受控输入数组
-    this.levelNameInputs = (this.qualityLevels || []).map(item => (item.levelName ?? '').replace(/\D+/g, ''))
+    this.levelNameInputs = (this.qualityLevels || []).map(item => item.levelName ?? '')
     this.lastCount = this.qualityLevels ? this.qualityLevels.length : 0
     console.log(`📊 品质数据表格初始化 - 数据条数: ${this.lastCount} 条`)
   }
@@ -289,11 +339,11 @@ export struct QualityDataTable {
     // 同步受控输入数组长度与值，避免因为数据刷新导致跳动
     const source = this.qualityLevels || []
     if (!this.levelNameInputs || this.levelNameInputs.length !== source.length) {
-      this.levelNameInputs = source.map(item => (item.levelName ?? '').replace(/\D+/g, ''))
+      this.levelNameInputs = source.map(item => item.levelName ?? '')
     } else {
       // 对齐内容（当外部数据变化时）
       for (let i = 0; i < source.length; i++) {
-        const normalized = (source[i].levelName ?? '').replace(/\D+/g, '')
+        const normalized = source[i].levelName ?? ''
         if (this.levelNameInputs[i] === undefined) {
           this.levelNameInputs[i] = normalized
         }

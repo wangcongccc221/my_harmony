@@ -53,6 +53,8 @@ export struct GridTable {
   
   // 表格标题
   @Prop tableTitle: string = '等级表'
+
+  @Prop showTitle: boolean = true
   
   // 表头标题（与每行列数一致）
   @Prop headerTitles: string[] = ['等级', '30', '20', '10', '0']
@@ -861,16 +863,17 @@ export struct GridTable {
 
   build() {
     Column({ space: 0 }) {
-      // ==================== 标题区域（无背景，使用深色文字与表头形成对比）====================
-      Row() {
-        Text(this.tableTitle)
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#1e3a5f')                            // 深蓝色文字，与表头形成对比
+      if (this.showTitle) {
+        Row() {
+          Text(this.tableTitle)
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#1e3a5f')
+        }
+        .width('100%')
+        .backgroundColor(Color.Transparent)
+        .padding({ left: 12, right: 12, top: 12, bottom: 8 })
       }
-      .width('100%')
-      .backgroundColor(Color.Transparent)                 // 透明背景
-      .padding({ left: 12, right: 12, top: 12, bottom: 8 })  // 内边距
 
       // ==================== 表格容器（浅色背景）====================
       Column({ space: 0 }) {

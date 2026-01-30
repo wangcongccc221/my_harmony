@@ -118,9 +118,20 @@ export struct LevelDataTable {
    * - 默认值为第一个选项
    * - 支持3-6行的表格数量配置
    */
-  @Prop tableCount: string = TABLE_COUNT_OPTIONS[0].value
+  @Prop @Watch('onPropTableCountChange') tableCount: string = TABLE_COUNT_OPTIONS[0].value
   /** 父组件传入的刷新驱动键（数值变化即触发刷新） */
   @Prop @Watch('onExternalStatsChange') refreshKey: number = 0
+  
+  /**
+   * 包装重量1（从父组件传入，用于辅助计算）
+   */
+  @Prop @Watch('onPackingWeight1Change') packingWeight1: number = 0
+
+  /**
+   * 包装重量2（从父组件传入，用于辅助计算）
+   */
+  @Prop @Watch('onPackingWeight2Change') packingWeight2: number = 0
+
   /**
    * 统计表编辑回调：父组件接收单元格编辑并处理联动
    * row: 'bottom1' | 'bottom2'
@@ -161,7 +172,7 @@ export struct LevelDataTable {
    * - 默认值为0（2个等级）
    * - 支持2-7个等级的选择
    */
-  @State private levelCountIndex: number = 0
+  @StorageLink('LevelCountIndex') levelCountIndex: number = 0
 
   /**
    * 动态生成等级数量选择器选项
@@ -336,6 +347,122 @@ export struct LevelDataTable {
     this.initializeStatisticsData()
     this.statsRefreshTick++
     console.log('【等级页面】收到外部统计变化：已重建统计数据', JSON.stringify(this.statisticsTableData))
+  }
+
+  /**
+   * 包装重量1变化时的回调
+   */
+  private onPackingWeight1Change(): void {
+    console.log('【等级页面】包装重量1变化:', this.packingWeight1)
+    this.calculatePackingAmounts()
+    this.updateStatisticsSets()
+  }
+
+  /**
+   * 包装重量2变化时的回调
+   * 预留接口：若后续需根据packingWeight2进行第二种模式计算或统计表更新，可在此处添加逻辑
+   */
+  private onPackingWeight2Change(): void {
+    console.log('【等级页面】包装重量2变化:', this.packingWeight2)
+    // 目前主要依照48项目逻辑，使用packingWeight1计算主表装箱量
+    this.updateStatisticsSets()
+  }
+
+  /**
+   * 等级数据变化时的回调
+   */
+  private onLevelDataChange(): void {
+    console.log('【等级页面】等级数据变化，重新初始化')
+    this.initializeLevelData()
+  }
+
+  /**
+   * 表格数量变化时的回调 (Prop)
+   */
+  private onPropTableCountChange(): void {
+    console.log('【等级页面】表格数量Prop变化:', this.tableCount)
+    this.initializeLevelData()
+  }
+
+  /**
+   * 更新统计表中的设定重量
+   * 根据 packingWeight1 和 packingWeight2 更新 bottom1Sets 和 bottom2Sets
+   */
+  private updateStatisticsSets(): void {
+    if (!this.statisticsData) return
+
+    let hasChange = false
+    
+    // 更新 Bottom 1 Set (根据 packingWeight1)
+    if (this.packingWeight1 > 0) {
+      const setVal = this.packingWeight1 * 1000 // 转换为克
+      if (this.statisticsData.bottom1Sets) {
+        for (let i = 0; i < this.statisticsData.bottom1Sets.length; i++) {
+          if (this.statisticsData.bottom1Sets[i] !== setVal) {
+            this.statisticsData.bottom1Sets[i] = setVal
+            hasChange = true
+          }
+        }
+      }
+    }
+
+    // 更新 Bottom 2 Set (根据 packingWeight2)
+    if (this.packingWeight2 > 0) {
+      const setVal = this.packingWeight2 * 1000 // 转换为克
+      if (this.statisticsData.bottom2Sets) {
+        for (let i = 0; i < this.statisticsData.bottom2Sets.length; i++) {
+          if (this.statisticsData.bottom2Sets[i] !== setVal) {
+            this.statisticsData.bottom2Sets[i] = setVal
+            hasChange = true
+          }
+        }
+      }
+    }
+
+    if (hasChange) {
+      this.initializeStatisticsData() // 重新计算平均值并刷新表格
+      this.statsRefreshTick++
+      console.log('【等级页面】统计表设定值已更新')
+    }
+  }
+
+  /**
+   * 计算装箱量
+   * 
+   * 功能说明：
+   * - 根据包装重量1和最小重量计算装箱量
+   * - 对应48项目 FillGradeSizeData 中的逻辑：
+   * - nFruitNum = m_PackingWeight1 * 1000 / nMinSize
+   * - 仅当包装重量1大于0时计算
+   */
+  private calculatePackingAmounts(): void {
+    if (this.packingWeight1 <= 0) {
+      return
+    }
+
+    console.log('【等级页面】开始重新计算装箱量')
+    let hasChange = false
+    
+    this.levelTableData.forEach((item, index) => {
+      if (item.minWeight > 0) {
+        // 计算装箱量：(包装重量1(kg) * 1000) / 最小重量(g)
+        // 结果保留整数（或是根据需求保留小数，这里暂时取整）
+        const newPackingWeight = Math.round((this.packingWeight1 * 1000) / item.minWeight)
+        
+        if (item.packingWeight !== newPackingWeight) {
+          item.packingWeight = newPackingWeight
+          // 更新输入框显示
+          this.packingWeightInputs[index] = this.formatWeight(newPackingWeight)
+          hasChange = true
+        }
+      }
+    })
+
+    if (hasChange) {
+      // 强制刷新UI
+      this.forceRefresh++
+      console.log('【等级页面】装箱量已更新')
+    }
   }
 
   /**
@@ -554,7 +681,7 @@ export struct LevelDataTable {
       Divider().vertical(true).height(30).color(this.getCurrentTheme().borderColor)
 
       // 装箱量列
-      Text(t('装箱量（克）', '装箱量（克）'))
+      Text(t('装箱数（个）', '装箱数（个）'))
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.getCurrentTheme().textColor)
@@ -613,6 +740,14 @@ export struct LevelDataTable {
             const parsed = Number(numericStr)
             if (!isNaN(parsed)) {
               this.levelTableData[index].minWeight = parsed
+              
+              // 联动计算装箱量：当最小重量变化且包装重量1有效时，自动计算装箱量
+              if (this.packingWeight1 > 0 && parsed > 0) {
+                 const newPackingWeight = Math.round((this.packingWeight1 * 1000) / parsed)
+                 this.levelTableData[index].packingWeight = newPackingWeight
+                 // 更新装箱量输入显示
+                 this.packingWeightInputs[index] = this.formatWeight(newPackingWeight)
+              }
             }
           })
           .onClick(() => {
@@ -1141,8 +1276,15 @@ export struct LevelDataTable {
               .height(36) // 与重量精度输入框高度一致
               .onSelect((index: number) => {
                 this.levelCountIndex = index
-                this.initializeLevelData()
                 console.log('等级数量选择:', index)
+                
+                // 通知父组件更新表格数量
+                if (this.onTableCountChange) {
+                  this.onTableCountChange(index.toString())
+                } else {
+                  // 如果没有父组件回调，则仅本地更新
+                  this.initializeLevelData()
+                }
               })
               .onAxisEvent((event?: AxisEvent) => {
                 if (event) {

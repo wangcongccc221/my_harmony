@@ -473,13 +473,6 @@ export struct LevelTable {
 
   build() {
     Column() {
-      // 表格标题
-      Text(this.tableTitle)
-        .fontSize(16)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.getCurrentTheme().textColor)
-        .alignSelf(ItemAlign.Start)
-        .margin({ bottom: 10 })
 
       // 通用表格（带滚动功能）
       Column() {
@@ -505,7 +498,7 @@ export struct LevelTable {
                 .fontWeight(FontWeight.Bold)
                 .textAlign(TextAlign.Center)
                 .layoutWeight(1)
-                .padding(this.cellPadding)
+                .padding({ left: this.cellPadding, right: this.cellPadding, top: Math.max(4, this.cellPadding - 6), bottom: Math.max(4, this.cellPadding - 6) })
                 .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? this.getCurrentTheme().surfaceColor)
                 .border({ width: { right: 1, bottom: 1 }, color: this.getCurrentTheme().borderColor })
                 .draggable(this.enableDrag)
@@ -568,7 +561,7 @@ export struct LevelTable {
     .backgroundColor(this.enableCardStyle ? (this.containerBg || this.getCurrentTheme().surfaceColor) : Color.Transparent)
     .border(this.enableCardStyle ? { width: 1, color: this.getCurrentTheme().borderColor } : { width: 0 })
     .borderRadius(this.enableCardStyle ? 12 : 0)
-    .padding(this.enableCardStyle ? 12 : 0)
+    .padding(this.enableCardStyle ? { top: 6, left: 12, right: 12, bottom: 8 } : 0)
     .margin(this.enableCardStyle ? { top: 12, left: 12, right: 12, bottom: 8 } : { top: 0, left: 0, right: 0, bottom: 0 })
     .alignItems(HorizontalAlign.Center)
     .justifyContent(FlexAlign.Start)
