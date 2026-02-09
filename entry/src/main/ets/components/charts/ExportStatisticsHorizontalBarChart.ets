@@ -68,7 +68,6 @@ export struct ExportStatisticsHorizontalBarChart {
   @State fsm2Data: number[] = []; // FSM2的数据（个数）
   
   aboutToAppear() {
-    console.log(`[ExportStatisticsHorizontalBarChart] aboutToAppear, selectedSubsystem=${this.selectedSubsystem}`)
     this.currentSubsystem = this.selectedSubsystem
     this.showCanvas = true  // 确保Canvas显示
     this.dataUpdateKey = 0  // 重置更新key
@@ -78,7 +77,6 @@ export struct ExportStatisticsHorizontalBarChart {
   aboutToUpdate() {
     // 每次组件更新时检查 selectedSubsystem 是否变化
     if (this.selectedSubsystem !== this.currentSubsystem) {
-      console.log(`[ExportStatisticsHorizontalBarChart] aboutToUpdate检测到变化: ${this.currentSubsystem} -> ${this.selectedSubsystem}`)
       this.currentSubsystem = this.selectedSubsystem
       this.dataUpdateKey++  // 触发数据更新和Canvas重新创建（key变化会强制Canvas重新创建）
       this.refreshKey++  // 增加refreshKey，强制Canvas重新创建
@@ -127,15 +125,8 @@ export struct ExportStatisticsHorizontalBarChart {
         this.categories.push(i.toString())
       }
       
-      // 生成模拟数据（TODO: 后续可以替换为真实数据）
-      this.fsm1Data = []
-      this.fsm2Data = []
-      for (let i = 0; i < maxOutlets; i++) {
-        // FSM1数据：随机值 50-200
-        this.fsm1Data.push(Math.floor(Math.random() * 150) + 50)
-        // FSM2数据：随机值 30-180
-        this.fsm2Data.push(Math.floor(Math.random() * 150) + 30)
-      }
+      this.fsm1Data = new Array(maxOutlets).fill(0)
+      this.fsm2Data = new Array(maxOutlets).fill(0)
       
       // 对于垂直柱状图，高度使用传入的 chartHeight
       // 宽度需要根据出口数量计算，支持滚动（进一步放大条形）

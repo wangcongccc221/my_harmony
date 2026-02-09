@@ -87,15 +87,8 @@ export struct ExportStatisticsBarChart {
       this.categories.push(`出口${i}`);
     }
     
-    // 生成静态模拟数据（两个指标）
-    this.data1 = [];
-    this.data2 = [];
-    for (let i = 0; i < maxOutlets; i++) {
-      // 第一个指标：随机值 100-200
-      this.data1.push(Math.floor(Math.random() * 100) + 100);
-      // 第二个指标：随机值 50-150
-      this.data2.push(Math.floor(Math.random() * 100) + 50);
-    }
+    this.data1 = new Array(maxOutlets).fill(0)
+    this.data2 = new Array(maxOutlets).fill(0)
     
     // 更新系列配置中的数据
     this.seriesConfig[0].data = this.data1;

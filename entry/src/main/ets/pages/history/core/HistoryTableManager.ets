@@ -1,23 +1,10 @@
 import { DateValidationUtils } from '../../../utils/helpers/DateValidationUtils'
+import { getORM } from '@ibestservices/ibest-orm'
+import { TbFruitinfo } from '../../../db/entities/TbFruitinfo'
 /*
 import { GetIBestORM } from '../../../database/orm';
 import { FruitInfo } from '../../../database/models/FruitInfo';
 */
-
-// 本地定义 FruitInfo 接口，以替代缺失的数据库模型
-export interface FruitInfo {
-  CustomerID?: number;
-  FBatchNo?: string;
-  CustomerName?: string;
-  FarmName?: string;
-  FruitName?: string;
-  StartedState?: string;
-  CompletedState?: string;
-  StartTime?: string;
-  EndTime?: string;
-  BatchWeight?: number;
-  BatchNumber?: number;
-}
 
 // 注意：历史加工数据表对应水果信息表（tb_fruitinfo）
 // 字段映射关系：
@@ -132,7 +119,7 @@ export class HistoryTableManager {
   /**
    * 将 FruitInfo 转换为 HistoryTableData
    */
-  private static mapFruitInfoToHistoryData(fruitInfo: FruitInfo): HistoryTableData {
+  private static mapFruitInfoToHistoryData(fruitInfo: TbFruitinfo): HistoryTableData {
     const id = fruitInfo.CustomerID || 0;
     const status = HistoryTableManager.determineStatus(
       fruitInfo.StartedState,
@@ -166,24 +153,13 @@ export class HistoryTableManager {
    */
   public async loadDataFromDatabase(): Promise<void> {
     try {
-      /*
-      const db = GetIBestORM();
-      if (!db) {
-        console.error('ORM 未初始化');
-        this.tableData = [];
-        this.dataLoaded = true;
-        return;
-      }
-
-      // 从水果信息表查询所有数据
-      const fruitInfoList = db.Session(FruitInfo).OrderByDesc('customer_i_d').Find(FruitInfo) as FruitInfo[];
-      
-      // 转换为历史表格数据
-      this.tableData = fruitInfoList.map(fruitInfo => HistoryTableManager.mapFruitInfoToHistoryData(fruitInfo));
-      */
-      
-      // 暂时使用空数据，等待数据库模块修复
-      this.tableData = [];
+      const orm = getORM()
+      const listRaw = orm.query(TbFruitinfo)
+        .orderBy('CustomerID', 'desc')
+        .find() as TbFruitinfo[]
+      const list = await Promise.resolve(listRaw)
+      const visibleList = list.filter(item => item.FVisible === undefined || item.FVisible === null || item.FVisible !== 0)
+      this.tableData = visibleList.map(item => HistoryTableManager.mapFruitInfoToHistoryData(item))
       this.dataLoaded = true;
     } catch (error) {
       console.error('从数据库加载历史加工数据失败:', error);
@@ -214,18 +190,37 @@ export class HistoryTableManager {
    * 删除数据（已禁用：历史加工数据来自水果信息表，不支持直接删除）
    */
   async deleteData(id: number): Promise<void> {
-    // 注意：历史加工数据来自水果信息表，不支持通过此接口删除
-    // 如需删除数据，请使用 FruitInfoService
-    console.warn('历史加工数据来自水果信息表，不支持通过此接口删除');
+    const orm = getORM()
+    await Promise.resolve(
+      orm.query(TbFruitinfo)
+        .where({ CustomerID: id })
+        .update({ FVisible: 0 })
+    )
+    this.dataLoaded = false
   }
 
   /**
    * 更新数据（已禁用：历史加工数据来自水果信息表，不支持直接更新）
    */
   async updateData(id: number, newData: UpdateDataParams): Promise<void> {
-    // 注意：历史加工数据来自水果信息表，不支持通过此接口更新
-    // 如需更新数据，请使用 FruitInfoService
-    console.warn('历史加工数据来自水果信息表，不支持通过此接口更新');
+    const orm = getORM()
+    const updateObj: Partial<TbFruitinfo> = {}
+    if (newData.customerName !== undefined) updateObj.CustomerName = newData.customerName
+    if (newData.farmName !== undefined) updateObj.FarmName = newData.farmName
+    if (newData.fruitName !== undefined) updateObj.FruitName = newData.fruitName
+    if (newData.startTime !== undefined) updateObj.StartTime = newData.startTime
+    if (newData.endTime !== undefined) updateObj.EndTime = newData.endTime
+    if (newData.batchNo !== undefined) updateObj.FBatchNo = newData.batchNo
+    if (newData.weight !== undefined) updateObj.BatchWeight = newData.weight
+    if (newData.count !== undefined) updateObj.BatchNumber = newData.count
+    if (newData.completedState !== undefined) updateObj.CompletedState = newData.completedState
+
+    await Promise.resolve(
+      orm.query(TbFruitinfo)
+        .where({ CustomerID: id })
+        .update(updateObj)
+    )
+    this.dataLoaded = false
   }
 
   /**
@@ -264,88 +259,44 @@ export class HistoryTableManager {
    * 从数据库查询数据（支持筛选条件）
    */
   public async queryFromDB(filters: FilterParams): Promise<HistoryTableData[]> {
-    /*
     try {
-      const db = GetIBestORM();
-      if (!db) {
-        console.error('ORM 未初始化');
-        return [];
-      }
+      const orm = getORM()
+      let qb = orm.query(TbFruitinfo)
 
-      console.log('开始查询，筛选条件:', JSON.stringify(filters));
-
-      // 先查询所有数据，看看数据库里有什么
-      const allData = db.Session(FruitInfo).Find(FruitInfo) as FruitInfo[];
-      console.log(`数据库中总共有 ${allData.length} 条数据`);
-      if (allData.length > 0) {
-        console.log('前3条数据的FruitName:', allData.slice(0, 3).map(item => item.FruitName));
-      }
-
-      // 开始构建查询
-      // 注意：每次调用 Session 会重置查询状态
-      const session = db.Session(FruitInfo);
-
-      // 1. 构建筛选条件
-      
-      // 客户名称（模糊查询）- 使用数据库字段名
       if (filters.customerName && filters.customerName.trim() !== '') {
-        session.Like('customer_name', `%${filters.customerName.trim()}%`);
-        console.log(`添加客户名称筛选: ${filters.customerName.trim()}`);
+        qb = qb.where({ CustomerName: { like: `%${filters.customerName.trim()}%` } })
       }
-
-      // 农场名称（模糊查询）- 使用数据库字段名
       if (filters.farmName && filters.farmName.trim() !== '') {
-        session.Like('farm_name', `%${filters.farmName.trim()}%`);
-        console.log(`添加农场名称筛选: ${filters.farmName.trim()}`);
+        qb = qb.where({ FarmName: { like: `%${filters.farmName.trim()}%` } })
       }
-
-      // 水果名称（模糊查询）- 使用数据库字段名 fruit_name
       if (filters.fruitName && filters.fruitName.trim() !== '') {
-        // 使用模糊查询，支持部分匹配
-        // 例如：查询"苹果"可以匹配"红富士苹果"、"苹果"等
-        const fruitNameValue = filters.fruitName.trim();
-        session.Like('fruit_name', `%${fruitNameValue}%`);
-        console.log(`添加水果名称筛选: ${fruitNameValue} (使用Like: %${fruitNameValue}%, 字段名: fruit_name)`);
+        qb = qb.where({ FruitName: { like: `%${filters.fruitName.trim()}%` } })
       }
 
-      // 日期范围查询
-      // 注意：ORM 的 Greater/Less 方法可能仅支持数字，这里使用 Between 处理字符串日期
-      let minDate = '1970-01-01';
-      let maxDate = '9999-12-31 23:59:59';
-
-      if (filters.startDate) {
-        minDate = filters.startDate;
-        console.log(`添加开始日期筛选: ${minDate}`);
-      }
-      
-      if (filters.endDate) {
-        // 确保包含当天
-        maxDate = filters.endDate + ' 23:59:59';
-        console.log(`添加结束日期筛选: ${maxDate}`);
+      const hasStart = !!filters.startDate
+      const hasEnd = !!filters.endDate
+      if (hasStart || hasEnd) {
+        const startDay = (filters.startDate && filters.startDate.trim() !== '') ? filters.startDate.trim() : '1970-01-01'
+        const endDay = (filters.endDate && filters.endDate.trim() !== '') ? filters.endDate.trim() : '9999-12-31'
+        const startTime = `${startDay} 00:00:00`
+        const endTime = `${endDay} 23:59:59`
+        qb = qb.whereBetween('StartTime', startTime, endTime)
       }
 
-      if (filters.startDate || filters.endDate) {
-        session.Between('start_time', minDate, maxDate);
+      const listRaw = qb.orderBy('CustomerID', 'desc').find() as TbFruitinfo[]
+      const list = await Promise.resolve(listRaw)
+      const visibleList = list.filter(item => item.FVisible === undefined || item.FVisible === null || item.FVisible !== 0)
+      let result = visibleList.map(item => HistoryTableManager.mapFruitInfoToHistoryData(item))
+
+      if (filters.status) {
+        result = result.filter(item => item.status === filters.status)
       }
 
-      // 2. 执行查询
-      const fruitInfoList = session.OrderByDesc('customer_i_d').Find(FruitInfo) as FruitInfo[];
-      console.log(`查询结果: ${fruitInfoList.length} 条`);
-      if (fruitInfoList.length > 0) {
-        console.log('查询到的FruitName:', fruitInfoList.map(item => item.FruitName));
-      }
-
-      // 3. 转换为 HistoryTableData
-      const result = fruitInfoList.map(fruitInfo => HistoryTableManager.mapFruitInfoToHistoryData(fruitInfo));
-      
-      return result;
-
+      return result
     } catch (error) {
       console.error('数据库查询失败:', error);
       return [];
     }
-    */
-    return [];
   }
 
   /**
@@ -475,9 +426,19 @@ export class HistoryTableManager {
    * 批量删除数据（已禁用：历史加工数据来自水果信息表，不支持直接删除）
    */
   async deleteBatchData(ids: number[]): Promise<void> {
-    // 注意：历史加工数据来自水果信息表，不支持通过此接口删除
-    // 如需删除数据，请使用 FruitInfoService
-    console.warn('历史加工数据来自水果信息表，不支持通过此接口批量删除');
+    const orm = getORM()
+    await Promise.resolve(
+      orm.transaction(async () => {
+        for (const id of ids) {
+          await Promise.resolve(
+            orm.query(TbFruitinfo)
+              .where({ CustomerID: id })
+              .update({ FVisible: 0 })
+          )
+        }
+      })
+    )
+    this.dataLoaded = false
   }
 
 
@@ -545,20 +506,18 @@ export class HistoryTableManager {
    * 获取分页数据（从内存数据分页）
    */
   public async getPage(page: number, size: number): Promise<HistoryTableData[]> {
-    // 如果未加载，先加载数据
-    if (!this.dataLoaded) {
-      await this.loadDataFromDatabase();
-    }
-    
     const p = Math.max(1, page);
     const s = Math.max(1, Math.min(200, size));
     const start = (p - 1) * s;
-    const end = start + s;
-    
-    // 按 ID 降序排序（模拟数据库行为）
-    const sortedData = [...this.tableData].sort((a, b) => b.id - a.id);
-    
-    return sortedData.slice(start, end);
+    const orm = getORM()
+    const listRaw = orm.query(TbFruitinfo)
+      .orderBy('CustomerID', 'desc')
+      .limit(s)
+      .offset(start)
+      .find() as TbFruitinfo[]
+    const list = await Promise.resolve(listRaw)
+    const visibleList = list.filter(item => item.FVisible === undefined || item.FVisible === null || item.FVisible !== 0)
+    return visibleList.map(item => HistoryTableManager.mapFruitInfoToHistoryData(item))
   }
 
   public async refreshDataPage(page: number, size: number, append: boolean = false): Promise<number> {

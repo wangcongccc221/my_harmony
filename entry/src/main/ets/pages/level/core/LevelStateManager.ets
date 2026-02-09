@@ -41,8 +41,6 @@ import { DEFAULT_LEVEL_SETTINGS, DEFAULT_STATISTICS_DATA } from '../LevelConstan
 
 // 持久化存储表格数量设置
 PersistentStorage.PersistProp('LevelTableCount', DEFAULT_LEVEL_SETTINGS.tableCount)
-// 持久化存储等级数量索引
-PersistentStorage.PersistProp('LevelCountIndex', 0)
 // 持久化存储装箱重量1
 PersistentStorage.PersistProp('LevelPackingWeight1', DEFAULT_LEVEL_SETTINGS.packingWeight1)
 // 持久化存储装箱重量2

@@ -34,6 +34,7 @@ interface StorageKeysType {
   INTERVAL_SPEED: string
   EXIT_COUNT_PREFIX: string
   EXIT_WEIGHT_PREFIX: string
+  EXIT_PERCENT_PREFIX: string
   IS_PROCESSING: string
   RUNNING_TIME: string
 }
@@ -66,6 +67,7 @@ export class UIDataSync {
     INTERVAL_SPEED: 'INTERVAL_SPEED',
     EXIT_COUNT_PREFIX: 'EXIT_COUNT_',
     EXIT_WEIGHT_PREFIX: 'EXIT_WEIGHT_',
+    EXIT_PERCENT_PREFIX: 'EXIT_PERCENT_',
     IS_PROCESSING: 'IS_PROCESSING',
     RUNNING_TIME: 'RUNNING_TIME'
   }
@@ -164,6 +166,7 @@ export class UIDataSync {
     for (let i = 0; i < 48; i++) {
       AppStorage.setOrCreate(`${keys.EXIT_COUNT_PREFIX}${i + 1}`, 0)
       AppStorage.setOrCreate(`${keys.EXIT_WEIGHT_PREFIX}${i + 1}`, 0)
+      AppStorage.setOrCreate(`${keys.EXIT_PERCENT_PREFIX}${i + 1}`, 0)
     }
 
     hilog.info(0x0001, TAG, 'AppStorage 键值已初始化')
@@ -255,6 +258,25 @@ export class UIDataSync {
 
       AppStorage.set(countKey, data.exitCount[i])
       AppStorage.set(weightKey, data.exitWeight[i])
+    }
+
+    const maxExit = Math.min(48, data.exitCount.length, data.exitWeight.length)
+    let totalCount = 0
+    let totalWeight = 0
+    for (let i = 0; i < maxExit; i++) {
+      totalCount += data.exitCount[i] || 0
+      totalWeight += data.exitWeight[i] || 0
+    }
+
+    const useWeightBase = totalWeight > 0
+    const baseTotal = useWeightBase ? totalWeight : totalCount
+
+    for (let i = 0; i < maxExit; i++) {
+      const percentKey = `${keys.EXIT_PERCENT_PREFIX}${i + 1}`
+      const baseValue = useWeightBase ? (data.exitWeight[i] || 0) : (data.exitCount[i] || 0)
+      const pct = baseTotal > 0 ? (baseValue * 100) / baseTotal : 0
+      const pctRounded = Math.round(pct * 100) / 100
+      AppStorage.set(percentKey, pctRounded)
     }
   }
 

@@ -59,6 +59,7 @@ export struct ThreeLayerCard {
   
   // 拖拽回调
   onCardDrop?: (data: ThreeLayerCardData) => void
+  onThirdLayerDropSignal?: (cardId: string, cardNumber: number, extraParams: string) => void
   // 第三层点击回调
   onThirdLayerClick?: () => void
   @State private isHovering: boolean = false
@@ -305,6 +306,7 @@ export struct ThreeLayerCard {
       this.isHovering = false
             return
           }
+    this.onThirdLayerDropSignal?.(String(this.cardData.id ?? ''), this.getCardNumber(), extraParams)
     try {
       const next = UseDragDrop.handleThirdLayerDrop(
         extraParams,

@@ -2,13 +2,13 @@ import { Table, Column, PrimaryKey } from '@ibestservices/ibest-orm';
 
 @Table({ name: 'tb_FileInfo' })
 export class TbFileinfo {
-  @Column()
+  @PrimaryKey()
   FileName?: string;
 
   @Column()
   Url?: string;
 
-  @Column()
+  @PrimaryKey()
   DirectoryName?: string;
 
   @Column()

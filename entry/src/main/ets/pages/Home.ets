@@ -3,7 +3,13 @@ import { LevelContent } from './level/LevelContent'
 import { QualityContent } from './quality/QualityContent'
 import { HistoryContent } from './history/HistoryContent'
 import { EndProcessingContent } from './endprocessing/EndProcessingContent'
+import { EndProcessingConfirmDialog } from './endprocessing/EndProcessingConfirmDialog'
 import { LiquidCardsArea } from './home/LiquidCardsArea'
+import { OutletDialog } from './home/OutletDialog'
+import { HomeDataManager } from './home/core/HomeDataManager'
+import { TableRow } from '../components/layout/LevelTable'
+import { ExitConfigManager, OutletConfig } from './home/core/ExitConfigManager'
+import { GradeInfoConfigManager } from './home/core/GradeInfoConfigManager'
 // import { ThemeSelector } from '../components/ThemeSelector'
 import { ArrowToggleButton } from '../components/ui/buttons/ArrowToggleButton'
 import { NavButton } from '../components/ui/buttons/NavButton'
@@ -51,6 +57,8 @@ import { UserInfoStorage } from '../utils/storage/UserInfoStorage'
 import common from '@ohos.app.ability.common'
 import { PrintManager } from '../utils/print/PrintManager'
 import { getConfigSender } from '../protocol/ConfigSender'
+import { getDatabaseSync } from '../protocol/DatabaseSync'
+import { getGlobalDataInterface } from '../protocol/GlobalDataInterface'
 import { ConstPreDefine } from '../protocol/ConstPreDefine'
 // 移除 BottomBar 集成
 
@@ -135,8 +143,13 @@ struct Page {
   @State private quickDialogIndex: number = -1
   @StorageLink('HOME_LIQUID_CARD_DOUBLE_CLICK_INDEX') @Watch('onLiquidCardDoubleClickIndexChange') private liquidCardDoubleClickIndex: number = 0
   private bottomButtonsCount: number = 10
+  @State private showOutletDialog: boolean = false
+  @State private outletDialogIndex: number = 1
+  @State private outletDialogLevelTableData: TableRow[] = []
+  @State private outletDialogConfig: OutletConfig | null = null
   // 打印按钮悬停状态
   @State showPrintSubButtons: boolean = false
+  @State showEndProcessingConfirmDialog: boolean = false
   // 顶部个人信息 - 全屏居中编辑弹窗全局状态
   @StorageLink('EDIT_USER_LABEL_VISIBLE') private editUserLabelVisible: boolean = false
   @State private tempUserLabel: string = '姓名'
@@ -302,11 +315,36 @@ struct Page {
       'quality': (): void => { this.currentPage = 'quality' },
       'level': (): void => { this.currentPage = 'level' },
       'history': (): void => { this.currentPage = 'history' },
-      'end': (): void => { this.currentPage = 'end' },
+      'end': (): void => this.openEndProcessingConfirmDialog(),
       'more': (): void => this.displayFloatingWindow(t('更多设置', '更多设置'), t('这里是更多设置和系统配置。\\n\\n• 系统设置\\n• 用户管理\\n• 数据备份\\n• 系统维护', '这里是更多设置和系统配置。\\n\\n• 系统设置\\n• 用户管理\\n• 数据备份\\n• 系统维护')),
       // 默认处理：正常页面切换
       'default': (): void => { this.currentPage = this.currentPage }
     }
+  }
+
+  private canEndProcessing(): boolean {
+    const dbSync = getDatabaseSync()
+    const gdi = getGlobalDataInterface()
+    const batchId = dbSync.getCurrentBatchId()
+    const global = gdi.getGlobalData()
+    return !(batchId === 0 || global.startTime === 0 || global.totalYield === 0)
+  }
+
+  private openEndProcessingConfirmDialog(): void {
+    console.log('结束加工点击')
+    if (!this.canEndProcessing()) {
+      console.log('结束加工被拦截')
+      AlertDialog.show({
+        title: t('提示', '提示'),
+        message: t('当前状态无法结束加工！', '当前状态无法结束加工！'),
+        primaryButton: {
+          value: t('确定', '确定'),
+          action: () => {}
+        }
+      })
+      return
+    }
+    this.showEndProcessingConfirmDialog = true
   }
 
   // 页面切换处理方法
@@ -922,6 +960,54 @@ struct Page {
       const errorMsg = error instanceof Error ? error.message : String(error)
       this.omniUIUtils.showError(t('操作失败', '操作失败') + ': ' + errorMsg)
       console.error('处理数据清零失败:', error)
+    }
+  }
+
+  private async handleEndProcessing(clearDeviceData: boolean): Promise<void> {
+    const dbSync = getDatabaseSync()
+    const gdi = getGlobalDataInterface()
+    const batchId = dbSync.getCurrentBatchId()
+    const global = gdi.getGlobalData()
+    if (batchId === 0 || global.startTime === 0 || global.totalYield === 0) {
+      this.omniUIUtils.showError(t('当前状态无法结束加工！', '当前状态无法结束加工！'))
+      return
+    }
+
+    try {
+      await dbSync.saveNow()
+      const sender = getConfigSender()
+      const deviceOk = clearDeviceData ? await sender.sendClearData() : await sender.sendSaveData()
+      if (!deviceOk) {
+        this.omniUIUtils.showError(t('结束加工指令发送失败！', '结束加工指令发送失败！'))
+        return
+      }
+
+      const endOk = await dbSync.endCurrentBatch()
+      if (!endOk) {
+        this.omniUIUtils.showError(t('结束加工失败：批次未保存', '结束加工失败：批次未保存'))
+        return
+      }
+
+      gdi.stopProcessing()
+      gdi.clearData()
+
+      AlertDialog.show({
+        title: t('提示', '提示'),
+        message: t('本次加工结束！是否打印报表？', '本次加工结束！是否打印报表？'),
+        primaryButton: {
+          value: t('否', '否'),
+          action: () => {}
+        },
+        secondaryButton: {
+          value: t('是', '是'),
+          action: () => {
+            this.handlePrintSubButtonClick(t('打印报告', '打印报告'))
+          }
+        }
+      })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      this.omniUIUtils.showError(t('结束加工失败', '结束加工失败') + ': ' + msg)
     }
   }
 
@@ -1724,7 +1810,7 @@ struct Page {
 
   private onLiquidCardDoubleClickIndexChange(): void {
     if (this.liquidCardDoubleClickIndex > 0) {
-      this.openQuickDialogForIndex(this.liquidCardDoubleClickIndex)
+      this.openOutletDialogForIndex(this.liquidCardDoubleClickIndex)
       AppStorage.set('HOME_LIQUID_CARD_DOUBLE_CLICK_INDEX', 0)
     }
   }
@@ -1846,6 +1932,39 @@ struct Page {
     const title = `${index}号出口`
     const content = `你点击了底部按钮 ${index}`
     this.openQuickDialog(title, content, onConfirm)
+  }
+
+  private getOutletCount(): number {
+    const key = this.selectedFSM === 'FSM1' ? 'OutletCount_FSM1' : 'OutletCount_FSM2'
+    const raw = AppStorage.get(key) as number | undefined
+    if (typeof raw === 'number' && raw > 0) {
+      return raw
+    }
+    return this.selectedFSM === 'FSM1' ? 20 : 20
+  }
+
+  private openOutletDialogForIndex(index: number): void {
+    const count = this.getOutletCount()
+    const nextIndex = Math.max(1, Math.min(index, count))
+    this.outletDialogIndex = nextIndex
+    const dataManager = HomeDataManager.getInstance()
+    dataManager.setFSM(this.selectedFSM)
+    this.outletDialogLevelTableData = dataManager.getTableData('等级表')
+    const cfg = ExitConfigManager.getInstance().getExitConfig(this.selectedFSM, nextIndex)
+    this.outletDialogConfig = cfg
+    this.showOutletDialog = true
+  }
+
+  private navigateOutletDialog(delta: number): void {
+    const count = this.getOutletCount()
+    let next = this.outletDialogIndex + delta
+    if (next < 1) next = count
+    if (next > count) next = 1
+    this.openOutletDialogForIndex(next)
+  }
+
+  private closeOutletDialog(): void {
+    this.showOutletDialog = false
   }
 
   // 切换到上一个/下一个
@@ -2015,7 +2134,7 @@ struct Page {
               onPageChange: (pageKey: string) => {
                 this.handlePageChange(pageKey)
                 // 只有非水果信息页面才显示切换消息
-                if (pageKey !== 'fruit' && pageKey !== 'realtime') {
+                if (pageKey !== 'fruit' && pageKey !== 'realtime' && pageKey !== 'end' && pageKey !== 'print') {
                   this.omniUIUtils.showInfo(`已切换到${this.getPageTitle(pageKey)}页面`)
                 }
               },
@@ -2042,8 +2161,27 @@ struct Page {
         .backgroundColor(this.sideBarStatus ? this.getNavBgForCurrentPage() : this.getCurrentTheme().backgroundColor)
 
         // 右侧内容
-        Column() {
+        Stack() {
           this.renderPageContent()
+
+          EndProcessingConfirmDialog({
+            isVisible: this.showEndProcessingConfirmDialog,
+            title: t('结束加工', '结束加工'),
+            message: t('是否结束加工？\n\n是：该批次数据清零并生成报表，该批次数据不可修改\n否：结束加工但保留下位机统计数据（下批次在当前基础上继续计数）\n取消：不结束加工', '是否结束加工？\n\n是：该批次数据清零并生成报表，该批次数据不可修改\n否：结束加工但保留下位机统计数据（下批次在当前基础上继续计数）\n取消：不结束加工'),
+            onYes: () => {
+              this.showEndProcessingConfirmDialog = false
+              console.log('结束加工成功')
+              this.handleEndProcessing(true)
+            },
+            onNo: () => {
+              this.showEndProcessingConfirmDialog = false
+              console.log('取消结束加工')
+            },
+            onCancel: () => {
+              this.showEndProcessingConfirmDialog = false
+              console.log('取消结束加工')
+            }
+          })
         }
         .width('100%')
         .height('100%')
@@ -2153,6 +2291,37 @@ struct Page {
           // 点击外部区域关闭弹窗
           this.showSortingStatusDialog = false
         })
+      }
+
+      if (this.showOutletDialog) {
+        Stack() {
+          OutletDialog({
+            isVisible: this.showOutletDialog,
+            currentOutletIndex: this.outletDialogIndex,
+            levelTableData: this.outletDialogLevelTableData,
+            outletConfig: this.outletDialogConfig ?? ExitConfigManager.getInstance().createDefaultConfig(this.outletDialogIndex),
+            currentFSM: this.selectedFSM,
+            onPrevious: () => {
+              this.navigateOutletDialog(-1)
+            },
+            onNext: () => {
+              this.navigateOutletDialog(1)
+            },
+            onConfirm: async (config: OutletConfig) => {
+              ExitConfigManager.getInstance().setExitConfig(this.selectedFSM, config)
+              GradeInfoConfigManager.getInstance().applyOutletLeftFields(this.selectedFSM, config.exitIndex, config)
+              await ExitConfigManager.getInstance().sendExitConfig(this.selectedFSM)
+              this.closeOutletDialog()
+            },
+            onCancel: () => {
+              this.closeOutletDialog()
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(2000)
       }
 
       // 通用快捷对话框

@@ -48,7 +48,6 @@ export class MultiSeriesBarFeed {
   }
 
   private readonly MAX_POINTS: number = 60
-  private readonly UPDATE_INTERVAL: number = 2100 // 2.1秒更新一次
   
   // 多个系列的数据缓冲区
   private seriesData: InternalSeriesData[] = []
@@ -56,9 +55,7 @@ export class MultiSeriesBarFeed {
   private labelBuf: string[] = new Array(this.MAX_POINTS).fill('')
   private writeIndex: number = 0
   private validCount: number = 0
-  private timerId?: number
   private started: boolean = false
-  private timeIndex: number = 0
 
   constructor() {
     // 初始化系列数据
@@ -73,55 +70,23 @@ export class MultiSeriesBarFeed {
   start(): void {
     if (this.started) { return }
     this.started = true
-    
-    // 若首次启动且无数据，播种10个点
-    if (this.validCount === 0) {
-      for (let i = 0; i < 10; i++) {
-        this.pushNext()
-      }
-    }
-    
-    this.timerId = setInterval(() => this.pushNext(), this.UPDATE_INTERVAL) as number
     hilog.info(DOMAIN, 'MultiSeriesBarFeed', 'started')
   }
 
   stop(): void {
-    if (this.timerId) {
-      clearInterval(this.timerId)
-      this.timerId = undefined
-    }
     this.started = false
     hilog.info(DOMAIN, 'MultiSeriesBarFeed', 'stopped')
   }
 
-  private pushNext(): void {
-    // 生成时间标签
-    const now = new Date()
-    const label = now.toLocaleTimeString().replace(/^\D*/, '')
-    
-    // 每个系列有不同的随机范围和步长
-    const ranges: RangeConfig[] = [
-      { min: 100, max: 400, step: 30 },  // 直接访问
-      { min: 50, max: 250, step: 20 },    // 邮件营销
-      { min: 30, max: 180, step: 15 },   // 联盟广告
-      { min: 20, max: 120, step: 10 }    // 视频广告
-    ]
-    
-    // 为每个系列生成新数据点
-    this.seriesData.forEach((series, index) => {
-      const range: RangeConfig = ranges[index]
-      const step = (Math.random() - 0.5) * range.step
-      series.currentValue = Math.max(range.min, Math.min(range.max, Math.round(series.currentValue + step)))
-      
-      // 写入环形缓冲区
-      series.dataBuf[this.writeIndex] = series.currentValue
-    })
-    
-    // 写入时间标签
+  push(label: string, values: number[]): void {
+    for (let i = 0; i < this.seriesData.length; i++) {
+      const v = (i < values.length) ? values[i] : 0
+      this.seriesData[i].currentValue = v
+      this.seriesData[i].dataBuf[this.writeIndex] = v
+    }
     this.labelBuf[this.writeIndex] = label
     this.writeIndex = (this.writeIndex + 1) % this.MAX_POINTS
     this.validCount = Math.min(this.validCount + 1, this.MAX_POINTS)
-    this.timeIndex++
   }
 
   getSnapshot(): MultiSeriesBarSnapshot {

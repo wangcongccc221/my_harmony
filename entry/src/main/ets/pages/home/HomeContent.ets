@@ -8,6 +8,35 @@ import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY } from '../../utils/theme/useOmniTh
 import { TableRow } from '../../components/layout/LevelTable'
 import { DragData } from '../../components/layout/DraggableGridTable'
 import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
+import { getConfigSender } from '../../protocol/ConfigSender'
+import { ConstPreDefine } from '../../protocol/ConstPreDefine'
+import { GradeInfoConfigManager } from './core/GradeInfoConfigManager'
+import { StorageKeys } from '../../utils/constants/StorageKeys'
+
+interface ExtraInfoWrapper {
+  extraInfo?: string
+}
+
+interface DragPayload {
+  type?: string
+  sourceTable?: string
+  value?: string
+  values?: string[]
+  rowData?: string[]
+  columnData?: string[]
+  fullRowData?: string
+  fullColumnData?: string
+}
+
+interface LevelStatPayload {
+  levelName?: string
+  exit?: number
+}
+
+interface LevelStatBatchPayload {
+  levelNames?: string[]
+  exit?: number
+}
 
 /**
  * 主页内容组件
@@ -24,6 +53,9 @@ export struct HomeContent {
   @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
   @StorageLink('HOME_CONTENT_REF') homeContentRef: HomeContent | null = null
   @StorageLink(HOME_SELECTED_FSM) @Watch('onFSMChange') selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
+  @StorageLink(StorageKeys.LEVEL_STAT_UPDATE) @Watch('onLevelStatUpdate') private levelStatUpdate: LevelStatPayload | null = null
+  @StorageLink(StorageKeys.LEVEL_STAT_REMOVE) @Watch('onLevelStatRemove') private levelStatRemove: LevelStatPayload | null = null
+  @StorageLink(StorageKeys.LEVEL_STAT_UPDATE_BATCH) @Watch('onLevelStatBatch') private levelStatBatch: LevelStatBatchPayload | null = null
 
   // 数据表格状态
   @State levelTableData: TableRow[] = []
@@ -62,6 +94,33 @@ export struct HomeContent {
     console.log('HomeContent: refreshStatisticsTable triggered')
   }
 
+  private onLevelStatUpdate() {
+    const payload = this.levelStatUpdate
+    if (payload && payload.levelName && payload.exit) {
+      this.dataManager.updateStatisticsTableExit(payload.levelName, Number(payload.exit))
+      this.refreshStatisticsTable()
+    }
+    AppStorage.set(StorageKeys.LEVEL_STAT_UPDATE, null)
+  }
+
+  private onLevelStatRemove() {
+    const payload = this.levelStatRemove
+    if (payload && payload.levelName && payload.exit) {
+      this.dataManager.removeStatisticsTableExit(payload.levelName, Number(payload.exit))
+      this.refreshStatisticsTable()
+    }
+    AppStorage.set(StorageKeys.LEVEL_STAT_REMOVE, null)
+  }
+
+  private onLevelStatBatch() {
+    const payload = this.levelStatBatch
+    if (payload && Array.isArray(payload.levelNames) && payload.levelNames.length > 0 && payload.exit) {
+      this.dataManager.updateStatisticsTableExits(payload.levelNames, Number(payload.exit))
+      this.refreshStatisticsTable()
+    }
+    AppStorage.set(StorageKeys.LEVEL_STAT_UPDATE_BATCH, null)
+  }
+
   public refreshAllTables() {
     this.levelTableData = this.dataManager.getTableData('等级表')
     this.levelHeaderTitles = this.dataManager.getLevelTableHeaderTitles()
@@ -95,6 +154,53 @@ export struct HomeContent {
       LiquidCardsArea({
         onCardClick: (cardIndex) => {
           AppStorage.set('HOME_LIQUID_CARD_DOUBLE_CLICK_INDEX', cardIndex + 1)
+        },
+        onCardDropSignal: async (cardIndex: number, cardId: string, cardNumber: number, extraParams: string) => {
+          console.log(`液体卡片drop信号: cardIndex=${cardIndex}, cardId=${cardId}, cardNumber=${cardNumber}`)
+          console.log(`拖拽下发: 当前FSM=${this.selectedFSM}, 目标出口(卡片号)=${cardNumber}`)
+          console.log(`拖拽下发: extraParams(raw)=${extraParams}`)
+
+          let payloadStr = extraParams
+          try {
+            if (extraParams && extraParams.indexOf('"extraInfo"') >= 0) {
+              const wrapper = JSON.parse(extraParams) as ExtraInfoWrapper
+              payloadStr = String(wrapper.extraInfo ?? extraParams)
+            }
+          } catch (_e) {}
+          console.log(`拖拽下发: payloadStr=${payloadStr}`)
+
+          let parsed: DragPayload = {}
+          try { parsed = JSON.parse(payloadStr) as DragPayload } catch (_e) {}
+          console.log(`拖拽下发: parsed.type=${String(parsed.type ?? '')}, sourceTable=${String(parsed.sourceTable ?? '')}`)
+
+          if (parsed && parsed.fullRowData && !parsed.rowData) {
+            try { parsed.rowData = JSON.parse(parsed.fullRowData) } catch (_e) {}
+            parsed.type = parsed.type || 'row'
+          }
+          if (parsed && parsed.fullColumnData && !parsed.columnData) {
+            try { parsed.columnData = JSON.parse(parsed.fullColumnData) } catch (_e) {}
+            parsed.type = parsed.type || 'column'
+          }
+
+          const values: string[] = []
+          if (parsed.type === 'multi_select' && Array.isArray(parsed.values)) {
+            parsed.values.forEach((v: string) => values.push(String(v ?? '')))
+          } else if (parsed.type === 'row' && Array.isArray(parsed.rowData)) {
+            parsed.rowData.forEach((v: string) => values.push(String(v ?? '')))
+          } else if (parsed.type === 'column' && Array.isArray(parsed.columnData)) {
+            parsed.columnData.forEach((v: string) => values.push(String(v ?? '')))
+          } else if (typeof parsed.value === 'string') {
+            values.push(parsed.value)
+          }
+          console.log(`拖拽下发: valuesCount=${values.length}, values=${JSON.stringify(values)}`)
+
+          if (values.length === 0) { return }
+
+          const info = GradeInfoConfigManager.getInstance().applyExitMappingFromGradeNames(this.selectedFSM, cardNumber, values)
+          const fsmId = this.selectedFSM === 'FSM1' ? ConstPreDefine.getFsmId(0) : ConstPreDefine.getFsmId(1)
+          console.log(`拖拽下发: fsmId=${fsmId}`)
+          const ok = await getConfigSender().sendFullGradeInfo(fsmId, info)
+          console.log(ok ? '拖拽配置已下发到下位机' : '拖拽配置下发失败')
         }
       })
         .height('38%')

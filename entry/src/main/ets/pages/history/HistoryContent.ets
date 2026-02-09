@@ -203,6 +203,8 @@ export struct HistoryContent {
     this.fruitName = ''
     this.startDate = ''
     this.endDate = ''
+    this.selectedStartDate = new Date()
+    this.selectedEndDate = new Date()
     
     // 显示查询成功弹窗
     const resultCount = queryResult.length
@@ -512,14 +514,8 @@ export struct HistoryContent {
       // 直接使用ExcelJS生成Excel文件
       const exportData = this.currentTableData.length > 0 ? this.currentTableData : [];
       if (exportData.length === 0) {
-        console.log('没有数据，添加测试数据用于Excel导出');
-        // 添加测试数据
-        const testData: HistoryTableData[] = [
-          { id: 1, batchNo: 'B001', customerName: '客户A', farmName: '农场1', fruitName: '苹果', status: '已完成', startTime: '2024-01-15 08:30', endTime: '2024-01-15 12:45', weight: 15.5, count: 1000 },
-          { id: 2, batchNo: 'B002', customerName: '客户B', farmName: '农场2', fruitName: '橙子', status: '已完成', startTime: '2024-01-15 14:20', endTime: '2024-01-15 18:30', weight: 12.3, count: 800 },
-          { id: 3, batchNo: 'B003', customerName: '客户C', farmName: '农场3', fruitName: '香蕉', status: '已完成', startTime: '2024-01-16 09:15', endTime: '2024-01-16 13:30', weight: 8.7, count: 600 }
-        ];
-        await this.generateExcelFile(testData, filePath);
+        this.showToast('error', '没有可导出的数据')
+        return
       } else {
         await this.generateExcelFile(exportData, filePath);
       }
@@ -639,28 +635,20 @@ export struct HistoryContent {
     
     console.log('生成CSV数据，当前表格数据条数:', this.currentTableData.length)
     
-    // 如果没有数据，添加一些测试数据
-    if (this.currentTableData.length === 0) {
-      console.log('没有表格数据，添加测试数据')
-      csvContent += '2024-01-15 08:30,2024-01-15 12:45,苹果,15.5,客户A,农场1,红富士,A级,出口1\n';
-      csvContent += '2024-01-15 14:20,2024-01-15 18:30,橙子,12.3,客户B,农场2,脐橙,B级,出口2\n';
-      csvContent += '2024-01-16 09:15,2024-01-16 13:30,香蕉,8.7,客户C,农场3,香蕉,C级,出口3\n';
-    } else {
-      // 添加所有数据行
-      this.currentTableData.forEach(item => {
-        csvContent += [
-          item.startTime || '',
-          item.endTime || '',
-          item.fruitName || '',
-          item.weight?.toString() || '',
-          item.customerName || '',
-          item.farmName || '',
-          item.fruitName || '',
-          item.status || '',
-          item.id?.toString() || ''
-        ].join(',') + '\n';
-      });
-    }
+    // 添加所有数据行
+    this.currentTableData.forEach(item => {
+      csvContent += [
+        item.startTime || '',
+        item.endTime || '',
+        item.fruitName || '',
+        item.weight?.toString() || '',
+        item.customerName || '',
+        item.farmName || '',
+        item.fruitName || '',
+        item.status || '',
+        item.id?.toString() || ''
+      ].join(',') + '\n';
+    });
     
     console.log('生成的CSV内容长度:', csvContent.length)
     return csvContent;
@@ -941,6 +929,7 @@ export struct HistoryContent {
         if (this.tableRefreshKey >= 0) {
           HistoryDataTable({
             filteredData: this.isFiltered ? this.filteredTableData : [],
+            isFilterMode: this.isFiltered,
             externalData: !this.isFiltered ? this.currentTableData : [],
             onRowClick: (rowData: HistoryTableData) => {
               console.log('点击行数据:', rowData)
@@ -1069,16 +1058,12 @@ export struct HistoryContent {
               const customerID = this.selectedRowData!.id
               
               // 更新数据库
-              /*
-              const updateData = new FruitInfo()
-              updateData.CustomerName = data.customerName
-              updateData.FarmName = data.farmName
-              updateData.FruitName = data.fruitName
-              FruitInfoService.update(customerID, updateData)
-              
-              console.log('数据库更新成功，CustomerID:', customerID)
-              */
-              console.log('数据库更新已禁用，模拟更新成功，CustomerID:', customerID)
+              const tableManager = HistoryTableManager.getInstance()
+              await tableManager.updateData(customerID, {
+                customerName: data.customerName,
+                farmName: data.farmName,
+                fruitName: data.fruitName
+              })
               
               // 关闭对话框
               this.showModifyCustomerDialog = false

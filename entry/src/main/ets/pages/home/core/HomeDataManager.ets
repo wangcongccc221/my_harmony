@@ -37,6 +37,7 @@
  */
 
 import { TableRow } from '../../../components/layout/LevelTable'
+import { TABLE_CONFIG } from '../HomeConstants'
 
 interface GradeTableConfig {
   sizeGradeNames: string[]
@@ -111,6 +112,12 @@ export class HomeDataManager {
     return ['等级', ...config.sizeGradeNames]
   }
 
+  public getSizeGradeNames(fsm?: 'FSM1' | 'FSM2'): string[] {
+    const targetFsm = fsm ?? this.currentFSM
+    const config = this.getOrCreateGradeTableConfig(targetFsm)
+    return config.sizeGradeNames.slice()
+  }
+
   public updateSizeGradeNames(names: string[], fsm?: 'FSM1' | 'FSM2'): void {
     const targetFsm = fsm ?? this.currentFSM
     const trimmed = names.map(n => (n ?? '').trim()).filter(n => n.length > 0)
@@ -133,6 +140,38 @@ export class HomeDataManager {
     }
     AppStorage.setOrCreate(this.getGradeConfigKey(targetFsm), next)
     this.allTableData[`等级表_${targetFsm}`] = this.buildLevelTableRows(next)
+  }
+
+  public syncStatisticsTableLevels(levelNames: string[], fsm?: 'FSM1' | 'FSM2'): void {
+    const targetFsm = fsm ?? this.currentFSM
+    const trimmed = levelNames.map(name => (name ?? '').trim()).filter(name => name.length > 0)
+    const prevFsm = this.currentFSM
+    this.currentFSM = targetFsm
+    const rows = this.getTableData('等级统计表')
+    const rowLength = rows.length > 0 ? rows[0].length : TABLE_CONFIG.STATISTICS_TABLE.headers.length
+    if (trimmed.length === 0) {
+      this.updateFSMTableData('等级统计表', [])
+      this.currentFSM = prevFsm
+      return
+    }
+    const rowMap = new Map<string, TableRow>()
+    rows.forEach(row => {
+      const name = String(row[0] ?? '').trim()
+      if (name.length > 0) {
+        rowMap.set(name, row)
+      }
+    })
+    const nextRows: TableRow[] = trimmed.map(name => {
+      const existing = rowMap.get(name)
+      if (existing) {
+        const nextRow = this.ensureStatisticsRowLength(existing, rowLength)
+        nextRow[0] = name
+        return nextRow
+      }
+      return this.ensureStatisticsRowLength([name], rowLength)
+    })
+    this.updateFSMTableData('等级统计表', nextRows)
+    this.currentFSM = prevFsm
   }
 
   /**
@@ -334,6 +373,113 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
     console.log('等级统计表出口信息已清空（FSM1和FSM2）')
   }
 
+  private ensureStatisticsRowLength(row: TableRow, targetLength: number): TableRow {
+    const next: TableRow = [...row]
+    while (next.length < targetLength) {
+      next.push('')
+    }
+    return next
+  }
+
+  private splitExitLabels(value: string): string[] {
+    if (!value) {
+      return []
+    }
+    return value
+      .split(/[,，/、\s]+/)
+      .map(item => item.trim())
+      .filter(item => item.length > 0)
+  }
+
+  private joinExitLabels(labels: string[]): string {
+    return labels.join('、')
+  }
+
+  public updateStatisticsTableExit(levelName: string, exit: number): void {
+    if (!levelName || exit <= 0) {
+      return
+    }
+    const tableName = '等级统计表'
+    const rows = this.getTableData(tableName)
+    const rowLength = rows.length > 0 ? rows[0].length : TABLE_CONFIG.STATISTICS_TABLE.headers.length
+    const exitLabel = `出口${exit}`
+    let found = false
+    const updatedRows: TableRow[] = rows.map(row => {
+      if (row[0] === levelName) {
+        found = true
+        const nextRow = this.ensureStatisticsRowLength(row, rowLength)
+        const existing = this.splitExitLabels(String(nextRow[2] ?? ''))
+        if (!existing.includes(exitLabel)) {
+          existing.push(exitLabel)
+        }
+        nextRow[2] = this.joinExitLabels(existing)
+        return nextRow
+      }
+      return row
+    })
+    if (!found) {
+      const newRow: TableRow = this.ensureStatisticsRowLength([levelName, '', exitLabel], rowLength)
+      updatedRows.push(newRow)
+    }
+    this.updateFSMTableData(tableName, updatedRows)
+  }
+
+  public updateStatisticsTableExits(levelNames: string[], exit: number): void {
+    if (!Array.isArray(levelNames) || levelNames.length === 0 || exit <= 0) {
+      return
+    }
+    const tableName = '等级统计表'
+    const rows = this.getTableData(tableName)
+    const rowLength = rows.length > 0 ? rows[0].length : TABLE_CONFIG.STATISTICS_TABLE.headers.length
+    const exitLabel = `出口${exit}`
+    const targetSet = new Set(levelNames.map(name => String(name ?? '')).filter(name => name.length > 0))
+    const seen = new Set<string>()
+    const updatedRows: TableRow[] = rows.map(row => {
+      const levelName = String(row[0] ?? '')
+      if (targetSet.has(levelName)) {
+        seen.add(levelName)
+        const nextRow = this.ensureStatisticsRowLength(row, rowLength)
+        const existing = this.splitExitLabels(String(nextRow[2] ?? ''))
+        if (!existing.includes(exitLabel)) {
+          existing.push(exitLabel)
+        }
+        nextRow[2] = this.joinExitLabels(existing)
+        return nextRow
+      }
+      return row
+    })
+    targetSet.forEach(levelName => {
+      if (!seen.has(levelName)) {
+        const newRow: TableRow = this.ensureStatisticsRowLength([levelName, '', exitLabel], rowLength)
+        updatedRows.push(newRow)
+      }
+    })
+    this.updateFSMTableData(tableName, updatedRows)
+  }
+
+  public removeStatisticsTableExit(levelName: string, exit: number): void {
+    if (!levelName || exit <= 0) {
+      return
+    }
+    const tableName = '等级统计表'
+    const rows = this.getTableData(tableName)
+    if (rows.length === 0) {
+      return
+    }
+    const exitLabel = `出口${exit}`
+    const updatedRows: TableRow[] = rows.map(row => {
+      if (row[0] === levelName) {
+        const nextRow: TableRow = [...row]
+        const existing = this.splitExitLabels(String(nextRow[2] ?? ''))
+        const nextList = existing.filter(item => item !== exitLabel)
+        nextRow[2] = this.joinExitLabels(nextList)
+        return nextRow
+      }
+      return row
+    })
+    this.updateFSMTableData(tableName, updatedRows)
+  }
+
   /**
    * 初始化等级表数据
    * 
@@ -449,27 +595,27 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
     if (this.currentFSM === 'FSM1') {
       // FSM1的等级统计表数据
       statisticsData = [
-        ['A级', '1250.5', '出口1', '156', '25.2%', '1250.5', '28.5%', '8', '26.7%', '156.3', '15.6'],
-        ['B级', '980.2', '出口2', '98', '15.8%', '980.2', '22.3%', '6', '20.0%', '163.4', '16.3'],
-        ['C级', '756.8', '出口3', '78', '12.6%', '756.8', '17.2%', '5', '16.7%', '151.4', '15.1'],
-        ['D级', '654.3', '出口4', '65', '10.5%', '654.3', '14.9%', '4', '13.3%', '163.6', '16.4']
+        ['A级', '1250.5', '出口1', '156', '25.2%', '1250.5', '28.5%', '8', '26.7%', '156.3', '15.6', ''],
+        ['B级', '980.2', '出口2', '98', '15.8%', '980.2', '22.3%', '6', '20.0%', '163.4', '16.3', ''],
+        ['C级', '756.8', '出口3', '78', '12.6%', '756.8', '17.2%', '5', '16.7%', '151.4', '15.1', ''],
+        ['D级', '654.3', '出口4', '65', '10.5%', '654.3', '14.9%', '4', '13.3%', '163.6', '16.4', '']
       ]
     } else if (this.currentFSM === 'FSM2') {
       // FSM2的等级统计表数据（不同的等级和数值）
       statisticsData = [
-        ['特级', '1580.3', '出口1', '189', '28.7%', '1580.3', '32.1%', '12', '35.3%', '131.7', '13.2'],
-        ['优级', '1120.7', '出口2', '134', '20.3%', '1120.7', '22.8%', '9', '26.5%', '124.5', '12.5'],
-        ['良级', '890.4', '出口3', '107', '16.2%', '890.4', '18.1%', '7', '20.6%', '127.2', '12.7'],
-        ['合格', '720.6', '出口4', '87', '13.2%', '720.6', '14.6%', '5', '14.7%', '144.1', '14.4'],
-        ['次品', '450.2', '出口5', '54', '8.2%', '450.2', '9.1%', '3', '8.8%', '150.1', '15.0']
+        ['特级', '1580.3', '出口1', '189', '28.7%', '1580.3', '32.1%', '12', '35.3%', '131.7', '13.2', ''],
+        ['优级', '1120.7', '出口2', '134', '20.3%', '1120.7', '22.8%', '9', '26.5%', '124.5', '12.5', ''],
+        ['良级', '890.4', '出口3', '107', '16.2%', '890.4', '18.1%', '7', '20.6%', '127.2', '12.7', ''],
+        ['合格', '720.6', '出口4', '87', '13.2%', '720.6', '14.6%', '5', '14.7%', '144.1', '14.4', ''],
+        ['次品', '450.2', '出口5', '54', '8.2%', '450.2', '9.1%', '3', '8.8%', '150.1', '15.0', '']
       ]
     } else {
       // 默认情况，使用FSM1数据
       statisticsData = [
-        ['A级', '1250.5', '出口1', '156', '25.2%', '1250.5', '28.5%', '8', '26.7%', '156.3', '15.6'],
-        ['B级', '980.2', '出口2', '98', '15.8%', '980.2', '22.3%', '6', '20.0%', '163.4', '16.3'],
-        ['C级', '756.8', '出口3', '78', '12.6%', '756.8', '17.2%', '5', '16.7%', '151.4', '15.1'],
-        ['D级', '654.3', '出口4', '65', '10.5%', '654.3', '14.9%', '4', '13.3%', '163.6', '16.4']
+        ['A级', '1250.5', '出口1', '156', '25.2%', '1250.5', '28.5%', '8', '26.7%', '156.3', '15.6', ''],
+        ['B级', '980.2', '出口2', '98', '15.8%', '980.2', '22.3%', '6', '20.0%', '163.4', '16.3', ''],
+        ['C级', '756.8', '出口3', '78', '12.6%', '756.8', '17.2%', '5', '16.7%', '151.4', '15.1', ''],
+        ['D级', '654.3', '出口4', '65', '10.5%', '654.3', '14.9%', '4', '13.3%', '163.6', '16.4', '']
       ]
     }
     

@@ -2,7 +2,7 @@ import { Table, Column, PrimaryKey } from '@ibestservices/ibest-orm';
 
 @Table({ name: 'tb_UpdateVersion' })
 export class TbUpdateversion {
-  @Column()
+  @PrimaryKey()
   FDeviceType?: string;
 
   @Column()
@@ -11,10 +11,10 @@ export class TbUpdateversion {
   @Column()
   FType?: number;
 
-  @Column()
+  @PrimaryKey()
   FProject?: string;
 
-  @Column()
+  @PrimaryKey()
   FVersion?: string;
 
   @Column()

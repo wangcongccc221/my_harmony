@@ -15,11 +15,29 @@ import { hilog } from '@kit.PerformanceAnalysisKit'
 import { ThreeDButton } from '../../components/ui/buttons/ThreeDButton'
 import { HomeDataManager } from '../home/core/HomeDataManager'
 import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
+import { GradeInfoConfigManager } from '../home/core/GradeInfoConfigManager'
+import { ConstPreDefine } from '../../protocol/ConstPreDefine'
+import { util } from '@kit.ArkTS'
+import { getConfigSender } from '../../protocol/ConfigSender'
 
 const DOMAIN = 0x0000
 const TAG = 'QualityContent'
 interface HomeContentRef {
   refreshAllTables?: () => void
+}
+
+type QualityAutoDimKey = 'color' | 'sugar' | 'acidity' | 'mold'
+
+interface QualityAutoDim {
+  key: QualityAutoDimKey
+  values: string[]
+}
+
+interface QualityPickedValues {
+  color?: string
+  sugar?: string
+  acidity?: string
+  mold?: string
 }
 
 /**
@@ -109,6 +127,33 @@ export struct QualityContent {
 
   // 控制面板组件引用
   private controlPanelRef: QualityControlPanel | null = null
+
+  private readFixedName(bytes: Uint8Array, index: number): string {
+    const start = index * ConstPreDefine.MAX_TEXT_LENGTH
+    let end = start
+    while (end < start + ConstPreDefine.MAX_TEXT_LENGTH && bytes[end] !== 0) {
+      end++
+    }
+    if (end <= start) { return '' }
+    const slice = bytes.subarray(start, end)
+    const decoder = new util.TextDecoder()
+    return decoder.decodeWithStream(slice)
+  }
+
+  private getFixedNameList(bytes: Uint8Array, maxCount: number): string[] {
+    const list: string[] = []
+    for (let i = 0; i < maxCount; i++) {
+      const name = this.readFixedName(bytes, i).trim()
+      if (!name) { break }
+      list.push(name)
+    }
+    return list
+  }
+
+  private getSelectedFSM(): 'FSM1' | 'FSM2' {
+    const raw = AppStorage.get(HOME_SELECTED_FSM) as string | undefined
+    return raw === 'FSM2' ? 'FSM2' : 'FSM1'
+  }
 
   // ==================== 主题相关 ====================
   
@@ -219,7 +264,24 @@ export struct QualityContent {
     // 初始化事件处理器
     this.eventHandler.onPageInit()
 
-    // 初始化可观察数据，确保表格根据默认数量渲染
+    const savedLevels = AppStorage.get('QUALITY_LEVELS') as QualityLevelData[] | undefined
+    const savedIndexRaw = AppStorage.get('QualityLevelCountIndex') as number | undefined
+    const savedIndex = typeof savedIndexRaw === 'number'
+      ? Math.max(0, Math.min(savedIndexRaw, 16))
+      : DEFAULT_QUALITY_SETTINGS.defaultLevelCount
+
+    if (Array.isArray(savedLevels) && savedLevels.length > 0) {
+      const trimmed = savedLevels.slice(0, 16)
+      this.stateManager.updateQualityLevels(trimmed)
+      this.dataManager.setQualityLevels(trimmed)
+      const nextCount = savedIndex > 0 ? Math.min(savedIndex, trimmed.length) : trimmed.length
+      this.stateManager.updateLevelCountIndex(nextCount)
+      this.dataManager.setLevelCount(nextCount)
+    } else {
+      this.stateManager.updateLevelCountIndex(savedIndex)
+      this.dataManager.setLevelCount(savedIndex)
+    }
+
     this.currentLevels = this.stateManager.getQualityLevels()
   }
 
@@ -272,9 +334,93 @@ export struct QualityContent {
   private handleAutoSet(): void {
     // 触发事件处理
     this.eventHandler.onAutoSet()
-    
-    // 自动设定逻辑（待实现具体业务逻辑）
-    hilog.info(DOMAIN, TAG, '品质页面：执行自动设定逻辑')
+
+    const fsm = this.getSelectedFSM()
+    const gradeInfo = GradeInfoConfigManager.getInstance().getOrCreateGradeInfo(fsm)
+
+    const defaultColor: string[] = ['优秀', '良好', '一般', '较差']
+    const defaultSugar: string[] = ['高糖度', '中糖度']
+    const defaultAcidity: string[] = ['高酸度', '中酸度']
+    const defaultMold: string[] = ['无霉芯', '轻微霉芯']
+
+    const colorList = this.getFixedNameList(gradeInfo.strColorGradeName, ConstPreDefine.MAX_COLOR_GRADE_NUM)
+    const sugarList = this.getFixedNameList(gradeInfo.stSugarGradeName, ConstPreDefine.MAX_SUGAR_GRADE_NUM)
+    const acidityList = this.getFixedNameList(gradeInfo.stAcidityGradeName, ConstPreDefine.MAX_ACIDITY_GRADE_NUM)
+    const moldList = this.getFixedNameList(gradeInfo.stHollowGradeName, ConstPreDefine.MAX_HOLLOW_GRADE_NUM)
+
+    const colors = colorList.length > 0 ? colorList : defaultColor
+    const sugars = sugarList.length > 0 ? sugarList : defaultSugar
+    const acidities = acidityList.length > 0 ? acidityList : defaultAcidity
+    const molds = moldList.length > 0 ? moldList : defaultMold
+
+    const activeDims: QualityAutoDim[] = []
+    if (colors.length > 1) activeDims.push({ key: 'color', values: colors })
+    if (sugars.length > 1) activeDims.push({ key: 'sugar', values: sugars })
+    if (acidities.length > 1) activeDims.push({ key: 'acidity', values: acidities })
+    if (molds.length > 1) activeDims.push({ key: 'mold', values: molds })
+
+    const rows: QualityLevelData[] = []
+    const limit = 16
+
+    const dfs = (idx: number, picked: QualityPickedValues, nameParts: string[]) => {
+      if (rows.length >= limit) { return }
+      if (idx >= activeDims.length) {
+        const levelName = nameParts.length > 0 ? nameParts.join('.') : `${rows.length + 1}`
+        const color = (picked.color ?? (colors.length > 0 ? colors[0] : '全部')) || '全部'
+        const sugar = (picked.sugar ?? (sugars.length > 0 ? sugars[0] : '全部')) || '全部'
+        const acidity = (picked.acidity ?? (acidities.length > 0 ? acidities[0] : '全部')) || '全部'
+        const mold = (picked.mold ?? (molds.length > 0 ? molds[0] : '全部')) || '全部'
+        rows.push({
+          levelName: levelName,
+          colorLevel: color,
+          sugarLevel: sugar,
+          acidityLevel: acidity,
+          moldCoreLevel: mold
+        })
+        return
+      }
+      const dim = activeDims[idx]
+      for (let i = 0; i < dim.values.length; i++) {
+        const v = dim.values[i]
+        const nextPicked: QualityPickedValues = {
+          color: picked.color,
+          sugar: picked.sugar,
+          acidity: picked.acidity,
+          mold: picked.mold
+        }
+        if (dim.key === 'color') nextPicked.color = v
+        else if (dim.key === 'sugar') nextPicked.sugar = v
+        else if (dim.key === 'acidity') nextPicked.acidity = v
+        else nextPicked.mold = v
+
+        const nextNameParts: string[] = nameParts.slice()
+        nextNameParts.push(v)
+        dfs(idx + 1, nextPicked, nextNameParts)
+        if (rows.length >= limit) { return }
+      }
+    }
+
+    if (activeDims.length === 0) {
+      for (let i = 0; i < Math.min(limit, Math.max(1, this.stateManager.getLevelCountIndex() || 1)); i++) {
+        rows.push({
+          levelName: `${i + 1}`,
+          colorLevel: colors[0] ?? '全部',
+          sugarLevel: sugars[0] ?? '全部',
+          acidityLevel: acidities[0] ?? '全部',
+          moldCoreLevel: molds[0] ?? '全部'
+        })
+      }
+    } else {
+      const picked0: QualityPickedValues = {}
+      dfs(0, picked0, [])
+    }
+
+    this.stateManager.updateQualityLevels(rows)
+    this.dataManager.setQualityLevels(rows)
+    this.handleLevelCountChange(rows.length)
+    AppStorage.setOrCreate('QUALITY_LEVELS', rows)
+
+    hilog.info(DOMAIN, TAG, `品质页面：自动设定生成 ${rows.length} 条`)
   }
 
   /**
@@ -442,10 +588,11 @@ export struct QualityContent {
    * - 更新首页显示的品质名称
    * - 返回主页
    */
-  private handleSaveAndConfirm(): void {
+  private async handleSaveAndConfirm(): Promise<void> {
     const levels = this.stateManager.getQualityLevels()
-    const selectedFSM = (AppStorage.get(HOME_SELECTED_FSM) as ('FSM1' | 'FSM2') | undefined) ?? 'FSM1'
+    const selectedFSM = this.getSelectedFSM()
     HomeDataManager.getInstance().updateQualityGradeNames(levels.map(item => item.levelName), selectedFSM)
+    HomeDataManager.getInstance().syncStatisticsTableLevels(levels.map(item => item.levelName), selectedFSM)
     const homeContent = AppStorage.get('HOME_CONTENT_REF') as HomeContentRef | null
     if (homeContent?.refreshAllTables) {
       homeContent.refreshAllTables()
@@ -457,7 +604,20 @@ export struct QualityContent {
       this.eventHandler.onDataUpdate(first, -1)
     }
     
+    const idx = this.stateManager.getLevelCountIndex()
+    AppStorage.setOrCreate('QualityLevelCountIndex', idx)
+    AppStorage.setOrCreate('QUALITY_LEVELS', levels)
+    
     console.log('品质页面：确认操作')
+
+    try {
+      const info = GradeInfoConfigManager.getInstance().rebuildBaseFromHomeGradeTable(selectedFSM)
+      const fsmId = selectedFSM === 'FSM1' ? ConstPreDefine.getFsmId(0) : ConstPreDefine.getFsmId(1)
+      const ok = await getConfigSender().sendFullGradeInfo(fsmId, info)
+      console.log(ok ? '品质配置已下发到下位机' : '品质配置下发失败')
+    } catch (e) {
+      console.log(`品质配置下发异常: ${String(e)}`)
+    }
 
     // 保存完成后，返回主页
     if (this.onPageChange) {

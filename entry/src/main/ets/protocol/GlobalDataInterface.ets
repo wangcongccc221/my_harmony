@@ -9,7 +9,10 @@ import {
   StStatistics,
   StWeightInfo,
   StGradeInfo,
+  StFruitGradeInfo,
+  StFruitGradeRealtime,
   StFsmStatus,
+  StSysConfig,
   GlobalRealtimeData,
   createDefaultStatistics,
   createDefaultGlobalRealtimeData,
@@ -18,7 +21,6 @@ import {
   copyStWeightInfo,
   copyStGradeInfo,
   copyStFsmStatus,
-  copyStGradeInfoArray,
   GradeItem
 } from './Structures'
 import { hilog } from '@kit.PerformanceAnalysisKit'
@@ -32,7 +34,9 @@ export type DataChangeListener = (data: GlobalRealtimeData) => void
 export type StatisticsListener = (data: StStatistics) => void
 export type WeightInfoListener = (data: StWeightInfo) => void
 export type GradeInfoListener = (data: StGradeInfo) => void
+export type FruitGradeListener = (data: StFruitGradeRealtime) => void
 export type DeviceStatusListener = (devices: Map<number, StFsmStatus>) => void
+export type SysConfigListener = (config: StSysConfig) => void
 
 /**
  * 全局数据接口类
@@ -55,19 +59,26 @@ export class GlobalDataInterface {
   private latestGradeInfo: StGradeInfo | null = null
 
   /** 最近的水果信息队列（用于实时显示） */
-  private recentFruits: StGradeInfo[] = []
+  private recentFruits: StFruitGradeRealtime[] = []
   private readonly MAX_RECENT_FRUITS: number = 100
+
+  private latestFruitGradeByChannel: Map<number, StFruitGradeRealtime> = new Map()
 
   // ==================== 设备状态 ====================
   /** FSM设备状态 */
   private fsmDevices: Map<number, StFsmStatus> = new Map()
+
+  // ==================== 系统配置 ====================
+  private latestSysConfig: StSysConfig | null = null
 
   // ==================== 监听器 ====================
   private dataChangeListeners: Set<DataChangeListener> = new Set()
   private statisticsListeners: Set<StatisticsListener> = new Set()
   private weightInfoListeners: Set<WeightInfoListener> = new Set()
   private gradeInfoListeners: Set<GradeInfoListener> = new Set()
+  private fruitGradeListeners: Set<FruitGradeListener> = new Set()
   private deviceStatusListeners: Set<DeviceStatusListener> = new Set()
+  private sysConfigListeners: Set<SysConfigListener> = new Set()
 
   // ==================== 时间统计 ====================
   private startTime: number = 0
@@ -140,17 +151,90 @@ export class GlobalDataInterface {
     const safeInfo = copyStGradeInfo(info)
     this.latestGradeInfo = safeInfo
 
-    // 添加到最近水果队列
-    this.recentFruits.unshift(safeInfo)
+    const item = new StFruitGradeRealtime()
+    item.channelIndex = safeInfo.channelIndex
+    item.timestamp = safeInfo.timestamp
+    item.grade = safeInfo.finalGrade
+    item.targetExit = safeInfo.targetExit
+    item.weightG = safeInfo.weight
+    item.densityKgPerM3 = safeInfo.densityGrade
+    item.brix = safeInfo.sugarGrade
+    item.acidity = safeInfo.acidityGrade
+    item.diameterMm = safeInfo.diameter
+    this.latestFruitGradeByChannel.set(item.channelIndex, item)
+
+    this.recentFruits.unshift(item)
     if (this.recentFruits.length > this.MAX_RECENT_FRUITS) {
       this.recentFruits.pop()
     }
 
     // 通知监听器
     this.notifyGradeInfoListeners(safeInfo)
+    this.notifyFruitGradeListeners(item)
 
     hilog.debug(0x0001, TAG,
       `分级信息更新: ID=${safeInfo.fruitId}, 重量=${safeInfo.weight}g, 等级=${safeInfo.finalGrade}`)
+  }
+
+  updateFruitGradeInfo(srcId: number, info: StFruitGradeInfo): void {
+    const ipmIdxRaw = (srcId >> 4) & 0x0F
+    const ipmIndex0 = ipmIdxRaw > 0 ? (ipmIdxRaw - 1) : 0
+    const baseChannelIndex = ipmIndex0 * ConstPreDefine.CHANNEL_NUM
+    const now = Date.now()
+
+    for (let i = 0; i < info.params.length; i++) {
+      const param = info.params[i]
+      const hasAny =
+        param.fWeight !== 0 ||
+        param.fDensity !== 0 ||
+        param.unGrade !== 0 ||
+        param.visionParam.unArea !== 0 ||
+        param.visionParam.unVolume !== 0 ||
+        param.visionParam.unFlawArea !== 0 ||
+        param.visionParam.unFlawNum !== 0 ||
+        param.uvParam.unBruiseArea !== 0 ||
+        param.uvParam.unRotArea !== 0 ||
+        param.nirParam.fSugar !== 0 ||
+        param.nirParam.fAcidity !== 0
+      if (!hasAny) {
+        continue
+      }
+      const item = new StFruitGradeRealtime()
+      item.channelIndex = baseChannelIndex + i
+      item.timestamp = now
+      item.routeId = info.nRouteId
+      item.grade = param.unGrade
+      item.targetExit = param.unWhichExit
+      item.weightG = param.fWeight
+      item.densityKgPerM3 = param.fDensity
+      item.colorRate0Pct = param.visionParam.unColorRate0 / 2
+      item.colorRate1Pct = param.visionParam.unColorRate1 / 2
+      item.colorRate2Pct = param.visionParam.unColorRate2 / 2
+      item.projectionAreaMm2 = param.visionParam.unArea
+      item.volumeMm3 = param.visionParam.unVolume
+      item.visionFlawAreaMm2 = param.visionParam.unFlawArea
+      item.visionFlawCount = param.visionParam.unFlawNum
+      item.uvDefectAreaMm2 = param.uvParam.unBruiseArea + param.uvParam.unRotArea
+      item.uvDefectCount = param.uvParam.unBruiseNum + param.uvParam.unRotNum
+      item.uvRigidity = param.uvParam.unRigidity
+      item.uvWater = param.uvParam.unWater
+      item.brix = param.nirParam.fSugar
+      item.acidity = param.nirParam.fAcidity
+      item.pulpColor = param.nirParam.fBrown
+      item.maturity = param.nirParam.fTangxin
+      item.diameterMm = param.visionParam.unSelectBasis
+      item.diameterRatio = param.visionParam.fDiameterRatio
+      item.minDiameterRatio = param.visionParam.fMinDRatio
+
+      this.latestFruitGradeByChannel.set(item.channelIndex, item)
+
+      this.recentFruits.unshift(item)
+      if (this.recentFruits.length > this.MAX_RECENT_FRUITS) {
+        this.recentFruits.pop()
+      }
+
+      this.notifyFruitGradeListeners(item)
+    }
   }
 
   /**
@@ -164,6 +248,11 @@ export class GlobalDataInterface {
 
     hilog.info(0x0001, TAG,
       `设备状态更新: ID=0x${deviceId.toString(16)}, 在线=${status.online}`)
+  }
+
+  updateSysConfig(config: StSysConfig): void {
+    this.latestSysConfig = config
+    this.notifySysConfigListeners(config)
   }
 
   // ==================== 全局数据汇总 ====================
@@ -330,8 +419,16 @@ export class GlobalDataInterface {
   /**
    * 获取最近的水果信息列表
    */
-  getRecentFruits(): StGradeInfo[] {
-    return copyStGradeInfoArray(this.recentFruits)
+  getRecentFruits(): StFruitGradeRealtime[] {
+    return this.recentFruits.slice()
+  }
+
+  getLatestFruitGrade(channelIndex: number): StFruitGradeRealtime | null {
+    return this.latestFruitGradeByChannel.get(channelIndex) ?? null
+  }
+
+  getSysConfig(): StSysConfig | null {
+    return this.latestSysConfig
   }
 
   /**
@@ -424,6 +521,14 @@ export class GlobalDataInterface {
     this.gradeInfoListeners.delete(listener)
   }
 
+  addFruitGradeListener(listener: FruitGradeListener): void {
+    this.fruitGradeListeners.add(listener)
+  }
+
+  removeFruitGradeListener(listener: FruitGradeListener): void {
+    this.fruitGradeListeners.delete(listener)
+  }
+
   /**
    * 添加设备状态监听器
    */
@@ -436,6 +541,14 @@ export class GlobalDataInterface {
    */
   removeDeviceStatusListener(listener: DeviceStatusListener): void {
     this.deviceStatusListeners.delete(listener)
+  }
+
+  addSysConfigListener(listener: SysConfigListener): void {
+    this.sysConfigListeners.add(listener)
+  }
+
+  removeSysConfigListener(listener: SysConfigListener): void {
+    this.sysConfigListeners.delete(listener)
   }
 
   // ==================== 通知监听器 ====================
@@ -480,6 +593,16 @@ export class GlobalDataInterface {
     })
   }
 
+  private notifyFruitGradeListeners(info: StFruitGradeRealtime): void {
+    this.fruitGradeListeners.forEach(listener => {
+      try {
+        listener(info)
+      } catch (e) {
+        hilog.error(0x0001, TAG, `水果分级监听器错误: ${e}`)
+      }
+    })
+  }
+
   private notifyDeviceStatusListeners(): void {
     const devices = this.getAllDeviceStatus()
     this.deviceStatusListeners.forEach(listener => {
@@ -488,6 +611,14 @@ export class GlobalDataInterface {
       } catch (e) {
         hilog.error(0x0001, TAG, `设备状态监听器错误: ${e}`)
       }
+    })
+  }
+
+  private notifySysConfigListeners(config: StSysConfig): void {
+    this.sysConfigListeners.forEach(listener => {
+      try {
+        listener(config)
+      } catch (_e) {}
     })
   }
 

@@ -2,10 +2,10 @@ import { Table, Column, PrimaryKey } from '@ibestservices/ibest-orm';
 
 @Table({ name: 'tb_GradeInfo' })
 export class TbGradeinfo {
-  @Column()
+  @PrimaryKey()
   CustomerID?: number;
 
-  @Column()
+  @PrimaryKey()
   GradeID?: number;
 
   @Column()

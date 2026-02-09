@@ -308,7 +308,9 @@ export struct QualityDataTable {
         }
         .width('100%')
       .layoutWeight(1) // 使用layoutWeight填满可用空间
-      .scrollBar(BarState.Auto)
+      .scrollBar(BarState.On)
+      .scrollBarWidth(6)
+      .scrollBarColor(this.getCurrentTheme().borderColor)
       .edgeEffect(EdgeEffect.Spring)
       .friction(100)
       .divider({

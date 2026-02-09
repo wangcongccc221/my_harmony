@@ -22,6 +22,11 @@ export struct ProcessingDataTable {
     return resolveTheme(this.consumedTheme)
   }
 
+  private formatWeightTon(weight: number): string {
+    const n = Number(weight)
+    return Number.isFinite(n) ? n.toFixed(1) : '0.0'
+  }
+
   build() {
     Column() {
       // 固定表头（Grid）
@@ -94,7 +99,7 @@ export struct ProcessingDataTable {
                 .width('25%')
 
               // 总重量(吨) - 保留一位小数
-              Text(`${record.totalWeight.toFixed(1)}`)
+              Text(this.formatWeightTon(record.totalWeight))
                 .fontSize(16)
                 .fontColor(this.getCurrentTheme().textColor)
                 .textAlign(TextAlign.Center)

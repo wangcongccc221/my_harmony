@@ -4,7 +4,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 // import { NetworkOptimizer } from '../utils/network/NetworkOptimizer';
 // import { startHttpServer, stopHttpServer, isHttpServerRunning, runHttpServerWorker } from '../utils/network/http/HttpServer';
-import { taskpool } from '@kit.ArkTS';
+import { taskpool, util } from '@kit.ArkTS';
 // import { HttpServerHandler } from '../utils/network/http/HttpServerHandler';
 import { copyRawDirectoryAuto } from '../utils/FileUtils';
 import { AppCleanup } from '../utils/lifecycle/AppCleanup';
@@ -13,32 +13,45 @@ import { ProcessingBarFeed } from '../utils/data/ProcessingBarFeed';
 import { MultiSeriesBarFeed } from '../utils/data/MultiSeriesBarFeed';
 import { WavePhaseManager } from '../utils/ui/WavePhaseManager';
 import { relationalStore } from '@kit.ArkData';
-// import { IBestORMInit, GetIBestORM } from '../database/orm';
-// import GlobalStore from '../database/orm/model/GlobalStore';
-// import { ProcessingHistory } from '../database/models/ProcessingHistory';
-// import { FruitInfo } from '../database/models/FruitInfo';
-// import { GradeInfo } from '../database/models/GradeInfo';
-// import { ExportInfo } from '../database/models/ExportInfo';
-// import { FarmerInfo } from '../database/models/FarmerInfo';
-// import { ProcessingTask } from '../database/models/ProcessingTask';
-// import { AlarmInfo } from '../database/models/AlarmInfo';
+
 import { DbManager } from '../db/DbManager';
 import { I18nManager } from '../utils/i18n/I18nManager';
 import { OutletCountStorage } from '../utils/storage/OutletCountStorage';
 import { NativeModule, CommandHead } from '../utils/native/NativeModule';
 import { getUIDataSync } from '../protocol/UIDataSync';
 import { getStatisticsHandler } from '../protocol/StatisticsHandler';
-// import { TCPServer } from '../utils/network/tcp/TCPServer';
+import { getDatabaseSync } from '../protocol/DatabaseSync'
+import { OrmDatabaseSaver } from '../protocol/OrmDatabaseSaver'
+import { getGlobalDataInterface } from '../protocol/GlobalDataInterface'
 import { ConstPreDefine } from '../protocol/ConstPreDefine';
-import { getConfigSender } from '../protocol/ConfigSender';
+import { getConfigSender, ITcpSender } from '../protocol/ConfigSender';
+import { tcpSendOnce } from '../protocol/ArkTcpClient'
 // import { taskPoolExecuteInsert, taskPoolExecuteQuery, taskPoolExecuteUpdate, taskPoolExecuteDelete } from '../database/examples/taskpool'; // 文件已删除
 
 const DOMAIN = 0x0000;
 const HTTP_SERVER_PORT: number = 8080;
 
+class TcpSenderImpl implements ITcpSender {
+  async sendToDevice(deviceId: number, data: ArrayBuffer): Promise<boolean> {
+    const overrideIp = AppStorage.get('MOCK_DEVICE_IP') as string | undefined
+    const ip = overrideIp ?? ConstPreDefine.getIpFromId(deviceId)
+    const ipmIdx = (deviceId >> 4) & 0x0F
+    const overridePort = AppStorage.get('MOCK_DEVICE_PORT') as number | undefined
+    const port = (overridePort !== undefined && overridePort > 0) ? overridePort : (ipmIdx > 0 ? ConstPreDefine.IPM_PORT_NUM : ConstPreDefine.FSM_PORT_NUM)
+    return tcpSendOnce(ip, port, data)
+  }
+  async sendToAllDevices(data: ArrayBuffer): Promise<void> {
+    return
+  }
+  isDeviceConnected(deviceId: number): boolean {
+    return true
+  }
+}
+
 export default class EntryAbility extends UIAbility {
   // private networkOptimizer: NetworkOptimizer = NetworkOptimizer.getInstance();
   private httpServerInitialized: boolean = false; 
+  private dbInitPromise: Promise<void> | null = null
 
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
@@ -48,7 +61,7 @@ export default class EntryAbility extends UIAbility {
     this.initNativeServers();
 
     // 初始化数据库配置
-    DbManager.getInstance().init(this.context);
+    this.dbInitPromise = DbManager.getInstance().init(this.context);
 
     // 启动 UI 数据同步服务 (连接协议层与UI层)
     this.startUIDataSync();
@@ -81,7 +94,23 @@ export default class EntryAbility extends UIAbility {
       const socketSuccess = NativeModule.socketServerStart("", 8080, (clientIP, data) => {
         const dataLen = data.length;
         console.info(`📡 [SocketServer] 收到数据 | 来自: ${clientIP} | 长度: ${dataLen}`);
-        // 业务逻辑...
+        try {
+          const bytes = data instanceof Uint8Array ? data : new Uint8Array(data)
+          const decoder = new util.TextDecoder()
+          const cmd = decoder.decodeWithStream(bytes).trim()
+          if (cmd === 'END_CLEAR' || cmd === 'END_SAVE') {
+            Promise.resolve().then(async () => {
+              const dbSync = getDatabaseSync()
+              const gdi = getGlobalDataInterface()
+              await dbSync.saveNow()
+              const ok = await dbSync.endCurrentBatch()
+              if (ok) {
+                gdi.stopProcessing()
+                gdi.clearData()
+              }
+            })
+          }
+        } catch (_) {}
       });
       
       if (socketSuccess) {
@@ -107,6 +136,9 @@ export default class EntryAbility extends UIAbility {
       } else {
         console.error('❌ [TcpServer] 启动失败');
       }
+
+      const tcpSender = new TcpSenderImpl()
+      getConfigSender().setTcpSender(tcpSender)
       
       // 3. (可选) TcpClient 连接示例
       // 如果需要在启动时连接某个服务器，可以在这里调用
@@ -148,8 +180,6 @@ export default class EntryAbility extends UIAbility {
         const criteria = mockCriteria[nameIndex];
         AppStorage.setOrCreate(`EXIT_ITEMS_${i + 1}`, criteria);
         
-        // 3. 顺便给点初始数值，避免空空如也
-        // AppStorage.setOrCreate(`EXIT_COUNT_${i + 1}`, Math.floor(Math.random() * 100));
       }
       
       console.info('✅ 模拟出口配置注入完成');
@@ -212,6 +242,13 @@ export default class EntryAbility extends UIAbility {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
 
     try {
+      if (this.dbInitPromise) {
+        await this.dbInitPromise
+      }
+      const dbSync = getDatabaseSync()
+      dbSync.setDatabaseSaver(new OrmDatabaseSaver())
+      dbSync.start()
+      dbSync.enableAutoSave(5000)
       /*
       await GlobalStore.init(this.context, {
         name: 'db_fruitsor.db',

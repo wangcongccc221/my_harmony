@@ -8,6 +8,8 @@ import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
 import { NumericInput } from '../ui/inputs/NumericInput'
+import { getConfigSender } from '../../protocol/ConfigSender'
+import { ConstPreDefine } from '../../protocol/ConstPreDefine'
 
 // 出口数据接口
 interface OutletData {
@@ -30,10 +32,12 @@ export struct ValveTestDialog {
 
   // 按通道测试状态
   @State channelTestChannel: string = '通道 1'
+  @State private isChannelTesting: boolean = false
   
   // 按出口测试状态
   @State outletTestChannel: string = '通道 1'
   @State parallelTest: boolean = false
+  @State private activeOutletIndex: number = -1
   
   // 出口数据
   @State outletDataList: OutletData[] = [
@@ -79,21 +83,63 @@ export struct ValveTestDialog {
 
   // 关闭对话框
   private handleClose(): void {
+    Promise.resolve().then(async () => {
+      if (this.isChannelTesting) {
+        await this.handleStopChannelTest()
+      }
+      if (this.activeOutletIndex >= 0) {
+        await this.handleStopOutletTest()
+      }
+    })
     if (this.onCancel) {
       this.onCancel()
     }
   }
 
   // 开始测试
-  private handleStartTest(): void {
-    console.log('开始按通道测试，通道:', this.channelTestChannel)
-    // TODO: 实现测试逻辑
+  private getSelectedFsmId(): number {
+    const selected = (AppStorage.get('HOME_SELECTED_FSM') as ('FSM1' | 'FSM2') | undefined) ?? 'FSM1'
+    return selected === 'FSM1' ? ConstPreDefine.getFsmId(0) : ConstPreDefine.getFsmId(1)
   }
 
-  // 立即生效
-  private handleApply(): void {
-    console.log('立即生效，应用所有设置')
-    // TODO: 实现应用逻辑
+  private parseChannelIndex(label: string): number {
+    const m = label.match(/(\d+)/)
+    const n = m ? Number(m[1]) : 1
+    const idx = Math.max(0, n - 1)
+    return idx
+  }
+
+  private async sendValveCommand(channelLabel: string, exitIndex: number, parallel: boolean): Promise<boolean> {
+    const channelIndex = this.parseChannelIndex(channelLabel)
+    const fsmId = this.getSelectedFsmId()
+    const sender = getConfigSender()
+    if (parallel) {
+      return sender.sendTestAllLaneValve(fsmId, channelIndex, exitIndex)
+    }
+    return sender.sendTestValve(fsmId, channelIndex, exitIndex)
+  }
+
+  private async handleStartChannelTest(): Promise<void> {
+    await this.sendValveCommand(this.channelTestChannel, 254, false)
+    this.isChannelTesting = true
+  }
+
+  private async handleStopChannelTest(): Promise<void> {
+    await this.sendValveCommand(this.channelTestChannel, 255, false)
+    this.isChannelTesting = false
+  }
+
+  private async handleStartOutletTest(index: number): Promise<void> {
+    this.activeOutletIndex = index
+    await this.sendValveCommand(this.outletTestChannel, index, this.parallelTest)
+  }
+
+  private async handleStopOutletTest(): Promise<void> {
+    await this.sendValveCommand(this.outletTestChannel, 255, this.parallelTest)
+    this.activeOutletIndex = -1
+  }
+
+  private async handleApply(): Promise<void> {
   }
 
   // 更新出口数据
@@ -184,17 +230,21 @@ export struct ValveTestDialog {
                   })
                   .layoutWeight(1)
 
-                Button('开始测试')
+                Button(this.isChannelTesting ? '停止测试' : '开始测试')
                   .type(ButtonType.Normal)
                   .fontSize(14)
                   .fontColor('#FFFFFF')
-                  .backgroundColor('#4CAF50')
+                  .backgroundColor(this.isChannelTesting ? '#D93025' : '#4CAF50')
                   .borderRadius(4)
                   .width(100)
                   .height(36)
                   .margin({ left: 12 })
                   .onClick(() => {
-                    this.handleStartTest()
+                    if (this.isChannelTesting) {
+                      this.handleStopChannelTest()
+                    } else {
+                      this.handleStartChannelTest()
+                    }
                   })
               }
               .width('100%')
@@ -326,6 +376,23 @@ export struct ValveTestDialog {
                         const num = parseInt(value)
                         if (!isNaN(num) && num >= 0 && num <= 9999) {
                           this.updateOutletData(index, 'distance', num)
+                        }
+                      })
+
+                    Button(this.activeOutletIndex === index ? '停止' : '开始')
+                      .type(ButtonType.Normal)
+                      .fontSize(12)
+                      .fontColor('#FFFFFF')
+                      .backgroundColor(this.activeOutletIndex === index ? '#D93025' : '#4CAF50')
+                      .borderRadius(4)
+                      .width(56)
+                      .height(32)
+                      .margin({ left: 4, right: 4 })
+                      .onClick(() => {
+                        if (this.activeOutletIndex === index) {
+                          this.handleStopOutletTest()
+                        } else {
+                          this.handleStartOutletTest(index)
                         }
                       })
                   }

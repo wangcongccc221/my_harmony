@@ -34,61 +34,17 @@ export class ProcessingCurveFeed {
   private validCount: number = 0
   private timeIndex: number = 0
   private currentValue: number = 50
-  private timerId?: number
   private started: boolean = false
 
   start(): void {
     if (this.started) { return }
     this.started = true
-    // 若首次启动且无数据，播种十个点
-    if (this.validCount === 0) {
-      const startHour = 9
-      const startMinute = 0
-      let cur = this.currentValue
-      for (let i = 0; i < 10; i++) {
-        const change = (Math.random() - 0.5) * 20
-        cur = Math.max(10, Math.min(90, Math.round(cur + change)))
-        const h = startHour + Math.floor((startMinute + i) / 60)
-        const m = (startMinute + i) % 60
-        const label = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
-        this.dataBuf[this.writeIndex] = cur
-        this.labelBuf[this.writeIndex] = label
-        this.writeIndex = (this.writeIndex + 1) % this.MAX_POINTS
-        this.validCount = Math.min(this.validCount + 1, this.MAX_POINTS)
-      }
-      this.timeIndex = 10
-      this.currentValue = cur
-    }
-    this.timerId = setInterval(() => this.tick(), 15000) as number
     hilog.info(DOMAIN, 'ProcessingCurveFeed', 'started')
   }
 
   stop(): void {
-    if (this.timerId) {
-      clearInterval(this.timerId)
-      this.timerId = undefined
-    }
     this.started = false
     hilog.info(DOMAIN, 'ProcessingCurveFeed', 'stopped')
-  }
-
-  private tick(): void {
-    // 生成下一点
-    const startMinute = 0
-    const startHour = 9
-    const totalMin = startMinute + this.timeIndex
-    const h = startHour + Math.floor(totalMin / 60)
-    const m = totalMin % 60
-    const hh = h.toString().padStart(2, '0')
-    const mm = m.toString().padStart(2, '0')
-    const label = `${hh}:${mm}`
-    const step = (Math.random() - 0.5) * 20
-    this.currentValue = Math.max(10, Math.min(90, Math.round(this.currentValue + step)))
-    this.dataBuf[this.writeIndex] = this.currentValue
-    this.labelBuf[this.writeIndex] = label
-    this.writeIndex = (this.writeIndex + 1) % this.MAX_POINTS
-    this.validCount = Math.min(this.validCount + 1, this.MAX_POINTS)
-    this.timeIndex++
   }
 
   append(value: number, label: string): void {

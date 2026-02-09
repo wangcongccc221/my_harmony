@@ -7,12 +7,13 @@ import { TableHeaderCell } from '../../components/ui/tables/TableHeaderCell'
 import { TableCell } from '../../components/ui/tables/TableCell'
 
 interface ListDataChangeListener {
-  onDataReload?: () => void
+  onDataReloaded?: () => void
   onDataAdd?: (index: number) => void
   onDataDelete?: (index: number) => void
   onDataChange?: (index: number) => void
   onDataMove?: (from: number, to: number) => void
 }
+
 
 class HistoryTableLazyDataSource implements IDataSource {
   private listeners: ListDataChangeListener[] = []
@@ -28,7 +29,7 @@ class HistoryTableLazyDataSource implements IDataSource {
   }
 
   private notifyDataReload(): void {
-    this.listeners.forEach(listener => listener.onDataReload && listener.onDataReload())
+    this.listeners.forEach(listener => listener.onDataReloaded && listener.onDataReloaded())
   }
 
   totalCount(): number {
@@ -103,6 +104,7 @@ export struct HistoryDataTable {
   @State private lastClickItemId: number = -1
   private readonly DOUBLE_CLICK_INTERVAL: number = 300 // 双击间隔时间（毫秒）
   private clickTimer: number = -1 // 用于延迟执行单击事件
+  private suppressRowTouchUntil: number = 0
 
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return resolveTheme(this.consumedTheme)
@@ -150,6 +152,7 @@ export struct HistoryDataTable {
    */
   private handleTouchEvent(event: TouchEvent | undefined, item: HistoryTableData): void {
     if (!event) return
+    if (Date.now() < this.suppressRowTouchUntil) return
     
     const currentTime = Date.now()
     const isDoubleClick = (currentTime - this.lastClickTime < this.DOUBLE_CLICK_INTERVAL) && 
@@ -456,114 +459,208 @@ export struct HistoryDataTable {
 
         // 可滚动数据区域（List + ListItem）
         List() {
-          LazyForEach(
-            this.lazyDataSource,
-            (item: HistoryTableData, rowIdx?: number) => {
+          if (this.isFilterMode || (this.externalData && this.externalData.length > 0)) {
+            if (this.getDisplayData().length > 0) {
+              ForEach(this.getDisplayData(), (item: HistoryTableData, rowIdx: number) => {
+                ListItem() {
+                  Row() {
+                    Checkbox({ name: `checkbox_${item.id}`, group: 'tableCheckbox' })
+                      .select(this.isSelected(item.id))
+                      .onTouch((event: TouchEvent) => {
+                        this.suppressRowTouchUntil = Date.now() + this.DOUBLE_CLICK_INTERVAL
+                      })
+                      .onChange((value: boolean) => {
+                        this.suppressRowTouchUntil = Date.now() + this.DOUBLE_CLICK_INTERVAL
+                        this.handleCheckboxChange(item.id, value)
+                      })
+                      .layoutWeight(6)
+                      .height(20)
+
+                    Text((rowIdx + 1).toString())
+                      .fontSize(14)
+                      .fontColor(this.getCurrentTheme().textColor)
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(8)
+
+                    Text(item.customerName)
+                      .fontSize(14)
+                      .fontColor(this.getCurrentTheme().textColor)
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(12)
+
+                    Text(item.farmName)
+                      .fontSize(14)
+                      .fontColor(this.getCurrentTheme().textColor)
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(12)
+
+                    Text(item.fruitName)
+                      .fontSize(14)
+                      .fontColor(this.getCurrentTheme().textColor)
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(10)
+
+                    Text(item.status)
+                      .fontSize(14)
+                      .fontColor(this.getStatusColor(item.status))
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(10)
+
+                    Text(item.startTime)
+                      .fontSize(14)
+                      .fontColor(this.getCurrentTheme().textColor)
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(12)
+
+                    Text(item.endTime)
+                      .fontSize(14)
+                      .fontColor(item.endTime === '-' ? this.getCurrentTheme().subTextColor : this.getCurrentTheme().textColor)
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(12)
+
+                    Text(item.weight.toString())
+                      .fontSize(14)
+                      .fontColor(this.getCurrentTheme().textColor)
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(12)
+
+                    Text(item.count.toString())
+                      .fontSize(14)
+                      .fontColor(this.getCurrentTheme().textColor)
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(12)
+                  }
+                  .width('100%')
+                  .height(36)
+                  .backgroundColor(rowIdx % 2 === 0 ? (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor) : (this.getCurrentTheme().surfaceColor))
+                  .padding({ left: 4, right: 4 })
+                }
+                .onTouch((event: TouchEvent) => {
+                  this.handleTouchEvent(event, item)
+                })
+                .border({ width: { bottom: 0.5 }, color: this.getCurrentTheme().borderColor })
+              }, (item: HistoryTableData) => `${item.id}`)
+            } else {
               ListItem() {
                 Row() {
-                  // 复选框列
-                  Checkbox({ name: `checkbox_${item.id}`, group: 'tableCheckbox' })
-                    .select(this.isSelected(item.id))
-                    .onChange((value: boolean) => {
-                      this.handleCheckboxChange(item.id, value)
-                    })
-                    .layoutWeight(6)
-                    .height(20)
-
-                  // 序号：自增序号（1, 2, 3...），不是批次号
-                  Text((rowIdx !== undefined ? (rowIdx + 1) : 1).toString())
+                  Text('暂无数据')
                     .fontSize(14)
-                    .fontColor(this.getCurrentTheme().textColor)
+                    .fontColor(this.getCurrentTheme().subTextColor)
                     .textAlign(TextAlign.Center)
-                    .layoutWeight(8)
-
-                  Text(item.customerName)
-                    .fontSize(14)
-                    .fontColor(this.getCurrentTheme().textColor)
-                    .textAlign(TextAlign.Center)
-                    .layoutWeight(12)
-
-                  Text(item.farmName)
-                    .fontSize(14)
-                    .fontColor(this.getCurrentTheme().textColor)
-                    .textAlign(TextAlign.Center)
-                    .layoutWeight(12)
-
-                  Text(item.fruitName)
-                    .fontSize(14)
-                    .fontColor(this.getCurrentTheme().textColor)
-                    .textAlign(TextAlign.Center)
-                    .layoutWeight(10)
-
-                  Text(item.status)
-                    .fontSize(14)
-                    .fontColor(this.getStatusColor(item.status))
-                    .textAlign(TextAlign.Center)
-                    .layoutWeight(10)
-
-                  Text(item.startTime)
-                    .fontSize(14)
-                    .fontColor(this.getCurrentTheme().textColor)
-                    .textAlign(TextAlign.Center)
-                    .layoutWeight(12)
-
-                  Text(item.endTime)
-                    .fontSize(14)
-                    .fontColor(item.endTime === '-' ? this.getCurrentTheme().subTextColor : this.getCurrentTheme().textColor)
-                    .textAlign(TextAlign.Center)
-                    .layoutWeight(12)
-
-                  Text(item.weight.toString())
-                    .fontSize(14)
-                    .fontColor(this.getCurrentTheme().textColor)
-                    .textAlign(TextAlign.Center)
-                    .layoutWeight(12)
-
-                  Text(item.count.toString())
-                    .fontSize(14)
-                    .fontColor(this.getCurrentTheme().textColor)
-                    .textAlign(TextAlign.Center)
-                    .layoutWeight(12)
                 }
                 .width('100%')
-                .height(36)
-                .backgroundColor((rowIdx ?? 0) % 2 === 0 ? (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor) : (this.getCurrentTheme().surfaceColor))
-                .padding({ left: 4, right: 4 })
+                .height(40)
+                .justifyContent(FlexAlign.Center)
               }
-              .onTouch((event: TouchEvent) => {
-                this.handleTouchEvent(event, item)
-              })
-              .border({ width: { bottom: 0.5 }, color: this.getCurrentTheme().borderColor })
-            },
-            (item: HistoryTableData) => `${item.id}`
-          )
-          
-          // 哨兵行：当滚动到底部时自动加载更多（仅在使用 externalData 或分页数据时）
-          if (!(this.filteredData && this.filteredData.length > 0) &&
-              !(this.externalData && this.externalData.length > 0) &&
-              this.hasMore && !this.isLoadingMore) {
-            ListItem() {
-              Row() {
-                Text('加载中...')
-                  .fontSize(14)
-                  .fontColor(this.getCurrentTheme().subTextColor)
-                  .textAlign(TextAlign.Center)
-              }
-              .width('100%')
-              .height(40)
-              .justifyContent(FlexAlign.Center)
             }
-            .onAppear(() => {
-              // 当哨兵行出现时，自动加载更多
-              this.loadMore()
-            })
+          } else {
+            LazyForEach(
+              this.lazyDataSource,
+              (item: HistoryTableData, rowIdx?: number) => {
+                ListItem() {
+                  Row() {
+                    Checkbox({ name: `checkbox_${item.id}`, group: 'tableCheckbox' })
+                      .select(this.isSelected(item.id))
+                      .onTouch((event: TouchEvent) => {
+                        this.suppressRowTouchUntil = Date.now() + this.DOUBLE_CLICK_INTERVAL
+                      })
+                      .onChange((value: boolean) => {
+                        this.suppressRowTouchUntil = Date.now() + this.DOUBLE_CLICK_INTERVAL
+                        this.handleCheckboxChange(item.id, value)
+                      })
+                      .layoutWeight(6)
+                      .height(20)
+
+                    Text((rowIdx !== undefined ? (rowIdx + 1) : 1).toString())
+                      .fontSize(14)
+                      .fontColor(this.getCurrentTheme().textColor)
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(8)
+
+                    Text(item.customerName)
+                      .fontSize(14)
+                      .fontColor(this.getCurrentTheme().textColor)
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(12)
+
+                    Text(item.farmName)
+                      .fontSize(14)
+                      .fontColor(this.getCurrentTheme().textColor)
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(12)
+
+                    Text(item.fruitName)
+                      .fontSize(14)
+                      .fontColor(this.getCurrentTheme().textColor)
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(10)
+
+                    Text(item.status)
+                      .fontSize(14)
+                      .fontColor(this.getStatusColor(item.status))
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(10)
+
+                    Text(item.startTime)
+                      .fontSize(14)
+                      .fontColor(this.getCurrentTheme().textColor)
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(12)
+
+                    Text(item.endTime)
+                      .fontSize(14)
+                      .fontColor(item.endTime === '-' ? this.getCurrentTheme().subTextColor : this.getCurrentTheme().textColor)
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(12)
+
+                    Text(item.weight.toString())
+                      .fontSize(14)
+                      .fontColor(this.getCurrentTheme().textColor)
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(12)
+
+                    Text(item.count.toString())
+                      .fontSize(14)
+                      .fontColor(this.getCurrentTheme().textColor)
+                      .textAlign(TextAlign.Center)
+                      .layoutWeight(12)
+                  }
+                  .width('100%')
+                  .height(36)
+                  .backgroundColor((rowIdx ?? 0) % 2 === 0 ? (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor) : (this.getCurrentTheme().surfaceColor))
+                  .padding({ left: 4, right: 4 })
+                }
+                .onTouch((event: TouchEvent) => {
+                  this.handleTouchEvent(event, item)
+                })
+                .border({ width: { bottom: 0.5 }, color: this.getCurrentTheme().borderColor })
+              },
+              (item: HistoryTableData) => `${item.id}`
+            )
+          
+            if (this.hasMore && !this.isLoadingMore) {
+              ListItem() {
+                Row() {
+                  Text('加载中...')
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().subTextColor)
+                    .textAlign(TextAlign.Center)
+                }
+                .width('100%')
+                .height(40)
+                .justifyContent(FlexAlign.Center)
+              }
+              .onAppear(() => {
+                this.loadMore()
+              })
+            }
           }
         }
         .width('100%')
         .layoutWeight(1)
         .scrollBar(BarState.Auto)
         .onReachEnd(() => {
-          if (!this.externalData || this.externalData.length === 0) {
+          if (!this.isFilterMode && (!this.externalData || this.externalData.length === 0)) {
             this.loadMore()
           }
         })

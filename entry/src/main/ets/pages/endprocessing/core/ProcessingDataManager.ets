@@ -4,15 +4,15 @@
  * 已改为从数据库读取数据
  */
 
-import { NumberUtils } from '../../../utils/helpers/NumberUtils'
+import { getORM } from '@ibestservices/ibest-orm'
+import { TbFruitinfo } from '../../../db/entities/TbFruitinfo'
 
-// 加工记录数据接口
-export interface ProcessingRecord {
-  id: number
-  startTime: string
-  endTime: string
-  productType: string
-  totalWeight: number
+export class ProcessingRecord {
+  id: number = 0
+  startTime: string = ''
+  endTime: string = ''
+  productType: string = ''
+  totalWeight: number = 0
 }
 
 // 添加数据参数接口
@@ -46,7 +46,6 @@ export class ProcessingDataManager {
   private static instance: ProcessingDataManager | null = null
   processingRecords: ProcessingRecord[] = []
   private dataLoaded: boolean = false
-  private nextId: number = 1
 
   private constructor() {
     // 不再初始化默认数据，改为从数据库加载
@@ -63,12 +62,23 @@ export class ProcessingDataManager {
    * 从数据库加载数据
    */
   public async loadDataFromDatabase(): Promise<void> {
-    if (!this.dataLoaded) {
-      this.dataLoaded = true
-      if (this.processingRecords.length === 0) {
-        this.processingRecords = []
-      }
-    }
+    const orm = getORM()
+    const listRaw = orm.query(TbFruitinfo)
+      .orderBy('CustomerID', 'desc')
+      .limit(50)
+      .find() as TbFruitinfo[]
+    const list = await Promise.resolve(listRaw)
+    const visibleList = list.filter(item => item.FVisible === undefined || item.FVisible === null || item.FVisible !== 0)
+    this.processingRecords = visibleList.map(item => {
+      const r = new ProcessingRecord()
+      r.id = item.CustomerID ?? 0
+      r.startTime = item.StartTime ?? ''
+      r.endTime = item.EndTime ?? ''
+      r.productType = item.FruitName ?? ''
+      r.totalWeight = item.BatchWeight ?? 0
+      return r
+    })
+    this.dataLoaded = true
   }
 
   /**
@@ -84,76 +94,21 @@ export class ProcessingDataManager {
    * 添加加工记录（保存到数据库）
    */
   async addData(data: AddProcessingRecordParams): Promise<void> {
-    try {
-      const newItem: ProcessingRecord = {
-        id: this.nextId++,
-        startTime: data.startTime,
-        endTime: data.endTime,
-        productType: data.productType,
-        totalWeight: data.totalWeight
-      }
-      this.processingRecords.unshift(newItem)
-      console.log('✅ 添加加工记录成功（内存）')
-    } catch (error) {
-      console.error('❌ 添加加工记录失败:', error)
-      const err = error as object
-      throw new Error(`添加加工记录失败: ${JSON.stringify(err)}`)
-    }
+    await this.ensureDataLoaded()
   }
 
   /**
    * 删除加工记录（同步到数据库）
    */
   async deleteData(id: number): Promise<void> {
-    try {
-      // 从内存中删除
-      const initialLength = this.processingRecords.length
-      this.processingRecords = this.processingRecords.filter(item => item.id !== id)
-      if (this.processingRecords.length < initialLength) {
-        console.log('✅ 删除加工记录成功，ID:', id)
-      } else {
-        console.log('⚠️ 未找到要删除的加工记录，ID:', id)
-      }
-    } catch (error) {
-      console.error('❌ 删除加工记录失败，ID:', id, error)
-      const err = error as object
-      throw new Error(`删除加工记录失败: ${JSON.stringify(err)}`)
-    }
+    await this.ensureDataLoaded()
   }
 
   /**
    * 更新加工记录（同步到数据库）
    */
   async updateData(id: number, newData: UpdateProcessingRecordParams): Promise<void> {
-    try {
-      const record = this.processingRecords.find(item => item.id === id)
-      if (!record) {
-        console.log('⚠️ 未找到要更新的加工记录，ID:', id)
-        return
-      }
-
-      // 更新内存中的数据
-      const index = this.processingRecords.findIndex(item => item.id === id)
-      if (index !== -1) {
-        if (newData.startTime !== undefined) {
-          this.processingRecords[index].startTime = newData.startTime
-        }
-        if (newData.endTime !== undefined) {
-          this.processingRecords[index].endTime = newData.endTime
-        }
-        if (newData.productType !== undefined) {
-          this.processingRecords[index].productType = newData.productType
-        }
-        if (newData.totalWeight !== undefined) {
-          this.processingRecords[index].totalWeight = newData.totalWeight
-        }
-        console.log('✅ 更新加工记录成功:', this.processingRecords[index])
-      }
-    } catch (error) {
-      console.error('❌ 更新加工记录失败，ID:', id, error)
-      const err = error as object
-      throw new Error(`更新加工记录失败: ${JSON.stringify(err)}`)
-    }
+    await this.ensureDataLoaded()
   }
 
   /**

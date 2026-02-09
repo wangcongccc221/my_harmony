@@ -241,16 +241,30 @@ export class DatabaseSync {
   private onStatisticsUpdate(stats: StStatistics): void {
     // 可以在这里触发即时保存重要数据
     hilog.debug(0x0001, TAG,
-      `统计更新: 通道${stats.channelIndex}, 产量=${stats.yield}`)
+      `统计更新: 通道${stats.nChannelIndex}, 产量=${stats.nYield}`)
   }
 
   /**
    * 全局数据变化回调
    */
   private onDataChange(data: GlobalRealtimeData): void {
-    // 数据变化时的处理逻辑
     hilog.debug(0x0001, TAG,
       `数据变化: 总产量=${data.totalYield}, 总重=${data.totalWeight}g`)
+    if (!this.databaseSaver) {
+      return
+    }
+
+    if (this.currentBatchId === 0 && data.startTime > 0) {
+      this.currentBatchId = data.startTime
+      this.lastSaveTime = Date.now()
+      Promise.resolve().then(async () => {
+        try {
+          await this.databaseSaver!.saveBatchInfo(this.currentBatchId, data)
+        } catch (e) {
+          hilog.error(0x0001, TAG, `保存批次信息失败: ${e}`)
+        }
+      })
+    }
   }
 
   /**

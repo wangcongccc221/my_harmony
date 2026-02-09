@@ -2,10 +2,10 @@ import { Table, Column, PrimaryKey } from '@ibestservices/ibest-orm';
 
 @Table({ name: 'tb_FTPInfo' })
 export class TbFtpinfo {
-  @Column()
+  @PrimaryKey()
   FtpIp?: string;
 
-  @Column()
+  @PrimaryKey()
   FtpPort?: number;
 
   @Column()

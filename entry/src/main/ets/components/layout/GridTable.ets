@@ -1,16 +1,3 @@
-/**
- * Grid表格组件 - 支持拖拽功能
- * 
- * 功能说明：
- * - 使用Grid组件实现表格布局
- * - 支持拖拽交换单元格内容
- * - 固定表头，可滚动数据区域
- * - 兼容原有的TableRow数据结构
- * 
- * 基于华为官方最佳实践：
- * https://developer.huawei.com/consumer/cn/doc/best-practices/bpta-grid-drag-swap
- */
-
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { OMNI_THEME_KEY } from '../../utils/theme/useOmniTheme'
 import { TableRow } from './LevelTable'
@@ -143,9 +130,12 @@ export struct GridTable {
         this.selectedCells.add(cellId)
       }
     } else {
-      // 单选模式：清空已有选中，只保留当前单元格
-      this.selectedCells.clear()
-      this.selectedCells.add(cellId)
+      if (this.selectedCells.has(cellId) && this.selectedCells.size === 1) {
+        this.selectedCells.clear()
+      } else {
+        this.selectedCells.clear()
+        this.selectedCells.add(cellId)
+      }
     }
 
     // 更新多选模式状态
@@ -579,14 +569,14 @@ export struct GridTable {
     if (this.enableHorizontalScroll) {
       Text(cellValue)
         .fontSize(15)
-        .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : '#303133')
+        .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : this.getCurrentTheme().textColor)
         .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Medium : FontWeight.Normal)
         .textAlign(TextAlign.Center)
         .width(`${this.minColumnWidth}vp`)
         .height('100%')
         .backgroundColor(
-          this.isCellSelected(rowIndex, colIndex) ? '#409EFF' :
-          (rowIndex % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
+          this.isCellSelected(rowIndex, colIndex) ? this.getCurrentTheme().primary :
+          (rowIndex % 2 === 0 ? (this.getCurrentTheme().controlBg ?? '#FFFFFF') : (this.getCurrentTheme().tableRowAltBg ?? '#FAFAFA'))
         )
         .border({
           width: { 
@@ -595,7 +585,7 @@ export struct GridTable {
             top: 0, 
             left: colIndex === 0 ? 0.5 : 0
           },
-          color: this.isCellSelected(rowIndex, colIndex) ? '#409EFF' : '#EBEEF5'
+          color: this.isCellSelected(rowIndex, colIndex) ? this.getCurrentTheme().primary : this.getCurrentTheme().borderColor
         })
         .padding(2)
         .draggable(this.enableDrag && !this.isDragDisabledForCell(colIndex))
@@ -620,14 +610,14 @@ export struct GridTable {
     } else {
       Text(cellValue)
         .fontSize(15)
-        .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : '#303133')
+        .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : this.getCurrentTheme().textColor)
         .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Medium : FontWeight.Normal)
         .textAlign(TextAlign.Center)
         .layoutWeight(1)
         .height('100%')
         .backgroundColor(
-          this.isCellSelected(rowIndex, colIndex) ? '#409EFF' :
-          (rowIndex % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
+          this.isCellSelected(rowIndex, colIndex) ? this.getCurrentTheme().primary :
+          (rowIndex % 2 === 0 ? (this.getCurrentTheme().controlBg ?? '#FFFFFF') : (this.getCurrentTheme().tableRowAltBg ?? '#FAFAFA'))
         )
         .border({
           width: { 
@@ -636,7 +626,7 @@ export struct GridTable {
             top: 0, 
             left: colIndex === 0 ? 0.5 : 0
           },
-          color: this.isCellSelected(rowIndex, colIndex) ? '#409EFF' : '#EBEEF5'
+          color: this.isCellSelected(rowIndex, colIndex) ? this.getCurrentTheme().primary : this.getCurrentTheme().borderColor
         })
         .padding(2)
         .draggable(this.enableDrag && !this.isDragDisabledForCell(colIndex))
@@ -673,14 +663,7 @@ export struct GridTable {
       .textAlign(TextAlign.Center)
       .width('100%')
       .height('100%')
-      // 使用渐变背景，增加层次感
-      .linearGradient({
-        angle: 180,
-        colors: [
-          ['#F5F7FA', 0.0], // 浅灰白
-          ['#E4E7ED', 1.0]  // 稍深的灰
-        ]
-      })
+      .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? '#F5F7FA')
       .border({
         width: { 
           right: 0.5, // 边框变细
@@ -688,7 +671,7 @@ export struct GridTable {
           top: 0.5, 
           left: colIndex === 0 ? 0.5 : 0 
         },
-        color: '#DCDFE6' // 更柔和的边框颜色
+        color: this.getCurrentTheme().borderColor
       })
       .padding(2)
   }
@@ -704,17 +687,11 @@ export struct GridTable {
       Text(title)
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#606266')
+        .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? '#606266')
         .textAlign(TextAlign.Center)
         .width(`${this.minColumnWidth}vp`)
         .height('100%')
-        .linearGradient({
-          angle: 180,
-          colors: [
-            ['#F0F2F5', 0.0], 
-            ['#E6E8EB', 1.0]
-          ]
-        })
+        .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? '#F0F2F5')
         .border({
           width: { 
             right: 0.5, 
@@ -722,7 +699,7 @@ export struct GridTable {
             top: 0.5, 
             left: colIndex === 0 ? 0.5 : 0 
           },
-          color: '#DCDFE6'
+          color: this.getCurrentTheme().borderColor
         })
         .padding(6)
         .draggable(this.enableDrag && !this.isDragDisabledForCell(colIndex))
@@ -741,17 +718,11 @@ export struct GridTable {
       Text(title)
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#606266')
+        .fontColor(this.getCurrentTheme().tableHeaderTextColor ?? '#606266')
         .textAlign(TextAlign.Center)
         .layoutWeight(1)
         .height('100%')
-        .linearGradient({
-          angle: 180,
-          colors: [
-            ['#F0F2F5', 0.0], 
-            ['#E6E8EB', 1.0]
-          ]
-        })
+        .backgroundColor(this.getCurrentTheme().tableHeaderBg ?? '#F0F2F5')
         .border({
           width: { 
             right: 0.5, 
@@ -759,7 +730,7 @@ export struct GridTable {
             top: 0.5, 
             left: colIndex === 0 ? 0.5 : 0 
           },
-          color: '#DCDFE6'
+          color: this.getCurrentTheme().borderColor
         })
         .padding(6)
         .draggable(this.enableDrag && !this.isDragDisabledForCell(colIndex))
@@ -785,14 +756,14 @@ export struct GridTable {
     if (this.enableHorizontalScroll) {
       Text(cellValue)
         .fontSize(15)
-        .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : '#303133')
+        .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : this.getCurrentTheme().textColor)
         .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Medium : FontWeight.Normal)
         .textAlign(TextAlign.Center)
         .width(`${this.minColumnWidth}vp`)
         .height('100%')
         .backgroundColor(
-          this.isCellSelected(rowIndex, colIndex) ? '#409EFF' :
-          (rowIndex % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
+          this.isCellSelected(rowIndex, colIndex) ? this.getCurrentTheme().primary :
+          (rowIndex % 2 === 0 ? (this.getCurrentTheme().controlBg ?? '#FFFFFF') : (this.getCurrentTheme().tableRowAltBg ?? '#FAFAFA'))
         )
         .border({
           width: { 
@@ -801,7 +772,7 @@ export struct GridTable {
             top: 0, 
             left: 0.5
           },
-          color: this.isCellSelected(rowIndex, colIndex) ? '#409EFF' : '#EBEEF5'
+          color: this.isCellSelected(rowIndex, colIndex) ? this.getCurrentTheme().primary : this.getCurrentTheme().borderColor
         })
         .padding(2)
         .draggable(this.enableDrag)
@@ -823,14 +794,14 @@ export struct GridTable {
     } else {
       Text(cellValue)
         .fontSize(15)
-        .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : '#303133')
+        .fontColor(this.isCellSelected(rowIndex, colIndex) ? '#FFFFFF' : this.getCurrentTheme().textColor)
         .fontWeight(this.isCellSelected(rowIndex, colIndex) ? FontWeight.Medium : FontWeight.Normal)
         .textAlign(TextAlign.Center)
         .layoutWeight(1)
         .height('100%')
         .backgroundColor(
-          this.isCellSelected(rowIndex, colIndex) ? '#409EFF' :
-          (rowIndex % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
+          this.isCellSelected(rowIndex, colIndex) ? this.getCurrentTheme().primary :
+          (rowIndex % 2 === 0 ? (this.getCurrentTheme().controlBg ?? '#FFFFFF') : (this.getCurrentTheme().tableRowAltBg ?? '#FAFAFA'))
         )
         .border({
           width: { 
@@ -839,7 +810,7 @@ export struct GridTable {
             top: 0, 
             left: 0.5
           },
-          color: this.isCellSelected(rowIndex, colIndex) ? '#409EFF' : '#EBEEF5'
+          color: this.isCellSelected(rowIndex, colIndex) ? this.getCurrentTheme().primary : this.getCurrentTheme().borderColor
         })
         .padding(2)
         .draggable(this.enableDrag)
@@ -868,7 +839,7 @@ export struct GridTable {
           Text(this.tableTitle)
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
-            .fontColor('#1e3a5f')
+            .fontColor(this.getCurrentTheme().textColor)
         }
         .width('100%')
         .backgroundColor(Color.Transparent)
@@ -908,6 +879,7 @@ export struct GridTable {
                 .justifyContent(FlexAlign.Start)
               }
               .width(this.getContentWidth())
+              .padding({ bottom: 20 })
               .scrollable(this.enableScroll ? ScrollDirection.Vertical : ScrollDirection.None)
               .scrollBar(this.enableScroll ? BarState.Auto : BarState.Off)
               .scrollBarColor(this.getCurrentTheme().borderColor)
@@ -917,10 +889,12 @@ export struct GridTable {
               .layoutWeight(1)
             }
             .width(this.getContentWidth())
-            .height(this.maxHeight)
+            // .height(this.maxHeight) // 移除固定高度，使用 layoutWeight
+            .layoutWeight(1)
           }
           .width('100%')
-          .height(this.maxHeight)
+          // .height(this.maxHeight) // 移除固定高度，使用 layoutWeight
+          .layoutWeight(1)
           .scrollable(ScrollDirection.Horizontal)
           .scrollBar(BarState.On)
           .scrollBarColor(this.getCurrentTheme().borderColor)
@@ -963,24 +937,26 @@ export struct GridTable {
             .scrollBarWidth(20)
             .friction(0.35)
             .align(Alignment.TopStart)
-            .constraintSize({ maxHeight: this.maxHeight })
+            // .constraintSize({ maxHeight: this.maxHeight }) // 移除最大高度限制
+            .layoutWeight(1)
           }
+          .layoutWeight(1)
         }
       }
       .width('100%')
-      // .layoutWeight(1) // 移除容器自适应剩余空间，改为自适应内容
+      .layoutWeight(1) // 自适应剩余空间，确保卡片高度一致
       .alignItems(HorizontalAlign.Start)
-      .backgroundColor('#FFFFFF')  // 整体背景纯白
-      .borderRadius(8)    // 增加圆角
-      .shadow({ radius: 16, color: 'rgba(0,0,0,0.05)', offsetY: 4 }) // 增加高级感的淡淡阴影
+      .backgroundColor(this.getCurrentTheme().controlBg ?? '#FFFFFF')  // 整体背景
+      .borderRadius(this.enableCardStyle ? 8 : 0)    // 增加圆角
+      .shadow(this.enableCardStyle ? { radius: 16, color: 'rgba(0,0,0,0.05)', offsetY: 4 } : { radius: 0, color: Color.Transparent }) // 增加高级感的淡淡阴影
       .padding(0)                                         // 移除内边距，让表格紧贴卡片边框
     }
     .width(this.tableWidth)
     // .height('100%') // 移除固定高度，允许自适应内容
     .backgroundColor(Color.Transparent)                   // 外层容器透明（实际背景由内层控制）
     .border({ width: 0 }) // 移除外层边框，完全依靠阴影和内部分割线
-    .borderRadius(8)
-    .margin({ top: 4, left: 8, right: 8, bottom: 0 }) // 增加边距，增加呼吸感
+    .borderRadius(this.enableCardStyle ? 8 : 0)
+    .margin(this.enableCardStyle ? { top: 4, left: 8, right: 8, bottom: 0 } : { top: 0, left: 0, right: 0, bottom: 0 }) // 增加边距，增加呼吸感
     .alignItems(HorizontalAlign.Center)
     .justifyContent(FlexAlign.Start) // 改为Start，避免垂直居中导致的间隙问题
     .clip(true)                                           // 裁剪超出圆角的部分

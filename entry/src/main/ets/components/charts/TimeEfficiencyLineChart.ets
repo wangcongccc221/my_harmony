@@ -43,29 +43,17 @@ export struct TimeEfficiencyLineChart {
     return labels
   }
 
-  /**
-   * 生成模拟数据
-   */
-  private getMockSeries(len: number): SeriesData {
-    const efficiency: number[] = []
-    const output: number[] = []
-    for (let i = 0; i < len; i++) {
-      efficiency.push(Math.floor(50 + Math.random() * 40)) // 50~90
-      output.push(Math.floor(30 + Math.random() * 60))     // 30~90
+  private getSeries(len: number): SeriesData {
+    return {
+      efficiency: new Array(len).fill(0),
+      output: new Array(len).fill(0)
     }
-    const result: SeriesData = {
-      efficiency: efficiency,
-      output: output
-    }
-    return result
   }
 
   private updateOptions(): void {
     const theme = getCurrentTheme()
     const labels = this.getTimeLabels()
-    const seriesData = this.getMockSeries(labels.length)
-
-    console.log('[TimeEfficiencyLineChart] 更新配置，标签数:', labels.length, '数据:', seriesData)
+    const seriesData = this.getSeries(labels.length)
 
     this.options = new Options({
       legend: {

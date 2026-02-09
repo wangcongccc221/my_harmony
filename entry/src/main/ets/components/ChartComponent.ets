@@ -82,7 +82,7 @@ export struct ChartComponent {
     const timeLabels = this.generateTimeLabels(this.dataCount);
     this.chartData = timeLabels.map((time: string, index: number): ChartData => ({
       time: time,
-      value: Math.floor(Math.random() * 90) + 10 // 10-100之间的随机数
+      value: 0
     }));
   }
 
@@ -102,9 +102,7 @@ export struct ChartComponent {
 
   // 生成新的数值（随机游走）
   private generateNewValue(): number {
-    const step = (Math.random() * 10) - 5; // -5 ~ +5
-    this.currentValue = Math.max(10, Math.min(100, Math.round(this.currentValue + step)));
-    return this.currentValue;
+    return this.currentValue
   }
 
   // 启动实时数据生成（只入队，不直接重绘）
@@ -115,17 +113,6 @@ export struct ChartComponent {
       ProcessingBarFeed.getInstance().start()
       return
     }
-    this.timerId = setInterval(() => {
-      const newTime = this.generateNewTimeLabel();
-      const newValue = this.generateNewValue();
-      // 限制队列长度，防止内存泄漏
-      if (this.pendingQueue.length >= this.MAX_PENDING_QUEUE) {
-        // 队列已满，移除最旧的数据
-        this.pendingQueue.shift();
-      }
-      this.pendingQueue.push({ time: newTime, value: newValue });
-      
-    }, 1000) as number;
   }
 
   // 启动批量合并刷新（节流，每200ms刷新一次，降低刷新频率提升性能）

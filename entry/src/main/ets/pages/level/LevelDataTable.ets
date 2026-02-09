@@ -98,7 +98,7 @@ export struct LevelDataTable {
    * - 默认值为空数组
    * - 从父组件传入，支持动态更新
    */
-  @Prop levelData: LevelData[] = []
+  @Prop @Watch('onLevelDataChange') levelData: LevelData[] = []
   
   /**
    * 统计数据对象
@@ -292,6 +292,7 @@ export struct LevelDataTable {
    */
   @State private statisticsTableData: StatisticsTableItem[] = []
   @State private statsRefreshTick: number = 0
+  @State private statisticsViewportWidth: number = 0
   // 输入缓冲，避免 onChange 直接触发父级重建导致焦点跳动
   @State private bufB1Counts: number[] = []
   @State private bufB1Avgs: number[] = []
@@ -310,8 +311,8 @@ export struct LevelDataTable {
    * - 将statisticsData转换为Grid表格格式
    */
   aboutToAppear(): void {
-    this.initializeStatisticsData()
     this.initializeLevelData()
+    this.initializeStatisticsData()
   }
 
   // 记录上次的 triggerSave 值，避免重复触发
@@ -374,6 +375,9 @@ export struct LevelDataTable {
   private onLevelDataChange(): void {
     console.log('【等级页面】等级数据变化，重新初始化')
     this.initializeLevelData()
+    this.calculatePackingAmounts()
+    this.initializeStatisticsData()
+    this.statsRefreshTick++
   }
 
   /**
@@ -382,6 +386,9 @@ export struct LevelDataTable {
   private onPropTableCountChange(): void {
     console.log('【等级页面】表格数量Prop变化:', this.tableCount)
     this.initializeLevelData()
+    this.calculatePackingAmounts()
+    this.initializeStatisticsData()
+    this.statsRefreshTick++
   }
 
   /**
@@ -678,6 +685,7 @@ export struct LevelDataTable {
         .textAlign(TextAlign.Center)
         .padding({ top: 4, bottom: 4 })
 
+
       Divider().vertical(true).height(30).color(this.getCurrentTheme().borderColor)
 
       // 装箱量列
@@ -871,36 +879,28 @@ export struct LevelDataTable {
    * - 创建6行数据：底部1和底部2的各3行数据
    */
   private initializeStatisticsData(): void {
-    const b1Counts = this.statisticsData.bottom1Counts || []
-    const b1Sets = this.statisticsData.bottom1Sets || []
-    const b1AvgsComputed = b1Counts.map((cnt, i) => {
-      const setVal = b1Sets[i] ?? 0
-      return cnt > 0 ? Math.round(setVal / cnt) : (this.statisticsData.bottom1Avgs?.[i] ?? 0)
-    })
-
-    const b2Counts = this.statisticsData.bottom2Counts || []
-    const b2Sets = this.statisticsData.bottom2Sets || []
-    const b2AvgsComputed = b2Counts.map((cnt, i) => {
-      const setVal = b2Sets[i] ?? 0
-      return cnt > 0 ? Math.round(setVal / cnt) : (this.statisticsData.bottom2Avgs?.[i] ?? 0)
-    })
+    const levelCount = this.getStatisticsLevelCount()
+    const standardWeights = this.getStandardWeights(levelCount)
+    const b1Standard = standardWeights
+    const b2Standard = standardWeights
+    const b1AvgsComputed = this.buildAverageValues(this.packingWeight1, standardWeights)
+    const b2AvgsComputed = this.buildAverageValues(this.packingWeight2, standardWeights)
 
     this.statisticsTableData = [
-      { id: 1, itemName: '装箱数量', values: b1Counts },
+      { id: 1, itemName: '装箱数量', values: b1Standard },
       { id: 2, itemName: '平均重量', values: b1AvgsComputed },
-      { id: 3, itemName: '设置重量', values: b1Sets },
-      { id: 4, itemName: '装箱数量', values: b2Counts },
+      { id: 3, itemName: '设置重量', values: b1AvgsComputed },
+      { id: 4, itemName: '装箱数量', values: b2Standard },
       { id: 5, itemName: '平均重量', values: b2AvgsComputed },
-      { id: 6, itemName: '设置重量', values: b2Sets }
+      { id: 6, itemName: '设置重量', values: b2AvgsComputed }
     ]
 
-    // 同步缓冲
-    this.bufB1Counts = b1Counts.slice()
-    this.bufB1Avgs = b1AvgsComputed.slice()
-    this.bufB1Sets = b1Sets.slice()
-    this.bufB2Counts = b2Counts.slice()
-    this.bufB2Avgs = b2AvgsComputed.slice()
-    this.bufB2Sets = b2Sets.slice()
+    this.bufB1Counts = []
+    this.bufB1Avgs = []
+    this.bufB1Sets = []
+    this.bufB2Counts = []
+    this.bufB2Avgs = []
+    this.bufB2Sets = []
   }
 
   // ==================== 事件回调函数 ====================
@@ -1082,7 +1082,7 @@ export struct LevelDataTable {
       }
     }
     .width('100%')
-    .height(40)
+    .height(isHeader ? 40 : this.getStatisticsRowHeight())
     .backgroundColor(isHeader ? 
       (this.getCurrentTheme().primary + '20') : 
       this.getCurrentTheme().surfaceColor)
@@ -1140,65 +1140,31 @@ export struct LevelDataTable {
           .fontColor(this.getCurrentTheme().textColor)
           .textAlign(TextAlign.Center)
       } else if (item) {
-        // 数据单元格（第0列为项目名只读，其余列可编辑数值）
         if (index === 0) {
           Text(item.itemName)
-            .fontSize(14)
+            .fontSize(16)
             .fontColor(this.getCurrentTheme().textColor)
             .textAlign(TextAlign.Center)
         } else {
-          TextInput({ text: ((index - 1) < item.values.length ? `${item.values[index - 1]}` : '') })
-            .type(InputType.Number)
-            .fontSize(14)
+          Text(this.getStatisticsDisplayValue(item, index - 1))
+            .fontSize(16)
             .fontColor(this.getCurrentTheme().textColor)
-            .backgroundColor(this.getCurrentTheme().surfaceColor)
             .textAlign(TextAlign.Center)
-            .border({ width: 0 })
-            // 输入过程中仅更新缓冲，避免父组件重建导致焦点跳动
-            .onChange((raw: string) => {
-              const numeric = raw.replace(/[^0-9.\-]/g, '')
-              const parsed = Number(numeric)
-              if (isNaN(parsed)) { return }
-              const vi = index - 1
-              switch (item.id) {
-                case 1: this.bufB1Counts[vi] = Math.max(0, Math.floor(parsed)); break
-                case 2: this.bufB1Avgs[vi] = Math.max(0, Math.round(parsed)); break
-                case 3: this.bufB1Sets[vi] = Math.max(0, Math.floor(parsed)); break
-                case 4: this.bufB2Counts[vi] = Math.max(0, Math.floor(parsed)); break
-                case 5: this.bufB2Avgs[vi] = Math.max(0, Math.round(parsed)); break
-                case 6: this.bufB2Sets[vi] = Math.max(0, Math.floor(parsed)); break
-              }
-            })
-            // 仅在回车提交时把缓冲写回父组件
-            .onSubmit((enterKey: EnterKeyType) => {
-              const vi = index - 1
-              let row: 'bottom1' | 'bottom2' = 'bottom1'
-              let field: 'count' | 'avg' | 'set' = 'count'
-              let value = 0
-              switch (item.id) {
-                case 1: row = 'bottom1'; field = 'count'; value = this.bufB1Counts[vi] || 0; break
-                case 2: row = 'bottom1'; field = 'avg'; value = this.bufB1Avgs[vi] || 0; break
-                case 3: row = 'bottom1'; field = 'set'; value = this.bufB1Sets[vi] || 0; break
-                case 4: row = 'bottom2'; field = 'count'; value = this.bufB2Counts[vi] || 0; break
-                case 5: row = 'bottom2'; field = 'avg'; value = this.bufB2Avgs[vi] || 0; break
-                case 6: row = 'bottom2'; field = 'set'; value = this.bufB2Sets[vi] || 0; break
-              }
-              if (this.onEditStat) { this.onEditStat(row, field, vi, value) }
-            })
         }
       }
     }
     .width('100%')
-    .height(40)
+    .height(isHeader ? 40 : this.getStatisticsRowHeight())
+    .padding({ left: 6, right: 6, top: 6, bottom: 6 })
     .backgroundColor(isHeader ?
       (this.getCurrentTheme().primary + '20') :
       (index % 2 === 0 ? this.getCurrentTheme().backgroundColor : this.getCurrentTheme().surfaceColor))
     .border({
       width: {
-        right: 1,
-        bottom: 1,
-        top: isHeader ? 1 : 0, // 表头保留上边框，数据行移除上边框（依靠上一行的下边框）
-        left: index === 0 ? 1 : 0 // 第一列保留左边框
+        right: 2,
+        bottom: 2,
+        top: isHeader ? 2 : ((item && (item.id === 3 || item.id === 6)) ? 2 : 0),
+        left: index === 0 ? 2 : 0
       },
       color: this.getCurrentTheme().borderColor
     })
@@ -1219,7 +1185,7 @@ export struct LevelDataTable {
     if (index === 0) {
       return '项'
     } else {
-      return `${index - 1}`
+      return `${index}`
     }
   }
 
@@ -1243,6 +1209,134 @@ export struct LevelDataTable {
     }
   }
 
+  private getStatisticsLevelCount(): number {
+    if (this.levelTableData.length > 0) {
+      return this.levelTableData.length
+    }
+    return Math.max(0, this.levelCountIndex)
+  }
+
+  private getStandardWeights(levelCount: number): number[] {
+    const standardWeights: number[] = []
+    for (let i = 0; i < levelCount; i++) {
+      standardWeights.push(this.levelTableData[i]?.minWeight ?? 0)
+    }
+    standardWeights.push(0)
+    return standardWeights
+  }
+
+  private buildAverageValues(packingWeight: number, standardWeights: number[]): number[] {
+    const precision = Math.max(0, Math.min(6, this.weightPrecision))
+    return standardWeights.map(weight => {
+      if (packingWeight <= 0 || weight <= 0) {
+        return 0
+      }
+      const value = (packingWeight * 1000) / weight
+      return Number(value.toFixed(precision))
+    })
+  }
+
+  private getStatisticsColumnIndices(): number[] {
+    const totalColumns = this.getStatisticsDataColumnCount() + 1
+    const indices: number[] = []
+    for (let i = 0; i < totalColumns; i++) {
+      indices.push(i)
+    }
+    return indices
+  }
+
+  private getStatisticsDataColumnCount(): number {
+    const levelCount = Math.max(1, this.getStatisticsLevelCount())
+    return levelCount * 2 + 1
+  }
+
+  private getStatisticsColumnsTemplate(): string {
+    const totalColumns = this.getStatisticsDataColumnCount() + 1
+    return new Array(totalColumns).fill(`${this.statisticsColumnWidth}px`).join(' ')
+  }
+
+  private getStatisticsDisplayValue(item: StatisticsTableItem, dataColumnIndex: number): string {
+    const isOddColumn = dataColumnIndex % 2 === 0
+    const valueIndex = Math.floor(dataColumnIndex / 2)
+    if (item.id === 1 || item.id === 4) {
+      if (!isOddColumn) {
+        return ''
+      }
+      const value = item.values[valueIndex]
+      if (value === undefined || value === null) {
+        return ''
+      }
+      return this.formatWeight(value)
+    }
+    if (item.id === 2 || item.id === 5) {
+      if (!isOddColumn) {
+        return ''
+      }
+      const value = item.values[valueIndex]
+      if (value === undefined || value === null) {
+        return ''
+      }
+      return this.formatWeight(value)
+    }
+    if (item.id === 3 || item.id === 6) {
+      if (isOddColumn) {
+        return ''
+      }
+      const left = item.values[valueIndex]
+      const right = item.values[valueIndex + 1]
+      if (left === undefined || right === undefined) {
+        return ''
+      }
+      const precision = Math.max(0, Math.min(6, this.weightPrecision))
+      const mid = (left + right) / 2
+      return Number(mid.toFixed(precision)).toFixed(precision)
+    }
+    if (isOddColumn) {
+      const value = item.values[valueIndex]
+      if (value === undefined || value === null) {
+        return ''
+      }
+      return this.formatWeight(value)
+    }
+    const left = item.values[valueIndex]
+    const right = item.values[valueIndex + 1]
+    if (left === undefined || right === undefined) {
+      return ''
+    }
+    const precision = Math.max(0, Math.min(6, this.weightPrecision))
+    const mid = (left + right) / 2
+    return Number(mid.toFixed(precision)).toFixed(precision)
+  }
+
+  private normalizeStatArray(values: number[], targetLength: number): number[] {
+    const result = values.slice(0, targetLength)
+    while (result.length < targetLength) {
+      result.push(0)
+    }
+    return result
+  }
+
+  private statisticsColumnWidth: number = 140
+
+  private getStatisticsTableWidth(): number {
+    return (this.getStatisticsDataColumnCount() + 1) * this.statisticsColumnWidth
+  }
+
+  private shouldEnableStatisticsHorizontalScroll(): boolean {
+    if (this.statisticsViewportWidth <= 0) {
+      return true
+    }
+    return this.getStatisticsTableWidth() > this.statisticsViewportWidth
+  }
+
+  private getStatisticsTableHeight(): number {
+    const h = 40 + this.statisticsTableData.length * this.getStatisticsRowHeight()
+    return h < 280 ? 280 : h
+  }
+
+  private getStatisticsRowHeight(): number {
+    return 64
+  }
 
 
 
@@ -1258,7 +1352,7 @@ export struct LevelDataTable {
             // 等级数量标签
             Text(t('等级数量:', '等级数量:'))
               .fontSize(24)
-              .fontColor(this.getCurrentTheme().textColor)
+              .fontColor(this.getCurrentTheme().textColor) //字体颜色
               .margin({ right: 8 })
 
             // 等级数量选择器（动态生成选项，支持到当前数据行数）
@@ -1459,75 +1553,80 @@ export struct LevelDataTable {
         .backgroundColor(this.getCurrentTheme().surfaceColor)
       }
       .width('100%')
-      .height('70%')
+      .layoutWeight(1)
       .padding(AppleDesignStyle.CARD_PADDING_SMALL) // 合理内边距
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
       .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
       .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // 合理圆角(12px)
       .shadow(AppleDesignStyle.getShadowMedium()) // 柔和阴影
-      .margin({ bottom: AppleDesignStyle.CARD_MARGIN_SMALL }) // 合理间距
+      .margin({ bottom: 0 }) // 去除与下方统计表格的间距
 
       // 统计表格卡片：使用Grid组件实现的表格
       Column() {
 
         // 表格容器：表头固定 + 数据滚动
-        Column() {
-          // 固定表头
-          Grid() {
-            ForEach([0, 1, 2, 3, 4, 5, 6, 7, 8], (colIndex: number) => {
-              GridItem() {
-                this.buildStatisticsCell(null, colIndex, true)
-              }
-            })
-          }
-          .columnsTemplate('1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr') // 9列等宽
-          .columnsGap(0)
-          .rowsGap(0)
-          .width('100%')
-          .height(40) // 表头固定高度
-          .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
-
-          // 可滚动的数据区域
-          Scroll() {
+        Scroll() {
+          Column() {
             Grid() {
-              // 数据行
+              ForEach(this.getStatisticsColumnIndices(), (colIndex: number) => {
+                GridItem() {
+                  this.buildStatisticsCell(null, colIndex, true)
+                }
+              })
+            }
+            .columnsTemplate(this.getStatisticsColumnsTemplate())
+            .columnsGap(0)
+            .rowsGap(0)
+            .width(this.getStatisticsTableWidth())
+            .height(40)
+            .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+
+            Grid() {
               ForEach(this.statisticsTableData, (item: StatisticsTableItem) => {
-                ForEach([0, 1, 2, 3, 4, 5, 6, 7, 8], (colIndex: number) => {
+                ForEach(this.getStatisticsColumnIndices(), (colIndex: number) => {
                   GridItem() {
                     this.buildStatisticsCell(item, colIndex, false)
                   }
                 })
               })
             }
-            .columnsTemplate('1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr') // 9列等宽
+            .columnsTemplate(this.getStatisticsColumnsTemplate())
             .columnsGap(0)
             .rowsGap(0)
-            .width('100%')
-            .height(this.statisticsTableData.length * 40) // 数据区域高度：数据行数 × 每行高度
+            .width(this.getStatisticsTableWidth())
+            .height(this.statisticsTableData.length * this.getStatisticsRowHeight())
           }
-          .width('100%')
-          .height(240) // 数据区域固定高度：总高度280 - 表头40 = 240
-          .scrollable(ScrollDirection.Vertical)
-          .scrollBar(BarState.Auto)
+          .width(this.getStatisticsTableWidth())
+          .height(this.getStatisticsTableHeight())
         }
         .width('100%')
-        .height(280) // 总容器高度
+        .height(this.getStatisticsTableHeight())
+        .scrollable(this.shouldEnableStatisticsHorizontalScroll() ? ScrollDirection.Horizontal : ScrollDirection.None)
+        .scrollBar(this.shouldEnableStatisticsHorizontalScroll() ? BarState.Auto : BarState.Off)
+        .onAreaChange((oldRect, newRect) => {
+          const w: number = Number.parseFloat(String(newRect.width))
+          const cw: number = Number.isFinite(w) && w > 0 ? Math.floor(w) : 0
+          if (cw !== this.statisticsViewportWidth) {
+            this.statisticsViewportWidth = cw
+          }
+        })
         .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
         .borderRadius(AppleDesignStyle.BORDER_RADIUS_SMALL) // 合理圆角(8px)
       }
       .width('100%')
-      .height('30%')
+      .height(this.getStatisticsTableHeight())
       .padding(AppleDesignStyle.CARD_PADDING_SMALL) // 合理内边距
       .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
       .border({ width: AppleDesignStyle.BORDER_WIDTH_THIN, color: this.getCurrentTheme().borderColor }) // 恢复细边框
       .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // 合理圆角(12px)
       .shadow(AppleDesignStyle.getShadowMedium()) // 柔和阴影
-      .margin({ top: 12, bottom: AppleDesignStyle.CARD_MARGIN_SMALL }) // 增加顶部间距，与上方表格隔开
+      .margin({ top: 0, bottom: AppleDesignStyle.CARD_MARGIN_SMALL })
 
       .padding({ top: 8 })
       .backgroundColor('rgba(0,0,0,0)')
     }
     .width('100%')
+    .height('100%')
     .alignItems(HorizontalAlign.Start)
   }
 

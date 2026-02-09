@@ -21,17 +21,10 @@ export class ProcessingBarFeed {
   private validCount: number = 0
   private timerId?: number
   private started: boolean = false
-  private currentValue: number = 50
-  private timeIndex: number = 0
 
   start(): void {
     if (this.started) { return }
     this.started = true
-    if (this.validCount === 0) {
-      // 播种10个点（9:00开始，每分钟一个）
-      for (let i = 0; i < 10; i++) { this.pushNext() }
-    }
-    this.timerId = setInterval(() => this.pushNext(), 15000) as number
     hilog.info(DOMAIN, 'ProcessingBarFeed', 'started')
   }
 
@@ -41,21 +34,12 @@ export class ProcessingBarFeed {
     hilog.info(DOMAIN, 'ProcessingBarFeed', 'stopped')
   }
 
-  private pushNext(): void {
-    const startHour = 9
-    const startMinute = 0
-    const totalMin = startMinute + this.timeIndex
-    const h = startHour + Math.floor(totalMin / 60)
-    const m = totalMin % 60
-    const label = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`
-    const step = (Math.random() * 10) - 5
-    this.currentValue = Math.max(10, Math.min(100, Math.round(this.currentValue + step)))
-    // 写入环形缓冲区
-    this.valueBuf[this.writeIndex] = this.currentValue
+  push(label: string, value: number): void {
+    const v = Math.max(0, Math.floor(value))
+    this.valueBuf[this.writeIndex] = v
     this.labelBuf[this.writeIndex] = label
     this.writeIndex = (this.writeIndex + 1) % this.MAX_POINTS
     this.validCount = Math.min(this.validCount + 1, this.MAX_POINTS)
-    this.timeIndex++
   }
 
   // 复用数组对象，避免频繁创建新数组

@@ -73,7 +73,7 @@ export class GlobalCardDataManager {
       const secondLayer: SecondLayerData = {
         serialNumber: i + 1,
         percent: (i % 2 === 0 ? 60 : 45),
-        value: `${Math.floor(Math.random() * 100)}`,
+        value: '0',
         unit: 'kg'
       }
       const thirdLayer: ThirdLayerData = {
@@ -262,6 +262,7 @@ export class GlobalCardDataManager {
   public syncExitDataFromStorage(): void {
     const EXIT_COUNT_PREFIX = 'EXIT_COUNT_'
     const EXIT_WEIGHT_PREFIX = 'EXIT_WEIGHT_'
+    const EXIT_PERCENT_PREFIX = 'EXIT_PERCENT_'
     
     let hasUpdate = false
     
@@ -271,10 +272,12 @@ export class GlobalCardDataManager {
       const exitIndex = i + 1
       const countKey = `${EXIT_COUNT_PREFIX}${exitIndex}`
       const weightKey = `${EXIT_WEIGHT_PREFIX}${exitIndex}`
+      const percentKey = `${EXIT_PERCENT_PREFIX}${exitIndex}`
       
       // 获取数据，如果不存在则默认为0
       const count = AppStorage.get<number>(countKey) ?? 0
       const weight = AppStorage.get<number>(weightKey) ?? 0
+      const percent = AppStorage.get<number>(percentKey) ?? 0
       
       // 转换重量为 kg (假设原始单位是 g)
       const weightInKg = (weight / 1000).toFixed(2)
@@ -283,9 +286,11 @@ export class GlobalCardDataManager {
       const card = this.cardDataList[i]
       
       // 检查是否有数据变化，只在变化时更新
-      if (card.secondLayer.value !== weightInKg) {
+      const percentRounded = Math.max(0, Math.min(100, Math.round(percent * 100) / 100))
+      if (card.secondLayer.value !== weightInKg || card.secondLayer.percent !== percentRounded) {
         // 更新 value
         card.secondLayer.value = weightInKg
+        card.secondLayer.percent = percentRounded
         // 确保单位正确
         if (card.secondLayer.unit !== 'kg') {
           card.secondLayer.unit = 'kg'
@@ -295,6 +300,7 @@ export class GlobalCardDataManager {
         if (this.fsmCardData[this.currentFSM] && this.fsmCardData[this.currentFSM][i]) {
           this.fsmCardData[this.currentFSM][i].secondLayer.value = weightInKg
           this.fsmCardData[this.currentFSM][i].secondLayer.unit = 'kg'
+          this.fsmCardData[this.currentFSM][i].secondLayer.percent = percentRounded
         }
         
         hasUpdate = true

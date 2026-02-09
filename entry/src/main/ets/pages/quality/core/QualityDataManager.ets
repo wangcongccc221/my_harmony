@@ -156,6 +156,10 @@ export class QualityDataManager {
     return this.qualityLevels.slice(0, this.currentLevelCount)
   }
 
+  setQualityLevels(levels: QualityLevelData[]): void {
+    this.qualityLevels = Array.isArray(levels) ? levels.slice() : []
+  }
+
   /**
    * 更新品质等级数据
    * 

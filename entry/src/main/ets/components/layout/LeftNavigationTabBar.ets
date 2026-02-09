@@ -1,13 +1,3 @@
-/**
- * 左侧导航栏TabBar组件
- * 
- * 功能说明：
- * - 替换原有的NavButton导航栏
- * - 使用统一的TabBar设计风格
- * - 支持垂直布局
- * - 集成主题配置
- */
-
 import { OmniTabBar, TabConfig, TabBarDirection } from '../ui/layout/OmniTabBar'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'

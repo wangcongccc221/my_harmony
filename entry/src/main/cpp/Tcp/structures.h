@@ -389,6 +389,14 @@ struct StFruitParam
     StFruitParam() { memset(this, 0, sizeof(StFruitParam)); }
 };
 
+struct StFruitGradeInfo
+{
+    StFruitParam param[ConstPreDefine::CHANNEL_NUM];
+    int nRouteId;
+    
+    StFruitGradeInfo() { memset(this, 0, sizeof(StFruitGradeInfo)); }
+};
+
 struct StWhiteBalanceMean
 {
     int MeanR;

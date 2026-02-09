@@ -26,7 +26,7 @@ export struct ModifyCustomerInfoDialog {
   @State fruitName: string = ''
   
   // 水果名称选项（可以根据实际需求从数据库或配置中获取）
-  @State fruitOptions: string[] = ['FruitName/橙', 'FruitName/苹果', 'FruitName/梨', 'FruitName/葡萄', 'FruitName/草莓']
+  @State fruitOptions: string[] = ['橙', '苹果', '梨', '葡萄', '草莓']
   @State showFruitPicker: boolean = false
   
   // 对话框回调
@@ -38,12 +38,24 @@ export struct ModifyCustomerInfoDialog {
     return getCurrentTheme(OmniThemeManager.getInstance().getCurrentTheme())
   }
 
+  private normalizeFruitName(name: string): string {
+    let t = (name ?? '').trim()
+    const prefixes = ['FruitName/', 'FruitName:', 'fruitName/', 'fruitName:', 'fruitname/', 'fruitname:']
+    for (const p of prefixes) {
+      if (t.startsWith(p)) {
+        t = t.slice(p.length).trim()
+        break
+      }
+    }
+    return t
+  }
+
   // 初始化数据
   aboutToAppear(): void {
     if (this.initialData) {
       this.customerName = this.initialData.customerName
       this.farmName = this.initialData.farmName
-      this.fruitName = this.initialData.fruitName
+      this.fruitName = this.normalizeFruitName(this.initialData.fruitName)
     }
   }
 
@@ -52,7 +64,7 @@ export struct ModifyCustomerInfoDialog {
     if (this.initialData) {
       this.customerName = this.initialData.customerName
       this.farmName = this.initialData.farmName
-      this.fruitName = this.initialData.fruitName
+      this.fruitName = this.normalizeFruitName(this.initialData.fruitName)
     }
   }
 
@@ -220,7 +232,7 @@ export struct ModifyCustomerInfoDialog {
                           (this.getCurrentTheme().primary + '20') : 
                           (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor))
                         .onClick(() => {
-                          this.fruitName = fruit
+                          this.fruitName = this.normalizeFruitName(fruit)
                           this.showFruitPicker = false
                         })
                     }, (fruit: string) => fruit)

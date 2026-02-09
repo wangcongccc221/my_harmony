@@ -7,7 +7,7 @@
 import { ProtocolParser, ParsedMessage, getProtocolParser } from './ProtocolParser'
 import { GlobalDataInterface, getGlobalDataInterface } from './GlobalDataInterface'
 import { FSM_HC_COMMAND_TYPE, getCommandName } from './CommandTypes'
-import { MESSAGE_HEADER_SIZE, StStatistics, StWeightInfo, StGradeInfo, StFsmStatus, createDefaultStatistics, createDefaultWeightInfo } from './Structures'
+import { MESSAGE_HEADER_SIZE, StStatistics, StWeightInfo, StGradeInfo, StFruitGradeInfo, StFsmStatus, StSysConfig, createDefaultStatistics, createDefaultWeightInfo } from './Structures'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 import { ConstPreDefine } from './ConstPreDefine'
 
@@ -199,13 +199,18 @@ export class StatisticsHandler {
    * 处理分级信息 (FSM_CMD_GRADEINFO)
    */
   private handleGradeInfo(parsed: ParsedMessage): boolean {
-    const info = parsed.data as StGradeInfo
-    if (!info) {
+    const data = parsed.data
+    if (!data) {
       hilog.warn(0x0001, TAG, '分级信息解析失败')
       return false
     }
 
-    // 更新全局数据接口
+    if (data instanceof StFruitGradeInfo) {
+      this.dataInterface.updateFruitGradeInfo(parsed.header.srcId, data)
+      return true
+    }
+
+    const info = data as StGradeInfo
     this.dataInterface.updateGradeInfo(info)
 
     hilog.debug(0x0001, TAG,
@@ -220,6 +225,10 @@ export class StatisticsHandler {
    */
   private handleConfig(parsed: ParsedMessage): boolean {
     hilog.info(0x0001, TAG, `收到配置回复: 来自 0x${parsed.header.srcId.toString(16)}`)
+    const sys = parsed.data
+    if (sys instanceof StSysConfig) {
+      this.dataInterface.updateSysConfig(sys)
+    }
     return true
   }
 

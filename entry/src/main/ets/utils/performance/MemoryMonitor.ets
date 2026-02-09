@@ -87,18 +87,16 @@ export class MemoryMonitor {
    * 获取内存信息（模拟数据，实际项目中需要调用系统API）
    */
   private getMemoryInfo(): MemoryInfo {
-    // 这里返回模拟的内存数据
-    // 实际项目中应该调用系统API获取真实内存信息
-    const baseMemory = 50 + Math.random() * 100 // 50-150MB
-    const systemMemory = 8000 + Math.random() * 2000 // 8-10GB
-    const availableMemory = systemMemory * (0.3 + Math.random() * 0.4) // 30-70%
+    const baseMemory = 0
+    const systemMemory = 0
+    const availableMemory = 0
     
     const memoryInfo: MemoryInfo = {
       appMemory: Math.round(baseMemory),
       systemMemory: Math.round(systemMemory),
       availableMemory: Math.round(availableMemory),
-      usagePercent: Math.round((baseMemory / systemMemory) * 100 * 100) / 100,
-      performanceStatus: baseMemory < 100 ? '良好' : baseMemory < 200 ? '一般' : '需要优化'
+      usagePercent: 0,
+      performanceStatus: '未知'
     }
     return memoryInfo
   }

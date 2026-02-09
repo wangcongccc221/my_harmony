@@ -20,6 +20,10 @@ export function createDefaultGradeInfo(): StGradeInfo {
   return new StGradeInfo();
 }
 
+export function createDefaultMotorInfo(): StMotorInfo {
+  return new StMotorInfo();
+}
+
 // Placeholder for missing structs in ConfigSender
 export class StSizeGradeSetting {
   gradeIndex: number = 0;
@@ -41,6 +45,42 @@ export class StExitSetting {
   targetQualityGrade: number = 0;
   boxCapacity: number = 0;
   exitName: string = '';
+}
+
+export class StMotorInfo {
+  bExitId: number = 0 // quint8
+  bMotorSwitch: number = 0 // quint8
+  nMotorEnableSwitchNum: number = 0 // int32
+  nMotorEnableSwitchWeight: number = 0 // int32
+  fDelay_time: number = 0 // float32
+  fHold_time: number = 0 // float32
+
+  static getSize(): number {
+    return 20
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    this.bExitId = view.getUint8(offset); offset += 1
+    this.bMotorSwitch = view.getUint8(offset); offset += 1
+    offset += 2
+    this.nMotorEnableSwitchNum = view.getInt32(offset, true); offset += 4
+    this.nMotorEnableSwitchWeight = view.getInt32(offset, true); offset += 4
+    this.fDelay_time = view.getFloat32(offset, true); offset += 4
+    this.fHold_time = view.getFloat32(offset, true); offset += 4
+    return offset
+  }
+
+  writeToDataView(view: DataView, offset: number): number {
+    view.setUint8(offset, this.bExitId); offset += 1
+    view.setUint8(offset, this.bMotorSwitch); offset += 1
+    view.setUint8(offset, 0); offset += 1
+    view.setUint8(offset, 0); offset += 1
+    view.setInt32(offset, this.nMotorEnableSwitchNum, true); offset += 4
+    view.setInt32(offset, this.nMotorEnableSwitchWeight, true); offset += 4
+    view.setFloat32(offset, this.fDelay_time, true); offset += 4
+    view.setFloat32(offset, this.fHold_time, true); offset += 4
+    return offset
+  }
 }
 
 /**
@@ -92,6 +132,168 @@ export class StWeightInfo {
   cupIndex: number = 0;
   channelIndex: number = 0;
   timestamp: number = 0;
+}
+
+export class StFruitVisionParam {
+  unColorRate0: number = 0
+  unColorRate1: number = 0
+  unColorRate2: number = 0
+  unArea: number = 0
+  unFlawArea: number = 0
+  unVolume: number = 0
+  unFlawNum: number = 0
+  unMaxR: number = 0
+  unMinR: number = 0
+  unSelectBasis: number = 0
+  fDiameterRatio: number = 0
+  fMinDRatio: number = 0
+
+  static getSize(): number {
+    return 48
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    this.unColorRate0 = view.getUint32(offset, true); offset += 4
+    this.unColorRate1 = view.getUint32(offset, true); offset += 4
+    this.unColorRate2 = view.getUint32(offset, true); offset += 4
+    this.unArea = view.getUint32(offset, true); offset += 4
+    this.unFlawArea = view.getUint32(offset, true); offset += 4
+    this.unVolume = view.getUint32(offset, true); offset += 4
+    this.unFlawNum = view.getUint32(offset, true); offset += 4
+    this.unMaxR = view.getFloat32(offset, true); offset += 4
+    this.unMinR = view.getFloat32(offset, true); offset += 4
+    this.unSelectBasis = view.getFloat32(offset, true); offset += 4
+    this.fDiameterRatio = view.getFloat32(offset, true); offset += 4
+    this.fMinDRatio = view.getFloat32(offset, true); offset += 4
+    return offset
+  }
+}
+
+export class StFruitUVParam {
+  unBruiseArea: number = 0
+  unBruiseNum: number = 0
+  unRotArea: number = 0
+  unRotNum: number = 0
+  unRigidity: number = 0
+  unWater: number = 0
+  unTimeTag: number = 0
+
+  static getSize(): number {
+    return 28
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    this.unBruiseArea = view.getUint32(offset, true); offset += 4
+    this.unBruiseNum = view.getUint32(offset, true); offset += 4
+    this.unRotArea = view.getUint32(offset, true); offset += 4
+    this.unRotNum = view.getUint32(offset, true); offset += 4
+    this.unRigidity = view.getUint32(offset, true); offset += 4
+    this.unWater = view.getUint32(offset, true); offset += 4
+    this.unTimeTag = view.getUint32(offset, true); offset += 4
+    return offset
+  }
+}
+
+export class StNIRParam {
+  fSugar: number = 0
+  fAcidity: number = 0
+  fHollow: number = 0
+  fSkin: number = 0
+  fBrown: number = 0
+  fTangxin: number = 0
+  unTimeTag: number = 0
+
+  static getSize(): number {
+    return 28
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    this.fSugar = view.getFloat32(offset, true); offset += 4
+    this.fAcidity = view.getFloat32(offset, true); offset += 4
+    this.fHollow = view.getFloat32(offset, true); offset += 4
+    this.fSkin = view.getFloat32(offset, true); offset += 4
+    this.fBrown = view.getFloat32(offset, true); offset += 4
+    this.fTangxin = view.getFloat32(offset, true); offset += 4
+    this.unTimeTag = view.getUint32(offset, true); offset += 4
+    return offset
+  }
+}
+
+export class StFruitParam {
+  visionParam: StFruitVisionParam = new StFruitVisionParam()
+  uvParam: StFruitUVParam = new StFruitUVParam()
+  nirParam: StNIRParam = new StNIRParam()
+  fWeight: number = 0
+  fDensity: number = 0
+  unGrade: number = 0
+  unWhichExit: number = 0
+
+  static getSize(): number {
+    return 120
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    offset = this.visionParam.readFromDataView(view, offset)
+    offset = this.uvParam.readFromDataView(view, offset)
+    offset = this.nirParam.readFromDataView(view, offset)
+    this.fWeight = view.getFloat32(offset, true); offset += 4
+    this.fDensity = view.getFloat32(offset, true); offset += 4
+    this.unGrade = view.getUint32(offset, true); offset += 4
+    this.unWhichExit = view.getUint8(offset); offset += 1
+    offset += 3
+    return offset
+  }
+}
+
+export class StFruitGradeInfo {
+  params: StFruitParam[] = []
+  nRouteId: number = 0
+
+  constructor() {
+    for (let i = 0; i < ConstPreDefine.CHANNEL_NUM; i++) {
+      this.params.push(new StFruitParam())
+    }
+  }
+
+  static getSize(): number {
+    return ConstPreDefine.CHANNEL_NUM * StFruitParam.getSize() + 4
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    for (let i = 0; i < this.params.length; i++) {
+      offset = this.params[i].readFromDataView(view, offset)
+    }
+    this.nRouteId = view.getInt32(offset, true); offset += 4
+    return offset
+  }
+}
+
+export class StFruitGradeRealtime {
+  channelIndex: number = 0
+  timestamp: number = 0
+  routeId: number = 0
+  grade: number = 0
+  targetExit: number = 0
+  weightG: number = 0
+  densityKgPerM3: number = 0
+  colorRate0Pct: number = 0
+  colorRate1Pct: number = 0
+  colorRate2Pct: number = 0
+  projectionAreaMm2: number = 0
+  volumeMm3: number = 0
+  visionFlawAreaMm2: number = 0
+  visionFlawCount: number = 0
+  uvDefectAreaMm2: number = 0
+  uvDefectCount: number = 0
+  uvRigidity: number = 0
+  uvWater: number = 0
+  brix: number = 0
+  acidity: number = 0
+  pulpColor: number = 0
+  maturity: number = 0
+  diameterMm: number = 0
+  diameterRatio: number = 0
+  minDiameterRatio: number = 0
 }
 
 /**
@@ -300,7 +502,8 @@ export class StRange {
  * #pragma pack(4) in C++
  */
 export class StGradeItemInfo {
-  exit: number = 0; // ulong (32-bit uint)
+  exitLow: number = 0 // ulong low32
+  exitHigh: number = 0 // ulong high32
   nMinSize: number = 0; // float
   nMaxSize: number = 0; // float
   nFruitNum: number = 0; // int
@@ -321,11 +524,12 @@ export class StGradeItemInfo {
   sbLabelbyGrade: number = 0; // qint8
 
   static getSize(): number {
-    return 32;
+    return 36;
   }
 
   readFromDataView(view: DataView, offset: number): number {
-    this.exit = view.getUint32(offset, true); offset += 4;
+    this.exitLow = view.getUint32(offset, true); offset += 4;
+    this.exitHigh = view.getUint32(offset, true); offset += 4;
     this.nMinSize = view.getFloat32(offset, true); offset += 4;
     this.nMaxSize = view.getFloat32(offset, true); offset += 4;
     this.nFruitNum = view.getInt32(offset, true); offset += 4;
@@ -349,7 +553,8 @@ export class StGradeItemInfo {
   }
 
   writeToDataView(view: DataView, offset: number): number {
-    view.setUint32(offset, this.exit, true); offset += 4;
+    view.setUint32(offset, this.exitLow, true); offset += 4;
+    view.setUint32(offset, this.exitHigh, true); offset += 4;
     view.setFloat32(offset, this.nMinSize, true); offset += 4;
     view.setFloat32(offset, this.nMaxSize, true); offset += 4;
     view.setInt32(offset, this.nFruitNum, true); offset += 4;

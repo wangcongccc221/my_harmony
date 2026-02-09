@@ -37,6 +37,7 @@ export struct LiquidCardsArea {
   
   // 卡片点击回调
   onCardClick?: (cardIndex: number, cardData: ThreeLayerCardData) => void
+  onCardDropSignal?: (cardIndex: number, cardId: string, cardNumber: number, extraParams: string) => void
   
   // 全局数据管理器实例
   private globalDataManager: GlobalCardDataManager = GlobalCardDataManager.getInstance()
@@ -355,9 +356,12 @@ export struct LiquidCardsArea {
                 cardHeight: '100%',
                 mainColor: this.getCurrentTheme().primary,
                 updateSignal: this.dataUpdateSignal,
-                enableWave: this.isWaveAnimationEnabled() && (((AppStorage.get(`EXIT_PERCENT_${idx + 1}`) as number) || 0) > 0) && (!cardData.thirdLayer.chartData || cardData.thirdLayer.chartData.length === 0),
+                enableWave: this.isWaveAnimationEnabled() && (((AppStorage.get(`EXIT_PERCENT_${idx + 1}`) as number) || 0) > 0),
                 onCardDrop: (data: ThreeLayerCardData) => {
                   this.handleCardDrop(idx, data)
+                },
+                onThirdLayerDropSignal: (cardId: string, cardNumber: number, extraParams: string) => {
+                  this.onCardDropSignal?.(idx, cardId, cardNumber, extraParams)
                 },
                 onThirdLayerClick: () => {
                   if (this.onCardClick) {

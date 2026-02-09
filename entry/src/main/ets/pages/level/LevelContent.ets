@@ -57,6 +57,10 @@ interface LevelTableDataWithId {
   packingWeight: number
 }
 
+interface HomeContentRef {
+  refreshAllTables?: () => void
+}
+
 /**
  * 等级页面主内容组件结构体
  * 
@@ -494,7 +498,10 @@ export struct LevelContent {
 
     const selectedFSM = (AppStorage.get(HOME_SELECTED_FSM) as ('FSM1' | 'FSM2') | undefined) ?? 'FSM1'
     HomeDataManager.getInstance().updateSizeGradeNames(convertedLevelData.map(item => item.levelName), selectedFSM)
-    // 保存重量精度到状态管理器（如果状态管理器支持）
+    const homeContent = AppStorage.get('HOME_CONTENT_REF') as HomeContentRef | null
+    if (homeContent?.refreshAllTables) {
+      homeContent.refreshAllTables()
+    }
     console.log('【等级页面】保存数据:', {
       levelData: convertedLevelData,
       weightPrecision: weightPrecision

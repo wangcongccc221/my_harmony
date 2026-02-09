@@ -256,35 +256,14 @@ export class LevelDataManager {
    * - 数据模拟时
    */
   generateRandomStatisticsData(): void {
-    /**
-     * 生成指定范围内的随机整数
-     * @param min 最小值
-     * @param max 最大值
-     * @returns 随机整数
-     */
-    const randInt = (min: number, max: number): number => Math.floor(Math.random() * (max - min + 1)) + min
-    
-    /**
-     * 填充指定范围的随机数数组
-     * @param min 最小值
-     * @param max 最大值
-     * @returns 随机数数组
-     */
-    const fillArray = (min: number, max: number): number[] => {
-      const result: number[] = []
-      for (let i: number = 0; i < 8; i++) {
-        result.push(randInt(min, max))
-      }
-      return result
-    }
-
+    const zeros: number[] = new Array<number>(8).fill(0)
     this.statisticsData = {
-      bottom1Counts: fillArray(45, 55),    // 底部1计数：45-55范围
-      bottom1Avgs: fillArray(120, 132),    // 底部1平均值：120-132范围
-      bottom1Sets: fillArray(118, 122),
-      bottom2Counts: fillArray(45, 55),
-      bottom2Avgs: fillArray(120, 132),
-      bottom2Sets: fillArray(118, 122)
+      bottom1Counts: zeros.slice(),
+      bottom1Avgs: zeros.slice(),
+      bottom1Sets: zeros.slice(),
+      bottom2Counts: zeros.slice(),
+      bottom2Avgs: zeros.slice(),
+      bottom2Sets: zeros.slice()
     }
     console.log('生成随机统计数据:', this.statisticsData)
   }

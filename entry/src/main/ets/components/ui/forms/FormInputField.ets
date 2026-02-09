@@ -20,6 +20,7 @@ interface FormInputFieldConfig {
   inputMaxWidth?: number  // 输入框最大宽度（默认180）
   inputHeight?: number    // 输入框高度（默认34）
   fontSize?: number       // 字体大小（默认18）
+  enabled?: boolean       // 是否可编辑（默认true）
 }
 
 @Component
@@ -53,7 +54,12 @@ export struct FormInputField {
           maxWidth: this.config.inputMaxWidth ?? 180 
         })
         .height(this.config.inputHeight ?? 34)
+        .enabled(this.config.enabled ?? true)
+        .opacity((this.config.enabled ?? true) ? 1 : 0.55)
         .onChange((val: string) => {
+          if ((this.config.enabled ?? true) === false) {
+            return
+          }
           const newValue: number = NumberUtils.parseNumberWithBounds(
             val, 
             this.config.minValue, 

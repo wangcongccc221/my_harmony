@@ -9,6 +9,9 @@ import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { McBarChart, Options } from '@mcui/mccharts'
 import { ProcessingCurveChart } from '../../components/charts/ProcessingCurveChart'
 import { CustomPieChart, PieChartsOptions, PieChartsData } from '../../components/charts/CustomPieChart'
+import { ConstPreDefine } from '../../protocol/ConstPreDefine'
+import { GlobalDataInterface, getGlobalDataInterface, DataChangeListener } from '../../protocol/GlobalDataInterface'
+import { GlobalRealtimeData } from '../../protocol/Structures'
 
 // 饼图数据类
 class PieData implements PieChartsData {
@@ -22,101 +25,80 @@ class PieData implements PieChartsData {
 export struct RealtimeStatsContent {
   @StorageLink('OMNI_THEME_VERSION_KEY') private themeVersion: number = 0
 
+  private dataInterface: GlobalDataInterface = getGlobalDataInterface()
+  private dataChangeListener: DataChangeListener | null = null
+
   // 饼图数据状态
   @State private pieData: PieData[] = [
-    new PieData(35), // 优质
-    new PieData(30), // 良好
-    new PieData(25), // 一般
-    new PieData(10)  // 较差
+    new PieData(0),
+    new PieData(0),
+    new PieData(0),
+    new PieData(0)
   ]
   
   @State private pieLabels: string[] = ['优质', '良好', '一般', '较差']
   @State private pieColors: string[] = ['#00B894', '#00CEC9', '#FDCB6E', '#E17055']
   
   // 品质统计数据
-  @State private qualityData: number[] = [120, 200, 150, 80, 50]
+  @State private qualityData: number[] = [0, 0, 0, 0, 0]
   
   
   // 出口产量数据
-  @State private outletData: number[] = [120, 200, 150, 80, 70, 90, 110, 95]
-  
-  // 定时器
-  private pieTimerId: number | null = null
-  private qualityTimerId: number | null = null
-  private outletTimerId: number | null = null
+  @State private outletData: number[] = [0, 0, 0, 0, 0, 0, 0, 0]
 
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return resolveTheme()
   }
 
-  // 初始化所有图表数据
-  private initializeAllData() {
-    // 移除日志输出，减少性能开销
-    
-    // 启动饼图数据更新（每5秒更新一次）
-    if (!this.pieTimerId) {
-      this.pieTimerId = setInterval(() => {
-        // 更新饼图数据（模拟数据变化）
-        const newPieData = [...this.pieData]
-        for (let i = 0; i < newPieData.length; i++) {
-          const variation = (Math.random() - 0.5) * 10 // -5 到 +5 的随机变化
-          newPieData[i] = new PieData(Math.max(5, Math.min(50, newPieData[i].getValue() + variation)))
+  private updateFromRealtimeData(data: GlobalRealtimeData): void {
+    const qualityBuckets: number[] = [0, 0, 0, 0, 0]
+    const qCount = Math.min(5, ConstPreDefine.MAX_QUALITY_GRADE_NUM)
+    const sCount = ConstPreDefine.MAX_SIZE_GRADE_NUM
+    for (let q = 0; q < qCount; q++) {
+      let sum = 0
+      for (let s = 0; s < sCount; s++) {
+        const idx = q * sCount + s
+        if (idx >= 0 && idx < data.gradeCount.length) {
+          sum += data.gradeCount[idx] || 0
         }
-        this.pieData = newPieData
-      }, 5000) as number
+      }
+      qualityBuckets[q] = sum
     }
-    
-    // 启动品质统计数据更新（每3秒更新一次）
-    if (!this.qualityTimerId) {
-      this.qualityTimerId = setInterval(() => {
-        // 更新品质统计数据
-        const newQualityData = [...this.qualityData]
-        for (let i = 0; i < newQualityData.length; i++) {
-          const variation = (Math.random() - 0.5) * 20 // -10 到 +10 的随机变化
-          newQualityData[i] = Math.max(50, Math.min(300, newQualityData[i] + variation))
-        }
-        this.qualityData = newQualityData
-      }, 3000) as number
-    }
-    
-    
-    // 启动出口产量数据更新（每4秒更新一次）
-    if (!this.outletTimerId) {
-      this.outletTimerId = setInterval(() => {
-        // 更新出口产量数据
-        const newOutletData = [...this.outletData]
-        for (let i = 0; i < newOutletData.length; i++) {
-          const variation = (Math.random() - 0.5) * 30 // -15 到 +15 的随机变化
-          newOutletData[i] = Math.max(50, Math.min(250, newOutletData[i] + variation))
-        }
-        this.outletData = newOutletData
-      }, 4000) as number
-    }
-  }
+    this.qualityData = qualityBuckets
 
-  // 停止所有定时器
-  private stopAllTimers() {
-    if (this.pieTimerId) {
-      clearInterval(this.pieTimerId)
-      this.pieTimerId = null
+    const outlet: number[] = new Array(8).fill(0)
+    for (let i = 0; i < outlet.length; i++) {
+      const wG = (i < data.exitWeight.length) ? (data.exitWeight[i] || 0) : 0
+      outlet[i] = Number((wG / 1000).toFixed(2))
     }
-    if (this.qualityTimerId) {
-      clearInterval(this.qualityTimerId)
-      this.qualityTimerId = null
-    }
-    if (this.outletTimerId) {
-      clearInterval(this.outletTimerId)
-      this.outletTimerId = null
-    }
+    this.outletData = outlet
+
+    const total = data.totalQualified + data.totalUnqualified
+    const goodPct = total > 0 ? Number(((data.totalQualified / total) * 100).toFixed(1)) : 0
+    const badPct = total > 0 ? Number((100 - goodPct).toFixed(1)) : 0
+    this.pieData = [
+      new PieData(goodPct),
+      new PieData(0),
+      new PieData(0),
+      new PieData(badPct)
+    ]
   }
 
   // 组件生命周期
   aboutToAppear() {
-    this.initializeAllData()
+    const initial = this.dataInterface.getGlobalData()
+    this.updateFromRealtimeData(initial)
+    this.dataChangeListener = (data: GlobalRealtimeData) => {
+      this.updateFromRealtimeData(data)
+    }
+    this.dataInterface.addDataChangeListener(this.dataChangeListener)
   }
 
   aboutToDisappear() {
-    this.stopAllTimers()
+    if (this.dataChangeListener) {
+      this.dataInterface.removeDataChangeListener(this.dataChangeListener)
+      this.dataChangeListener = null
+    }
   }
 
   build() {

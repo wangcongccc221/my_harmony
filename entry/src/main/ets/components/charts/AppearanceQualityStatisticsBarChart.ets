@@ -132,15 +132,8 @@ export struct AppearanceQualityStatisticsBarChart {
         this.categories.push(gradeNames[i])
       }
       
-      // 生成模拟数据（TODO: 后续可以替换为真实数据）
-      this.countData = []
-      this.weightData = []
-      for (let i = 0; i < this.categories.length; i++) {
-        // 个数数据：随机值 50-200
-        this.countData.push(Math.floor(Math.random() * 150) + 50)
-        // 重量数据：随机值 100-500 (kg)
-        this.weightData.push(Math.floor(Math.random() * 400) + 100)
-      }
+      this.countData = new Array(this.categories.length).fill(0)
+      this.weightData = new Array(this.categories.length).fill(0)
       
       // 计算画布宽度
       this.canvasWidth = this.categories.length * this.fixedBarWidth + this.chartPadding.left + this.chartPadding.right

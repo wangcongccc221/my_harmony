@@ -95,19 +95,9 @@ export struct WeightSizeStatisticsBarChart {
       
       this.categories = ['23', '27', '32', '40']
       
-      this.countData = []
-      this.weightData = []
-      this.boxCountData = []
-      
-      // 生成模拟数据
-      for (let i = 0; i < this.categories.length; i++) {
-        // 第一个图表使用重量数据（橙色）
-        this.weightData.push(Math.floor(Math.random() * 5000000) + 500000)
-        // 第二个图表使用箱数数据（蓝色）
-        this.boxCountData.push(Math.floor(Math.random() * 5000000) + 500000)
-        // 个数数据保留但不使用
-        this.countData.push(Math.floor(Math.random() * 10000) + 1000)
-      }
+      this.countData = new Array(this.categories.length).fill(0)
+      this.weightData = new Array(this.categories.length).fill(0)
+      this.boxCountData = new Array(this.categories.length).fill(0)
       
       this.canvasWidth1 = this.categories.length * this.fixedBarWidth + this.chartPadding.left + this.chartPadding.right
       this.canvasWidth2 = this.categories.length * this.fixedBarWidth + this.chartPadding.left + this.chartPadding.right

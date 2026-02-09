@@ -2,10 +2,15 @@ import socket
 import struct
 import time
 import random
+import argparse
+from typing import Dict, List, Optional, Tuple
 
 # 配置参数
 SERVER_IP = '127.0.0.1'
 SERVER_PORT = 9090
+CONTROL_PORT = 8080
+CMD_SERVER_PORT = 1279
+SHOW_SEND_LOGS = False
 
 # 协议常量
 SYNC_FLAG = 0x434E5953  # "SYNC" in little endian
@@ -14,6 +19,7 @@ FSM_ID = 0x0100         # 模拟 FSM 设备 ID
 
 # 命令 ID
 FSM_CMD_STATISTICS = 0x1001 # 统计信息
+FSM_CMD_GRADEINFO = 0x1002 # 水果实时分级信息
 FSM_CMD_WEIGHTINFO = 0x1003 # 重量信息
 
 # 数组大小常量
@@ -23,11 +29,47 @@ MAX_EXIT_NUM = 48
 MAX_CHANNEL_NUM = 12
 MAX_NOTICE_LENGTH = 30
 
+def expected_statistics_size() -> int:
+    grade_len = MAX_QUALITY_GRADE_NUM * MAX_SIZE_GRADE_NUM
+    size = 0
+    size += grade_len * 4  # nGradeCount
+    size += grade_len * 4  # nWeightGradeCount
+    size += MAX_EXIT_NUM * 4  # nExitCount
+    size += MAX_EXIT_NUM * 4  # nExitWeightCount
+    size += MAX_CHANNEL_NUM * 4  # nChannelTotalCount
+    size += MAX_CHANNEL_NUM * 4  # nChannelWeightCount
+    size += 4  # nSubsysId
+    size += grade_len * 4  # nBoxGradeCount
+    size += grade_len * 4  # nBoxGradeWeight
+    size += 4  # nTotalCupNum
+    size += 4  # nInterval
+    size += 4  # nIntervalSumperminute
+    size += 2  # nCupState
+    size += 2  # nPulseInterval
+    size += 2  # nUnpushFruitCount
+    size += 1  # nNetState
+    size += 1  # nWeightSetting
+    size += 1  # nSCMState
+    size += 1  # nIQSNetState
+    size += 1  # nLockState
+    size += MAX_EXIT_NUM * 2  # ExitBoxNum
+    size += MAX_EXIT_NUM * 4  # ExitWeight
+    size += MAX_NOTICE_LENGTH  # Notice
+    if size % 4 != 0:
+        size += (4 - (size % 4))
+    return size
+
+def expected_grade_info_size() -> int:
+    return 120 * 2 + 4
+
+def expected_weight_result_size() -> int:
+    return 44
+
 def create_header(cmd_id, data_len=0):
     """
     创建消息头 (16 bytes)
     """
-    header = struct.pack('<4I', 
+    header = struct.pack('<4I',
         SYNC_FLAG,
         FSM_ID,
         HC_ID,
@@ -35,13 +77,36 @@ def create_header(cmd_id, data_len=0):
     )
     return header
 
+
+def make_src_id(subsys_index: int = 0, ipm_index: Optional[int] = None, channel_index: Optional[int] = None) -> int:
+    """
+    生成与 Harmony ConstPreDefine 相同布局的 srcId（int32）：
+      - subsys nibble: (subsys_index+1) << 8
+      - ipm nibble: (ipm_index+1) << 4
+      - channel nibble: channel_index << 4 （用于统计/重量包里模拟通道来源）
+    约定：优先使用 ipm_index；否则使用 channel_index；都不传则返回 FSM_ID。
+    """
+    if ipm_index is not None:
+        return (((subsys_index + 1) & 0x0F) << 8) | (((ipm_index + 1) & 0x0F) << 4)
+    if channel_index is not None:
+        return (((subsys_index + 1) & 0x0F) << 8) | ((channel_index & 0x0F) << 4)
+    return FSM_ID
+
+
+def create_header_with_ids(cmd_id: int, src_id: int, dest_id: int = HC_ID) -> bytes:
+    """
+    Native TcpServer 协议头：SYNC + SrcId + DestId + CmdId (4 * int32 = 16 bytes)
+    """
+    return struct.pack('<4I', SYNC_FLAG, int(src_id) & 0xFFFFFFFF, int(dest_id) & 0xFFFFFFFF, int(cmd_id) & 0xFFFFFFFF)
+
 def create_statistics(
     n_total_cup_num=500,
     n_total_weight=75000,
     n_qualified_count=480,
     n_unqualified_count=20,
     n_interval_sum_per_minute=300,
-    exit_counts=None
+    exit_counts=None,
+    exit_weight_counts=None
 ):
     """
     创建模拟的 StStatistics 数据
@@ -51,6 +116,7 @@ def create_statistics(
     :param n_unqualified_count: 不合格数
     :param n_interval_sum_per_minute: 每分钟间隔总和 (模拟速度)
     :param exit_counts: 出口计数数组 (可选，如果不传则全0)
+    :param exit_weight_counts: 出口重量数组(g) (可选；用于更真实地测试按重量占比)
     """
     # 模拟核心数据
     n_grade_count = [0] * (MAX_QUALITY_GRADE_NUM * MAX_SIZE_GRADE_NUM)
@@ -76,7 +142,14 @@ def create_statistics(
     else:
         n_exit_count = [0] * MAX_EXIT_NUM
             
-    n_exit_weight_count = [x * 150 for x in n_exit_count] # 估算重量
+    if exit_weight_counts:
+        n_exit_weight_count = list(exit_weight_counts)
+        if len(n_exit_weight_count) < MAX_EXIT_NUM:
+            n_exit_weight_count.extend([0] * (MAX_EXIT_NUM - len(n_exit_weight_count)))
+        else:
+            n_exit_weight_count = n_exit_weight_count[:MAX_EXIT_NUM]
+    else:
+        n_exit_weight_count = [x * 150 for x in n_exit_count] # 估算重量
     
     n_channel_total_count = [0] * MAX_CHANNEL_NUM
     n_channel_total_count[0] = n_total_cup_num
@@ -150,7 +223,11 @@ def create_statistics(
     # 确保长度对齐到 4 (可选，看 C++ 编译器行为，Structures.ets 里有处理)
     if len(body) % 4 != 0:
         body += b'\x00' * (4 - (len(body) % 4))
-        
+
+    exp = expected_statistics_size()
+    if len(body) != exp:
+        raise ValueError(f"StStatistics size mismatch: got {len(body)} bytes, expected {exp} bytes")
+
     return body
 
 def create_weight_info(current_weight=150, current_exit=3):
@@ -186,11 +263,196 @@ def create_weight_info(current_weight=150, current_exit=3):
     
     # C++ server expects sizeof(StWeightResult) which is 44 bytes
     # We pad the remaining 20 bytes with zeros
-    padding_size = 44 - len(payload)
+    padding_size = expected_weight_result_size() - len(payload)
     if padding_size > 0:
         payload += b'\x00' * padding_size
+
+    exp = expected_weight_result_size()
+    if len(payload) != exp:
+        raise ValueError(f"StWeightResult size mismatch: got {len(payload)} bytes, expected {exp} bytes")
         
     return payload
+
+def create_fruit_vision_param(
+    color_rate0=60,
+    color_rate1=30,
+    color_rate2=10,
+    area=12000,
+    flaw_area=0,
+    volume=180000,
+    flaw_num=0,
+    max_r=45.0,
+    min_r=40.0,
+    select_basis=82.5,
+    diameter_ratio=1.05,
+    min_d_ratio=1.00
+):
+    """
+    48项目结构: StFruitVisionParam (little endian)
+    uint*7 + float*5 = 48 bytes
+    """
+    return struct.pack(
+        '<7I5f',
+        int(color_rate0),
+        int(color_rate1),
+        int(color_rate2),
+        int(area),
+        int(flaw_area),
+        int(volume),
+        int(flaw_num),
+        float(max_r),
+        float(min_r),
+        float(select_basis),
+        float(diameter_ratio),
+        float(min_d_ratio)
+    )
+
+def create_fruit_uv_param(
+    bruise_area=0,
+    bruise_num=0,
+    rot_area=0,
+    rot_num=0,
+    rigidity=0,
+    water=0,
+    time_tag=0
+):
+    """
+    48项目结构: StFruitUVParam
+    uint*6 + quint32 = 28 bytes
+    """
+    return struct.pack(
+        '<7I',
+        int(bruise_area),
+        int(bruise_num),
+        int(rot_area),
+        int(rot_num),
+        int(rigidity),
+        int(water),
+        int(time_tag)
+    )
+
+def create_nir_param(
+    sugar=12.3,
+    acidity=0.35,
+    hollow=0.0,
+    skin=0.0,
+    brown=0.0,
+    tangxin=0.0,
+    time_tag=0
+):
+    """
+    48项目结构: StNIRParam
+    float*6 + quint32 = 28 bytes
+    """
+    return struct.pack(
+        '<6fI',
+        float(sugar),
+        float(acidity),
+        float(hollow),
+        float(skin),
+        float(brown),
+        float(tangxin),
+        int(time_tag)
+    )
+
+def encode_ungrade(size_grade_index: int, quality_grade_index: int) -> int:
+    """
+    48项目 FruitInfoForm 解析规则:
+      SizeGradeIndex = unGrade & 0x0F
+      QualfGradeIndex = (unGrade & 0xF0) >> 4
+    """
+    size_nibble = int(size_grade_index) & 0x0F
+    quality_nibble = int(quality_grade_index) & 0x0F
+    return (quality_nibble << 4) | size_nibble
+
+def create_fruit_param(
+    diameter_mm=82.5,
+    weight_g=180.0,
+    density=1.02,
+    size_grade_index=1,
+    quality_grade_index=1,
+    which_exit=0
+):
+    """
+    48项目结构: StFruitParam
+      visionParam(48) + uvParam(28) + nirParam(28) + fWeight(4) + fDensity(4) + unGrade(4) + unWhichExit(1) + padding(3)
+    total: 120 bytes (对齐到4)
+    """
+    r = max(1.0, float(diameter_mm) / 2.0)
+    area = int(round(3.1415926 * r * r))
+    volume = int(round((4.0 / 3.0) * 3.1415926 * r * r * r))
+    flaw_area = random.randint(0, max(1, int(area * 0.08)))
+    flaw_num = random.randint(0, 6)
+    vision = create_fruit_vision_param(
+        color_rate0=random.randint(10, 90),
+        color_rate1=random.randint(0, 70),
+        color_rate2=random.randint(0, 40),
+        area=area,
+        flaw_area=flaw_area,
+        volume=volume,
+        flaw_num=flaw_num,
+        max_r=float(r),
+        min_r=float(r * random.uniform(0.92, 0.99)),
+        select_basis=float(diameter_mm),
+        diameter_ratio=round(random.uniform(0.85, 1.20), 3),
+        min_d_ratio=round(random.uniform(0.80, 1.10), 3)
+    )
+    uv = create_fruit_uv_param(
+        bruise_area=random.randint(0, 50),
+        bruise_num=random.randint(0, 3),
+        rot_area=random.randint(0, 30),
+        rot_num=random.randint(0, 2),
+        rigidity=random.randint(0, 100),
+        water=random.randint(0, 100),
+        time_tag=int(time.time() * 1000) & 0xFFFFFFFF
+    )
+    nir = create_nir_param(
+        sugar=round(random.uniform(10.0, 16.0), 2),
+        acidity=round(random.uniform(0.20, 0.80), 2),
+        hollow=round(random.uniform(0.0, 1.0), 2),
+        skin=round(random.uniform(0.0, 1.0), 2),
+        brown=round(random.uniform(0.0, 1.0), 2),
+        tangxin=round(random.uniform(0.0, 1.0), 2),
+        time_tag=int(time.time() * 1000) & 0xFFFFFFFF
+    )
+
+    un_grade = encode_ungrade(size_grade_index, quality_grade_index)
+    base = vision + uv + nir + struct.pack('<ffI', float(weight_g), float(density), int(un_grade))
+    base += struct.pack('<B', int(which_exit) & 0xFF)
+    base += b'\x00' * 3
+    return base
+
+def create_grade_info(
+    channel0_exit=0,
+    channel1_exit=1,
+    route_id=0
+):
+    """
+    48项目结构: StFruitGradeInfo
+      StFruitParam param[2] + int nRouteId
+    total: 120*2 + 4 = 244 bytes
+    """
+    param0 = create_fruit_param(
+        diameter_mm=round(random.uniform(70.0, 95.0), 1),
+        weight_g=round(random.uniform(120.0, 260.0), 1),
+        density=round(random.uniform(0.90, 1.20), 3),
+        size_grade_index=random.randint(0, 15),
+        quality_grade_index=random.randint(0, 15),
+        which_exit=channel0_exit
+    )
+    param1 = create_fruit_param(
+        diameter_mm=round(random.uniform(70.0, 95.0), 1),
+        weight_g=round(random.uniform(120.0, 260.0), 1),
+        density=round(random.uniform(0.90, 1.20), 3),
+        size_grade_index=random.randint(0, 15),
+        quality_grade_index=random.randint(0, 15),
+        which_exit=channel1_exit
+    )
+    body = param0 + param1 + struct.pack('<i', int(route_id))
+    exp = expected_grade_info_size()
+    if len(body) != exp:
+        raise ValueError(f"StFruitGradeInfo size mismatch: got {len(body)} bytes, expected {exp} bytes")
+    return body
 
 def send_once(header, body, name="Data"):
     """
@@ -206,7 +468,8 @@ def send_once(header, body, name="Data"):
         
         client.send(header)
         client.send(body)
-        print(f"Sent {name}: {len(body)} bytes")
+        if SHOW_SEND_LOGS:
+            print(f"Sent {name}: {len(body)} bytes")
         
         client.close()
         # print("Connection closed.")
@@ -219,41 +482,244 @@ def send_once(header, body, name="Data"):
         print(f"Error sending {name}: {e}")
         return False
 
-def run_simulation():
+
+def send_control(cmd: str, host: str, port: int) -> bool:
+    try:
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client.settimeout(3)
+        client.connect((host, port))
+        client.send(cmd.encode("utf-8"))
+        client.close()
+        if SHOW_SEND_LOGS:
+            print(f"Sent Control: {cmd}")
+        return True
+    except Exception as e:
+        print(f"Error sending Control '{cmd}': {e}")
+        return False
+
+
+def seed_completed_batches(args: argparse.Namespace) -> None:
+    n = int(args.seed_completed or 0)
+    if n <= 0:
+        return
+    if SHOW_SEND_LOGS:
+        print(f"\n[SeedCompleted] Start seeding {n} completed batches...")
+    for i in range(n):
+        current_yield = 0
+        current_total_weight = 0
+        exit_counts = [0] * MAX_EXIT_NUM
+        exit_weight_counts = [0] * MAX_EXIT_NUM
+        dist = parse_distribution(args.dist)
+
+        for _ in range(max(1, int(args.seed_completed_cycles))):
+            increment = random.randint(args.min_inc, args.max_inc)
+            current_yield += increment
+            for _ in range(increment):
+                exit_idx = choose_exit_index(dist)
+                exit_counts[exit_idx] += 1
+                w = random.randint(args.min_weight_g, args.max_weight_g)
+                exit_weight_counts[exit_idx] += w
+                current_total_weight += w
+
+            qualified = int(current_yield * 0.95)
+            unqualified = current_yield - qualified
+            speed = random.randint(300, 600)
+            stats_src_id = make_src_id(subsys_index=args.subsys, channel_index=args.stats_channel)
+            stats_header = create_header_with_ids(FSM_CMD_STATISTICS, stats_src_id, HC_ID)
+            stats_body = create_statistics(
+                n_total_cup_num=current_yield,
+                n_total_weight=current_total_weight,
+                n_qualified_count=qualified,
+                n_unqualified_count=unqualified,
+                n_interval_sum_per_minute=speed,
+                exit_counts=exit_counts,
+                exit_weight_counts=exit_weight_counts
+            )
+            if not args.dry_run:
+                send_once(stats_header, stats_body, f"SeedStatistics[{i+1}]")
+            time.sleep(float(args.seed_completed_interval_s))
+
+        mode = (args.end_mode or "clear").lower()
+        if mode == "alternate":
+            cmd = "END_CLEAR" if (i % 2 == 0) else "END_SAVE"
+        else:
+            cmd = "END_SAVE" if mode == "save" else "END_CLEAR"
+        if not args.dry_run:
+            send_control(cmd, SERVER_IP, int(args.control_port))
+        time.sleep(float(args.seed_completed_interval_s))
+
+    if SHOW_SEND_LOGS:
+        print("[SeedCompleted] Done.\n")
+
+def _recv_exact(conn: socket.socket, n: int) -> bytes:
+    buf = b""
+    while len(buf) < n:
+        chunk = conn.recv(n - len(buf))
+        if not chunk:
+            break
+        buf += chunk
+    return buf
+
+
+def run_cmd_server(args: argparse.Namespace) -> None:
+    host = args.cmd_server_host
+    port = int(args.cmd_port)
+    print(f"[CmdServer] Listening on {host}:{port} ...")
+    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv.bind((host, port))
+    srv.listen(5)
+
+    try:
+        while True:
+            conn, addr = srv.accept()
+            conn.settimeout(2)
+            try:
+                header = _recv_exact(conn, 12)
+                if len(header) < 12:
+                    conn.close()
+                    continue
+                total_len, src_id, dst_id, cmd_u16 = struct.unpack("<IHHH", header)
+                remaining = max(0, total_len - 12)
+                body = _recv_exact(conn, remaining) if remaining > 0 else b""
+
+                cmd = cmd_u16
+                if cmd in (0x0055, 0x0056) and len(body) >= 4:
+                    ch, ex = struct.unpack("<HH", body[:4])
+                    mode = "TEST_ALL_LANE_VOLVE" if cmd == 0x0056 else "TEST_VOLVE"
+                    print(f"[CmdServer] {addr[0]}:{addr[1]} cmd=0x{cmd:04X}({mode}) src=0x{src_id:04X} dst=0x{dst_id:04X} ch={ch} exit={ex}")
+                else:
+                    print(f"[CmdServer] {addr[0]}:{addr[1]} cmd=0x{cmd:04X} src=0x{src_id:04X} dst=0x{dst_id:04X} bodyLen={len(body)}")
+
+            except Exception as e:
+                print(f"[CmdServer] Error: {e}")
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+    except KeyboardInterrupt:
+        print("\n[CmdServer] stopped.")
+    finally:
+        try:
+            srv.close()
+        except Exception:
+            pass
+
+def parse_distribution(spec: str) -> List[Tuple[int, float]]:
+    """
+    解析出口分布，例如: "1:60,2:30,3:10"（出口号从1开始）
+    返回: [(exit_idx0, weight), ...]，exit_idx0 为 0-based
+    """
+    items: List[Tuple[int, float]] = []
+    if not spec:
+        return items
+    parts = [p.strip() for p in spec.split(',') if p.strip()]
+    for part in parts:
+        if ':' not in part:
+            continue
+        k, v = part.split(':', 1)
+        exit_no = int(k.strip())
+        w = float(v.strip())
+        if exit_no < 1 or exit_no > MAX_EXIT_NUM:
+            continue
+        if w <= 0:
+            continue
+        items.append((exit_no - 1, w))
+    return items
+
+
+def choose_exit_index(dist: List[Tuple[int, float]]) -> int:
+    if not dist:
+        return random.randint(0, MAX_EXIT_NUM - 1)
+    total = sum(w for _, w in dist)
+    r = random.uniform(0, total)
+    acc = 0.0
+    for idx, w in dist:
+        acc += w
+        if r <= acc:
+            return idx
+    return dist[-1][0]
+
+
+def calc_exit_percent(exit_counts: List[int], exit_weight_counts: List[int]) -> Tuple[bool, List[float]]:
+    total_weight = sum(exit_weight_counts)
+    total_count = sum(exit_counts)
+    use_weight = total_weight > 0
+    base = total_weight if use_weight else total_count
+    if base <= 0:
+        return use_weight, [0.0] * MAX_EXIT_NUM
+    percents: List[float] = []
+    for i in range(MAX_EXIT_NUM):
+        v = exit_weight_counts[i] if use_weight else exit_counts[i]
+        percents.append(round(v * 100.0 / base, 2))
+    return use_weight, percents
+
+
+def print_top_exits(exit_counts: List[int], exit_weight_counts: List[int], top_n: int = 6) -> None:
+    use_weight, percents = calc_exit_percent(exit_counts, exit_weight_counts)
+    pairs = []
+    for i, p in enumerate(percents):
+        if p <= 0:
+            continue
+        pairs.append((p, i))
+    pairs.sort(reverse=True)
+    mode = "重量" if use_weight else "数量"
+    show = pairs[:top_n]
+    if not show:
+        return
+    s = ", ".join([f"E{idx+1}:{p:.2f}%" for p, idx in show])
+    if SHOW_SEND_LOGS:
+        print(f"[ExitPercent] 基于{mode}占比 Top{len(show)} => {s}")
+
+
+def run_simulation(args: argparse.Namespace):
     """
     持续运行模拟，不断发送更新的数据
     """
-    print("Starting FSM Simulation...")
-    print("Press Ctrl+C to stop.")
+    if SHOW_SEND_LOGS:
+        print("Starting FSM Simulation...")
+        print("Press Ctrl+C to stop.")
     
     # 初始状态 - 从0开始
     current_yield = 0
     current_total_weight = 0
     exit_counts = [0] * MAX_EXIT_NUM # 维护持久的出口计数状态
+    exit_weight_counts = [0] * MAX_EXIT_NUM # 维护持久的出口重量(g)状态
+    dist_a = parse_distribution(args.dist)
+    dist_b = parse_distribution(args.dist2) if args.dist2 else []
     start_time = time.time()
+    cycles_done = 0
     
     try:
+        seed_completed_batches(args)
+        if args.stop_after_seed:
+            return
         while True:
+            if args.cycles is not None and cycles_done >= args.cycles:
+                if SHOW_SEND_LOGS:
+                    print("\nSimulation finished.")
+                return
+
             # 1. 模拟数据增长
-            increment = random.randint(1, 5) # 每次增加 1-5 个
+            increment = random.randint(args.min_inc, args.max_inc) # 每次增加 N 个
             current_yield += increment
             
             # 将增量分配给随机出口
             for _ in range(increment):
-                # 加权随机选择出口
-                rand_val = random.random()
-                if rand_val < 0.6: # 60% 概率落在前10个出口 (0-9)
-                    exit_idx = random.randint(0, 9)
-                elif rand_val < 0.9: # 30% 概率落在中间10个出口 (10-19)
-                    exit_idx = random.randint(10, 19)
-                else: # 10% 概率落在其他出口
-                    exit_idx = random.randint(20, MAX_EXIT_NUM - 1)
-                
-                if exit_idx < MAX_EXIT_NUM:
+                dist = dist_a
+                if args.alternate and dist_b:
+                    dist = dist_b if (cycles_done % 2 == 1) else dist_a
+                exit_idx = choose_exit_index(dist)
+
+                if 0 <= exit_idx < MAX_EXIT_NUM:
                     exit_counts[exit_idx] += 1
+                    w = random.randint(args.min_weight_g, args.max_weight_g)
+                    exit_weight_counts[exit_idx] += w
+                    current_total_weight += w
             
-            weight_increment = increment * random.randint(120, 180) # 每个果 120-180g
-            current_total_weight += weight_increment
+            if args.force_total_weight_from_exits:
+                current_total_weight = sum(exit_weight_counts)
             
             # 计算合格/不合格 (95% 合格率)
             qualified = int(current_yield * 0.95)
@@ -263,37 +729,136 @@ def run_simulation():
             speed = random.randint(300, 600)
             
             # --- 2. 发送统计数据 ---
-            print(f"\n[Statistics] Yield: {current_yield}, Weight: {current_total_weight/1000:.2f}kg, Speed: {speed}/min")
-            stats_header = create_header(FSM_CMD_STATISTICS)
+            if SHOW_SEND_LOGS:
+                print(f"\n[Statistics] Yield: {current_yield}, Weight: {current_total_weight/1000:.2f}kg, Speed: {speed}/min")
+            if args.print_percent:
+                print_top_exits(exit_counts, exit_weight_counts, top_n=args.topn)
+            stats_src_id = make_src_id(subsys_index=args.subsys, channel_index=args.stats_channel)
+            stats_header = create_header_with_ids(FSM_CMD_STATISTICS, stats_src_id, HC_ID)
             stats_body = create_statistics(
                 n_total_cup_num=current_yield,
                 n_total_weight=current_total_weight,
                 n_qualified_count=qualified,
                 n_unqualified_count=unqualified,
                 n_interval_sum_per_minute=speed,
-                exit_counts=exit_counts  # 传入持久化的出口计数
+                exit_counts=exit_counts,  # 传入持久化的出口计数
+                exit_weight_counts=exit_weight_counts  # 传入持久化的出口重量(g)
             )
-            send_once(stats_header, stats_body, "Statistics")
+            if not args.dry_run:
+                send_once(stats_header, stats_body, "Statistics")
+            else:
+                if SHOW_SEND_LOGS:
+                    print(f"[DryRun] Statistics bytes: {len(stats_body)}")
             
-            time.sleep(1.0) 
+            time.sleep(args.stats_interval_s)
+
+            # --- 2.5 发送分级数据 (模拟两个通道的实时分级信息) ---
+            # 48项目: FSM_CMD_GRADEINFO (StFruitGradeInfo)
+            if not args.no_grade:
+                for _ in range(random.randint(1, 2)):
+                    ipm_index = args.grade_ipm
+                    if ipm_index < 0:
+                        ipm_index = random.randint(0, max(0, args.max_ipm - 1))
+                    grade_src_id = make_src_id(subsys_index=args.subsys, ipm_index=ipm_index)
+                    grade_header = create_header_with_ids(FSM_CMD_GRADEINFO, grade_src_id, HC_ID)
+                    grade_body = create_grade_info(
+                        channel0_exit=random.randint(0, 9),
+                        channel1_exit=random.randint(0, 9),
+                        route_id=0
+                    )
+                    if not args.dry_run:
+                        send_once(grade_header, grade_body, "GradeInfo")
+                    else:
+                        if SHOW_SEND_LOGS:
+                            print(f"[DryRun] GradeInfo bytes: {len(grade_body)}")
+                    time.sleep(0.2)
             
             # --- 3. 发送重量数据 (模拟单个果实) ---
             # 随机发送 1-3 个单果数据
-            for _ in range(random.randint(1, 3)):
-                single_weight = random.randint(100, 250)
-                exit_id = random.randint(1, 10)
-                print(f"[WeightInfo] Weight: {single_weight}g, Exit: {exit_id}")
-                
-                weight_header = create_header(FSM_CMD_WEIGHTINFO)
-                weight_body = create_weight_info(current_weight=single_weight, current_exit=exit_id)
-                send_once(weight_header, weight_body, "WeightInfo")
-                time.sleep(0.3)
+            if not args.no_weight:
+                for _ in range(random.randint(1, 3)):
+                    single_weight = random.randint(100, 250)
+                    exit_id = random.randint(0, 9)
+                    if SHOW_SEND_LOGS:
+                        print(f"[WeightInfo] Weight: {single_weight}g, ExitIndex0: {exit_id}")
+                    
+                    weight_src_id = make_src_id(subsys_index=args.subsys, channel_index=args.weight_channel)
+                    weight_header = create_header_with_ids(FSM_CMD_WEIGHTINFO, weight_src_id, HC_ID)
+                    weight_body = create_weight_info(current_weight=single_weight, current_exit=exit_id)
+                    if not args.dry_run:
+                        send_once(weight_header, weight_body, "WeightInfo")
+                    else:
+                        if SHOW_SEND_LOGS:
+                            print(f"[DryRun] WeightInfo bytes: {len(weight_body)}")
+                    time.sleep(0.3)
             
             # 等待下一轮
-            time.sleep(2)
+            cycles_done += 1
+            time.sleep(args.loop_interval_s)
 
     except KeyboardInterrupt:
-        print("\nSimulation stopped by user.")
+        if SHOW_SEND_LOGS:
+            print("\nSimulation stopped by user.")
 
 if __name__ == "__main__":
-    run_simulation()
+    parser = argparse.ArgumentParser(description="Mock FSM device for HarmonyOS host")
+    parser.add_argument("--ip", default=SERVER_IP, help="鸿蒙设备/模拟器IP（运行App的一侧）")
+    parser.add_argument("--host", dest="ip", help="同 --ip 的别名")
+    parser.add_argument("--port", type=int, default=SERVER_PORT)
+    parser.add_argument("--control-port", type=int, default=CONTROL_PORT, help="PLC/控制端口（用于触发结束批次）")
+    parser.add_argument("--cmd-server", action="store_true", help="启动命令接收服务（用于接收鸿蒙下发的测试/配置命令）")
+    parser.add_argument("--cmd-server-only", action="store_true", help="仅启动命令接收服务，不发送统计数据")
+    parser.add_argument("--no-cmd-server", action="store_true", help="不启动命令接收服务（仅作为客户端发送统计数据）")
+    parser.add_argument("--cmd-port", type=int, default=CMD_SERVER_PORT, help="命令接收服务端口")
+    parser.add_argument("--cmd-server-host", default="0.0.0.0", help="命令接收服务绑定IP")
+    parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--seed-completed", type=int, default=0, help="预先生成N条已完成批次（需App支持END_CLEAR/END_SAVE）")
+    parser.add_argument("--seed-completed-cycles", type=int, default=2, help="每条已完成批次发送统计包次数")
+    parser.add_argument("--seed-completed-interval-s", type=float, default=0.6, help="预置批次发送间隔")
+    parser.add_argument("--end-mode", default="clear", choices=["clear", "save", "alternate"], help="预置批次结束模式")
+    parser.add_argument("--stop-after-seed", action="store_true", help="仅生成已完成批次后退出")
+
+    parser.add_argument("--dist", default="1:60,2:30,3:10", help="出口分布，例: 1:60,2:30,3:10（出口号从1开始）")
+    parser.add_argument("--dist2", default="", help="第二套出口分布（配合 --alternate 使用）")
+    parser.add_argument("--alternate", action="store_true", help="每轮循环在 dist/dist2 之间交替，方便观察波浪快速变化")
+
+    parser.add_argument("--min-inc", type=int, default=1)
+    parser.add_argument("--max-inc", type=int, default=5)
+    parser.add_argument("--min-weight-g", type=int, default=120)
+    parser.add_argument("--max-weight-g", type=int, default=180)
+
+    parser.add_argument("--stats-interval-s", type=float, default=1.0)
+    parser.add_argument("--loop-interval-s", type=float, default=2.0)
+    parser.add_argument("--cycles", type=int, default=None, help="循环次数（不填则无限循环）")
+
+    parser.add_argument("--no-grade", action="store_true", help="不发送 FSM_CMD_GRADEINFO")
+    parser.add_argument("--no-weight", action="store_true", help="不发送 FSM_CMD_WEIGHTINFO")
+    parser.add_argument("--dry-run", action="store_true", help="仅打印，不发TCP数据")
+    parser.add_argument("--show-send-logs", action="store_true", help="显示客户端发送日志（默认只显示服务器收到的数据）")
+
+    parser.add_argument("--subsys", type=int, default=0, help="子系统索引(0-based)，影响 srcId 生成")
+    parser.add_argument("--max-ipm", type=int, default=4, help="随机发送分级时的 IPM 个数(0-based count)")
+    parser.add_argument("--grade-ipm", type=int, default=-1, help="固定分级包来源 IPM 索引(0-based)，-1 表示随机")
+    parser.add_argument("--stats-channel", type=int, default=0, help="统计包来源通道索引(0-11)")
+    parser.add_argument("--weight-channel", type=int, default=0, help="重量包来源通道索引(0-11)")
+
+    parser.add_argument("--print-percent", action="store_true", help="打印出口占比TopN（与鸿蒙 EXIT_PERCENT 逻辑一致）")
+    parser.add_argument("--topn", type=int, default=6)
+    parser.add_argument("--force-total-weight-from-exits", action="store_true", help="让 totalWeight 始终等于各出口重量之和")
+
+    args = parser.parse_args()
+
+    SERVER_IP = args.ip
+    SERVER_PORT = args.port
+    SHOW_SEND_LOGS = bool(args.show_send_logs)
+    if args.seed is not None:
+        random.seed(args.seed)
+
+    if args.cmd_server_only:
+        run_cmd_server(args)
+    else:
+        if not args.no_cmd_server:
+            import threading
+            t = threading.Thread(target=run_cmd_server, args=(args,), daemon=True)
+            t.start()
+        run_simulation(args)

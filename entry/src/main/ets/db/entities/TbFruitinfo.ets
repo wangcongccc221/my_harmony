@@ -2,7 +2,7 @@ import { Table, Column, PrimaryKey } from '@ibestservices/ibest-orm';
 
 @Table({ name: 'tb_FruitInfo' })
 export class TbFruitinfo {
-  @Column()
+  @PrimaryKey({ autoIncrement: true })
   CustomerID?: number;
 
   @Column()

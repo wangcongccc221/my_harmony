@@ -9,6 +9,11 @@ import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { DialogButtons } from '../ui/dialogs/DialogButtons'
 import { DialogHeader } from '../ui/dialogs/DialogHeader'
 import { FormInputField } from '../ui/forms/FormInputField'
+import { getGlobalDataInterface } from '../../protocol/GlobalDataInterface'
+import { StFruitGradeRealtime, StSysConfig } from '../../protocol/Structures'
+import { ConstPreDefine } from '../../protocol/ConstPreDefine'
+import { getConfigSender } from '../../protocol/ConfigSender'
+import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
 
 // 水果信息接口
 interface FruitInfo {
@@ -47,9 +52,16 @@ interface FruitInfoPayload {
   detectionTime: string;
 }
 
+type FsmKey = 'FSM1' | 'FSM2'
+
+interface GradeTableConfig {
+  sizeGradeNames: string[]
+  qualityGradeNames: string[]
+}
+
 @Component
 export struct FruitInfoDialog {
-  @Prop isVisible: boolean = false
+  @Prop @Watch('onVisibleChange') isVisible: boolean = false
   @State fruitInfo: FruitInfo = {
     name: '苹果',
     type: '红富士',
@@ -87,6 +99,64 @@ export struct FruitInfoDialog {
   // 对话框回调
   onConfirm?: (fruitInfo: FruitInfo) => void
   onCancel?: () => void
+
+  private dataInterface = getGlobalDataInterface()
+  private fruitGradeListener: ((data: StFruitGradeRealtime) => void) | null = null
+  private lastGradeByChannel: Map<number, StFruitGradeRealtime> = new Map()
+  private currentIpmId: number | null = null
+  private sysConfigListener: ((data: StSysConfig) => void) | null = null
+
+  @State private classificationMask: number = 0x1F
+
+  private pendingSwitchTimerId: number = 0
+  private pendingSwitchIndex: number = 0
+
+  private hasCIR(): boolean { return (this.classificationMask & 0x01) !== 0 }
+  private hasUV(): boolean { return (this.classificationMask & 0x02) !== 0 }
+  private hasWeight(): boolean { return (this.classificationMask & 0x04) !== 0 }
+  private hasInternal(): boolean { return (this.classificationMask & 0x08) !== 0 }
+  private hasUltrasonic(): boolean { return (this.classificationMask & 0x10) !== 0 }
+
+  private getGradeTableConfig(fsm: FsmKey): GradeTableConfig | null {
+    const key = `HOME_GRADE_TABLE_CONFIG_${fsm}`
+    const cfg = AppStorage.get(key) as GradeTableConfig | undefined
+    if (!cfg) return null
+    if (!Array.isArray(cfg.sizeGradeNames) || !Array.isArray(cfg.qualityGradeNames)) return null
+    return cfg
+  }
+
+  private getCurrentFsm(): FsmKey {
+    const v = AppStorage.get(HOME_SELECTED_FSM) as FsmKey | undefined
+    if (v === 'FSM2') return 'FSM2'
+    return 'FSM1'
+  }
+
+  private formatGradeName(unGrade: number): string {
+    const cfg = this.getGradeTableConfig(this.getCurrentFsm())
+    const sizeIdx = unGrade & 0x0F
+    const qualIdx = (unGrade >> 4) & 0x0F
+    if (!cfg) {
+      return `${sizeIdx}${qualIdx}`
+    }
+    const sizeName = (cfg.sizeGradeNames[sizeIdx] ?? `${sizeIdx}`).trim()
+    const qualName = (cfg.qualityGradeNames[qualIdx] ?? `${qualIdx}`).trim()
+    if (cfg.sizeGradeNames.length > 0 && cfg.qualityGradeNames.length > 0) {
+      return `${sizeName}${qualName}`
+    }
+    if (cfg.qualityGradeNames.length > 0) {
+      return qualName
+    }
+    return sizeName
+  }
+
+  private refreshClassificationMask(): void {
+    const sys = this.dataInterface.getSysConfig()
+    if (sys) {
+      this.classificationMask = sys.nClassificationInfo & 0xFF
+    } else {
+      this.classificationMask = 0x1F
+    }
+  }
 
   // 确认按钮点击 - 保存到数据库
   private async handleConfirm() {
@@ -154,21 +224,39 @@ export struct FruitInfoDialog {
     }
   }
 
+  onVisibleChange(): void {
+    if (this.isVisible) {
+      this.startRealtime()
+    } else {
+      this.stopRealtime()
+    }
+  }
+
   // 显示对话框时重置通道为 lane-1（index = 0），不自动加载数据
   aboutToAppear() {
     this.selectedLaneIndex = 0
-    // 不清空数据，也不自动加载，等用户选择通道后再加载
+    this.refreshClassificationMask()
+    this.loadLaneData(this.selectedLaneIndex)
   }
 
   // 加载指定通道的数据并填充表单
-  private async loadLaneData(lane: string): Promise<void> {
-    try {
-      // 目前不再从数据库加载历史数据，直接清空表单等待输入
-      this.clearFormData()
-      console.log(`通道 ${lane} 无持久化数据，已重置表单`)
-    } catch (error) {
-      console.error(`加载通道 ${lane} 数据失败:`, error)
-      // 发生错误时也清空表单
+  private loadLaneData(channelIndex: number): void {
+    const data = this.lastGradeByChannel.get(channelIndex)
+    if (data) {
+      this.applyGradeInfo(data)
+      return
+    }
+
+    const recent = this.dataInterface.getRecentFruits()
+    for (let i = 0; i < recent.length; i++) {
+      const item = recent[i]
+      this.lastGradeByChannel.set(item.channelIndex, item)
+    }
+
+    const fallback = this.lastGradeByChannel.get(channelIndex)
+    if (fallback) {
+      this.applyGradeInfo(fallback)
+    } else {
       this.clearFormData()
     }
   }
@@ -197,11 +285,122 @@ export struct FruitInfoDialog {
     this.flatEllipticalRatioMm = 0
   }
 
+  private applyGradeInfo(info: StFruitGradeRealtime): void {
+    this.levelText = this.formatGradeName(info.grade)
+    this.diameterMm = info.diameterMm
+    this.weightG = info.weightG
+    this.projectionAreaMm2 = info.projectionAreaMm2
+    this.densityKgPerM3 = info.densityKgPerM3
+    this.volumeMm3 = info.volumeMm3
+    this.brix = info.brix
+    this.acidity = info.acidity
+    this.color1Pct = info.colorRate0Pct
+    this.color2Pct = info.colorRate1Pct
+    this.color3Pct = info.colorRate2Pct
+    this.maturityPct = info.maturity
+    this.pulpColorPct = info.pulpColor
+    this.defectAreaMm2 = info.visionFlawAreaMm2
+    this.defectCount = info.visionFlawCount
+    this.drynessPct = info.uvWater
+    this.verticalAxis = info.diameterMm
+    this.horizontalRatio = info.diameterRatio
+    this.flatEllipticalRatioMm = info.minDiameterRatio
+
+    if (info.targetExit >= 0 && info.targetExit < ConstPreDefine.MAX_EXIT_NUM) {
+      this.outletText = `${info.targetExit + 1}`
+    } else {
+      this.outletText = `${info.targetExit}`
+    }
+  }
+
+  private getIpmIdForChannel(channelIndex: number): number {
+    const subsysIndex = 0
+    const ipmIndex = Math.floor(channelIndex / ConstPreDefine.CHANNEL_NUM)
+    return ConstPreDefine.getIpmId(subsysIndex, ipmIndex)
+  }
+
+  private async switchGradeInfoChannel(channelIndex: number): Promise<void> {
+    const nextIpmId = this.getIpmIdForChannel(channelIndex)
+    if (this.currentIpmId !== null && this.currentIpmId !== nextIpmId) {
+      await getConfigSender().sendGradeInfoOff(this.currentIpmId)
+    }
+    await getConfigSender().sendGradeInfoOn(nextIpmId)
+    this.currentIpmId = nextIpmId
+  }
+
+  private scheduleSwitchGradeInfoChannel(channelIndex: number): void {
+    this.pendingSwitchIndex = channelIndex
+    if (this.pendingSwitchTimerId !== 0) {
+      clearTimeout(this.pendingSwitchTimerId)
+      this.pendingSwitchTimerId = 0
+    }
+    this.pendingSwitchTimerId = setTimeout(() => {
+      this.pendingSwitchTimerId = 0
+      this.switchGradeInfoChannel(this.pendingSwitchIndex)
+    }, 120)
+  }
+
+  private startRealtime(): void {
+    if (!this.fruitGradeListener) {
+      this.fruitGradeListener = (info: StFruitGradeRealtime) => {
+        this.lastGradeByChannel.set(info.channelIndex, info)
+        if (this.isVisible && info.channelIndex === this.selectedLaneIndex) {
+          this.applyGradeInfo(info)
+        }
+      }
+      this.dataInterface.addFruitGradeListener(this.fruitGradeListener)
+    }
+
+    if (!this.sysConfigListener) {
+      this.sysConfigListener = (_sys: StSysConfig) => {
+        this.refreshClassificationMask()
+      }
+      this.dataInterface.addSysConfigListener(this.sysConfigListener)
+    }
+
+    const recent = this.dataInterface.getRecentFruits()
+    for (let i = 0; i < recent.length; i++) {
+      const item = recent[i]
+      this.lastGradeByChannel.set(item.channelIndex, item)
+    }
+
+    this.loadLaneData(this.selectedLaneIndex)
+    this.scheduleSwitchGradeInfoChannel(this.selectedLaneIndex)
+  }
+
+  private stopRealtime(): void {
+    if (this.pendingSwitchTimerId !== 0) {
+      clearTimeout(this.pendingSwitchTimerId)
+      this.pendingSwitchTimerId = 0
+    }
+    if (this.fruitGradeListener) {
+      this.dataInterface.removeFruitGradeListener(this.fruitGradeListener)
+      this.fruitGradeListener = null
+    }
+
+    if (this.sysConfigListener) {
+      this.dataInterface.removeSysConfigListener(this.sysConfigListener)
+      this.sysConfigListener = null
+    }
+
+    if (this.currentIpmId !== null) {
+      getConfigSender().sendGradeInfoOff(this.currentIpmId)
+      this.currentIpmId = null
+    }
+  }
+
   build() {
     if (this.isVisible) {
-      // 遮罩层
       Stack() {
-        // 对话框内容
+        Column() {
+        }
+          .width('100%')
+          .height('100%')
+          .backgroundColor('rgba(0, 0, 0, 0.5)')
+          .onClick(() => {
+            this.handleCancel()
+          })
+
         Column() {
           // 标题栏
           DialogHeader({
@@ -244,9 +443,8 @@ export struct FruitInfoDialog {
                     .height(34)  // 保持水果信息页面的高度
                     .onSelect((index: number) => {
                       this.selectedLaneIndex = index
-                      // 当通道改变时，自动加载该通道的数据
-                      const lane = `lane-${index + 1}`
-                      this.loadLaneData(lane)
+                      this.loadLaneData(index)
+                      this.scheduleSwitchGradeInfoChannel(index)
                     })
 
                   Blank().layoutWeight(1)
@@ -265,10 +463,8 @@ export struct FruitInfoDialog {
                     .padding({ left: 10, right: 10, top: 4, bottom: 4 })
                     .constraintSize({ minWidth: 120, maxWidth: 220 })
                     .height(28)
-                    .onChange((val: string) => {
-                      // 等级文本（如 A/B/C 或自定义）
-                      this.levelText = val
-                    })
+                    .enabled(false)
+                    .opacity(0.55)
                 }
                 .width('100%')
                 .alignItems(VerticalAlign.Center)
@@ -298,7 +494,8 @@ export struct FruitInfoDialog {
                         value: this.diameterMm,
                         unit: 'mm',
                         minValue: 0,
-                        maxValue: 1000
+                        maxValue: 1000,
+                        enabled: this.hasCIR()
                       },
                       onValueChange: (value: number) => {
                         this.diameterMm = value
@@ -312,7 +509,8 @@ export struct FruitInfoDialog {
                         value: this.weightG,
                         unit: 'g',
                         minValue: 0,
-                        maxValue: 100000
+                        maxValue: 100000,
+                        enabled: this.hasWeight()
                       },
                       onValueChange: (value: number) => {
                         this.weightG = value
@@ -330,7 +528,8 @@ export struct FruitInfoDialog {
                         value: this.projectionAreaMm2,
                         unit: 'mm^2',
                         minValue: 0,
-                        maxValue: 100000000
+                        maxValue: 100000000,
+                        enabled: this.hasCIR()
                       },
                       onValueChange: (value: number) => {
                         this.projectionAreaMm2 = value
@@ -343,7 +542,8 @@ export struct FruitInfoDialog {
                         value: this.densityKgPerM3,
                         unit: 'kg/m^3',
                         minValue: 0,
-                        maxValue: 5000
+                        maxValue: 5000,
+                        enabled: this.hasCIR() && this.hasWeight()
                       },
                       onValueChange: (value: number) => {
                         this.densityKgPerM3 = value
@@ -361,7 +561,8 @@ export struct FruitInfoDialog {
                         value: this.volumeMm3,
                         unit: 'mm^3',
                         minValue: 0,
-                        maxValue: 100000000
+                        maxValue: 100000000,
+                        enabled: this.hasCIR()
                       },
                       onValueChange: (value: number) => {
                         this.volumeMm3 = value
@@ -374,7 +575,8 @@ export struct FruitInfoDialog {
                         value: this.brix,
                         unit: 'brix',
                         minValue: 0,
-                        maxValue: 100
+                        maxValue: 100,
+                        enabled: this.hasInternal()
                       },
                       onValueChange: (value: number) => {
                         this.brix = value
@@ -392,7 +594,8 @@ export struct FruitInfoDialog {
                         value: this.color1Pct,
                         unit: '%',
                         minValue: 0,
-                        maxValue: 100
+                        maxValue: 100,
+                        enabled: this.hasCIR()
                       },
                       onValueChange: (value: number) => {
                         this.color1Pct = value
@@ -405,7 +608,8 @@ export struct FruitInfoDialog {
                         value: this.acidity,
                         unit: 'acid',
                         minValue: 0,
-                        maxValue: 100
+                        maxValue: 100,
+                        enabled: this.hasInternal()
                       },
                       onValueChange: (value: number) => {
                         this.acidity = value
@@ -423,7 +627,8 @@ export struct FruitInfoDialog {
                         value: this.color2Pct,
                         unit: '%',
                         minValue: 0,
-                        maxValue: 100
+                        maxValue: 100,
+                        enabled: this.hasCIR()
                       },
                       onValueChange: (value: number) => {
                         this.color2Pct = value
@@ -436,7 +641,8 @@ export struct FruitInfoDialog {
                         value: this.drynessPct,
                         unit: '%',
                         minValue: 0,
-                        maxValue: 100
+                        maxValue: 100,
+                        enabled: this.hasUV()
                       },
                       onValueChange: (value: number) => {
                         this.drynessPct = value
@@ -454,7 +660,8 @@ export struct FruitInfoDialog {
                         value: this.color3Pct,
                         unit: '%',
                         minValue: 0,
-                        maxValue: 100
+                        maxValue: 100,
+                        enabled: this.hasCIR()
                       },
                       onValueChange: (value: number) => {
                         this.color3Pct = value
@@ -467,7 +674,8 @@ export struct FruitInfoDialog {
                         value: this.maturityPct,
                         unit: '%',
                         minValue: 0,
-                        maxValue: 100
+                        maxValue: 100,
+                        enabled: this.hasInternal()
                       },
                       onValueChange: (value: number) => {
                         this.maturityPct = value
@@ -485,7 +693,8 @@ export struct FruitInfoDialog {
                         value: this.defectAreaMm2,
                         unit: 'mm^2',
                         minValue: 0,
-                        maxValue: 100000000
+                        maxValue: 100000000,
+                        enabled: this.hasUV()
                       },
                       onValueChange: (value: number) => {
                         this.defectAreaMm2 = value
@@ -498,7 +707,8 @@ export struct FruitInfoDialog {
                         value: this.pulpColorPct,
                         unit: '%',
                         minValue: 0,
-                        maxValue: 100
+                        maxValue: 100,
+                        enabled: this.hasInternal()
                       },
                       onValueChange: (value: number) => {
                         this.pulpColorPct = value
@@ -516,7 +726,8 @@ export struct FruitInfoDialog {
                         value: this.defectCount,
                         unit: '个',
                         minValue: 0,
-                        maxValue: 1000000
+                        maxValue: 1000000,
+                        enabled: this.hasUV()
                       },
                       onValueChange: (value: number) => {
                         this.defectCount = value
@@ -540,9 +751,8 @@ export struct FruitInfoDialog {
                         .padding({ left: 10, right: 10, top: 6, bottom: 6 })
                         .constraintSize({ minWidth: 140, maxWidth: 180 })
                         .height(34)
-                        .onChange((val: string) => {
-                          this.outletText = val
-                        })
+                        .enabled(false)
+                        .opacity(0.55)
                     }
                     .layoutWeight(1)
                     .alignItems(VerticalAlign.Center)
@@ -557,7 +767,8 @@ export struct FruitInfoDialog {
                         label: '垂轴径',
                         value: this.verticalAxis,
                         minValue: 0,
-                        maxValue: 1000000
+                        maxValue: 1000000,
+                        enabled: this.hasCIR()
                       },
                       onValueChange: (value: number) => {
                         this.verticalAxis = value
@@ -569,7 +780,8 @@ export struct FruitInfoDialog {
                         label: '横径比',
                         value: this.horizontalRatio,
                         minValue: 0,
-                        maxValue: 100
+                        maxValue: 100,
+                        enabled: this.hasCIR()
                       },
                       onValueChange: (value: number) => {
                         this.horizontalRatio = value
@@ -587,7 +799,8 @@ export struct FruitInfoDialog {
                         value: this.flatEllipticalRatioMm,
                         unit: 'mm',
                         minValue: 0,
-                        maxValue: 1000000
+                        maxValue: 1000000,
+                        enabled: this.hasCIR()
                       },
                       onValueChange: (value: number) => {
                         this.flatEllipticalRatioMm = value
@@ -642,15 +855,11 @@ export struct FruitInfoDialog {
           offsetX: 0,
           offsetY: 4
         })
+        .onClick(() => {})
       }
       .width('100%')
       .height('100%')
-      .backgroundColor('rgba(0, 0, 0, 0.5)')
       .alignContent(Alignment.Center)
-      .onClick(() => {
-        // 点击遮罩层关闭对话框
-        this.handleCancel()
-      })
     }
   }
 

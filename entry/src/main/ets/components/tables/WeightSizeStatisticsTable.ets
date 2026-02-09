@@ -34,7 +34,6 @@ export struct WeightSizeStatisticsTable {
   }
   
   private updateData(): void {
-    // 生成模拟数据
     const tempData: WeightSizeTableItem[] = []
     
     const grades = ['23', '27', '32', '40']
@@ -44,21 +43,15 @@ export struct WeightSizeStatisticsTable {
     for (const subsystem of subsystems) {
       for (const grade of grades) {
         const gradeName = `Sys-${subsystem}-${grade}`
-        
-        // 生成随机数据
-        const gradeCount = Math.floor(Math.random() * 10000) + 1000
-        const gradeWeight = Math.floor(Math.random() * 5000) + 500
-        const boxCount = Math.floor(Math.random() * 5000000) + 100000
-        const weight = Math.random() * 200 + 200
-        
+
         tempData.push({
           gradeName,
-          weight: parseFloat(weight.toFixed(2)),
-          gradeCount,
+          weight: 0,
+          gradeCount: 0,
           countPercent: 0,  // 稍后计算
-          gradeWeight: parseFloat(gradeWeight.toFixed(1)),
+          gradeWeight: 0,
           weightPercent: 0,  // 稍后计算
-          boxCount,
+          boxCount: 0,
           boxCountPercent: 0  // 稍后计算
         })
       }

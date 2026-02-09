@@ -6,7 +6,7 @@
 
 import { ConstPreDefine } from './ConstPreDefine'
 import { HC_FSM_COMMAND_TYPE } from './CommandTypes'
-import { MESSAGE_HEADER_SIZE, StSizeGradeSetting, StQualityGradeSetting, StExitSetting } from './Structures'
+import { MESSAGE_HEADER_SIZE, StSizeGradeSetting, StQualityGradeSetting, StExitSetting, StGradeInfo, StMotorInfo } from './Structures'
 import { getProtocolParser, ProtocolParser } from './ProtocolParser'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 import { util } from '@kit.ArkTS'
@@ -32,6 +32,41 @@ export class ConfigSender {
 
   private parser: ProtocolParser
   private tcpSender: ITcpSender | null = null
+  private enableConsoleDump: boolean = true
+
+  private toHex(bytes: Uint8Array): string {
+    let out = ''
+    for (let i = 0; i < bytes.length; i++) {
+      const hex = bytes[i].toString(16).padStart(2, '0')
+      out += (i === 0 ? hex : ` ${hex}`)
+    }
+    return out
+  }
+
+  private dumpPacket(data: ArrayBuffer, headBytes: number = 128, tailBytes: number = 64): string {
+    const u8 = new Uint8Array(data)
+    const total = u8.length
+    const headLen = Math.min(headBytes, total)
+    const tailLen = Math.min(tailBytes, Math.max(0, total - headLen))
+    const head = this.toHex(u8.slice(0, headLen))
+    if (tailLen <= 0) {
+      return `len=${total} hex=${head}`
+    }
+    const tail = this.toHex(u8.slice(total - tailLen))
+    return `len=${total} head(${headLen})=${head} ... tail(${tailLen})=${tail}`
+  }
+
+  private parseHeader(data: ArrayBuffer): string {
+    if (data.byteLength < 10) {
+      return `rawLen=${data.byteLength}`
+    }
+    const view = new DataView(data)
+    const totalLen = view.getUint32(0, true)
+    const hcId = view.getUint16(4, true)
+    const fsmId = view.getUint16(6, true)
+    const cmdId = view.getUint16(8, true)
+    return `totalLen=${totalLen} hcId=0x${hcId.toString(16)} fsmId=0x${fsmId.toString(16)} cmdId=0x${cmdId.toString(16)}`
+  }
 
   /**
    * 获取单例实例
@@ -238,6 +273,40 @@ export class ConfigSender {
     return this.sendCommand(fsmId, buffer, 'EXIT_INFO')
   }
 
+  async sendFullGradeInfo(fsmId: number, gradeInfo: StGradeInfo): Promise<boolean> {
+    const dataLength = StGradeInfo.getSize()
+    const totalLength = MESSAGE_HEADER_SIZE + dataLength
+    const buffer = new ArrayBuffer(totalLength)
+    const view = new DataView(buffer)
+    view.setUint32(0, totalLength, true)
+    view.setUint16(4, ConstPreDefine.HC_ID, true)
+    view.setUint16(6, fsmId, true)
+    view.setUint16(8, HC_FSM_COMMAND_TYPE.HC_CMD_GRADE_INFO, true)
+    gradeInfo.writeToDataView(view, MESSAGE_HEADER_SIZE)
+    return this.sendCommand(fsmId, buffer, 'GRADE_INFO_FULL')
+  }
+
+  async sendMotorInfo(fsmId: number, motorInfo: StMotorInfo): Promise<boolean> {
+    const dataLength = StMotorInfo.getSize()
+    const totalLength = MESSAGE_HEADER_SIZE + dataLength
+    const buffer = new ArrayBuffer(totalLength)
+    const view = new DataView(buffer)
+    view.setUint32(0, totalLength, true)
+    view.setUint16(4, ConstPreDefine.HC_ID, true)
+    view.setUint16(6, fsmId, true)
+    view.setUint16(8, HC_FSM_COMMAND_TYPE.HC_CMD_MOTOR_INFO, true)
+    motorInfo.writeToDataView(view, MESSAGE_HEADER_SIZE)
+    return this.sendCommand(fsmId, buffer, 'MOTOR_INFO')
+  }
+
+  async sendMotorEnable(fsmId?: number): Promise<boolean> {
+    if (fsmId !== undefined) {
+      const data = this.parser.buildSimpleCommand(HC_FSM_COMMAND_TYPE.HC_CMD_MOTOR_ENABLE, fsmId)
+      return this.sendCommand(fsmId, data, 'MOTOR_ENABLE')
+    }
+    return this.broadcastCommand(HC_FSM_COMMAND_TYPE.HC_CMD_MOTOR_ENABLE, 'MOTOR_ENABLE')
+  }
+
   // ==================== 测试命令 ====================
   /**
    * 发送电磁阀测试命令 (HC_CMD_TEST_VOLVE)
@@ -262,6 +331,20 @@ export class ConfigSender {
     view.setUint16(MESSAGE_HEADER_SIZE + 2, exitIndex, true)
 
     return this.sendCommand(fsmId, buffer, 'TEST_VOLVE')
+  }
+
+  async sendTestAllLaneValve(fsmId: number, channelIndex: number, exitIndex: number): Promise<boolean> {
+    const dataLength = 4
+    const totalLength = MESSAGE_HEADER_SIZE + dataLength
+    const buffer = new ArrayBuffer(totalLength)
+    const view = new DataView(buffer)
+    view.setUint32(0, totalLength, true)
+    view.setUint16(4, ConstPreDefine.HC_ID, true)
+    view.setUint16(6, fsmId, true)
+    view.setUint16(8, HC_FSM_COMMAND_TYPE.HC_CMD_TEST_ALL_LANE_VOLVE, true)
+    view.setUint16(MESSAGE_HEADER_SIZE, channelIndex, true)
+    view.setUint16(MESSAGE_HEADER_SIZE + 2, exitIndex, true)
+    return this.sendCommand(fsmId, buffer, 'TEST_ALL_LANE_VOLVE')
   }
 
   /**
@@ -311,6 +394,10 @@ export class ConfigSender {
     }
 
     try {
+      if (this.enableConsoleDump) {
+        console.log(`[SEND ${cmdName}] device=0x${deviceId.toString(16)} ${this.parseHeader(data)}`)
+        console.log(`[SEND ${cmdName}] ${this.dumpPacket(data)}`)
+      }
       const success = await this.tcpSender.sendToDevice(deviceId, data)
       if (success) {
         hilog.info(0x0001, TAG, `发送${cmdName}到0x${deviceId.toString(16)}成功`)
@@ -342,6 +429,10 @@ export class ConfigSender {
       if (this.tcpSender.isDeviceConnected(fsmId)) {
         const data = this.parser.buildSimpleCommand(cmdId, fsmId)
         try {
+          if (this.enableConsoleDump) {
+            console.log(`[SEND ${cmdName}] device=0x${fsmId.toString(16)} ${this.parseHeader(data)}`)
+            console.log(`[SEND ${cmdName}] ${this.dumpPacket(data)}`)
+          }
           const success = await this.tcpSender.sendToDevice(fsmId, data)
           if (success) successCount++
         } catch (e) {

@@ -14,9 +14,13 @@ import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../../u
 import { getCurrentTheme as resolveTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_TYPE_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { ProcessingRecordCard } from './ProcessingRecordCard'
-import { ActionButtonsCard, ButtonConfig } from './ActionButtonsCard'
 import { ProcessingDataManager, ProcessingRecord } from './core/ProcessingDataManager'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
+import { ToastDialog } from '../../components/dialogs/ToastDialog'
+import { getConfigSender } from '../../protocol/ConfigSender'
+import { getDatabaseSync } from '../../protocol/DatabaseSync'
+import { getGlobalDataInterface } from '../../protocol/GlobalDataInterface'
+import { EndProcessingConfirmDialog } from './EndProcessingConfirmDialog'
 
 @Component
 export struct EndProcessingContent {
@@ -27,6 +31,10 @@ export struct EndProcessingContent {
   private dataManager = ProcessingDataManager.getInstance()
   @State private processingRecords: ProcessingRecord[] = []
   @State private dataRefreshKey: number = 0
+  @State private showToastDialog: boolean = false
+  @State private toastType: 'success' | 'error' = 'success'
+  @State private toastMessage: string = ''
+  @State private showEndConfirmDialog: boolean = false
 
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return resolveTheme(this.consumedTheme)
@@ -46,6 +54,7 @@ export struct EndProcessingContent {
   aboutToDisappear(): void {
     // 清理数据，释放内存
     this.processingRecords = []
+    this.showEndConfirmDialog = false
     console.log('EndProcessingContent: 页面资源已清理')
   }
 
@@ -71,31 +80,47 @@ export struct EndProcessingContent {
     return this.processingRecords
   }
 
-  /**
-   * 获取操作按钮配置
-   */
-  private getActionButtons(): ButtonConfig[] {
-    const _version = this.i18nVersion  // 依赖 i18nVersion 确保语言变化时重新计算
-    return [
-      {
-        text: t('是', '是'),
-        onClick: () => {
-          console.log('是按钮被点击')
-        }
-      },
-      {
-        text: t('否', '否'),
-        onClick: () => {
-          console.log('否按钮被点击')
-        }
-      },
-      {
-        text: t('取消', '取消'),
-        onClick: () => {
-          console.log('取消按钮被点击')
-        }
+  private showToast(type: 'success' | 'error', message: string): void {
+    this.toastType = type
+    this.toastMessage = message
+    this.showToastDialog = true
+    setTimeout(() => {
+      this.showToastDialog = false
+    }, 1500)
+  }
+
+  private async handleEndProcessing(clearDeviceData: boolean): Promise<void> {
+    const dbSync = getDatabaseSync()
+    const gdi = getGlobalDataInterface()
+    const batchId = dbSync.getCurrentBatchId()
+    if (batchId === 0) {
+      this.showToast('error', t('当前没有进行中的加工批次', '当前没有进行中的加工批次'))
+      return
+    }
+
+    try {
+      await dbSync.saveNow()
+      const endOk = await dbSync.endCurrentBatch()
+      if (!endOk) {
+        this.showToast('error', t('结束加工失败：批次未保存', '结束加工失败：批次未保存'))
+        return
       }
-    ]
+
+      const sender = getConfigSender()
+      const deviceOk = clearDeviceData ? await sender.sendClearData() : await sender.sendSaveData()
+      if (!deviceOk) {
+        this.showToast('error', t('下位机命令发送失败，请检查连接', '下位机命令发送失败，请检查连接'))
+      } else {
+        this.showToast('success', t('结束加工成功', '结束加工成功'))
+      }
+
+      gdi.stopProcessing()
+      gdi.clearData()
+      await this.loadDataFromDatabase()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      this.showToast('error', t('结束加工失败', '结束加工失败') + ': ' + msg)
+    }
   }
 
   /**
@@ -118,11 +143,28 @@ export struct EndProcessingContent {
       .height('90%')
       .opacity(this.i18nVersion >= 0 ? 1 : 1)  // 引用 i18nVersion 确保语言变化时重新渲染
 
-      // 操作按钮卡片
-      ActionButtonsCard({
-        buttons: this.getActionButtons()
+      ToastDialog({
+        isVisible: this.showToastDialog,
+        type: this.toastType,
+        message: this.toastMessage
       })
-      .height('10%')
+
+      EndProcessingConfirmDialog({
+        isVisible: this.showEndConfirmDialog,
+        title: t('结束加工', '结束加工'),
+        message: t('是否结束加工？\n\n是：结束加工并清零数据\n否：结束加工但保留数据\n取消：不结束', '是否结束加工？\n\n是：结束加工并清零数据\n否：结束加工但保留数据\n取消：不结束'),
+        onYes: () => {
+          this.showEndConfirmDialog = false
+          this.handleEndProcessing(true)
+        },
+        onNo: () => {
+          this.showEndConfirmDialog = false
+          this.handleEndProcessing(false)
+        },
+        onCancel: () => {
+          this.showEndConfirmDialog = false
+        }
+      })
     }
     .width('100%')
     .height('100%')

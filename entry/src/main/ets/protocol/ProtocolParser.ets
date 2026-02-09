@@ -12,6 +12,9 @@ import {
   StStatistics,
   StWeightInfo,
   StGradeInfo,
+  StFruitGradeInfo,
+  StFruitParam,
+  StSysConfig,
   createDefaultStatistics,
   createDefaultWeightInfo,
   createDefaultGradeInfo
@@ -199,7 +202,7 @@ export class ProtocolParser {
    * @param buffer 数据缓冲区（包含消息头）
    * @returns 分级信息结构
    */
-  parseGradeInfo(buffer: ArrayBuffer): StGradeInfo | null {
+  parseGradeInfo(buffer: ArrayBuffer): StGradeInfo | StFruitGradeInfo | null {
     const header: MessageHeader | null = this.parseHeader(buffer)
     if (!header) return null
 
@@ -211,32 +214,45 @@ export class ProtocolParser {
     const offset: number = MESSAGE_HEADER_SIZE
 
     try {
-      const info = createDefaultGradeInfo()
+      const dataLen = header.length - MESSAGE_HEADER_SIZE
+      if (dataLen === StFruitGradeInfo.getSize()) {
+        const info = new StFruitGradeInfo()
+        info.readFromDataView(view, offset)
+        return info
+      }
 
-      info.fruitId = view.getUint32(offset, true)
-      info.weight = view.getUint32(offset + 4, true)
-      info.diameter = view.getUint16(offset + 8, true)
-      info.colorGrade = view.getUint8(offset + 10)
-      info.shapeGrade = view.getUint8(offset + 11)
-      info.flawGrade = view.getUint8(offset + 12)
-      info.sugarGrade = view.getUint8(offset + 13)
-      info.acidityGrade = view.getUint8(offset + 14)
-      info.densityGrade = view.getUint8(offset + 15)
-      info.rigidityGrade = view.getUint8(offset + 16)
-      info.qualityGrade = view.getUint8(offset + 17)
-      info.sizeGrade = view.getUint8(offset + 18)
-      info.finalGrade = view.getUint8(offset + 19)
-      info.targetExit = view.getUint8(offset + 20)
-      info.cupIndex = view.getUint8(offset + 21)
-      info.colorR = view.getUint8(offset + 22)
-      info.colorG = view.getUint8(offset + 23)
-      info.colorB = view.getUint8(offset + 24)
+      if (dataLen === StFruitParam.getSize()) {
+        const wrap = new StFruitGradeInfo()
+        wrap.params[0].readFromDataView(view, offset)
+        wrap.nRouteId = 0
+        return wrap
+      }
 
-      // 从源ID解析通道信息
-      info.channelIndex = (header.srcId >> 4) & 0x0F
-      info.timestamp = Date.now()
+      const legacy = createDefaultGradeInfo()
 
-      return info
+      legacy.fruitId = view.getUint32(offset, true)
+      legacy.weight = view.getUint32(offset + 4, true)
+      legacy.diameter = view.getUint16(offset + 8, true)
+      legacy.colorGrade = view.getUint8(offset + 10)
+      legacy.shapeGrade = view.getUint8(offset + 11)
+      legacy.flawGrade = view.getUint8(offset + 12)
+      legacy.sugarGrade = view.getUint8(offset + 13)
+      legacy.acidityGrade = view.getUint8(offset + 14)
+      legacy.densityGrade = view.getUint8(offset + 15)
+      legacy.rigidityGrade = view.getUint8(offset + 16)
+      legacy.qualityGrade = view.getUint8(offset + 17)
+      legacy.sizeGrade = view.getUint8(offset + 18)
+      legacy.finalGrade = view.getUint8(offset + 19)
+      legacy.targetExit = view.getUint8(offset + 20)
+      legacy.cupIndex = view.getUint8(offset + 21)
+      legacy.colorR = view.getUint8(offset + 22)
+      legacy.colorG = view.getUint8(offset + 23)
+      legacy.colorB = view.getUint8(offset + 24)
+
+      legacy.channelIndex = (header.srcId >> 4) & 0x0F
+      legacy.timestamp = Date.now()
+
+      return legacy
     } catch (e) {
       hilog.error(0x0001, TAG, `解析分级信息失败: ${e}`)
       return null
@@ -277,8 +293,7 @@ export class ProtocolParser {
         break
 
       case FSM_HC_COMMAND_TYPE.FSM_CMD_CONFIG:
-        // 配置回复，暂不处理
-        hilog.info(0x0001, TAG, '收到配置回复')
+        result.data = this.parseSysConfigFromGlobal(buffer)
         break
 
       case FSM_HC_COMMAND_TYPE.FSM_CMD_GETVERSION:
@@ -291,6 +306,23 @@ export class ProtocolParser {
     }
 
     return result
+  }
+
+  private parseSysConfigFromGlobal(buffer: ArrayBuffer): StSysConfig | null {
+    const header: MessageHeader | null = this.parseHeader(buffer)
+    if (!header) return null
+    if (header.cmdId !== FSM_HC_COMMAND_TYPE.FSM_CMD_CONFIG) return null
+
+    try {
+      const view = new DataView(buffer)
+      const offset = MESSAGE_HEADER_SIZE
+      const sys = new StSysConfig()
+      sys.readFromDataView(view, offset)
+      return sys
+    } catch (e) {
+      hilog.error(0x0001, TAG, `解析系统配置失败: ${e}`)
+      return null
+    }
   }
 
   /**
@@ -447,7 +479,7 @@ export interface ParsedMessage {
   /** 命令名称 */
   cmdName: string
   /** 解析后的数据 */
-  data: StStatistics | StWeightInfo | StGradeInfo | string | null
+  data: StStatistics | StWeightInfo | StGradeInfo | StFruitGradeInfo | StSysConfig | string | null
 }
 
 // 导出单例获取方法

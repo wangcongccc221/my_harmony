@@ -15,11 +15,8 @@
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { LevelTable, TableRow } from '../../components/layout/LevelTable'
 import { ThreeDButton } from '../../components/ui/buttons/ThreeDButton'
+import { ExitConfigManager, OutletConfig, FsmKey } from './core/ExitConfigManager'
 
-// 定义数据接口
-
-
-// 选择项类型与常量
 interface SelectOption {
   value: string;
 }
@@ -82,11 +79,13 @@ export struct OutletDialog {
   @Prop isVisible: boolean = false
   @Prop currentOutletIndex: number = 1
   @Prop levelTableData: TableRow[] = []
+  @Prop outletConfig: OutletConfig = ExitConfigManager.getInstance().createDefaultConfig(1)
+  @Prop currentFSM: FsmKey = 'FSM1'
   
   // 回调函数
   onPrevious?: () => void
   onNext?: () => void
-  onConfirm?: () => void
+  onConfirm?: (config: OutletConfig) => void
   onCancel?: () => void
 
   // ==================== State ====================
@@ -137,6 +136,66 @@ export struct OutletDialog {
   // ==================== Helpers ====================
   private getCurrentTheme(): ExtendedOmniThemeStyle {
     return OmniThemeManager.getInstance().getCurrentTheme()
+  }
+
+  aboutToAppear(): void {
+    const cfg = this.outletConfig
+    this.exportMode = cfg.exportMode
+    this.countChecked = cfg.countChecked
+    this.countValue = cfg.countValue
+    this.weightChecked = cfg.weightChecked
+    this.weightValue = cfg.weightValue
+    this.volumeChecked = cfg.volumeChecked
+    this.volumeValue = cfg.volumeValue
+    this.label1Checked = cfg.label1Checked
+    this.label2Checked = cfg.label2Checked
+    this.label3Checked = cfg.label3Checked
+    this.label4Checked = cfg.label4Checked
+    this.motorEnableMode = cfg.motorEnableMode
+    this.delayTime = cfg.delayTime
+    this.durationTime = cfg.durationTime
+    this.outletEnable = cfg.outletEnable
+    this.spec = cfg.spec
+    this.netWeight = cfg.netWeight
+    this.dimensions = cfg.dimensions
+    this.customName = cfg.customName
+    this.productName = cfg.productName
+    this.displayNameChecked = cfg.displayNameChecked
+    this.displayName = cfg.displayName
+    this.isGeneral = cfg.isGeneral
+    this.isMissingBox = cfg.isMissingBox
+  }
+
+  private buildCurrentConfig(): OutletConfig {
+    const index = this.currentOutletIndex < 1 ? 1 : this.currentOutletIndex
+    return {
+      exitIndex: index,
+      enabled: this.outletEnable === '开启',
+      exportMode: this.exportMode,
+      countChecked: this.countChecked,
+      countValue: this.countValue,
+      weightChecked: this.weightChecked,
+      weightValue: this.weightValue,
+      volumeChecked: this.volumeChecked,
+      volumeValue: this.volumeValue,
+      label1Checked: this.label1Checked,
+      label2Checked: this.label2Checked,
+      label3Checked: this.label3Checked,
+      label4Checked: this.label4Checked,
+      motorEnableMode: this.motorEnableMode,
+      delayTime: this.delayTime,
+      durationTime: this.durationTime,
+      outletEnable: this.outletEnable,
+      spec: this.spec,
+      netWeight: this.netWeight,
+      dimensions: this.dimensions,
+      customName: this.customName,
+      productName: this.productName,
+      displayNameChecked: this.displayNameChecked,
+      displayName: this.displayName,
+      isGeneral: this.isGeneral,
+      isMissingBox: this.isMissingBox
+    }
   }
 
   @Builder
@@ -722,7 +781,8 @@ export struct OutletDialog {
                 buttonHeight: 36,
                 fontSize: 15,
                 onClickCallback: () => {
-                  if (this.onConfirm) this.onConfirm()
+                  const cfg = this.buildCurrentConfig()
+                  if (this.onConfirm) this.onConfirm(cfg)
                 }
                 })
             }

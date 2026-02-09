@@ -8,6 +8,9 @@ import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
 import { NumericInput } from '../ui/inputs/NumericInput'
+import { ToastDialog } from './ToastDialog'
+import { getConfigSender } from '../../protocol/ConfigSender'
+import { ConstPreDefine } from '../../protocol/ConstPreDefine'
 
 // 出口数据接口
 interface OutletMotorData {
@@ -22,6 +25,10 @@ export struct MotorEnableDialog {
   @StorageLink(OMNI_THEME_KEY) @Watch('onThemeChange') consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
   @StorageLink(OMNI_THEME_VERSION_KEY) @Watch('onThemeChange') themeVersion: number = 0
   @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0
+
+  @State private showToastDialog: boolean = false
+  @State private toastType: 'success' | 'error' = 'success'
+  @State private toastMessage: string = ''
 
   // 出口数据
   @State outletMotorDataList: OutletMotorData[] = [
@@ -55,6 +62,20 @@ export struct MotorEnableDialog {
   // 对话框回调
   onCancel?: () => void
 
+  private showToast(type: 'success' | 'error', message: string): void {
+    this.toastType = type
+    this.toastMessage = message
+    this.showToastDialog = true
+    setTimeout(() => {
+      this.showToastDialog = false
+    }, 1500)
+  }
+
+  private getSelectedFsmId(): number {
+    const selected = (AppStorage.get('HOME_SELECTED_FSM') as ('FSM1' | 'FSM2') | undefined) ?? 'FSM1'
+    return selected === 'FSM1' ? ConstPreDefine.getFsmId(0) : ConstPreDefine.getFsmId(1)
+  }
+
   // 关闭对话框
   private handleClose(): void {
     if (this.onCancel) {
@@ -75,9 +96,19 @@ export struct MotorEnableDialog {
   }
 
   // 立即生效
-  private handleApply(): void {
-    console.log('立即生效，应用所有设置')
-    // TODO: 实现应用逻辑
+  private async handleApply(): Promise<void> {
+    const fsmId = this.getSelectedFsmId()
+    try {
+      const ok = await getConfigSender().sendMotorEnable(fsmId)
+      if (ok) {
+        this.showToast('success', t('电机使能命令已发送', '电机使能命令已发送'))
+      } else {
+        this.showToast('error', t('电机使能命令发送失败，请检查设备连接', '电机使能命令发送失败，请检查设备连接'))
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      this.showToast('error', t('电机使能失败', '电机使能失败') + ': ' + msg)
+    }
   }
 
   // 更新出口数据
@@ -300,6 +331,12 @@ export struct MotorEnableDialog {
       .shadow({ radius: 20, color: 'rgba(0, 0, 0, 0.3)', offsetY: 4 })
       .alignSelf(ItemAlign.Center)
       .constraintSize({ maxWidth: 700, maxHeight: 600 })
+
+      ToastDialog({
+        isVisible: this.showToastDialog,
+        type: this.toastType,
+        message: this.toastMessage
+      })
       }
     }
     .width('100%')

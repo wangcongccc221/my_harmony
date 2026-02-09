@@ -5,75 +5,36 @@
 
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { TableRowComponent } from '../ui/tables/TableRow'
-import { GradeItem } from '../../protocol/Structures'
+import { HomeDataManager } from '../../pages/home/core/HomeDataManager'
+import { TableRow } from '../layout/LevelTable'
+import { TABLE_CONFIG } from '../../pages/home/HomeConstants'
+import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
 
 @Component
 export struct GradeStatisticsTable {
   @Prop selectedSubsystem: string = 'ALL'
   
-  @StorageProp('GlobalGradeList') tableData: GradeItem[] = []
-  @State private enablePrice: boolean = true  // 是否启用价格功能
+  @StorageLink(HOME_SELECTED_FSM) @Watch('onFsmChange') selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
+  @State private tableData: TableRow[] = []
+
+  private dataManager = HomeDataManager.getInstance()
   
   aboutToAppear() {
-    
+    this.refreshTable()
   }
   
-  aboutToUpdate() {
-    
+  private onFsmChange() {
+    this.refreshTable()
   }
   
   private getHeaders(): string[] {
-    if (this.enablePrice) {
-      return [
-        '等级名称',
-        '单价',
-        '重量',
-        '等级个数',
-        '个数百分比(%)',
-        '等级重量(kg)',
-        '重量百分比(%)',
-        '箱数',
-        '箱数百分比(%)'
-      ]
-    } else {
-      return [
-        '等级名称',
-        '重量',
-        '等级个数',
-        '个数百分比(%)',
-        '等级重量(kg)',
-        '重量百分比(%)',
-        '箱数',
-        '箱数百分比(%)'
-      ]
-    }
+    return TABLE_CONFIG.STATISTICS_TABLE.headers
   }
-  
-  private formatRowData(item: GradeItem): string[] {
-    if (this.enablePrice) {
-      return [
-        item.gradeName,
-        item.unitPrice.toFixed(2),
-        item.weight.toString(),
-        item.gradeCount.toString(),
-        `${item.countPercent.toFixed(2)}%`,
-        item.gradeWeight.toString(),
-        `${item.weightPercent.toFixed(2)}%`,
-        item.boxCount.toString(),
-        `${item.boxCountPercent.toFixed(2)}%`
-      ]
-    } else {
-      return [
-        item.gradeName,
-        item.weight.toString(),
-        item.gradeCount.toString(),
-        `${item.countPercent.toFixed(2)}%`,
-        item.gradeWeight.toString(),
-        `${item.weightPercent.toFixed(2)}%`,
-        item.boxCount.toString(),
-        `${item.boxCountPercent.toFixed(2)}%`
-      ]
-    }
+
+  private refreshTable() {
+    this.dataManager.setFSM(this.selectedFSM)
+    this.dataManager.initializeStatisticsTableData()
+    this.tableData = this.dataManager.getTableData('等级统计表')
   }
   
   build() {
@@ -89,17 +50,17 @@ export struct GradeStatisticsTable {
       
       // 数据行
       List() {
-        ForEach(this.tableData, (item: GradeItem, index: number) => {
+        ForEach(this.tableData, (row: TableRow, index: number) => {
           ListItem() {
             TableRowComponent({
-              rowData: this.formatRowData(item),
+              rowData: row,
               isHeader: false,
               rowIndex: index,
               fontSize: 14,
               cellPadding: 8
             })
           }
-        }, (item: GradeItem) => JSON.stringify(item))
+        }, (row: TableRow, index: number) => `${index}-${JSON.stringify(row)}`)
       }
       .width('100%')
       .layoutWeight(1)
