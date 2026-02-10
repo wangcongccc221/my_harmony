@@ -3,6 +3,8 @@ import struct
 import time
 import random
 import argparse
+import logging
+import sys
 from typing import Dict, List, Optional, Tuple
 
 # 配置参数
@@ -10,7 +12,11 @@ SERVER_IP = '127.0.0.1'
 SERVER_PORT = 9090
 CONTROL_PORT = 8080
 CMD_SERVER_PORT = 1279
-SHOW_SEND_LOGS = False
+SHOW_SEND_LOGS = True
+LOG_LEVEL = "INFO"
+LOG_FILE: Optional[str] = None
+LOG_TO_CONSOLE = True
+LOG_BODY_PREVIEW_LEN = 96
 
 # 协议常量
 SYNC_FLAG = 0x434E5953  # "SYNC" in little endian
@@ -64,6 +70,47 @@ def expected_grade_info_size() -> int:
 
 def expected_weight_result_size() -> int:
     return 44
+
+def setup_logging(log_file: Optional[str], log_level: str, log_to_console: bool) -> logging.Logger:
+    logger = logging.getLogger("mock_device")
+    logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
+    logger.handlers = []
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    if log_to_console:
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+    if log_file:
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+    return logger
+
+LOGGER = logging.getLogger("mock_device")
+
+def log_info(message: str) -> None:
+    LOGGER.info(message)
+
+def log_error(message: str) -> None:
+    LOGGER.error(message)
+
+def format_hex(data: bytes, max_len: int) -> str:
+    if not data:
+        return ""
+    prefix = data[:max_len]
+    hex_str = prefix.hex()
+    if len(data) > max_len:
+        return f"{hex_str}..."
+    return hex_str
+
+def parse_header_info(header: bytes) -> Tuple[Optional[int], Optional[int], Optional[int], Optional[int]]:
+    if not header or len(header) < 16:
+        return None, None, None, None
+    try:
+        sync, src_id, dst_id, cmd_id = struct.unpack("<4I", header[:16])
+        return sync, src_id, dst_id, cmd_id
+    except Exception:
+        return None, None, None, None
 
 def create_header(cmd_id, data_len=0):
     """
@@ -469,17 +516,26 @@ def send_once(header, body, name="Data"):
         client.send(header)
         client.send(body)
         if SHOW_SEND_LOGS:
-            print(f"Sent {name}: {len(body)} bytes")
+            sync, src_id, dst_id, cmd_id = parse_header_info(header)
+            header_hex = format_hex(header, 32)
+            body_hex = format_hex(body, LOG_BODY_PREVIEW_LEN)
+            if cmd_id is not None:
+                log_info(
+                    f"Sent {name} cmd=0x{cmd_id:04X} src=0x{(src_id or 0):04X} dst=0x{(dst_id or 0):04X} "
+                    f"bodyLen={len(body)} headerHex={header_hex} bodyHex={body_hex}"
+                )
+            else:
+                log_info(f"Sent {name} bodyLen={len(body)} headerHex={header_hex} bodyHex={body_hex}")
         
         client.close()
         # print("Connection closed.")
         return True
         
     except ConnectionRefusedError:
-        print(f"Error: Could not connect to {SERVER_IP}:{SERVER_PORT}. Is the server running?")
+        log_error(f"Error: Could not connect to {SERVER_IP}:{SERVER_PORT}. Is the server running?")
         return False
     except Exception as e:
-        print(f"Error sending {name}: {e}")
+        log_error(f"Error sending {name}: {e}")
         return False
 
 
@@ -488,13 +544,15 @@ def send_control(cmd: str, host: str, port: int) -> bool:
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client.settimeout(3)
         client.connect((host, port))
-        client.send(cmd.encode("utf-8"))
+        payload = cmd.encode("utf-8")
+        client.send(payload)
         client.close()
         if SHOW_SEND_LOGS:
-            print(f"Sent Control: {cmd}")
+            payload_hex = format_hex(payload, LOG_BODY_PREVIEW_LEN)
+            log_info(f"Sent Control cmd={cmd} bodyLen={len(payload)} bodyHex={payload_hex}")
         return True
     except Exception as e:
-        print(f"Error sending Control '{cmd}': {e}")
+        log_error(f"Error sending Control '{cmd}': {e}")
         return False
 
 
@@ -503,7 +561,7 @@ def seed_completed_batches(args: argparse.Namespace) -> None:
     if n <= 0:
         return
     if SHOW_SEND_LOGS:
-        print(f"\n[SeedCompleted] Start seeding {n} completed batches...")
+        log_info(f"[SeedCompleted] Start seeding {n} completed batches...")
     for i in range(n):
         current_yield = 0
         current_total_weight = 0
@@ -549,7 +607,7 @@ def seed_completed_batches(args: argparse.Namespace) -> None:
         time.sleep(float(args.seed_completed_interval_s))
 
     if SHOW_SEND_LOGS:
-        print("[SeedCompleted] Done.\n")
+        log_info("[SeedCompleted] Done.")
 
 def _recv_exact(conn: socket.socket, n: int) -> bytes:
     buf = b""
@@ -564,7 +622,7 @@ def _recv_exact(conn: socket.socket, n: int) -> bytes:
 def run_cmd_server(args: argparse.Namespace) -> None:
     host = args.cmd_server_host
     port = int(args.cmd_port)
-    print(f"[CmdServer] Listening on {host}:{port} ...")
+    log_info(f"[CmdServer] Listening on {host}:{port} ...")
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     srv.bind((host, port))
@@ -587,19 +645,19 @@ def run_cmd_server(args: argparse.Namespace) -> None:
                 if cmd in (0x0055, 0x0056) and len(body) >= 4:
                     ch, ex = struct.unpack("<HH", body[:4])
                     mode = "TEST_ALL_LANE_VOLVE" if cmd == 0x0056 else "TEST_VOLVE"
-                    print(f"[CmdServer] {addr[0]}:{addr[1]} cmd=0x{cmd:04X}({mode}) src=0x{src_id:04X} dst=0x{dst_id:04X} ch={ch} exit={ex}")
+                    log_info(f"[CmdServer] {addr[0]}:{addr[1]} cmd=0x{cmd:04X}({mode}) src=0x{src_id:04X} dst=0x{dst_id:04X} ch={ch} exit={ex}")
                 else:
-                    print(f"[CmdServer] {addr[0]}:{addr[1]} cmd=0x{cmd:04X} src=0x{src_id:04X} dst=0x{dst_id:04X} bodyLen={len(body)}")
+                    log_info(f"[CmdServer] {addr[0]}:{addr[1]} cmd=0x{cmd:04X} src=0x{src_id:04X} dst=0x{dst_id:04X} bodyLen={len(body)}")
 
             except Exception as e:
-                print(f"[CmdServer] Error: {e}")
+                log_error(f"[CmdServer] Error: {e}")
             finally:
                 try:
                     conn.close()
                 except Exception:
                     pass
     except KeyboardInterrupt:
-        print("\n[CmdServer] stopped.")
+        log_info("[CmdServer] stopped.")
     finally:
         try:
             srv.close()
@@ -670,7 +728,7 @@ def print_top_exits(exit_counts: List[int], exit_weight_counts: List[int], top_n
         return
     s = ", ".join([f"E{idx+1}:{p:.2f}%" for p, idx in show])
     if SHOW_SEND_LOGS:
-        print(f"[ExitPercent] 基于{mode}占比 Top{len(show)} => {s}")
+        log_info(f"[ExitPercent] 基于{mode}占比 Top{len(show)} => {s}")
 
 
 def run_simulation(args: argparse.Namespace):
@@ -678,8 +736,8 @@ def run_simulation(args: argparse.Namespace):
     持续运行模拟，不断发送更新的数据
     """
     if SHOW_SEND_LOGS:
-        print("Starting FSM Simulation...")
-        print("Press Ctrl+C to stop.")
+        log_info("Starting FSM Simulation...")
+        log_info("Press Ctrl+C to stop.")
     
     # 初始状态 - 从0开始
     current_yield = 0
@@ -698,7 +756,7 @@ def run_simulation(args: argparse.Namespace):
         while True:
             if args.cycles is not None and cycles_done >= args.cycles:
                 if SHOW_SEND_LOGS:
-                    print("\nSimulation finished.")
+                    log_info("Simulation finished.")
                 return
 
             # 1. 模拟数据增长
@@ -730,7 +788,7 @@ def run_simulation(args: argparse.Namespace):
             
             # --- 2. 发送统计数据 ---
             if SHOW_SEND_LOGS:
-                print(f"\n[Statistics] Yield: {current_yield}, Weight: {current_total_weight/1000:.2f}kg, Speed: {speed}/min")
+                log_info(f"[Statistics] Yield: {current_yield}, Weight: {current_total_weight/1000:.2f}kg, Speed: {speed}/min")
             if args.print_percent:
                 print_top_exits(exit_counts, exit_weight_counts, top_n=args.topn)
             stats_src_id = make_src_id(subsys_index=args.subsys, channel_index=args.stats_channel)
@@ -748,7 +806,7 @@ def run_simulation(args: argparse.Namespace):
                 send_once(stats_header, stats_body, "Statistics")
             else:
                 if SHOW_SEND_LOGS:
-                    print(f"[DryRun] Statistics bytes: {len(stats_body)}")
+                    log_info(f"[DryRun] Statistics bytes: {len(stats_body)}")
             
             time.sleep(args.stats_interval_s)
 
@@ -770,7 +828,7 @@ def run_simulation(args: argparse.Namespace):
                         send_once(grade_header, grade_body, "GradeInfo")
                     else:
                         if SHOW_SEND_LOGS:
-                            print(f"[DryRun] GradeInfo bytes: {len(grade_body)}")
+                            log_info(f"[DryRun] GradeInfo bytes: {len(grade_body)}")
                     time.sleep(0.2)
             
             # --- 3. 发送重量数据 (模拟单个果实) ---
@@ -780,7 +838,7 @@ def run_simulation(args: argparse.Namespace):
                     single_weight = random.randint(100, 250)
                     exit_id = random.randint(0, 9)
                     if SHOW_SEND_LOGS:
-                        print(f"[WeightInfo] Weight: {single_weight}g, ExitIndex0: {exit_id}")
+                        log_info(f"[WeightInfo] Weight: {single_weight}g, ExitIndex0: {exit_id}")
                     
                     weight_src_id = make_src_id(subsys_index=args.subsys, channel_index=args.weight_channel)
                     weight_header = create_header_with_ids(FSM_CMD_WEIGHTINFO, weight_src_id, HC_ID)
@@ -789,7 +847,7 @@ def run_simulation(args: argparse.Namespace):
                         send_once(weight_header, weight_body, "WeightInfo")
                     else:
                         if SHOW_SEND_LOGS:
-                            print(f"[DryRun] WeightInfo bytes: {len(weight_body)}")
+                            log_info(f"[DryRun] WeightInfo bytes: {len(weight_body)}")
                     time.sleep(0.3)
             
             # 等待下一轮
@@ -798,7 +856,7 @@ def run_simulation(args: argparse.Namespace):
 
     except KeyboardInterrupt:
         if SHOW_SEND_LOGS:
-            print("\nSimulation stopped by user.")
+            log_info("Simulation stopped by user.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Mock FSM device for HarmonyOS host")
@@ -835,6 +893,9 @@ if __name__ == "__main__":
     parser.add_argument("--no-weight", action="store_true", help="不发送 FSM_CMD_WEIGHTINFO")
     parser.add_argument("--dry-run", action="store_true", help="仅打印，不发TCP数据")
     parser.add_argument("--show-send-logs", action="store_true", help="显示客户端发送日志（默认只显示服务器收到的数据）")
+    parser.add_argument("--log-file", default="", help="日志文件路径（为空则不写文件）")
+    parser.add_argument("--log-level", default=LOG_LEVEL, help="日志级别：DEBUG/INFO/WARNING/ERROR")
+    parser.add_argument("--no-log-console", action="store_true", help="不输出到控制台，仅写文件")
 
     parser.add_argument("--subsys", type=int, default=0, help="子系统索引(0-based)，影响 srcId 生成")
     parser.add_argument("--max-ipm", type=int, default=4, help="随机发送分级时的 IPM 个数(0-based count)")
@@ -851,6 +912,9 @@ if __name__ == "__main__":
     SERVER_IP = args.ip
     SERVER_PORT = args.port
     SHOW_SEND_LOGS = bool(args.show_send_logs)
+    LOG_FILE = args.log_file or None
+    LOG_TO_CONSOLE = not args.no_log_console
+    LOGGER = setup_logging(LOG_FILE, args.log_level, LOG_TO_CONSOLE)
     if args.seed is not None:
         random.seed(args.seed)
 

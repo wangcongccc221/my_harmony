@@ -4,6 +4,8 @@
 
 export class StorageKeys {
   static GLOBAL_DROP_HANDLED: string = 'GLOBAL_DROP_HANDLED'
+  static CARD_DRAG_SESSION: string = 'CARD_DRAG_SESSION'
+  static CARD_DRAG_HANDLED_SESSION: string = 'CARD_DRAG_HANDLED_SESSION'
   static CARD_ITEM_LEVEL_MAP: string = 'CARD_ITEM_LEVEL_MAP'
   static LEVEL_STAT_UPDATE: string = 'LEVEL_STAT_UPDATE'
   static LEVEL_STAT_REMOVE: string = 'LEVEL_STAT_REMOVE'
@@ -13,5 +15,4 @@ export class StorageKeys {
   static MULTI_SELECT_CELLS_KEY: string = 'MULTI_SELECT_CELLS_KEY'
   static MULTI_SELECT_ACTIVE_KEY: string = 'MULTI_SELECT_ACTIVE_KEY'
 }
-
 

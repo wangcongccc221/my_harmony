@@ -5,6 +5,7 @@
  */
 
 import { DragManager, DragData, MultiSelectDragData, MultiSelectCell, DragResult } from './DragManager'
+import { StorageKeys } from '../constants/StorageKeys'
 
 /**
  * 拖拽处理器类
@@ -44,7 +45,21 @@ export class DragHandlers {
   ): void {
     // 使用延迟确保目标组件的onDrop先执行
     setTimeout(() => {
-      const isHandled = this.dragManager.isDropHandled()
+      let isHandled = this.dragManager.isDropHandled()
+      try {
+        const currentDrag: DragData | null = this.dragManager.getDragData()
+        const session = String(currentDrag?.dragSession ?? (AppStorage.get(StorageKeys.CARD_DRAG_SESSION) as string) ?? '')
+        const handledSession = String((AppStorage.get(StorageKeys.CARD_DRAG_HANDLED_SESSION) as string) ?? '')
+        const isCardDrag = String(currentDrag?.sourceTable ?? '') === 'card_third_layer'
+
+        if (session && handledSession && session === handledSession) {
+          isHandled = true
+        }
+        if (isCardDrag && session && handledSession && session !== handledSession) {
+          console.log('⚠️ 拖拽会话不匹配，可能被覆盖:', { session, handledSession })
+        }
+        console.log('🧪 DragEnd判定:', JSON.stringify({ isHandled, isCardDrag, session, handledSession }))
+      } catch (_e) {}
       
       if (isHandled) {
         // 拖拽被处理（复制模式）
@@ -62,6 +77,8 @@ export class DragHandlers {
 
       // 结束拖拽
       this.dragManager.endDrag()
+      try { AppStorage.setOrCreate(StorageKeys.CARD_DRAG_SESSION, '') } catch (_e) {}
+      try { AppStorage.setOrCreate(StorageKeys.CARD_DRAG_HANDLED_SESSION, '') } catch (_e) {}
     }, delay)
   }
 

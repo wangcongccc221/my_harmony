@@ -26,6 +26,9 @@ interface DragPayload {
   columnData?: string[]
   fullRowData?: string
   fullColumnData?: string
+  sourceCardId?: string
+  sourceValue?: string
+  dragSession?: string
 }
 
 interface LevelStatPayload {
@@ -172,6 +175,21 @@ export struct HomeContent {
           let parsed: DragPayload = {}
           try { parsed = JSON.parse(payloadStr) as DragPayload } catch (_e) {}
           console.log(`拖拽下发: parsed.type=${String(parsed.type ?? '')}, sourceTable=${String(parsed.sourceTable ?? '')}`)
+
+          try {
+            if (String(parsed.sourceTable ?? '') === 'card_third_layer') {
+              const session = String(parsed.dragSession ?? '')
+              if (session) {
+                AppStorage.setOrCreate(StorageKeys.CARD_DRAG_HANDLED_SESSION, session)
+                AppStorage.setOrCreate(StorageKeys.GLOBAL_DROP_HANDLED, true)
+              }
+              const fromCardId = String(parsed.sourceCardId ?? '')
+              const fromValue = String(parsed.sourceValue ?? '')
+              if (fromCardId && fromValue && fromCardId !== cardId) {
+                AppStorage.setOrCreate(StorageKeys.REMOVE_SOURCE_DATA, { sourceCardId: fromCardId, sourceValue: fromValue })
+              }
+            }
+          } catch (_e) {}
 
           if (parsed && parsed.fullRowData && !parsed.rowData) {
             try { parsed.rowData = JSON.parse(parsed.fullRowData) } catch (_e) {}

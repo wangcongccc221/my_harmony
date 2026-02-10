@@ -16,6 +16,7 @@ export interface DragData {
   sourceValue?: string
   itemIndex?: number
   levelName?: string // 添加等级名称字段
+  dragSession?: string
 }
 
 // 多选单元格接口

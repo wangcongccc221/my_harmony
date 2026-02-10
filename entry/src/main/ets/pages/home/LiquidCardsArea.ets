@@ -12,7 +12,7 @@ import { HomeContent } from './HomeContent'
 // 移除源数据接口
 interface RemoveSourceData {
   sourceCardId: string
-  sourceValue: number
+  sourceValue: string
 }
 
 
@@ -227,6 +227,12 @@ export struct LiquidCardsArea {
   // 防重复处理标志，避免aboutToUpdate循环触发
   private isProcessingRemove: boolean = false
 
+  private bumpGlobalUpdateSignal(): void {
+    const prev = AppStorage.get('GLOBAL_CARD_DATA_UPDATE_SIGNAL') as number
+    const next = (typeof prev === 'number' && Number.isFinite(prev)) ? (prev + 1) : 1
+    AppStorage.setOrCreate('GLOBAL_CARD_DATA_UPDATE_SIGNAL', next)
+  }
+
   /**
    * 监听强制移除信号
    */
@@ -280,6 +286,7 @@ export struct LiquidCardsArea {
     
     // 检查是否有移除操作需要处理
     this.handleRemoveSourceData()
+    this.bumpGlobalUpdateSignal()
   }
 
   /**
@@ -310,6 +317,7 @@ export struct LiquidCardsArea {
     
     // 更新本地状态
     this.cardDataList = this.globalDataManager.getCardDataList()
+    this.bumpGlobalUpdateSignal()
     
     // 使用模块化管理器获取卡片摘要信息
     const cardSummary = this.cardDataManager.getCardDataSummary(
@@ -370,10 +378,11 @@ export struct LiquidCardsArea {
                 }
               })
             }
+            .key(`${String(cardData.id ?? '')}`)
             .width('150vp')
             .height('180vp')
             .margin({ right: '1%', bottom: '1%' }) //1的间距
-          }, (item: ThreeLayerCardData) => item.id)
+          }, (item: ThreeLayerCardData) => `${String(item.id ?? '')}`)
         }
         .width('100%')
         .padding({ left: '0.93%', right: '0.93%', top: '1%', bottom: '1%' })

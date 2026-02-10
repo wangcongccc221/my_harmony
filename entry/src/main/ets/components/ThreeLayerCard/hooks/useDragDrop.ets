@@ -192,11 +192,16 @@ export class UseDragDrop {
     const prevList: number[] = Array.isArray(cardData?.thirdLayer?.chartData) ? [...(cardData.thirdLayer.chartData as number[])] : []
     for (let i = 0; i < values.length; i++) { prevList.push(values[i]) }
 
+    const prevStrings: string[] = Array.isArray(cardData?.thirdLayer?.chartDataStrings)
+      ? [...(cardData.thirdLayer.chartDataStrings as string[])]
+      : (prevList.length > values.length ? prevList.slice(0, prevList.length - values.length).map(n => String(n)) : [])
+    for (let i = 0; i < originalValues.length; i++) { prevStrings.push(originalValues[i]) }
+
     // 保存字符串数组供后续映射与删除使用
     const thirdLayerData: ThirdLayerDataInterface = {
       chartType: cardData.thirdLayer.chartType,
       chartData: prevList,
-      chartDataStrings: originalValues,
+      chartDataStrings: prevStrings,
       chartConfig: cardData.thirdLayer.chartConfig
     }
     const firstLayerData: FirstLayerDataInterface = {
@@ -218,10 +223,10 @@ export class UseDragDrop {
     }
     onCardDrop?.(newCardData)
 
-    const hasOriginal: boolean = originalValues.some(v => v.indexOf('%') >= 0)
+    const hasOriginal: boolean = prevStrings.some(v => v.indexOf('%') >= 0)
     return {
       localChartData: prevList,
-      localChartDataStrings: originalValues,
+      localChartDataStrings: prevStrings,
       hasOriginalFormatData: hasOriginal
     }
   }
@@ -344,17 +349,24 @@ export class UseDragDrop {
     const rowIndex: number = Number((dragData as Record<string, string | number>)['rowIndex'] ?? 0)
     const colIndex: number = Number((dragData as Record<string, string | number>)['colIndex'] ?? 0)
     const sourceCardId: string = parsedRes ? parsedRes.sourceCardId : String((dragData as Record<string, string | number>)['sourceCardId'] ?? '')
+    const dragSession: string = parsedRes ? parsedRes.dragSession : String((dragData as Record<string, string | number>)['dragSession'] ?? '')
 
     const isFromCard: boolean = UseDragHandlers.isFromCard(sourceTable, sourceCardId, String(cardData.id || ''))
     const isFromTable: boolean = (sourceTable === '等级表' || sourceTable === 'card_third_layer')
     if (isFromCard) {
       UseDragHandlers.markDropHandled()
+      if (dragSession) {
+        try { AppStorage.setOrCreate(StorageKeys.CARD_DRAG_HANDLED_SESSION, dragSession) } catch (_e) {}
+      }
       AppStorage.set(StorageKeys.REMOVE_SOURCE_DATA, {
         sourceCardId: sourceCardId,
         sourceValue: originalValue
       })
     } else if (isFromTable) {
       UseDragHandlers.markDropHandled()
+      if (dragSession) {
+        try { AppStorage.setOrCreate(StorageKeys.CARD_DRAG_HANDLED_SESSION, dragSession) } catch (_e) {}
+      }
     } else {
       UseDragHandlers.markDropUnhandled()
     }
@@ -429,5 +441,3 @@ export class UseDragDrop {
     }
   }
 }
-
-

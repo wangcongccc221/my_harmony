@@ -21,7 +21,7 @@ export interface ThirdLayerDragPayload {
   rowIndex: number
   colIndex: number
   sourceCardId: string
-  sourceValue: number
+  sourceValue: string
   itemIndex: number
 }
 
@@ -67,7 +67,7 @@ export interface DragData {
 // 移除源数据接口
 export interface RemoveSourceData {
   sourceCardId: string
-  sourceValue: number
+  sourceValue: string
 }
 
 // 拖拽配置接口
@@ -117,7 +117,7 @@ export interface LoosePayload {
   rowIndex?: number
   colIndex?: number
   sourceCardId?: string
-  sourceValue?: number
+  sourceValue?: string
   extraInfo?: string
   // 整列拖拽数据字段
   columnIndex?: number

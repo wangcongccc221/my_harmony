@@ -13,6 +13,7 @@ export interface ParsedDropResult {
   originalValue: string
   sourceTable: string
   sourceCardId: string
+  dragSession: string
 }
 
 export class UseDragHandlers {
@@ -29,9 +30,10 @@ export class UseDragHandlers {
       const originalValue: string = String(parsed['sourceValue'] ?? parsed['originalValue'] ?? valueStr)
       const sourceTable: string = String(parsed['sourceTable'] ?? '等级表')
       const sourceCardId: string = String(parsed['sourceCardId'] ?? '')
+      const dragSession: string = String(parsed['dragSession'] ?? '')
       // 仅保留关键链路：onDrop 解析摘要
-      console.log('🧩 Drop解析: value=', valueStr, 'original=', originalValue, 'from=', sourceTable, 'sourceCardId=', sourceCardId)
-      return { valueStr, originalValue, sourceTable, sourceCardId }
+      console.log('🧩 Drop解析: value=', valueStr, 'original=', originalValue, 'from=', sourceTable, 'sourceCardId=', sourceCardId, 'session=', dragSession)
+      return { valueStr, originalValue, sourceTable, sourceCardId, dragSession }
     } catch (_e) {
       return null
     }
@@ -240,5 +242,3 @@ export class UseDragHandlers {
     } catch (_e) {}
   }
 }
-
-

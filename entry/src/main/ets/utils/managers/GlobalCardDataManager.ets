@@ -120,22 +120,44 @@ export class GlobalCardDataManager {
   /**
    * 从指定卡片移除数据
    */
-  public removeDataFromCard(cardId: string, value: number): void {
+  public removeDataFromCard(cardId: string, valueStr: string): void {
     const cardIndex = this.cardDataList.findIndex(card => card.id === cardId)
     if (cardIndex !== -1) {
       const card = this.cardDataList[cardIndex]
       const currentData = Array.isArray(card.thirdLayer.chartData) 
         ? (card.thirdLayer.chartData as number[]).slice()
         : []
+      const currentStrings = Array.isArray(card.thirdLayer.chartDataStrings)
+        ? (card.thirdLayer.chartDataStrings as string[]).slice()
+        : []
       
-      const valueIndex = currentData.findIndex(v => v === value)
-      if (valueIndex !== -1) {
-        currentData.splice(valueIndex, 1)
+      let indexToRemove: number = -1
+      if (valueStr) {
+        indexToRemove = currentStrings.findIndex(v => v === valueStr)
+      }
+      if (indexToRemove < 0 && valueStr) {
+        const valueNum: number = Number.parseFloat(String(valueStr).replace('%', ''))
+        if (Number.isFinite(valueNum)) {
+          indexToRemove = currentData.findIndex(v => v === valueNum)
+          if (indexToRemove < 0) {
+            indexToRemove = currentData.findIndex(v => Math.abs(v - valueNum) < 1e-6)
+          }
+        }
+      }
+
+      if (indexToRemove !== -1) {
+        if (indexToRemove >= 0 && indexToRemove < currentData.length) {
+          currentData.splice(indexToRemove, 1)
+        }
+        if (indexToRemove >= 0 && indexToRemove < currentStrings.length) {
+          currentStrings.splice(indexToRemove, 1)
+        }
         
         // 更新卡片数据
         const updatedThirdLayer: ThirdLayerData = {
           chartType: card.thirdLayer.chartType,
           chartData: currentData,
+          chartDataStrings: currentStrings,
           chartConfig: card.thirdLayer.chartConfig
         }
         const updatedCard: ThreeLayerCardData = {
@@ -145,7 +167,8 @@ export class GlobalCardDataManager {
           thirdLayer: updatedThirdLayer
         }
         this.cardDataList[cardIndex] = JSON.parse(JSON.stringify(updatedCard))
-        console.log(`从卡片${cardIndex + 1}删除值${value}的数据`)
+        this.fsmCardData[this.currentFSM][cardIndex] = JSON.parse(JSON.stringify(updatedCard))
+        console.log(`从卡片${cardIndex + 1}删除值${valueStr}的数据`)
       }
     }
   }
