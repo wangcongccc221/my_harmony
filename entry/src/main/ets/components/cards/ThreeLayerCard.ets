@@ -31,7 +31,7 @@ import { UseCardLogic } from '../ThreeLayerCard/hooks/useCardLogic'
 import { UseDragHandlers } from '../ThreeLayerCard/hooks/useDragHandlers'
 import { UseDragDrop } from '../ThreeLayerCard/hooks/useDragDrop'
 import { UseCardState } from '../ThreeLayerCard/hooks/useCardState'
-import { UseDataSync } from '../ThreeLayerCard/hooks/useDataSync'
+import { UseDataSync, SyncState } from '../ThreeLayerCard/hooks/useDataSync'
 import { StorageKeys } from '../../utils/constants/StorageKeys'
 import { FirstLayer } from '../ThreeLayerCard/FirstLayer'
 import { SecondLayer } from '../ThreeLayerCard/SecondLayer'
@@ -54,12 +54,9 @@ export struct ThreeLayerCard {
   @Prop mainColor: string | number | Color = '#EA7A10'
   // 控制第三层是否显示波浪图
   @Prop enableWave: boolean = false
-  // [NEW] 接收全局刷新信号，强制触发组件更新检测
-  @Prop @Watch('onUpdateSignalChange') updateSignal: number = 0
   
   // 拖拽回调
   onCardDrop?: (data: ThreeLayerCardData) => void
-  onThirdLayerDropSignal?: (cardId: string, cardNumber: number, extraParams: string) => void
   // 第三层点击回调
   onThirdLayerClick?: () => void
   @State private isHovering: boolean = false
@@ -86,9 +83,6 @@ export struct ThreeLayerCard {
     this.syncLocalData()
   }
 
-  onUpdateSignalChange(): void {
-    this.syncLocalData()
-  }
   
   private syncLocalData(): void {
     const next = UseDataSync.syncLocalData(this.cardData, {
@@ -103,12 +97,13 @@ export struct ThreeLayerCard {
   
   // 删除第三层项目的方法
   private deleteItemFromThirdLayer(): void {
-    const next = UseDataSync.syncLocalData(this.cardData, {
+    // 直接使用当前本地数据进行删除，不强制同步父组件数据，避免多选拖拽后父组件数据更新延迟导致的数据丢失
+    const current: SyncState = {
       localChartData: this.localChartData,
       localChartDataStrings: this.localChartDataStrings,
       hasOriginalFormatData: this.hasOriginalFormatData
-    })
-    const afterDel = UseDataSync.deleteItemFromThirdLayer(next, this.pendingDragValue, this.pendingDragIndex)
+    }
+    const afterDel = UseDataSync.deleteItemFromThirdLayer(current, this.pendingDragValue, this.pendingDragIndex)
     this.localChartData = afterDel.localChartData
     this.localChartDataStrings = afterDel.localChartDataStrings
     this.hasOriginalFormatData = afterDel.hasOriginalFormatData
@@ -310,7 +305,6 @@ export struct ThreeLayerCard {
       this.isHovering = false
             return
           }
-    this.onThirdLayerDropSignal?.(String(this.cardData.id ?? ''), this.getCardNumber(), extraParams)
     try {
       const next = UseDragDrop.handleThirdLayerDrop(
         extraParams,
@@ -403,7 +397,6 @@ export struct ThreeLayerCard {
     }
     .width(this.cardWidth)
     .height(this.cardHeight)
-    .key(`${String(this.cardData.id ?? '')}_${this.updateSignal}`)
     .backgroundColor(this.isEmptyCard() ? '#f8fafc' : '#E6F0FF') // 空白卡片：浅色背景(#f8fafc)；有数据的卡片：柔和的深蓝色背景(#E6F0FF)
     .borderRadius(12) // Apple风格：中等圆角
     .border({ width: 0.5, color: UseCardLogic.getCardColors().cardBorder }) // Apple风格：细边框

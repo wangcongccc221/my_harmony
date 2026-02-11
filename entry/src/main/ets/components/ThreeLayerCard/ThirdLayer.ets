@@ -10,7 +10,6 @@ import { DragHandlers } from '../../utils/ui/DragHandlers'
 import { CardColorConfig } from '../../utils/theme/CardColors'
 import { UseDragHandlers } from './hooks/useDragHandlers'
 import { WaveConfigManager } from '../../utils/ui/WaveConfig'
-import { StorageKeys } from '../../utils/constants/StorageKeys'
 
 // 运行期日志开关（仅用于屏蔽非关键调试日志）
 const DEBUG_LOGS: boolean = false
@@ -236,10 +235,6 @@ export struct ThirdLayer {
           console.log('  - originalValue:', originalValue)
           console.log('  - cardId:', String(this.cardData.id ?? ''))
           
-          const dragSession: string = `${Date.now()}_${Math.floor(Math.random() * 1000000000)}`
-          try { AppStorage.setOrCreate(StorageKeys.CARD_DRAG_SESSION, dragSession) } catch (_e) {}
-          try { AppStorage.setOrCreate(StorageKeys.CARD_DRAG_HANDLED_SESSION, '') } catch (_e) {}
-
           const dragData: DragData = {
             value: String(num),
             sourceTable: 'card_third_layer',
@@ -248,8 +243,7 @@ export struct ThirdLayer {
             sourceCardId: String(this.cardData.id ?? ''),
             sourceValue: originalValue, // 使用原始字符串
             itemIndex: Number(idx),
-            levelName: carriedLevelName, // 添加等级名称
-            dragSession: dragSession
+            levelName: carriedLevelName // 添加等级名称
           }
           console.log('  - dragData:', JSON.stringify(dragData))
           

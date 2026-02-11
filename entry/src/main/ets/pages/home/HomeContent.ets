@@ -157,68 +157,6 @@ export struct HomeContent {
       LiquidCardsArea({
         onCardClick: (cardIndex) => {
           AppStorage.set('HOME_LIQUID_CARD_DOUBLE_CLICK_INDEX', cardIndex + 1)
-        },
-        onCardDropSignal: async (cardIndex: number, cardId: string, cardNumber: number, extraParams: string) => {
-          console.log(`液体卡片drop信号: cardIndex=${cardIndex}, cardId=${cardId}, cardNumber=${cardNumber}`)
-          console.log(`拖拽下发: 当前FSM=${this.selectedFSM}, 目标出口(卡片号)=${cardNumber}`)
-          console.log(`拖拽下发: extraParams(raw)=${extraParams}`)
-
-          let payloadStr = extraParams
-          try {
-            if (extraParams && extraParams.indexOf('"extraInfo"') >= 0) {
-              const wrapper = JSON.parse(extraParams) as ExtraInfoWrapper
-              payloadStr = String(wrapper.extraInfo ?? extraParams)
-            }
-          } catch (_e) {}
-          console.log(`拖拽下发: payloadStr=${payloadStr}`)
-
-          let parsed: DragPayload = {}
-          try { parsed = JSON.parse(payloadStr) as DragPayload } catch (_e) {}
-          console.log(`拖拽下发: parsed.type=${String(parsed.type ?? '')}, sourceTable=${String(parsed.sourceTable ?? '')}`)
-
-          try {
-            if (String(parsed.sourceTable ?? '') === 'card_third_layer') {
-              const session = String(parsed.dragSession ?? '')
-              if (session) {
-                AppStorage.setOrCreate(StorageKeys.CARD_DRAG_HANDLED_SESSION, session)
-                AppStorage.setOrCreate(StorageKeys.GLOBAL_DROP_HANDLED, true)
-              }
-              const fromCardId = String(parsed.sourceCardId ?? '')
-              const fromValue = String(parsed.sourceValue ?? '')
-              if (fromCardId && fromValue && fromCardId !== cardId) {
-                AppStorage.setOrCreate(StorageKeys.REMOVE_SOURCE_DATA, { sourceCardId: fromCardId, sourceValue: fromValue })
-              }
-            }
-          } catch (_e) {}
-
-          if (parsed && parsed.fullRowData && !parsed.rowData) {
-            try { parsed.rowData = JSON.parse(parsed.fullRowData) } catch (_e) {}
-            parsed.type = parsed.type || 'row'
-          }
-          if (parsed && parsed.fullColumnData && !parsed.columnData) {
-            try { parsed.columnData = JSON.parse(parsed.fullColumnData) } catch (_e) {}
-            parsed.type = parsed.type || 'column'
-          }
-
-          const values: string[] = []
-          if (parsed.type === 'multi_select' && Array.isArray(parsed.values)) {
-            parsed.values.forEach((v: string) => values.push(String(v ?? '')))
-          } else if (parsed.type === 'row' && Array.isArray(parsed.rowData)) {
-            parsed.rowData.forEach((v: string) => values.push(String(v ?? '')))
-          } else if (parsed.type === 'column' && Array.isArray(parsed.columnData)) {
-            parsed.columnData.forEach((v: string) => values.push(String(v ?? '')))
-          } else if (typeof parsed.value === 'string') {
-            values.push(parsed.value)
-          }
-          console.log(`拖拽下发: valuesCount=${values.length}, values=${JSON.stringify(values)}`)
-
-          if (values.length === 0) { return }
-
-          const info = GradeInfoConfigManager.getInstance().applyExitMappingFromGradeNames(this.selectedFSM, cardNumber, values)
-          const fsmId = this.selectedFSM === 'FSM1' ? ConstPreDefine.getFsmId(0) : ConstPreDefine.getFsmId(1)
-          console.log(`拖拽下发: fsmId=${fsmId}`)
-          const ok = await getConfigSender().sendFullGradeInfo(fsmId, info)
-          console.log(ok ? '拖拽配置已下发到下位机' : '拖拽配置下发失败')
         }
       })
         .height('38%')
