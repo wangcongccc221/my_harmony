@@ -311,19 +311,27 @@ export class GlobalCardDataManager {
       // 检查是否有数据变化，只在变化时更新
       const percentRounded = Math.max(0, Math.min(100, Math.round(percent * 100) / 100))
       if (card.secondLayer.value !== weightInKg || card.secondLayer.percent !== percentRounded) {
-        // 更新 value
-        card.secondLayer.value = weightInKg
-        card.secondLayer.percent = percentRounded
-        // 确保单位正确
-        if (card.secondLayer.unit !== 'kg') {
-          card.secondLayer.unit = 'kg'
+        // 创建新对象以触发 UI 更新 (ArkUI 监听对象引用变化)
+        const newSecondLayer: SecondLayerData = {
+          serialNumber: card.secondLayer.serialNumber,
+          percent: percentRounded,
+          value: weightInKg,
+          unit: 'kg'
         }
+        
+        const newCard: ThreeLayerCardData = {
+          id: card.id,
+          firstLayer: card.firstLayer,
+          secondLayer: newSecondLayer,
+          thirdLayer: card.thirdLayer
+        }
+
+        // 更新列表中的引用
+        this.cardDataList[i] = newCard
         
         // 同时更新 FSM 存储的数据
         if (this.fsmCardData[this.currentFSM] && this.fsmCardData[this.currentFSM][i]) {
-          this.fsmCardData[this.currentFSM][i].secondLayer.value = weightInKg
-          this.fsmCardData[this.currentFSM][i].secondLayer.unit = 'kg'
-          this.fsmCardData[this.currentFSM][i].secondLayer.percent = percentRounded
+          this.fsmCardData[this.currentFSM][i] = newCard
         }
         
         hasUpdate = true
@@ -333,7 +341,7 @@ export class GlobalCardDataManager {
     if (hasUpdate) {
       // 发送更新信号通知 UI
       // LiquidCardsArea 监听了 'GLOBAL_CARD_DATA_UPDATE_SIGNAL'
-      AppStorage.setOrCreate('GLOBAL_CARD_DATA_UPDATE_SIGNAL', Date.now())
+      AppStorage.set('GLOBAL_CARD_DATA_UPDATE_SIGNAL', Date.now())
       // console.log('GlobalCardDataManager: 已从 AppStorage 同步出口数据并触发 UI 更新')
     }
   }

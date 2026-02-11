@@ -27,6 +27,7 @@ FSM_ID = 0x0100         # 模拟 FSM 设备 ID
 FSM_CMD_STATISTICS = 0x1001 # 统计信息
 FSM_CMD_GRADEINFO = 0x1002 # 水果实时分级信息
 FSM_CMD_WEIGHTINFO = 0x1003 # 重量信息
+HC_CMD_GRADE_INFO = 0x0051 # 等级设置信息 (UI表头)
 
 # 数组大小常量
 MAX_QUALITY_GRADE_NUM = 16
@@ -34,6 +35,12 @@ MAX_SIZE_GRADE_NUM = 16
 MAX_EXIT_NUM = 48
 MAX_CHANNEL_NUM = 12
 MAX_NOTICE_LENGTH = 30
+MAX_TEXT_LENGTH = 12
+MAX_FRUIT_NAME_LENGTH = 50
+MAX_DENSITY_GRADE_NUM = 6
+MAX_COLOR_GRADE_NUM = 16
+MAX_SHAPE_GRADE_NUM = 6
+
 
 def expected_statistics_size() -> int:
     grade_len = MAX_QUALITY_GRADE_NUM * MAX_SIZE_GRADE_NUM
@@ -140,7 +147,103 @@ def make_src_id(subsys_index: int = 0, ipm_index: Optional[int] = None, channel_
     return FSM_ID
 
 
+def create_st_grade_info():
+    """
+    创建 HC_CMD_GRADE_INFO (0x0051) 的 StGradeInfo 数据包
+    用于驱动 GradeStatisticsTable UI
+    """
+    # 1. Intervals (3 * 4 = 12 bytes)
+    intervals = b'\x00' * 12
+    
+    # 2. Percent (16 * 3 * 2 = 96 bytes)
+    percent = b'\x00' * 96
+    
+    # 3. Grades (16 * 16 * 36 = 9216 bytes)
+    grades = b''
+    # Create dummy grades: 3 Quality x 4 Size
+    n_qual = 3
+    n_size = 4
+    
+    for q in range(MAX_QUALITY_GRADE_NUM):
+        for s in range(MAX_SIZE_GRADE_NUM):
+            if q < n_qual and s < n_size:
+                min_size = 60.0 + s * 10.0
+                max_size = min_size + 10.0
+            else:
+                min_size = 0.0
+                max_size = 0.0
+            
+            # exitLow(4), exitHigh(4), nMinSize(4), nMaxSize(4), nFruitNum(4)
+            item = struct.pack('<IIffi', 0, 0, float(min_size), float(max_size), 0)
+            # nColorGrade(1) + 14 sb fields(1) + padding(1) = 16 bytes
+            item += b'\x00' * 16
+            grades += item
+            
+    # 4. Int32 Arrays (ExitEnabled 2, ColorIntervals 2, nExitSwitchNum 48) -> 52 ints
+    int32_arrays = b'\x00' * (52 * 4)
+    
+    # 5. TagInfo (6 bytes)
+    tag_info = b'\x00' * 6
+    
+    # 6. FruitType (4 bytes)
+    fruit_type = b'\x00' * 4
+    
+    # 7. FruitName (50 bytes)
+    fruit_name = b"Apple".ljust(MAX_FRUIT_NAME_LENGTH, b'\x00')
+    
+    # 8. Factors Uint32 (6*2 + 6*2 + 6*2 = 36 ints) -> 144 bytes
+    factors_u32 = b'\x00' * 144
+    
+    # 9. Factors Float32 (10 arrays * 6 elements = 60 floats) -> 240 bytes
+    factors_f32 = b'\x00' * 240
+    
+    # 10. String Arrays
+    def pack_names(names, count):
+        buf = b''
+        for i in range(count):
+            name = names[i] if i < len(names) else ""
+            # Max text length 12
+            encoded = name.encode('utf-8')[:MAX_TEXT_LENGTH-1]
+            buf += encoded.ljust(MAX_TEXT_LENGTH, b'\x00')
+        return buf
+        
+    size_names = ["S", "M", "L", "XL"]
+    qual_names = ["Excellent", "Good", "Normal"]
+    
+    str_size = pack_names(size_names, MAX_SIZE_GRADE_NUM)
+    str_qual = pack_names(qual_names, MAX_QUALITY_GRADE_NUM)
+    str_dens = b'\x00' * (MAX_DENSITY_GRADE_NUM * MAX_TEXT_LENGTH)
+    str_colr = b'\x00' * (MAX_COLOR_GRADE_NUM * MAX_TEXT_LENGTH)
+    str_shap = b'\x00' * (MAX_SHAPE_GRADE_NUM * MAX_TEXT_LENGTH)
+    
+    # 11 other string arrays of length 6
+    str_others = b'\x00' * (11 * 6 * MAX_TEXT_LENGTH)
+    
+    strings = str_size + str_qual + str_dens + str_colr + str_shap + str_others
+    
+    # 11. Tail
+    # ColorType(1), nLabelType(1)
+    tail_part1 = struct.pack('<BB', 0, 0)
+    # nLabelbyExit(48), nSwitchLabel(48)
+    tail_part2 = b'\x00' * (48 + 48)
+    # nSizeGradeNum(1), nQualityGradeNum(1), nClassifyType(1)
+    tail_part3 = struct.pack('<BBB', n_size, n_qual, 0)
+    # nCheckNum(2), ForceChannel(2)
+    tail_part4 = struct.pack('<hh', 0, 0)
+    
+    tail = tail_part1 + tail_part2 + tail_part3 + tail_part4
+    
+    total = intervals + percent + grades + int32_arrays + tag_info + fruit_type + fruit_name + \
+            factors_u32 + factors_f32 + strings + tail
+            
+    # Padding alignment to 4 bytes
+    if len(total) % 4 != 0:
+        total += b'\x00' * (4 - (len(total) % 4))
+        
+    return total
+
 def create_header_with_ids(cmd_id: int, src_id: int, dest_id: int = HC_ID) -> bytes:
+
     """
     Native TcpServer 协议头：SYNC + SrcId + DestId + CmdId (4 * int32 = 16 bytes)
     """
@@ -850,6 +953,18 @@ def run_simulation(args: argparse.Namespace):
                             log_info(f"[DryRun] WeightInfo bytes: {len(weight_body)}")
                     time.sleep(0.3)
             
+            # --- 4. 发送等级设置信息 (UI表头) ---
+            # 48项目: HC_CMD_GRADE_INFO (StGradeInfo)
+            if not args.no_st_grade and (cycles_done % 5 == 0):
+                st_grade_header = create_header_with_ids(HC_CMD_GRADE_INFO, FSM_ID, HC_ID)
+                st_grade_body = create_st_grade_info()
+                if not args.dry_run:
+                    send_once(st_grade_header, st_grade_body, "StGradeInfo")
+                else:
+                    if SHOW_SEND_LOGS:
+                        log_info(f"[DryRun] StGradeInfo bytes: {len(st_grade_body)}")
+                time.sleep(0.2)
+
             # 等待下一轮
             cycles_done += 1
             time.sleep(args.loop_interval_s)
@@ -890,6 +1005,7 @@ if __name__ == "__main__":
     parser.add_argument("--cycles", type=int, default=None, help="循环次数（不填则无限循环）")
 
     parser.add_argument("--no-grade", action="store_true", help="不发送 FSM_CMD_GRADEINFO")
+    parser.add_argument("--no-st-grade", action="store_true", help="不发送 HC_CMD_GRADE_INFO (StGradeInfo)")
     parser.add_argument("--no-weight", action="store_true", help="不发送 FSM_CMD_WEIGHTINFO")
     parser.add_argument("--dry-run", action="store_true", help="仅打印，不发TCP数据")
     parser.add_argument("--show-send-logs", action="store_true", help="显示客户端发送日志（默认只显示服务器收到的数据）")

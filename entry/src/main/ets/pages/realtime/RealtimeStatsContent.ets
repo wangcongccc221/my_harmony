@@ -11,7 +11,8 @@ import { ProcessingCurveChart } from '../../components/charts/ProcessingCurveCha
 import { CustomPieChart, PieChartsOptions, PieChartsData } from '../../components/charts/CustomPieChart'
 import { ConstPreDefine } from '../../protocol/ConstPreDefine'
 import { GlobalDataInterface, getGlobalDataInterface, DataChangeListener } from '../../protocol/GlobalDataInterface'
-import { GlobalRealtimeData } from '../../protocol/Structures'
+import { GlobalRealtimeData, createDefaultGlobalRealtimeData, copyGlobalRealtimeData } from '../../protocol/Structures'
+import { GradeStatisticsTable } from './GradeStatisticsTable'
 
 // 饼图数据类
 class PieData implements PieChartsData {
@@ -24,6 +25,8 @@ class PieData implements PieChartsData {
 @Component
 export struct RealtimeStatsContent {
   @StorageLink('OMNI_THEME_VERSION_KEY') private themeVersion: number = 0
+  
+  @State private currentGlobalData: GlobalRealtimeData = createDefaultGlobalRealtimeData()
 
   private dataInterface: GlobalDataInterface = getGlobalDataInterface()
   private dataChangeListener: DataChangeListener | null = null
@@ -51,6 +54,7 @@ export struct RealtimeStatsContent {
   }
 
   private updateFromRealtimeData(data: GlobalRealtimeData): void {
+    this.currentGlobalData = copyGlobalRealtimeData(data)
     const qualityBuckets: number[] = [0, 0, 0, 0, 0]
     const qCount = Math.min(5, ConstPreDefine.MAX_QUALITY_GRADE_NUM)
     const sCount = ConstPreDefine.MAX_SIZE_GRADE_NUM
@@ -287,6 +291,26 @@ export struct RealtimeStatsContent {
         }
         .width('100%')
         .height(320)
+        .padding(16)
+        .backgroundColor(this.getCurrentTheme().surfaceColor)
+        .borderRadius(12)
+        .border({ width: 1, color: this.getCurrentTheme().borderColor })
+        .shadow({ radius: 4, color: 'rgba(0,0,0,0.1)', offsetY: 2 })
+        .margin({ bottom: 20 })
+
+        // 第四行：等级统计表
+        Column() {
+          Text('等级统计详情')
+            .fontSize(20)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.getCurrentTheme().textColor)
+            .margin({ bottom: 12 })
+            
+          GradeStatisticsTable({ globalData: $currentGlobalData })
+            .width('100%')
+            .height(400)
+        }
+        .width('100%')
         .padding(16)
         .backgroundColor(this.getCurrentTheme().surfaceColor)
         .borderRadius(12)

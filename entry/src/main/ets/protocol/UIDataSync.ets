@@ -162,6 +162,7 @@ export class UIDataSync {
     // 初始化状态
     AppStorage.setOrCreate(keys.IS_PROCESSING, false)
     AppStorage.setOrCreate(keys.RUNNING_TIME, '00:00:00')
+    AppStorage.setOrCreate('GLOBAL_CARD_DATA_UPDATE_SIGNAL', 0)
     
     for (let i = 0; i < 48; i++) {
       AppStorage.setOrCreate(`${keys.EXIT_COUNT_PREFIX}${i + 1}`, 0)

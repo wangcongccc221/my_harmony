@@ -32,7 +32,11 @@ export struct WaveCard {
   private isListenerRegistered: boolean = false
 
   aboutToAppear() {
-    // 立即绘制一次
+    this.isVisible = true
+    if (!this.isListenerRegistered) {
+      this.phaseManager.addListener(this.phaseUpdateCallback)
+      this.isListenerRegistered = true
+    }
     if (this.canvasWidth > 0 && this.canvasHeight > 0) {
       this.drawWave()
     }
@@ -73,7 +77,7 @@ export struct WaveCard {
           this.areaDebounceId = setTimeout((): void => {
             this.cachedGradient = null
             // 只在尺寸变化时立即绘制一次，之后由定时器控制
-            if (this.isVisible && this.canvasWidth > 0 && this.canvasHeight > 0) {
+            if (this.canvasWidth > 0 && this.canvasHeight > 0) {
               this.drawWave()
             }
           }, 150) as number

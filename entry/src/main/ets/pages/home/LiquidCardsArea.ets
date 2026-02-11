@@ -229,7 +229,7 @@ export struct LiquidCardsArea {
   private bumpGlobalUpdateSignal(): void {
     const prev = AppStorage.get('GLOBAL_CARD_DATA_UPDATE_SIGNAL') as number
     const next = (typeof prev === 'number' && Number.isFinite(prev)) ? (prev + 1) : 1
-    AppStorage.setOrCreate('GLOBAL_CARD_DATA_UPDATE_SIGNAL', next)
+    AppStorage.set('GLOBAL_CARD_DATA_UPDATE_SIGNAL', next)
   }
 
   /**
@@ -362,7 +362,7 @@ export struct LiquidCardsArea {
                 cardWidth: '100%',
                 cardHeight: '100%',
                 mainColor: this.getCurrentTheme().primary,
-                enableWave: this.isWaveAnimationEnabled() && (((AppStorage.get(`EXIT_PERCENT_${idx + 1}`) as number) || 0) > 0),
+                enableWave: this.isWaveAnimationEnabled() && ((cardData.secondLayer?.percent || 0) > 0),
                 onCardDrop: (data: ThreeLayerCardData) => {
                   this.handleCardDrop(idx, data)
                 },
