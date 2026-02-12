@@ -1,73 +1,6 @@
-/**
- * 分选信息卡片组件
- * 
- * 功能说明：
- * - 显示当前分选信息的9个关键指标
- * - 提供分选过程的实时数据展示
- * - 支持数据的动态更新和显示
- * - 使用卡片式布局展示信息
- * 
- * 显示指标：
- * - 分拣速度：当前分拣速度（件/分钟）
- * - 本批重量：当前批次的重量（kg）
- * - 本批个数：当前批次的件数
- * - 开始时间：分拣开始的时间
- * - 分选程序：当前使用的分选程序名称
- * - 分选效率：当前分选效率（%）
- * - 平均重量：平均每件重量（kg）
- * - 实时产量：实时产量（件/分钟）
- * - 间隔速度：分拣间隔时间（ms）
- * 
- * 组件特点：
- * - 数据展示：清晰展示9个关键指标
- * - 实时更新：支持数据的实时更新
- * - 主题支持：使用主题管理器的样式配置
- * - 响应式设计：支持不同屏幕尺寸
- * 
- * 使用方式：
- * ```typescript
- * SortingInfoCard({
- *   sortSpeed: this.sortSpeed,
- *   batchWeight: this.batchWeight,
- *   batchCount: this.batchCount,
- *   startTime: this.startTime,
- *   programName: this.programName,
- *   efficiency: this.efficiency,
- *   avgWeight: this.avgWeight,
- *   realTimeOutput: this.realTimeOutput,
- *   intervalSpeed: this.intervalSpeed
- * })
- * ```
- * 
- * 布局说明：
- * - 排列方式：3列3行网格布局
- * - 卡片样式：白色背景，圆角设计
- * - 数据格式：数值+单位的形式
- * - 位置：位于主页顶部区域
- */
-
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
 
-/**
- * 分选信息卡片组件结构体
- * 
- * 属性说明：
- * - sortSpeed: 分拣速度，默认'0 件/分钟'
- * - batchWeight: 本批重量，默认'0.00 kg'
- * - batchCount: 本批个数，默认'0 件'
- * - startTime: 开始时间，默认'--:--:--'
- * - programName: 分选程序，默认'未选择'
- * - efficiency: 分选效率，默认'0%'
- * - avgWeight: 平均重量，默认'0.00 kg'
- * - realTimeOutput: 实时产量，默认'0 件/分钟'
- * - intervalSpeed: 间隔速度，默认'0 ms'
- * 
- * 方法说明：
- * - getCurrentTheme(): 获取当前主题配置
- * - build(): 构建分选信息卡片的UI结构
- * - buildInfoItem(): 构建单个信息条目的UI结构
- */
 @Component
 export struct SortingInfoCard {
   @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0  // 监听语言变化，触发 UI 更新
@@ -199,35 +132,6 @@ export struct SortingInfoCard {
    */
   build() {
     Column() {
-      // ==================== 标题区域（高级渐变效果）====================
-      Row() {
-        Text(t('当前分选信息', '当前分选信息'))
-          .fontSize(20)                                      // 增大字体：从16改为20，更突出
-          .fontWeight(FontWeight.Bold)                      // 加粗字体：从Medium改为Bold，更醒目
-          .fontColor(Color.Black)
-          .textAlign(TextAlign.Center)                      // 文本居中显示
-          .opacity(this.i18nVersion >= 0 ? 1 : 1)
-      }
-      .width('100%')
-      .justifyContent(FlexAlign.Center)                    // 行内容居中
-      // .linearGradient({                                    // 高级效果：颜色渐变 - 增强对比度，更明显
-      //   angle: 135,
-      //   colors: [
-      //     [this.getCurrentTheme().primary, 0],
-      //     [this.getCurrentTheme().primary, 0.5],
-      //     [this.getCurrentTheme().primary + '88', 1]      // 增强渐变对比
-      //   ]
-      // })
-
-      .backdropBlur(20)                                    // 背景模糊（毛玻璃效果）
-      .blur(3)                                             // 内容模糊（增强毛玻璃质感）
-      .borderRadius({ topLeft: 12, topRight: 12 })
-      .border({                                            // 高级效果：外描边设置 - 精致边框
-        width: { bottom: 2 },                              // 加粗底部分隔线：从1改为2，更明显
-        color: 'rgba(255, 255, 255, 0.3)'                 // 提高分隔线透明度：从0.2改为0.3，更清晰
-      })
-      .padding({ left: 16, right: 16, top: 14, bottom: 14 }) // 增加内边距：从10改为14，让标题更突出
-
       // ==================== 数据区域（在卡片内部，浅色背景）====================
       Row() {
         this.buildInfoItem(t('分选速度'), () => this.sortSpeed, 11.11)        // 分选速度信息项
@@ -254,8 +158,8 @@ export struct SortingInfoCard {
       })
       .backdropBlur(15)                                    // 背景模糊（毛玻璃效果）
       .blur(2)                                             // 内容模糊（增强毛玻璃质感）
-      .borderRadius({ bottomLeft: 12, bottomRight: 12 })
-      .padding(12)
+      .borderRadius({ topLeft: 12, topRight: 12, bottomLeft: 12, bottomRight: 12 })
+      .padding({ left: 12, right: 12, top: 26, bottom: 26 })
     }
     .width('100%')
     .linearGradient({                                      // 高级效果：颜色渐变 - 增强渐变对比度

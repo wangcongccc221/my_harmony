@@ -172,11 +172,7 @@ export struct HomeContent {
 
   build() {
     Column() {
-      // 1. 分选信息卡片 (顶部)
-      SortingInfoCard()
-        .margin({ bottom: 8 })
-
-      // 2. 液体卡片区域 (中间)
+      // 1. 液体卡片区域 (顶部)
       LiquidCardsArea({
         onCardClick: (cardIndex) => {
           AppStorage.set('HOME_LIQUID_CARD_DOUBLE_CLICK_INDEX', cardIndex + 1)
@@ -184,6 +180,10 @@ export struct HomeContent {
       })
         .height('38%')
         .margin({ bottom: '1%' })
+
+      // 2. 分选信息卡片 (中间)
+      SortingInfoCard()
+        .margin({ bottom: 8 })
 
       // 3. 数据表格区域 (底部)
       DataTablesTabBar({

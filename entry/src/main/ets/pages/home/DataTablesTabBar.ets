@@ -436,7 +436,7 @@ export struct DataTablesTabBar {
           tableWidth: '100%',
           maxHeight: '72%',
           enableDrag: false,    // 拖拽设置
-          enableScroll: false, // 滚动设置
+          enableScroll: true, // 滚动设置
             headerHeight: 60,  // 等级统计表表头高度
             dataRowHeight: 75,  // 等级统计表数据行高度
             dividerHeight: 75,   // 等级统计表分割线高度
