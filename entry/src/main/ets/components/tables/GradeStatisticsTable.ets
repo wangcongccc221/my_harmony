@@ -9,6 +9,8 @@ import { HomeDataManager } from '../../pages/home/core/HomeDataManager'
 import { TableRow } from '../layout/LevelTable'
 import { TABLE_CONFIG } from '../../pages/home/HomeConstants'
 import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
+import { GlobalDataInterface } from '../../protocol/GlobalDataInterface'
+import { StGradeInfo, StStatistics } from '../../protocol/Structures'
 
 @Component
 export struct GradeStatisticsTable {
@@ -18,9 +20,31 @@ export struct GradeStatisticsTable {
   @State private tableData: TableRow[] = []
 
   private dataManager = HomeDataManager.getInstance()
+  private dataInterface = GlobalDataInterface.getInstance()
+  private statisticsListener: ((stats: StStatistics) => void) | null = null
+  private gradeInfoListener: ((info: StGradeInfo) => void) | null = null
   
   aboutToAppear() {
     this.refreshTable()
+    this.statisticsListener = (_stats: StStatistics) => {
+      this.refreshTable()
+    }
+    this.gradeInfoListener = (_info: StGradeInfo) => {
+      this.refreshTable()
+    }
+    this.dataInterface.addStatisticsListener(this.statisticsListener)
+    this.dataInterface.addGradeInfoListener(this.gradeInfoListener)
+  }
+
+  aboutToDisappear() {
+    if (this.statisticsListener) {
+      this.dataInterface.removeStatisticsListener(this.statisticsListener)
+      this.statisticsListener = null
+    }
+    if (this.gradeInfoListener) {
+      this.dataInterface.removeGradeInfoListener(this.gradeInfoListener)
+      this.gradeInfoListener = null
+    }
   }
   
   private onFsmChange() {
@@ -79,4 +103,3 @@ export struct GradeStatisticsTable {
     .padding(8)
   }
 }
-

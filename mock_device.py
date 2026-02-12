@@ -147,7 +147,7 @@ def make_src_id(subsys_index: int = 0, ipm_index: Optional[int] = None, channel_
     return FSM_ID
 
 
-def create_st_grade_info():
+def create_st_grade_info(n_qual: int = 3, n_size: int = 4, classify_type: int = 1, label_type: int = 1):
     """
     创建 HC_CMD_GRADE_INFO (0x0051) 的 StGradeInfo 数据包
     用于驱动 GradeStatisticsTable UI
@@ -160,23 +160,28 @@ def create_st_grade_info():
     
     # 3. Grades (16 * 16 * 36 = 9216 bytes)
     grades = b''
-    # Create dummy grades: 3 Quality x 4 Size
-    n_qual = 3
-    n_size = 4
-    
     for q in range(MAX_QUALITY_GRADE_NUM):
         for s in range(MAX_SIZE_GRADE_NUM):
             if q < n_qual and s < n_size:
                 min_size = 60.0 + s * 10.0
                 max_size = min_size + 10.0
+                exit_idx = (q * n_size + s) % 8
+                exit_low = 1 << exit_idx
+                exit_high = 0
+                fruit_num = 20 + (q * n_size + s) * 2
+                label_idx = (q % 3) + 1
             else:
                 min_size = 0.0
                 max_size = 0.0
+                exit_low = 0
+                exit_high = 0
+                fruit_num = 0
+                label_idx = 0
             
-            # exitLow(4), exitHigh(4), nMinSize(4), nMaxSize(4), nFruitNum(4)
-            item = struct.pack('<IIffi', 0, 0, float(min_size), float(max_size), 0)
-            # nColorGrade(1) + 14 sb fields(1) + padding(1) = 16 bytes
-            item += b'\x00' * 16
+            item = struct.pack('<IIffi', exit_low, exit_high, float(min_size), float(max_size), int(fruit_num))
+            flags = [0] * 16
+            flags[14] = int(label_idx)
+            item += bytes(flags)
             grades += item
             
     # 4. Int32 Arrays (ExitEnabled 2, ColorIntervals 2, nExitSwitchNum 48) -> 52 ints
@@ -223,11 +228,11 @@ def create_st_grade_info():
     
     # 11. Tail
     # ColorType(1), nLabelType(1)
-    tail_part1 = struct.pack('<BB', 0, 0)
+    tail_part1 = struct.pack('<BB', 0, int(label_type) & 0xFF)
     # nLabelbyExit(48), nSwitchLabel(48)
     tail_part2 = b'\x00' * (48 + 48)
     # nSizeGradeNum(1), nQualityGradeNum(1), nClassifyType(1)
-    tail_part3 = struct.pack('<BBB', n_size, n_qual, 0)
+    tail_part3 = struct.pack('<BBB', int(n_size) & 0xFF, int(n_qual) & 0xFF, int(classify_type) & 0xFF)
     # nCheckNum(2), ForceChannel(2)
     tail_part4 = struct.pack('<hh', 0, 0)
     
@@ -256,7 +261,10 @@ def create_statistics(
     n_unqualified_count=20,
     n_interval_sum_per_minute=300,
     exit_counts=None,
-    exit_weight_counts=None
+    exit_weight_counts=None,
+    n_qual: int = 3,
+    n_size: int = 4,
+    subsys_index: int = 0
 ):
     """
     创建模拟的 StStatistics 数据
@@ -272,14 +280,13 @@ def create_statistics(
     n_grade_count = [0] * (MAX_QUALITY_GRADE_NUM * MAX_SIZE_GRADE_NUM)
     n_weight_grade_count = [0] * (MAX_QUALITY_GRADE_NUM * MAX_SIZE_GRADE_NUM)
     
-    # 随机填充一些等级计数
-    if n_qualified_count > 0:
-        n_grade_count[0] = int(n_qualified_count * 0.6) # 特级果
-        n_grade_count[1] = n_qualified_count - n_grade_count[0] # 一级果
-
-    # 填充对应的重量 (假设平均果重 150g)
-    n_weight_grade_count[0] = n_grade_count[0] * 150
-    n_weight_grade_count[1] = n_grade_count[1] * 140
+    for q in range(max(0, int(n_qual))):
+        for s in range(max(0, int(n_size))):
+            idx = q * MAX_SIZE_GRADE_NUM + s
+            count = 12 + (q + 1) * (s + 2) * 3
+            n_grade_count[idx] = count
+            weight_per = 120 + s * 5 + q * 3
+            n_weight_grade_count[idx] = count * weight_per
     
     # 填充出口数据
     if exit_counts:
@@ -307,14 +314,21 @@ def create_statistics(
     n_channel_weight_count = [0] * MAX_CHANNEL_NUM
     n_channel_weight_count[0] = n_total_weight
     
-    n_subsys_id = 0
+    n_subsys_id = int(subsys_index)
     
     n_box_grade_count = [0] * (MAX_QUALITY_GRADE_NUM * MAX_SIZE_GRADE_NUM)
     n_box_grade_weight = [0] * (MAX_QUALITY_GRADE_NUM * MAX_SIZE_GRADE_NUM)
 
-    # 填充箱数 (假设一箱 50 个果)
-    n_box_grade_count[0] = int(n_grade_count[0] / 50)
-    n_box_grade_count[1] = int(n_grade_count[1] / 50)
+    for q in range(max(0, int(n_qual))):
+        for s in range(max(0, int(n_size))):
+            idx = q * MAX_SIZE_GRADE_NUM + s
+            count = n_grade_count[idx]
+            if count <= 0:
+                continue
+            box_count = max(1, int(count / 20))
+            n_box_grade_count[idx] = box_count
+            avg_weight = n_weight_grade_count[idx] / max(1, count)
+            n_box_grade_weight[idx] = int(box_count * avg_weight * 20)
     
     # n_total_cup_num 在协议中对应 nYield
     n_interval = 100 # 假设 100ms
@@ -694,7 +708,10 @@ def seed_completed_batches(args: argparse.Namespace) -> None:
                 n_unqualified_count=unqualified,
                 n_interval_sum_per_minute=speed,
                 exit_counts=exit_counts,
-                exit_weight_counts=exit_weight_counts
+                exit_weight_counts=exit_weight_counts,
+                n_qual=args.qual_num,
+                n_size=args.size_num,
+                subsys_index=args.subsys
             )
             if not args.dry_run:
                 send_once(stats_header, stats_body, f"SeedStatistics[{i+1}]")
@@ -903,7 +920,10 @@ def run_simulation(args: argparse.Namespace):
                 n_unqualified_count=unqualified,
                 n_interval_sum_per_minute=speed,
                 exit_counts=exit_counts,  # 传入持久化的出口计数
-                exit_weight_counts=exit_weight_counts  # 传入持久化的出口重量(g)
+                exit_weight_counts=exit_weight_counts,  # 传入持久化的出口重量(g)
+                n_qual=args.qual_num,
+                n_size=args.size_num,
+                subsys_index=args.subsys
             )
             if not args.dry_run:
                 send_once(stats_header, stats_body, "Statistics")
@@ -957,7 +977,12 @@ def run_simulation(args: argparse.Namespace):
             # 48项目: HC_CMD_GRADE_INFO (StGradeInfo)
             if not args.no_st_grade and (cycles_done % 5 == 0):
                 st_grade_header = create_header_with_ids(HC_CMD_GRADE_INFO, FSM_ID, HC_ID)
-                st_grade_body = create_st_grade_info()
+                st_grade_body = create_st_grade_info(
+                    n_qual=args.qual_num,
+                    n_size=args.size_num,
+                    classify_type=args.classify_type,
+                    label_type=args.label_type
+                )
                 if not args.dry_run:
                     send_once(st_grade_header, st_grade_body, "StGradeInfo")
                 else:
@@ -1018,6 +1043,10 @@ if __name__ == "__main__":
     parser.add_argument("--grade-ipm", type=int, default=-1, help="固定分级包来源 IPM 索引(0-based)，-1 表示随机")
     parser.add_argument("--stats-channel", type=int, default=0, help="统计包来源通道索引(0-11)")
     parser.add_argument("--weight-channel", type=int, default=0, help="重量包来源通道索引(0-11)")
+    parser.add_argument("--qual-num", type=int, default=3, help="质量等级数量")
+    parser.add_argument("--size-num", type=int, default=4, help="尺寸等级数量")
+    parser.add_argument("--classify-type", type=int, default=1, help="分级类型位标志")
+    parser.add_argument("--label-type", type=int, default=1, help="贴标类型(0/1)")
 
     parser.add_argument("--print-percent", action="store_true", help="打印出口占比TopN（与鸿蒙 EXIT_PERCENT 逻辑一致）")
     parser.add_argument("--topn", type=int, default=6)

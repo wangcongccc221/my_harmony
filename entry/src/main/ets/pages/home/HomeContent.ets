@@ -12,6 +12,8 @@ import { getConfigSender } from '../../protocol/ConfigSender'
 import { ConstPreDefine } from '../../protocol/ConstPreDefine'
 import { GradeInfoConfigManager } from './core/GradeInfoConfigManager'
 import { StorageKeys } from '../../utils/constants/StorageKeys'
+import { GlobalDataInterface } from '../../protocol/GlobalDataInterface'
+import { StGradeInfo, StStatistics } from '../../protocol/Structures'
 
 interface ExtraInfoWrapper {
   extraInfo?: string
@@ -72,6 +74,9 @@ export struct HomeContent {
   @State refreshKey: number = 0
 
   private dataManager = HomeDataManager.getInstance()
+  private dataInterface = GlobalDataInterface.getInstance()
+  private statisticsListener: ((stats: StStatistics) => void) | null = null
+  private gradeInfoListener: ((info: StGradeInfo) => void) | null = null
 
   aboutToAppear() {
     // 注册实例到 AppStorage，供 LiquidCardsArea 调用
@@ -80,10 +85,26 @@ export struct HomeContent {
     // 初始化数据
     this.dataManager.initializeAllTableData()
     this.refreshAllTables()
+    this.statisticsListener = (_stats: StStatistics) => {
+      this.refreshStatisticsTable()
+    }
+    this.gradeInfoListener = (_info: StGradeInfo) => {
+      this.refreshStatisticsTable()
+    }
+    this.dataInterface.addStatisticsListener(this.statisticsListener)
+    this.dataInterface.addGradeInfoListener(this.gradeInfoListener)
   }
 
   aboutToDisappear() {
     AppStorage.setOrCreate('HOME_CONTENT_REF', null)
+    if (this.statisticsListener) {
+      this.dataInterface.removeStatisticsListener(this.statisticsListener)
+      this.statisticsListener = null
+    }
+    if (this.gradeInfoListener) {
+      this.dataInterface.removeGradeInfoListener(this.gradeInfoListener)
+      this.gradeInfoListener = null
+    }
   }
 
   onFSMChange() {
@@ -92,6 +113,7 @@ export struct HomeContent {
   }
 
   public refreshStatisticsTable() {
+    this.dataManager.initializeStatisticsTableData()
     this.statisticsTableData = this.dataManager.getTableData('等级统计表')
     this.refreshKey++
     console.log('HomeContent: refreshStatisticsTable triggered')
@@ -128,6 +150,7 @@ export struct HomeContent {
     this.levelTableData = this.dataManager.getTableData('等级表')
     this.levelHeaderTitles = this.dataManager.getLevelTableHeaderTitles()
     this.containerTableData = this.dataManager.getTableData('容器表')
+    this.dataManager.initializeStatisticsTableData()
     this.statisticsTableData = this.dataManager.getTableData('等级统计表')
     this.dynamicPackingTableData = this.dataManager.getTableData('动态装箱')
     this.finishedProductsTableData = this.dataManager.getTableData('成品')

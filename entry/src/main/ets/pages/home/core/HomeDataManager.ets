@@ -38,6 +38,11 @@
 
 import { TableRow } from '../../../components/layout/LevelTable'
 import { TABLE_CONFIG } from '../HomeConstants'
+import { GlobalDataInterface } from '../../../protocol/GlobalDataInterface'
+import { ConstPreDefine } from '../../../protocol/ConstPreDefine'
+import { StGradeInfo, StStatistics } from '../../../protocol/Structures'
+import { LevelData } from '../../level/core/LevelDataManager'
+import util from '@ohos.util'
 
 interface GradeTableConfig {
   sizeGradeNames: string[]
@@ -66,6 +71,8 @@ export class HomeDataManager {
    * 当前FSM状态
    */
   private currentFSM: 'FSM1' | 'FSM2' = 'FSM1'
+  private dataInterface: GlobalDataInterface = GlobalDataInterface.getInstance()
+  private textDecoder: util.TextDecoder = new util.TextDecoder("utf-8", { ignoreBOM: true })
 
   private static readonly GRADE_TABLE_CONFIG_KEY_PREFIX: string = 'HOME_GRADE_TABLE_CONFIG_'
   
@@ -81,6 +88,11 @@ export class HomeDataManager {
 
   private getGradeConfigKey(fsm: 'FSM1' | 'FSM2'): string {
     return `${HomeDataManager.GRADE_TABLE_CONFIG_KEY_PREFIX}${fsm}`
+  }
+
+  private getLocalLevelData(): LevelData[] {
+    const stored = AppStorage.get('LEVEL_TABLE_DATA') as LevelData[] | undefined
+    return Array.isArray(stored) ? stored : []
   }
 
   private getOrCreateGradeTableConfig(fsm: 'FSM1' | 'FSM2'): GradeTableConfig {
@@ -116,6 +128,12 @@ export class HomeDataManager {
     const targetFsm = fsm ?? this.currentFSM
     const config = this.getOrCreateGradeTableConfig(targetFsm)
     return config.sizeGradeNames.slice()
+  }
+
+  public getQualityGradeNames(fsm?: 'FSM1' | 'FSM2'): string[] {
+    const targetFsm = fsm ?? this.currentFSM
+    const config = this.getOrCreateGradeTableConfig(targetFsm)
+    return config.qualityGradeNames.slice()
   }
 
   public updateSizeGradeNames(names: string[], fsm?: 'FSM1' | 'FSM2'): void {
@@ -480,6 +498,176 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
     this.updateFSMTableData(tableName, updatedRows)
   }
 
+  private getCurrentSubsysIndex(): number {
+    return this.currentFSM === 'FSM2' ? 1 : 0
+  }
+
+  private resolveSubsysIndex(value: number): number {
+    if (value > 0xFF) {
+      return ConstPreDefine.getSubsysIndex(value)
+    }
+    return value
+  }
+
+  private decodeName(buffer: Uint8Array, index: number): string {
+    const start = index * ConstPreDefine.MAX_TEXT_LENGTH
+    const end = start + ConstPreDefine.MAX_TEXT_LENGTH
+    const slice = buffer.slice(start, end)
+    let len = 0
+    while (len < slice.length && slice[len] !== 0) len++
+    if (len === 0) return ''
+    try {
+      return this.textDecoder.decode(slice.slice(0, len))
+    } catch (_e) {
+      return ''
+    }
+  }
+
+  private buildGradeName(info: StGradeInfo, qualityIdx: number, sizeIdx: number): string {
+    const sizeName = this.decodeName(info.strSizeGradeName, sizeIdx)
+    const qualityName = this.decodeName(info.strQualityGradeName, qualityIdx)
+    if (info.nQualityGradeNum > 0 && info.nClassifyType > 0) {
+      if (sizeName && qualityName) return `${sizeName}.${qualityName}`
+      if (sizeName) return sizeName
+      if (qualityName) return qualityName
+      return ''
+    }
+    return sizeName || qualityName || ''
+  }
+
+  private getMeasureValue(info: StGradeInfo, index: number): string {
+    const grade = info.grades[index]
+    if (!grade) return ''
+    const value = Number(grade.nMinSize)
+    if (!Number.isFinite(value) || Math.abs(value) > 1e8) return ''
+    return value.toFixed(2)
+  }
+
+  private buildExitLabels(info: StGradeInfo, index: number): string {
+    const grade = info.grades[index]
+    if (!grade) return ''
+    const exitLow = grade.exitLow >>> 0
+    const exitHigh = grade.exitHigh >>> 0
+    const labels: string[] = []
+    for (let i = 0; i < ConstPreDefine.MAX_EXIT_NUM; i++) {
+      if (i < 32) {
+        if (((exitLow >>> i) & 1) === 1) labels.push(`出口${i + 1}`)
+      } else {
+        const shift = i - 32
+        if (((exitHigh >>> shift) & 1) === 1) labels.push(`出口${i + 1}`)
+      }
+    }
+    return labels.join('、')
+  }
+
+  private formatPercent(value: number, total: number): string {
+    if (total <= 0) return '0.00%'
+    return ((value * 100) / total).toFixed(2) + '%'
+  }
+
+  private getLabelText(labelIndex: number): string {
+    if (!Number.isFinite(labelIndex) || labelIndex <= 0) return ''
+    return `贴标机${labelIndex}`
+  }
+
+  private buildStatisticsTableData(): TableRow[] {
+    const latestGradeInfo = this.dataInterface.getLatestGradeInfo()
+    const hasGradeInfo = !!latestGradeInfo && (latestGradeInfo.nQualityGradeNum > 0 || latestGradeInfo.nSizeGradeNum > 0)
+    const gradeInfo = latestGradeInfo ?? new StGradeInfo()
+    const totalSize = ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM
+    const gradeCount: number[] = new Array<number>(totalSize).fill(0)
+    const gradeWeight: number[] = new Array<number>(totalSize).fill(0)
+    const boxCount: number[] = new Array<number>(totalSize).fill(0)
+    const boxWeight: number[] = new Array<number>(totalSize).fill(0)
+    const targetSubsysIndex = this.getCurrentSubsysIndex()
+
+    const allStats = this.dataInterface.getAllChannelStatistics()
+    allStats.forEach((stats: StStatistics) => {
+      const subsysIndex = this.resolveSubsysIndex(stats.nSubsysId)
+      if (subsysIndex !== targetSubsysIndex) return
+      for (let i = 0; i < totalSize; i++) {
+        gradeCount[i] += stats.nGradeCount[i] || 0
+        gradeWeight[i] += stats.nWeightGradeCount[i] || 0
+        boxCount[i] += stats.nBoxGradeCount[i] || 0
+        boxWeight[i] += stats.nBoxGradeWeight[i] || 0
+      }
+    })
+
+    let totalNumSum = 0
+    let totalWeightSum = 0
+    let totalBoxSum = 0
+    for (let i = 0; i < totalSize; i++) {
+      totalNumSum += gradeCount[i]
+      totalWeightSum += gradeWeight[i]
+      totalBoxSum += boxCount[i]
+    }
+
+    const qualityNames = hasGradeInfo ? [] : this.getQualityGradeNames()
+    const sizeNames = hasGradeInfo ? [] : this.getSizeGradeNames()
+    const localLevelData = hasGradeInfo ? [] : this.getLocalLevelData()
+    const packingBySize = new Map<string, number>()
+    localLevelData.forEach((item: LevelData) => {
+      const key = (item.levelName ?? '').trim()
+      if (key.length > 0) {
+        packingBySize.set(key, item.packingWeight ?? 0)
+      }
+    })
+    const qualityNum = hasGradeInfo
+      ? (gradeInfo.nQualityGradeNum > 0 && gradeInfo.nClassifyType > 0 ? gradeInfo.nQualityGradeNum : 1)
+      : Math.max(1, qualityNames.length)
+    const sizeNum = hasGradeInfo
+      ? (gradeInfo.nSizeGradeNum > 0 ? gradeInfo.nSizeGradeNum : 1)
+      : Math.max(1, sizeNames.length)
+    if (qualityNum <= 0 || sizeNum <= 0) return []
+
+    const rows: TableRow[] = []
+    const rowLength = TABLE_CONFIG.STATISTICS_TABLE.headers.length
+    const showPackingAmount = hasGradeInfo
+      ? ((gradeInfo.nClassifyType & 0x03) > 0 || (gradeInfo.nClassifyType & 0x1C) > 0)
+      : packingBySize.size > 0
+    const showBoxWeight = hasGradeInfo ? ((gradeInfo.nClassifyType & 0x03) > 0) : boxWeight.some((v: number) => v > 0)
+    const showLabel = hasGradeInfo && gradeInfo.nLabelType === 1
+
+    for (let q = 0; q < qualityNum; q++) {
+      for (let s = 0; s < sizeNum; s++) {
+        const index = q * ConstPreDefine.MAX_SIZE_GRADE_NUM + s
+        const count = gradeCount[index] || 0
+        const weight = gradeWeight[index] || 0
+        const box = boxCount[index] || 0
+        const sizeName = hasGradeInfo ? '' : (sizeNames[s] ?? '')
+        const qualityName = hasGradeInfo ? '' : (qualityNames[q] ?? '')
+        const rowName = hasGradeInfo
+          ? this.buildGradeName(gradeInfo, q, s)
+          : (sizeName && qualityName ? `${sizeName}.${qualityName}` : (sizeName || qualityName || ''))
+        const measureValue = hasGradeInfo ? this.getMeasureValue(gradeInfo, index) : sizeName
+        const exitLabel = hasGradeInfo ? this.buildExitLabels(gradeInfo, index) : ''
+        const packingAmount = showPackingAmount
+          ? (hasGradeInfo
+              ? String(gradeInfo.grades[index]?.nFruitNum ?? '')
+              : String(packingBySize.get(sizeName) ?? ''))
+          : ''
+        const weightPerBox = showBoxWeight ? String(boxWeight[index] || 0) : ''
+        const label = showLabel ? this.getLabelText(gradeInfo.grades[index]?.sbLabelbyGrade ?? 0) : ''
+        const row: TableRow = [
+          rowName,
+          measureValue,
+          exitLabel,
+          String(count),
+          this.formatPercent(count, totalNumSum),
+          String(weight),
+          this.formatPercent(weight, totalWeightSum),
+          String(box),
+          this.formatPercent(box, totalBoxSum),
+          packingAmount,
+          weightPerBox,
+          label
+        ]
+        rows.push(this.ensureStatisticsRowLength(row, rowLength))
+      }
+    }
+    return rows
+  }
+
   /**
    * 初始化等级表数据
    * 
@@ -583,45 +771,9 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
    * ```
    */
   initializeStatisticsTableData(): void {
-    // 检查当前FSM状态的数据是否已存在，如果存在则不重新初始化
     const fsmKey = `等级统计表_${this.currentFSM}`
-    if (this.allTableData[fsmKey] && this.allTableData[fsmKey].length > 0) {
-      console.log(`${this.currentFSM}等级统计表数据已存在，跳过初始化`)
-      return
-    }
-    
-    let statisticsData: TableRow[]
-    
-    if (this.currentFSM === 'FSM1') {
-      // FSM1的等级统计表数据
-      statisticsData = [
-        ['A级', '1250.5', '出口1', '156', '25.2%', '1250.5', '28.5%', '8', '26.7%', '156.3', '15.6', ''],
-        ['B级', '980.2', '出口2', '98', '15.8%', '980.2', '22.3%', '6', '20.0%', '163.4', '16.3', ''],
-        ['C级', '756.8', '出口3', '78', '12.6%', '756.8', '17.2%', '5', '16.7%', '151.4', '15.1', ''],
-        ['D级', '654.3', '出口4', '65', '10.5%', '654.3', '14.9%', '4', '13.3%', '163.6', '16.4', '']
-      ]
-    } else if (this.currentFSM === 'FSM2') {
-      // FSM2的等级统计表数据（不同的等级和数值）
-      statisticsData = [
-        ['特级', '1580.3', '出口1', '189', '28.7%', '1580.3', '32.1%', '12', '35.3%', '131.7', '13.2', ''],
-        ['优级', '1120.7', '出口2', '134', '20.3%', '1120.7', '22.8%', '9', '26.5%', '124.5', '12.5', ''],
-        ['良级', '890.4', '出口3', '107', '16.2%', '890.4', '18.1%', '7', '20.6%', '127.2', '12.7', ''],
-        ['合格', '720.6', '出口4', '87', '13.2%', '720.6', '14.6%', '5', '14.7%', '144.1', '14.4', ''],
-        ['次品', '450.2', '出口5', '54', '8.2%', '450.2', '9.1%', '3', '8.8%', '150.1', '15.0', '']
-      ]
-    } else {
-      // 默认情况，使用FSM1数据
-      statisticsData = [
-        ['A级', '1250.5', '出口1', '156', '25.2%', '1250.5', '28.5%', '8', '26.7%', '156.3', '15.6', ''],
-        ['B级', '980.2', '出口2', '98', '15.8%', '980.2', '22.3%', '6', '20.0%', '163.4', '16.3', ''],
-        ['C级', '756.8', '出口3', '78', '12.6%', '756.8', '17.2%', '5', '16.7%', '151.4', '15.1', ''],
-        ['D级', '654.3', '出口4', '65', '10.5%', '654.3', '14.9%', '4', '13.3%', '163.6', '16.4', '']
-      ]
-    }
-    
-    // 使用FSM特定的键名存储数据
+    const statisticsData = this.buildStatisticsTableData()
     this.allTableData[fsmKey] = statisticsData
-    console.log(`初始化${this.currentFSM}等级统计表数据:`, statisticsData)
   }
 
   /**

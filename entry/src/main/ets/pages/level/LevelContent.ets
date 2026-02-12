@@ -495,6 +495,7 @@ export struct LevelContent {
     
     // 更新状态管理器
     this.stateManager.updateLevelData(convertedLevelData)
+    AppStorage.setOrCreate('LEVEL_TABLE_DATA', convertedLevelData)
 
     const selectedFSM = (AppStorage.get(HOME_SELECTED_FSM) as ('FSM1' | 'FSM2') | undefined) ?? 'FSM1'
     HomeDataManager.getInstance().updateSizeGradeNames(convertedLevelData.map(item => item.levelName), selectedFSM)
