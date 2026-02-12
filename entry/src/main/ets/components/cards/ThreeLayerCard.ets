@@ -4,6 +4,8 @@ import { DragData as GridDragData, GRID_DRAG_DATA_KEY, GRID_DRAG_ACTIVE_KEY } fr
 import { DragManager, DragData as ModuleDragData } from '../../utils/ui/DragManager'
 import { DragHandlers } from '../../utils/ui/DragHandlers'
 import { GlobalCardDataManager } from '../../utils/managers/GlobalCardDataManager'
+import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
+import { ExitConfigManager, FsmKey, OutletConfig } from '../../pages/home/core/ExitConfigManager'
 
 import { WaveCard } from '../charts/WaveCard'
 
@@ -37,9 +39,21 @@ import { FirstLayer } from '../ThreeLayerCard/FirstLayer'
 import { SecondLayer } from '../ThreeLayerCard/SecondLayer'
 import { ThirdLayer } from '../ThreeLayerCard/ThirdLayer'
 import { CardColorConfig } from '../../utils/theme/CardColors'
+import { HomeDataManager } from '../../pages/home/core/HomeDataManager'
+import { OmniUIUtils } from '../../utils/helpers/OmniUIUtils'
 
 // 接口定义已移至 ThreeLayerCard/types.ets
 export { ThreeLayerCardData } from '../ThreeLayerCard/types'
+
+interface CardMouseEvent {
+  button?: number
+}
+
+interface ClipboardPayload {
+  chartData: number[]
+  chartDataStrings?: string[]
+  hasOriginalFormatData?: boolean
+}
 
 @Component
 export struct ThreeLayerCard {
@@ -67,6 +81,8 @@ export struct ThreeLayerCard {
   // 第三层条目拖拽的本地兜底缓存（避免AppStorage丢失）
   @State private pendingDragValue: string = ''
   @State private pendingDragIndex: number = -1
+  @State private showContextMenu: boolean = false
+  private readonly clipboardKey: string = 'LIQUID_CARD_CLIPBOARD'
   
   // 模块化的拖拽管理器
   private dragManager: DragManager = DragManager.getInstance()
@@ -127,6 +143,143 @@ export struct ThreeLayerCard {
   
   private clampPercent(v: number): number {
     return UseCardLogic.clampPercent(v)
+  }
+
+  private getSelectedFsm(): FsmKey {
+    const value = AppStorage.get(HOME_SELECTED_FSM) as FsmKey | undefined
+    return value ?? 'FSM1'
+  }
+
+  private getExitConfig(): OutletConfig {
+    const fsm = this.getSelectedFsm()
+    const exitIndex = this.getCardNumber()
+    return ExitConfigManager.getInstance().getExitConfig(fsm, exitIndex)
+  }
+
+  private async setExitEnabled(enabled: boolean): Promise<void> {
+    const fsm = this.getSelectedFsm()
+    const exitIndex = this.getCardNumber()
+    const config = ExitConfigManager.getInstance().getExitConfig(fsm, exitIndex)
+    config.outletEnable = enabled ? '开启' : '关闭'
+    config.enabled = enabled
+    ExitConfigManager.getInstance().setExitConfig(fsm, config)
+    await ExitConfigManager.getInstance().sendExitConfig(fsm)
+  }
+
+  private clearCardMapping(): void {
+    const cardId = String(this.cardData.id || '')
+    const mapRaw = AppStorage.get('CARD_ITEM_LEVEL_MAP') as Record<string, Record<string, string>> | null
+    if (!mapRaw || !mapRaw[cardId]) {
+      return
+    }
+    const next: Record<string, Record<string, string>> = {}
+    Object.keys(mapRaw).forEach(key => {
+      if (key !== cardId) {
+        next[key] = mapRaw[key]
+      }
+    })
+    AppStorage.setOrCreate('CARD_ITEM_LEVEL_MAP', next)
+  }
+
+  private clearCardData(): void {
+    this.localChartData = []
+    this.localChartDataStrings = []
+    this.hasOriginalFormatData = false
+    this.clearCardMapping()
+    UseDataSync.updateCardData(this.cardData, [], [], this.onCardDrop)
+  }
+
+  private copyCardData(): void {
+    const payload: ClipboardPayload = {
+      chartData: this.localChartData.slice(),
+      chartDataStrings: this.localChartDataStrings.slice(),
+      hasOriginalFormatData: this.hasOriginalFormatData
+    }
+    AppStorage.setOrCreate(this.clipboardKey, payload)
+  }
+
+  private hasClipboardData(): boolean {
+    const payload = AppStorage.get(this.clipboardKey) as ClipboardPayload | undefined
+    return !!payload && Array.isArray(payload.chartData) && payload.chartData.length > 0
+  }
+
+  private pasteCardData(): void {
+    const payload = AppStorage.get(this.clipboardKey) as ClipboardPayload | undefined
+    if (!payload || !Array.isArray(payload.chartData)) {
+      return
+    }
+    const nextData = payload.chartData.slice()
+    const nextStrings = Array.isArray(payload.chartDataStrings) && payload.chartDataStrings.length > 0
+      ? payload.chartDataStrings.slice()
+      : nextData.map(item => String(item))
+    const hasOriginal = typeof payload.hasOriginalFormatData === 'boolean'
+      ? payload.hasOriginalFormatData
+      : nextStrings.some(str => str.includes('%'))
+    this.localChartData = nextData
+    this.localChartDataStrings = nextStrings
+    this.hasOriginalFormatData = hasOriginal
+    UseDataSync.updateCardData(this.cardData, nextData, nextStrings, this.onCardDrop)
+  }
+
+  private cutCardData(): void {
+    this.copyCardData()
+    this.clearCardData()
+  }
+
+  private isExitRunning(): boolean {
+    const config = this.getExitConfig()
+    return config.outletEnable === '开启' && config.enabled
+  }
+
+  private canPaste(): boolean {
+    return this.hasClipboardData()
+  }
+
+  private getMappedLevelNames(): string[] {
+    const cardId = String(this.cardData.id || '')
+    const mapRaw = AppStorage.get('CARD_ITEM_LEVEL_MAP') as Record<string, Record<string, string>> | null
+    if (!mapRaw || !mapRaw[cardId]) {
+      return []
+    }
+    const names = Object.values(mapRaw[cardId]).map(v => String(v ?? '')).filter(v => v.length > 0)
+    return Array.from(new Set(names))
+  }
+
+  private splitExitLabels(value: string): string[] {
+    if (!value) {
+      return []
+    }
+    return value.split(/[,，/、\s]+/).map(item => item.trim()).filter(item => item.length > 0)
+  }
+
+  private getLevelsOnlyInThisExit(): string[] {
+    const exitNumber = this.getCardNumber()
+    const exitLabel = `出口${exitNumber}`
+    const dataManager = HomeDataManager.getInstance()
+    dataManager.setFSM(this.getSelectedFsm())
+    const rows = dataManager.getTableData('等级统计表')
+    const targets = new Set(this.getMappedLevelNames())
+    const result: string[] = []
+    rows.forEach(row => {
+      const levelName = String(row[0] ?? '')
+      if (!targets.has(levelName)) {
+        return
+      }
+      const labels = this.splitExitLabels(String(row[2] ?? ''))
+      if (labels.length === 1 && labels[0] === exitLabel) {
+        result.push(levelName)
+      }
+    })
+    return result
+  }
+
+  private removeExitFromStatistics(levelNames: string[], exit: number): void {
+    if (!Array.isArray(levelNames) || levelNames.length === 0) {
+      return
+    }
+    levelNames.forEach(levelName => {
+      AppStorage.setOrCreate(StorageKeys.LEVEL_STAT_REMOVE, { levelName: levelName, exit: exit })
+    })
   }
   
   // 根据卡片ID获取波浪图高度百分比：使用实时数据
@@ -326,7 +479,162 @@ export struct ThreeLayerCard {
     UseCardState.resetDragStates()
     this.isHovering = false
   }
+
+  private handleMouseEvent(event?: CardMouseEvent): void {
+    if (!event) {
+      return
+    }
+    if (event.button === 2) {
+      this.showContextMenu = true
+    }
+  }
   
+  @Builder
+  private buildContextMenu() {
+    Column() {
+      Button() {
+        Text('启动')
+          .fontSize(16)
+          .fontColor(this.getCurrentTheme().textColor)
+          .fontWeight(FontWeight.Medium)
+          .textAlign(TextAlign.Center)
+          .width('100%')
+      }
+      .width(140)
+      .height(40)
+      .backgroundColor(Color.Transparent)
+      .stateEffect(true)
+      .enabled(!this.isExitRunning())
+      .onClick(() => {
+        this.showContextMenu = false
+        this.setExitEnabled(true)
+      })
+      Button() {
+        Text('暂停')
+          .fontSize(16)
+          .fontColor(this.getCurrentTheme().textColor)
+          .fontWeight(FontWeight.Medium)
+          .textAlign(TextAlign.Center)
+          .width('100%')
+      }
+      .width(140)
+      .height(40)
+      .backgroundColor(Color.Transparent)
+      .stateEffect(true)
+      .enabled(this.isExitRunning())
+      .onClick(() => {
+        this.showContextMenu = false
+        this.setExitEnabled(false)
+        const lost = this.getLevelsOnlyInThisExit()
+        if (lost.length > 0) {
+          OmniUIUtils.getInstance().showInfo(`以下等级仅在出口${this.getCardNumber()}：${lost.join('、')}`)
+        }
+      })
+      Button() {
+        Text('打开')
+          .fontSize(16)
+          .fontColor(this.getCurrentTheme().textColor)
+          .fontWeight(FontWeight.Medium)
+          .textAlign(TextAlign.Center)
+          .width('100%')
+      }
+      .width(140)
+      .height(40)
+      .backgroundColor(Color.Transparent)
+      .stateEffect(true)
+      .onClick(() => {
+        this.showContextMenu = false
+        if (!this.isExitRunning()) {
+          return
+        }
+        if (this.onThirdLayerClick) {
+          this.onThirdLayerClick()
+        }
+      })
+      Button() {
+        Text('清空')
+          .fontSize(16)
+          .fontColor(this.getCurrentTheme().textColor)
+          .fontWeight(FontWeight.Medium)
+          .textAlign(TextAlign.Center)
+          .width('100%')
+      }
+      .width(140)
+      .height(40)
+      .backgroundColor(Color.Transparent)
+      .stateEffect(true)
+      .onClick(() => {
+        this.showContextMenu = false
+        if (!this.isExitRunning()) {
+          return
+        }
+        const levelNames = this.getMappedLevelNames()
+        this.removeExitFromStatistics(levelNames, this.getCardNumber())
+        this.clearCardData()
+      })
+      Button() {
+        Text('复制')
+          .fontSize(16)
+          .fontColor(this.getCurrentTheme().textColor)
+          .fontWeight(FontWeight.Medium)
+          .textAlign(TextAlign.Center)
+          .width('100%')
+      }
+      .width(140)
+      .height(40)
+      .backgroundColor(Color.Transparent)
+      .stateEffect(true)
+      .onClick(() => {
+        this.showContextMenu = false
+        this.copyCardData()
+      })
+      Button() {
+        Text('剪切')
+          .fontSize(16)
+          .fontColor(this.getCurrentTheme().textColor)
+          .fontWeight(FontWeight.Medium)
+          .textAlign(TextAlign.Center)
+          .width('100%')
+      }
+      .width(140)
+      .height(40)
+      .backgroundColor(Color.Transparent)
+      .stateEffect(true)
+      .onClick(() => {
+        this.showContextMenu = false
+        if (!this.isExitRunning()) {
+          return
+        }
+        const levelNames = this.getMappedLevelNames()
+        this.removeExitFromStatistics(levelNames, this.getCardNumber())
+        this.cutCardData()
+      })
+      Button() {
+        Text('粘贴')
+          .fontSize(16)
+          .fontColor(this.getCurrentTheme().textColor)
+          .fontWeight(FontWeight.Medium)
+          .textAlign(TextAlign.Center)
+          .width('100%')
+      }
+      .width(140)
+      .height(40)
+      .backgroundColor(Color.Transparent)
+      .stateEffect(true)
+      .enabled(this.canPaste())
+      .onClick(() => {
+        this.showContextMenu = false
+        this.pasteCardData()
+      })
+    }
+    .width(160)
+    .padding(4)
+    .backgroundColor(this.getCurrentTheme().surfaceColor)
+    .borderRadius(12)
+    .shadow({ radius: 12, color: 'rgba(0, 0, 0, 0.12)', offsetX: 0, offsetY: 4 })
+    .border({ width: 1, color: this.getCurrentTheme().borderColor + '40' })
+  }
+
   build() {
     Column() {
       // 第一层：图片/文字层
@@ -402,8 +710,15 @@ export struct ThreeLayerCard {
     .border({ width: 0.5, color: UseCardLogic.getCardColors().cardBorder }) // Apple风格：细边框
     .shadow({ radius: 8, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 2 }) // Apple风格：柔和阴影
     .clip(true) // 裁剪子组件
+    .onMouse((event?: CardMouseEvent) => {
+      this.handleMouseEvent(event)
+    })
     .onClick(() => {
+      this.showContextMenu = false
       this.onCardDrop?.(this.cardData)
+    })
+    .bindContextMenu(this.showContextMenu, this.buildContextMenu, {
+      placement: Placement.Right
     })
     // 大卡片外层：落在卡片容器（第一/第二层或卡片边内空白）视为"内容不变"
     .onDrop((event: DragEvent, extraParams: string) => {
