@@ -277,6 +277,15 @@ export class GlobalDataInterface {
     const exitCount: number[] = new Array(ConstPreDefine.MAX_EXIT_NUM).fill(0)
     const exitWeight: number[] = new Array(ConstPreDefine.MAX_EXIT_NUM).fill(0)
 
+    const hasAnyValue = (arr: ArrayLike<number>): boolean => {
+      for (let i = 0; i < arr.length; i++) {
+        if (arr[i] > 0) {
+          return true
+        }
+      }
+      return false
+    }
+
     this.channelStatistics.forEach((stats: StStatistics) => {
       totalYield += stats.nYield
       totalWeight += stats.nTotalWeight
@@ -288,9 +297,12 @@ export class GlobalDataInterface {
         gradeCount[i] += stats.nGradeCount[i]
         gradeWeight[i] += stats.nWeightGradeCount[i]
       }
-      for (let i = 0; i < stats.nExitCount.length; i++) {
-        exitCount[i] += stats.nExitCount[i]
-        exitWeight[i] += stats.nExitWeightCount[i]
+      const exitCountSource = hasAnyValue(stats.nExitCount) ? stats.nExitCount : stats.ExitBoxNum
+      const exitWeightSource = hasAnyValue(stats.nExitWeightCount) ? stats.nExitWeightCount : stats.ExitWeight
+      const maxExit = Math.min(exitCountSource.length, exitWeightSource.length, exitCount.length)
+      for (let i = 0; i < maxExit; i++) {
+        exitCount[i] += Number(exitCountSource[i] ?? 0)
+        exitWeight[i] += Number(exitWeightSource[i] ?? 0)
       }
     })
 

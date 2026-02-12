@@ -5,8 +5,8 @@ export struct WaveCard {
   @Prop amplitude: number = 10
   @Prop frequency: number = 0.01
   @Prop speed: number = 0.02
-  @Prop waveHeightPercent: number = 70  // 波浪图高度百分比（默认70%）
-  @Prop baselinePercent: number = 50    // 波浪基准位置百分比（默认50%，即中间位置）
+  @Prop @Watch('onWavePropsChanged') waveHeightPercent: number = 70  // 波浪图高度百分比（默认70%）
+  @Prop @Watch('onWavePropsChanged') baselinePercent: number = 50    // 波浪基准位置百分比（默认50%，即中间位置）
   @Prop gradientLeft: string = 'rgba(52, 152, 219, 0.7)'
   @Prop gradientMid: string = 'rgba(41, 128, 185, 0.8)'
   @Prop gradientRight: string = 'rgba(52, 152, 219, 0.7)'
@@ -16,7 +16,9 @@ export struct WaveCard {
   private phaseManager: WavePhaseManager = WavePhaseManager.getInstance()
   // 使用箭头函数绑定，确保 callback 引用唯一且稳定
   private phaseUpdateCallback: () => void = () => {
-    if (this.isVisible && this.canvasWidth > 0 && this.canvasHeight > 0) {
+    // 移除 isVisible 检查，解决部分场景下可见性检测异常导致动画停止的问题
+    // 只要有尺寸就进行绘制，系统会自动处理屏幕外 Canvas 的渲染优化
+    if (this.canvasWidth > 0 && this.canvasHeight > 0) {
       this.drawWave()
     }
   }
@@ -37,6 +39,12 @@ export struct WaveCard {
       this.phaseManager.addListener(this.phaseUpdateCallback)
       this.isListenerRegistered = true
     }
+    if (this.canvasWidth > 0 && this.canvasHeight > 0) {
+      this.drawWave()
+    }
+  }
+
+  onWavePropsChanged() {
     if (this.canvasWidth > 0 && this.canvasHeight > 0) {
       this.drawWave()
     }
@@ -87,13 +95,6 @@ export struct WaveCard {
         const nowVisible = ratio > 0
         if (this.isVisible !== nowVisible) {
           this.isVisible = nowVisible
-          if (this.isVisible && !this.isListenerRegistered) {
-            this.phaseManager.addListener(this.phaseUpdateCallback)
-            this.isListenerRegistered = true
-          } else if (!this.isVisible && this.isListenerRegistered) {
-            this.phaseManager.removeListener(this.phaseUpdateCallback)
-            this.isListenerRegistered = false
-          }
         }
       })
   }

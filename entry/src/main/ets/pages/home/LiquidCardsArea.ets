@@ -1,5 +1,6 @@
 import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
-import { ThreeLayerCard, ThreeLayerCardData } from '../../components/cards/ThreeLayerCard'
+import { ThreeLayerCard } from '../../components/cards/ThreeLayerCard'
+import { FirstLayerData, SecondLayerData, ThirdLayerData, ThreeLayerCardData } from '../../components/ThreeLayerCard/types'
 import { StorageKeys } from '../../utils/constants/StorageKeys'
 import { GRID_DRAG_ACTIVE_KEY } from '../../components/layout/DraggableGridTable'
 import { getCurrentCellDragData, CellDragData, CELL_DRAG_ACTIVE_KEY } from '../../components/ui/tables/SimpleDraggableCell'
@@ -220,7 +221,45 @@ export struct LiquidCardsArea {
     // 重新获取卡片数据以触发 UI 更新
     // 注意：GlobalCardDataManager 保证了如果数据变化，返回的数组中对应的对象引用也会变化
     // 这将触发 ThreeLayerCard 的 @Prop cardData 更新
-    this.cardDataList = this.globalDataManager.getCardDataList()
+    const latest = this.globalDataManager.getCardDataList()
+    this.cardDataList = latest.map((item: ThreeLayerCardData): ThreeLayerCardData => {
+      return this.cloneCardData(item)
+    })
+  }
+
+  private cloneCardData(item: ThreeLayerCardData): ThreeLayerCardData {
+    const firstLayer: FirstLayerData = {
+      iconText: item.firstLayer.iconText,
+      iconRes: item.firstLayer.iconRes,
+      title: item.firstLayer.title,
+      status: item.firstLayer.status
+    }
+    const secondLayer: SecondLayerData = {
+      serialNumber: item.secondLayer.serialNumber,
+      percent: item.secondLayer.percent,
+      value: item.secondLayer.value,
+      unit: item.secondLayer.unit
+    }
+    const chartConfig: Record<string, string | number> = {}
+    if (item.thirdLayer.chartConfig) {
+      const keys = Object.keys(item.thirdLayer.chartConfig)
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i]
+        chartConfig[key] = item.thirdLayer.chartConfig[key]
+      }
+    }
+    const thirdLayer: ThirdLayerData = {
+      chartType: item.thirdLayer.chartType,
+      chartData: item.thirdLayer.chartData ? item.thirdLayer.chartData.slice() : undefined,
+      chartDataStrings: item.thirdLayer.chartDataStrings ? item.thirdLayer.chartDataStrings.slice() : undefined,
+      chartConfig: chartConfig
+    }
+    return {
+      id: item.id,
+      firstLayer: firstLayer,
+      secondLayer: secondLayer,
+      thirdLayer: thirdLayer
+    }
   }
 
   // 防重复处理标志，避免aboutToUpdate循环触发

@@ -5,10 +5,16 @@ import { TextDecoder } from '@ohos.util'
 @Component
 export struct GradeStatisticsTable {
   @Link globalData: GlobalRealtimeData
-  @State gradeInfo: StGradeInfo = new StGradeInfo()
+  @State @Watch('onGradeInfoChange') gradeInfo: StGradeInfo = new StGradeInfo()
   private dataInterface: GlobalDataInterface = GlobalDataInterface.getInstance()
   private textDecoder: TextDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
+  
+  onGradeInfoChange() {
+    console.info('GradeStatisticsTable: gradeInfo updated via listener')
+  }
+
   private gradeInfoListener: (info: StGradeInfo) => void = (info: StGradeInfo) => {
+    // Force assignment to trigger update
     this.gradeInfo = info
   }
 
@@ -62,7 +68,7 @@ export struct GradeStatisticsTable {
               .backgroundColor(index % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
               .border({ width: { bottom: 1 }, color: '#EEEEEE' })
             }
-          })
+          }, (row: GradeRowData, index: number) => `${row.gradeName}_${index}_${row.count}_${row.weight}`)
           
           // Total Row
           ListItem() {

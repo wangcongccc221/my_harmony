@@ -49,13 +49,13 @@ export struct SecondLayer {
 
       Blank().layoutWeight(1)
 
-      if (this.enableWave) {
-        // 优先使用实时数据，如果没有则使用 props 传递的数据
-        Text(`${(this.realtimePercent || this.waveHeightPercent).toFixed(2)}%`)
-          .fontSize(14) // 从12px增大到14px，提升可读性
-          .fontWeight(FontWeight.Bold)
+      Column() {
+        Text(`${(Number.isFinite(this.realtimePercent) ? this.realtimePercent : this.waveHeightPercent).toFixed(2)}%`)
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
           .fontColor(this.cardColors.wavePercentText)
       }
+      .alignItems(HorizontalAlign.End)
     }
     .width('100%')
     .height('20%')

@@ -27,8 +27,6 @@ export struct ThirdLayer {
   @Prop waveHeightPercent: number
   @Prop waveBaselinePercent: number
   @Prop cardNumber: number
-
-  // 实时数据状态
   @State realtimePercent: number = 0
 
   // 监听全局更新信号，强制刷新
@@ -39,6 +37,15 @@ export struct ThirdLayer {
     if (AppStorage.has(key)) {
       this.realtimePercent = AppStorage.get(key) as number
     }
+    this.forceWaveRedraw()
+  }
+
+  aboutToAppear() {
+    const key = `EXIT_PERCENT_${this.cardNumber}`
+    if (AppStorage.has(key)) {
+      this.realtimePercent = AppStorage.get(key) as number
+    }
+    this.forceWaveRedraw()
   }
 
   // 父组件同步拖拽缓存（值与索引），用于 onDragEnd 删除命中
@@ -65,7 +72,7 @@ export struct ThirdLayer {
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       // 1. 底层：波浪（如果启用）
-      if (this.enableWave) {
+      if (this.enableWave || (Number.isFinite(this.realtimePercent) && this.realtimePercent > 0)) {
         this.buildWaveCard()
       }
 
@@ -165,19 +172,6 @@ export struct ThirdLayer {
     .edgeEffect(EdgeEffect.Spring)
     .align(Alignment.TopStart) // Scroll组件也从顶部开始
     .key(`${this.scrollKey}`) // 使用key强制重新创建Scroll组件
-  }
-
-  // 组件生命周期：当数据变化时滚动到顶部
-  aboutToAppear() {
-    this.lastDataLength = this.localChartData.length
-    
-    // 初始化实时数据
-    const key = `EXIT_PERCENT_${this.cardNumber}`
-    if (AppStorage.has(key)) {
-      this.realtimePercent = AppStorage.get(key) as number
-    } else {
-      this.realtimePercent = this.waveHeightPercent
-    }
   }
 
   aboutToRender() {
@@ -306,7 +300,7 @@ export struct ThirdLayer {
       frequency: this.getWaveFrequency(),
       speed: 0.02,
       // 优先使用实时数据
-      waveHeightPercent: this.realtimePercent || this.waveHeightPercent,
+      waveHeightPercent: this.getWavePercentForDisplay(),
       baselinePercent: this.waveBaselinePercent,
       cardBackground: Color.Transparent,
       gradientLeft: this.cardColors.waveGradientLeft,
@@ -315,6 +309,14 @@ export struct ThirdLayer {
     })
       .width('100%')
       .height('100%')
+  }
+
+  private getWavePercentForDisplay(): number {
+    return Number.isFinite(this.realtimePercent) ? this.realtimePercent : this.waveHeightPercent
+  }
+  
+  private forceWaveRedraw(): void {
+    this.scrollKey++ // 通过key改变触发子树重建，确保WaveCard的@Watch生效并重绘
   }
   
   // 获取卡片索引

@@ -6,7 +6,7 @@
 
 import { ProtocolParser, ParsedMessage, getProtocolParser } from './ProtocolParser'
 import { GlobalDataInterface, getGlobalDataInterface } from './GlobalDataInterface'
-import { FSM_HC_COMMAND_TYPE, getCommandName } from './CommandTypes'
+import { FSM_HC_COMMAND_TYPE, HC_FSM_COMMAND_TYPE, getCommandName } from './CommandTypes'
 import { MESSAGE_HEADER_SIZE, StStatistics, StWeightInfo, StGradeInfo, StFruitGradeInfo, StFsmStatus, StSysConfig, createDefaultStatistics, createDefaultWeightInfo } from './Structures'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 import { ConstPreDefine } from './ConstPreDefine'
@@ -77,6 +77,10 @@ export class StatisticsHandler {
    */
   handleSplitMessage(cmdId: number, srcId: number, data: Uint8Array): boolean {
     try {
+      if (cmdId === HC_FSM_COMMAND_TYPE.HC_CMD_GRADE_INFO) {
+        hilog.info(0x0001, TAG, `[Split] 收到等级配置: cmd=0x${cmdId.toString(16)} src=0x${srcId.toString(16)} dataLen=${data.byteLength}`)
+      }
+
       // 构造一个临时的 ParsedMessage
       const parsed: ParsedMessage = {
         header: {
@@ -142,6 +146,9 @@ export class StatisticsHandler {
 
       case FSM_HC_COMMAND_TYPE.FSM_CMD_GETVERSION:
         return this.handleVersion(parsed)
+
+      case HC_FSM_COMMAND_TYPE.HC_CMD_GRADE_INFO:
+        return this.handleGradeConfig(parsed)
 
       default:
         hilog.info(0x0001, TAG, `收到未处理的命令: ${parsed.cmdName}`)
@@ -229,6 +236,17 @@ export class StatisticsHandler {
     if (sys instanceof StSysConfig) {
       this.dataInterface.updateSysConfig(sys)
     }
+    return true
+  }
+
+  private handleGradeConfig(parsed: ParsedMessage): boolean {
+    const info = parsed.data as StGradeInfo
+    if (!info) {
+      hilog.warn(0x0001, TAG, '等级配置信息解析失败')
+      return false
+    }
+    this.dataInterface.updateGradeInfo(info)
+    hilog.info(0x0001, TAG, `[等级配置] sizeNum=${info.nSizeGradeNum} qualityNum=${info.nQualityGradeNum}`)
     return true
   }
 

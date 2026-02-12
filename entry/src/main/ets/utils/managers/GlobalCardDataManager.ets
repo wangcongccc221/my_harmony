@@ -286,9 +286,11 @@ export class GlobalCardDataManager {
     const EXIT_COUNT_PREFIX = 'EXIT_COUNT_'
     const EXIT_WEIGHT_PREFIX = 'EXIT_WEIGHT_'
     const EXIT_PERCENT_PREFIX = 'EXIT_PERCENT_'
-    
-    let hasUpdate = false
-    
+
+    if (this.cardDataList.length === 0) {
+      this.initializeCardData()
+    }
+
     // 遍历当前卡片数据
     // 注意：这里假设卡片索引 i 对应出口 i+1
     for (let i = 0; i < this.cardDataList.length; i++) {
@@ -315,8 +317,7 @@ export class GlobalCardDataManager {
         const newSecondLayer: SecondLayerData = {
           serialNumber: card.secondLayer.serialNumber,
           percent: percentRounded,
-          value: weightInKg,
-          unit: 'kg'
+          value: weightInKg
         }
         
         const newCard: ThreeLayerCardData = {
@@ -333,16 +334,13 @@ export class GlobalCardDataManager {
         if (this.fsmCardData[this.currentFSM] && this.fsmCardData[this.currentFSM][i]) {
           this.fsmCardData[this.currentFSM][i] = newCard
         }
-        
-        hasUpdate = true
       }
     }
-    
-    if (hasUpdate) {
-      // 发送更新信号通知 UI
-      // LiquidCardsArea 监听了 'GLOBAL_CARD_DATA_UPDATE_SIGNAL'
-      AppStorage.set('GLOBAL_CARD_DATA_UPDATE_SIGNAL', Date.now())
-      // console.log('GlobalCardDataManager: 已从 AppStorage 同步出口数据并触发 UI 更新')
+
+    if (this.cardDataList.length > 0) {
+      const prev = AppStorage.get('GLOBAL_CARD_DATA_UPDATE_SIGNAL') as number
+      const next = (typeof prev === 'number' && Number.isFinite(prev)) ? (prev + 1) : 1
+      AppStorage.set('GLOBAL_CARD_DATA_UPDATE_SIGNAL', next)
     }
   }
 }
