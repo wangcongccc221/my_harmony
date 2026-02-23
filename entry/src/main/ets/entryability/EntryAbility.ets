@@ -1,18 +1,13 @@
 import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
-import common from '@ohos.app.ability.common';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
-// import { NetworkOptimizer } from '../utils/network/NetworkOptimizer';
-// import { startHttpServer, stopHttpServer, isHttpServerRunning, runHttpServerWorker } from '../utils/network/http/HttpServer';
 import { taskpool, util } from '@kit.ArkTS';
-// import { HttpServerHandler } from '../utils/network/http/HttpServerHandler';
 import { copyRawDirectoryAuto } from '../utils/FileUtils';
 import { AppCleanup } from '../utils/lifecycle/AppCleanup';
 import { ProcessingCurveFeed } from '../utils/data/ProcessingCurveFeed';
 import { ProcessingBarFeed } from '../utils/data/ProcessingBarFeed';
 import { MultiSeriesBarFeed } from '../utils/data/MultiSeriesBarFeed';
 import { WavePhaseManager } from '../utils/ui/WavePhaseManager';
-import { relationalStore } from '@kit.ArkData';
 
 import { DbManager } from '../db/DbManager';
 import { I18nManager } from '../utils/i18n/I18nManager';
@@ -26,7 +21,6 @@ import { getGlobalDataInterface } from '../protocol/GlobalDataInterface'
 import { ConstPreDefine } from '../protocol/ConstPreDefine';
 import { getConfigSender, ITcpSender } from '../protocol/ConfigSender';
 import { tcpSendOnce } from '../protocol/ArkTcpClient'
-// import { taskPoolExecuteInsert, taskPoolExecuteQuery, taskPoolExecuteUpdate, taskPoolExecuteDelete } from '../database/examples/taskpool'; // 文件已删除
 
 const DOMAIN = 0x0000;
 const HTTP_SERVER_PORT: number = 8080;
@@ -49,7 +43,6 @@ class TcpSenderImpl implements ITcpSender {
 }
 
 export default class EntryAbility extends UIAbility {
-  // private networkOptimizer: NetworkOptimizer = NetworkOptimizer.getInstance();
   private httpServerInitialized: boolean = false; 
   private dbInitPromise: Promise<void> | null = null
 

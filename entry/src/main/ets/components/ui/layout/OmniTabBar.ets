@@ -65,6 +65,7 @@ export struct OmniTabBar {
   
   // 是否显示分隔线
   @Prop showSeparator: boolean = false
+  @Prop useChrome: boolean = true
   
   // 点击回调
   onTabClick?: (tabKey: string) => void
@@ -122,29 +123,49 @@ export struct OmniTabBar {
   // 构建水平TabBar
   @Builder
   private buildHorizontalTabBar() {
-    Row() {
-      ForEach(this.tabs, (tab: TabConfig, index: number) => {
-        this.buildTab(tab)
-        
-        // 在按钮之间添加分隔线（如果需要）
-        if (this.showSeparator && index < this.tabs.length - 1) {
-          Column()
-            .width(1)
-            .height(30)
-            .backgroundColor(this.resolveTheme().borderColor)
-            .margin({ left: 8, right: 8 })
-        }
-      })
+    if (this.useChrome) {
+      Row() {
+        ForEach(this.tabs, (tab: TabConfig, index: number) => {
+          this.buildTab(tab)
+          if (this.showSeparator && index < this.tabs.length - 1) {
+            Column()
+              .width(1)
+              .height(30)
+              .backgroundColor(this.resolveTheme().borderColor)
+              .margin({ left: 8, right: 8 })
+          }
+        })
+      }
+      .width('100%')
+      .height(50)
+      .backgroundColor(this.resolveTheme().surfaceColor)
+      .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM)
+      .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.08)'))
+      .margin({ left: 16, right: 16, top: 16, bottom: 8 })
+      .padding({ left: 20 })
+      .justifyContent(FlexAlign.Start)
+      .alignItems(VerticalAlign.Center)
+    } else {
+      Row() {
+        ForEach(this.tabs, (tab: TabConfig, index: number) => {
+          this.buildTab(tab)
+          if (this.showSeparator && index < this.tabs.length - 1) {
+            Column()
+              .width(1)
+              .height(30)
+              .backgroundColor(this.resolveTheme().borderColor)
+              .margin({ left: 8, right: 8 })
+          }
+        })
+      }
+      .width('100%')
+      .height(50)
+      .backgroundColor(Color.Transparent)
+      .margin({ left: 0, right: 0, top: 0, bottom: 0 })
+      .padding({ left: 0, right: 0 })
+      .justifyContent(FlexAlign.Start)
+      .alignItems(VerticalAlign.Center)
     }
-    .width('100%')
-    .height(50)
-    .backgroundColor(this.resolveTheme().surfaceColor)
-    .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM) // Apple风格：中等圆角
-    .shadow(AppleDesignStyle.getShadowSmall('rgba(0, 0, 0, 0.08)')) // Apple风格：柔和阴影
-    .margin({ left: 16, right: 16, top: 16, bottom: 8 })
-    .padding({ left: 20 })
-    .justifyContent(FlexAlign.Start)
-    .alignItems(VerticalAlign.Center)
   }
 
   // 构建垂直TabBar

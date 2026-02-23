@@ -31,6 +31,9 @@ export struct LeftNavigationTabBar {
   @Prop showFloatingWindow: boolean = false
   @Prop floatingWindowTitle: string = ''
   onFloatingWindowClose?: () => void
+  @Prop layoutDirection: TabBarDirection = TabBarDirection.VERTICAL
+  @Prop useChrome: boolean = true
+  @Prop customTabs: TabConfig[] = []
 
   // 获取当前主题配置
   private resolveTheme(): ExtendedOmniThemeStyle {
@@ -45,12 +48,7 @@ export struct LeftNavigationTabBar {
       { key: 'home', label: t('主页', '主页') },
       { key: 'quality', label: t('品质', '品质') },
       { key: 'level', label: t('等级', '等级') },
-      { key: 'fruit', label: t('水果信息', '水果信息') },
-      { key: 'load', label: t('载入程序', '载入程序') },
-      { key: 'save', label: t('保存程序', '保存程序') },
       { key: 'history', label: t('历史加工', '历史加工') },
-      { key: 'realtime', label: t('实时统计', '实时统计') },
-      { key: 'end', label: t('结束加工', '结束加工') },
       { 
         key: 'print', 
         label: t('打印', '打印'),
@@ -75,6 +73,11 @@ export struct LeftNavigationTabBar {
           }
         ]
       },
+      { key: 'fruit', label: t('水果信息', '水果信息') },
+      { key: 'load', label: t('载入程序', '载入程序') },
+      { key: 'save', label: t('保存程序', '保存程序') },
+      { key: 'realtime', label: t('实时统计', '实时统计') },
+      { key: 'end', label: t('结束加工', '结束加工') },
       { key: 'more', label: t('更多', '更多') }
     ]
   }
@@ -97,10 +100,11 @@ export struct LeftNavigationTabBar {
     Column() {
       // TabBar导航（引用 i18nVersion 确保语言变化时重新构建）
       OmniTabBar({
-        tabs: this.getNavigationTabs(),
+        tabs: this.customTabs.length > 0 ? this.customTabs : this.getNavigationTabs(),
         selectedTab: this.currentPage,
-        layoutDirection: TabBarDirection.VERTICAL,
+        layoutDirection: this.layoutDirection,
         showSeparator: false,
+        useChrome: this.useChrome,
         onTabClick: (tabKey: string) => {
           this.handlePageChange(tabKey)
         }
@@ -110,6 +114,6 @@ export struct LeftNavigationTabBar {
     .width('100%')
     .height('100%')
     .padding(0) // 移除内边距，确保内容填满
-    .backgroundColor(this.resolveTheme().navBg ?? this.resolveTheme().backgroundColor)
+    .backgroundColor(this.layoutDirection === TabBarDirection.HORIZONTAL ? 'transparent' : (this.resolveTheme().navBg ?? this.resolveTheme().backgroundColor))
   }
 }

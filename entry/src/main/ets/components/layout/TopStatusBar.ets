@@ -34,6 +34,7 @@ export struct TopStatusBar {
   // FSM状态
   @Prop selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
   onFSMChange?: (fsm: 'FSM1' | 'FSM2') => void
+  @Prop layoutMode: 'top' | 'side' = 'top'
   
   // 实时时间状态（两行显示）
   @State private currentDate: string = ''
@@ -110,7 +111,42 @@ export struct TopStatusBar {
   }
 
   build() {
-    Row() {
+    if (this.layoutMode === 'side') {
+      Stack() {
+        Column({ space: 16 }) {
+          Column({ space: 8 }) {
+            MetricItem({ label: 'Production', value: this.productionTonPerHour, unit: 'Ton/h' })
+            MetricItem({ label: 'SumWeight', value: this.sumWeightTon, unit: 'Ton' })
+            MetricItem({ label: 'SumCounts', value: this.sumCounts, unit: 'PCS' })
+            MetricItem({ label: 'Avg', value: this.avgGram, unit: 'g' })
+          }
+          this.buildStatusAlert()
+          this.buildCustomerInfo()
+          CompactFsmToggle({
+            selectedFSM: this.selectedFSM,
+            onFSMChange: (fsm: 'FSM1' | 'FSM2') => {
+              if (this.onFSMChange) {
+                this.onFSMChange(fsm)
+              }
+            }
+          })
+          ProfileInfoBar({
+            userName: this.userLabel,
+            userRole: '管理员',
+            currentDate: this.currentDate,
+            currentTime: this.currentTime,
+            avatarUrl: this.selectedAvatarUrl,
+            isLoading: false
+          })
+        }
+        .alignItems(HorizontalAlign.Start)
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor(this.getCurrentTheme().headerColor ?? this.getCurrentTheme().backgroundColor)
+      .padding({ left: 16, right: 16, top: 16, bottom: 16 })
+    } else {
+      Row() {
       // ===============================================
       // 左侧区域：Logo + 生产指标 (紧凑布局)
       // ===============================================
@@ -219,13 +255,14 @@ export struct TopStatusBar {
       .height('100%')
       .alignItems(VerticalAlign.Center)
 
+      }
+      .width('100%')
+      .height('8%') // 保持原有高度设置
+      .backgroundColor(this.getCurrentTheme().headerColor ?? this.getCurrentTheme().backgroundColor)
+      .padding({ left: 16, right: 16 }) // 减少 padding，让出更多空间
+      .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+      .shadow({ radius: 6, color: 'rgba(0,0,0,0.05)', offsetY: 2 }) // 更柔和的阴影
     }
-    .width('100%')
-    .height('8%') // 保持原有高度设置
-    .backgroundColor(this.getCurrentTheme().headerColor ?? this.getCurrentTheme().backgroundColor)
-    .padding({ left: 16, right: 16 }) // 减少 padding，让出更多空间
-    .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
-    .shadow({ radius: 6, color: 'rgba(0,0,0,0.05)', offsetY: 2 }) // 更柔和的阴影
   }
 
   // Helper: 状态/告警条
@@ -286,6 +323,63 @@ export struct TopStatusBar {
       .alignItems(HorizontalAlign.Start)
     }
     .padding({ left: 12, right: 12, top: 4, bottom: 4 })
+  }
+}
+
+@Component
+export struct WindowControlButtons {
+  private async minimizeApp() {
+    try {
+      const ctx = getContext(this) as common.UIAbilityContext
+      const ok = await MinimizeAppUtil.getInstance(ctx, {
+        maxRetries: 3,
+        retryDelay: 800,
+        enableLogging: true,
+        onError: (_) => {}
+      }).minimize()
+      if (!ok) {
+        interface MoveMinimize { moveMissionToBackground?: () => Promise<void> }
+        const maybe = ctx as MoveMinimize
+        if (typeof maybe.moveMissionToBackground === 'function') {
+          await maybe.moveMissionToBackground()
+        } else {
+          console.warn('[WindowControlButtons] 不支持最小化且无退后台接口，已跳过')
+        }
+      }
+    } catch (e) {
+      console.error('[WindowControlButtons] 最小化失败:', JSON.stringify(e))
+    }
+  }
+
+  private async closeApp() {
+    try {
+      const ctx = getContext(this) as common.UIAbilityContext
+      await ctx.terminateSelf()
+    } catch (e) {
+      console.error('[WindowControlButtons] 关闭应用失败:', JSON.stringify(e))
+    }
+  }
+
+  build() {
+    Row({ space: 8 }) {
+      ThreeDButton({
+        text: '−',
+        isSelected: false,
+        buttonWidth: 36,
+        buttonHeight: 36,
+        fontSize: 20,
+        onClickCallback: () => { this.minimizeApp() }
+      })
+
+      ThreeDButton({
+        text: '×',
+        isSelected: false,
+        buttonWidth: 36,
+        buttonHeight: 36,
+        fontSize: 20,
+        onClickCallback: () => { this.closeApp() }
+      })
+    }
   }
 }
 

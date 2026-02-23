@@ -49,11 +49,11 @@ import { window } from '@kit.ArkUI'
 import { fileIo as fs } from '@kit.CoreFileKit'
 import { buffer } from '@kit.ArkTS'
 import { RectButton } from '../components/ui/buttons/RectButton'
-import { TopStatusBar } from '../components/layout/TopStatusBar'
+import { TopStatusBar, WindowControlButtons } from '../components/layout/TopStatusBar'
 import { BottomControlBar } from '../components/layout/BottomControlBar'
+import { TabBarDirection, TabConfig } from '../components/ui/layout/OmniTabBar'
 import { KeyCode } from '@kit.InputKit';
 import { UserInfoStorage } from '../utils/storage/UserInfoStorage'
-// import { getContext } from '@kit.ArkUI' // 移除错误的导入
 import common from '@ohos.app.ability.common'
 import { PrintManager } from '../utils/print/PrintManager'
 import { getConfigSender } from '../protocol/ConfigSender'
@@ -116,6 +116,7 @@ type TranslationRecord = Record<string, string>
 @Component
 struct Page {
   @State currentPage: string = 'home'
+  @State pageTabIndex: number = 0
   @StorageLink('HOME_SELECTED_FSM') selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
   @State showThemeSelector: boolean = false  // 控制主题选择器显示
   @State sideBarStatus: boolean = true  // 控制侧边栏展开/收缩状态
@@ -322,6 +323,56 @@ struct Page {
     }
   }
 
+  private getPageTabIndex(pageKey: string): number {
+    if (pageKey === 'home') return 0
+    if (pageKey === 'quality') return 1
+    if (pageKey === 'level') return 2
+    if (pageKey === 'history') return 3
+    return 0
+  }
+
+  private getPageKeyByTabIndex(index: number): string {
+    if (index === 1) return 'quality'
+    if (index === 2) return 'level'
+    if (index === 3) return 'history'
+    return 'home'
+  }
+
+  private getActionTabs(): TabConfig[] {
+    return [
+      { key: 'home', label: t('主页', '主页') },
+      { key: 'quality', label: t('品质', '品质') },
+      { key: 'level', label: t('等级', '等级') },
+      { key: 'history', label: t('历史加工', '历史加工') },
+      { 
+        key: 'print', 
+        label: t('打印', '打印'),
+        subItems: [
+          {
+            key: 'print_report',
+            label: t('打印报告', '打印报告'),
+            onClick: () => {
+              this.handlePrintSubButtonClick('打印报告')
+            }
+          },
+          {
+            key: 'print_label',
+            label: t('打印标签', '打印标签'),
+            onClick: () => {
+              this.handlePrintSubButtonClick('打印标签')
+            }
+          }
+        ]
+      },
+      { key: 'fruit', label: t('水果信息', '水果信息') },
+      { key: 'load', label: t('载入程序', '载入程序') },
+      { key: 'save', label: t('保存程序', '保存程序') },
+      { key: 'realtime', label: t('实时统计', '实时统计') },
+      { key: 'end', label: t('结束加工', '结束加工') },
+      { key: 'more', label: t('更多', '更多') }
+    ]
+  }
+
   private canEndProcessing(): boolean {
     const dbSync = getDatabaseSync()
     const gdi = getGlobalDataInterface()
@@ -349,6 +400,11 @@ struct Page {
 
   // 页面切换处理方法
   private handlePageChange(pageName: string): void {
+    if (pageName === 'home' || pageName === 'quality' || pageName === 'level' || pageName === 'history') {
+      this.currentPage = pageName
+      this.pageTabIndex = this.getPageTabIndex(pageName)
+      return
+    }
     const handlers = this.getPageHandlers()
     const handler = handlers[pageName] || handlers['default']
     
@@ -2124,45 +2180,90 @@ struct Page {
       Column() {
       
       Row() {
-        // 左侧竖向导航（自定义展开/收缩）
-        Stack() {
-          // 导航按钮内容
-          if (this.sideBarStatus) {
-            LeftNavigationTabBar({
-              currentPage: this.currentPage,
-              showPrintSubButtons: this.showPrintSubButtons,
-              onPageChange: (pageKey: string) => {
-                this.handlePageChange(pageKey)
-                // 只有非水果信息页面才显示切换消息
-                if (pageKey !== 'fruit' && pageKey !== 'realtime' && pageKey !== 'end' && pageKey !== 'print') {
-                  this.omniUIUtils.showInfo(`已切换到${this.getPageTitle(pageKey)}页面`)
-                }
-              },
-              onPrintSubButtonClick: (subButtonName: string) => {
-                this.handlePrintSubButtonClick(subButtonName)
-              }
-            })
-          }
+        Column() {
+          TopStatusBar({
+            currentPage: this.currentPage,
+            selectedFSM: this.selectedFSM,
+            layoutMode: 'side',
+            onFSMChange: (fsm: 'FSM1' | 'FSM2') => {
+              console.log(`🔄 FSM切换开始: ${this.selectedFSM} -> ${fsm}`)
 
-          // 箭头按钮 - 贴在右边边缘，垂直居中，更突出
-          ArrowToggleButton({
-            isExpanded: this.sideBarStatus,
-            onToggle: () => {
-              this.sideBarStatus = !this.sideBarStatus
+              const currentTheme = this.omniThemeManager.getCurrentThemeType()
+              if (this.selectedFSM === 'FSM1') {
+                this.fsm1Theme = currentTheme
+                console.log(`💾 保存当前FSM1的主题设置:`, currentTheme, `状态变量: fsm1Theme`)
+              } else {
+                this.fsm2Theme = currentTheme
+                console.log(`💾 保存当前FSM2的主题设置:`, currentTheme, `状态变量: fsm2Theme`)
+              }
+              
+              const currentThemeValue = this.selectedFSM === 'FSM1' ? this.fsm1Theme : this.fsm2Theme
+              console.log(`✅ 验证保存结果:`, currentThemeValue, `状态变量: ${this.selectedFSM === 'FSM1' ? 'fsm1Theme' : 'fsm2Theme'}`)
+              
+              AppStorage.set('HOME_SELECTED_FSM', fsm)
+              console.log(`🔄 已更新FSM状态为: ${fsm}`)
+
+              const targetTheme = fsm === 'FSM1' ? this.fsm1Theme : this.fsm2Theme
+              console.log(`🔍 查找目标${fsm}的主题设置:`, targetTheme, `状态变量: ${fsm === 'FSM1' ? 'fsm1Theme' : 'fsm2Theme'}`)
+              
+              console.log(`🔍 检查组件状态中的FSM主题:`)
+              console.log(`  fsm1Theme:`, this.fsm1Theme, `(类型: ${typeof this.fsm1Theme})`)
+              console.log(`  fsm2Theme:`, this.fsm2Theme, `(类型: ${typeof this.fsm2Theme})`)
+              
+              if (targetTheme) {
+                this.omniThemeManager.setTheme(targetTheme)
+                console.log(`✅ 恢复${fsm}的主题设置:`, targetTheme)
+              } else {
+                if (fsm === 'FSM2') {
+                  this.omniThemeManager.setTheme(OmniThemeType.WARM_AMBER)
+                  console.log(`🎨 使用${fsm}的默认主题: WARM_AMBER`)
+                } else {
+                  this.omniThemeManager.setTheme(OmniThemeType.PROFESSIONAL_BLUE)
+                  console.log(`🎨 使用${fsm}的默认主题: PROFESSIONAL_BLUE`)
+                }
+              }
+
+              console.log(`✅ FSM切换完成: ${fsm}`)
             }
           })
-          .position({ x: this.sideBarStatus ? 150 : 5, y: '50%' })
-          .translate({ y: -20 })
-          .zIndex(10) // 确保在最上层
         }
-        .width(this.sideBarStatus ? 180 : 50)
+        .width(160)
         .height('100%')
-        // .padding({ left: 8, right: 8, top: 8, bottom: 8 })
-        .backgroundColor(this.sideBarStatus ? this.getNavBgForCurrentPage() : this.getCurrentTheme().backgroundColor)
+        .backgroundColor(this.getCurrentTheme().headerColor ?? this.getCurrentTheme().backgroundColor)
 
         // 右侧内容
         Stack() {
-          this.renderPageContent()
+          Tabs({
+            index: this.pageTabIndex,
+            barPosition: BarPosition.Start
+          }) {
+            TabContent() {
+              this.buildHomePage()
+            }
+            .tabBar(t('主页', '主页'))
+
+            TabContent() {
+              this.buildQualityPage()
+            }
+            .tabBar(t('品质', '品质'))
+
+            TabContent() {
+              this.buildLevelPage()
+            }
+            .tabBar(t('等级', '等级'))
+
+            TabContent() {
+              this.buildHistoryPage()
+            }
+            .tabBar(t('历史加工', '历史加工'))
+          }
+          .onChange((index: number) => {
+            this.pageTabIndex = index
+            this.currentPage = this.getPageKeyByTabIndex(index)
+          })
+          .barHeight(0)
+          .width('100%')
+          .height('100%')
 
           EndProcessingConfirmDialog({
             isVisible: this.showEndProcessingConfirmDialog,
@@ -2518,60 +2619,46 @@ struct Page {
 
   build() {
     Column() {
-      // 顶部状态栏（全局可见）
-      TopStatusBar({ 
-        currentPage: this.currentPage,
-        selectedFSM: this.selectedFSM,
-        onFSMChange: (fsm: 'FSM1' | 'FSM2') => {
-          console.log(`🔄 FSM切换开始: ${this.selectedFSM} -> ${fsm}`)
-
-          // 先保存当前主题到当前FSM状态（在切换之前）
-          const currentTheme = this.omniThemeManager.getCurrentThemeType()
-          
-          // 使用组件内部状态保存主题
-          if (this.selectedFSM === 'FSM1') {
-            this.fsm1Theme = currentTheme
-            console.log(`💾 保存当前FSM1的主题设置:`, currentTheme, `状态变量: fsm1Theme`)
-          } else {
-            this.fsm2Theme = currentTheme
-            console.log(`💾 保存当前FSM2的主题设置:`, currentTheme, `状态变量: fsm2Theme`)
-          }
-          
-          // 立即验证保存是否成功
-          const currentThemeValue = this.selectedFSM === 'FSM1' ? this.fsm1Theme : this.fsm2Theme
-          console.log(`✅ 验证保存结果:`, currentThemeValue, `状态变量: ${this.selectedFSM === 'FSM1' ? 'fsm1Theme' : 'fsm2Theme'}`)
-          
-          // 更新全局FSM状态
-          AppStorage.set('HOME_SELECTED_FSM', fsm)
-          console.log(`🔄 已更新FSM状态为: ${fsm}`)
-
-          // 恢复目标FSM状态的主题设置
-          const targetTheme = fsm === 'FSM1' ? this.fsm1Theme : this.fsm2Theme
-          console.log(`🔍 查找目标${fsm}的主题设置:`, targetTheme, `状态变量: ${fsm === 'FSM1' ? 'fsm1Theme' : 'fsm2Theme'}`)
-          
-          // 检查组件状态中所有的FSM主题
-          console.log(`🔍 检查组件状态中的FSM主题:`)
-          console.log(`  fsm1Theme:`, this.fsm1Theme, `(类型: ${typeof this.fsm1Theme})`)
-          console.log(`  fsm2Theme:`, this.fsm2Theme, `(类型: ${typeof this.fsm2Theme})`)
-          
-          if (targetTheme) {
-            // 如果目标FSM有保存的主题设置，则恢复
-            this.omniThemeManager.setTheme(targetTheme)
-            console.log(`✅ 恢复${fsm}的主题设置:`, targetTheme)
-          } else {
-            // 如果目标FSM没有保存的主题设置，则使用默认主题
-            if (fsm === 'FSM2') {
-              this.omniThemeManager.setTheme(OmniThemeType.WARM_AMBER)
-              console.log(`🎨 使用${fsm}的默认主题: WARM_AMBER`)
-            } else {
-              this.omniThemeManager.setTheme(OmniThemeType.PROFESSIONAL_BLUE)
-              console.log(`🎨 使用${fsm}的默认主题: PROFESSIONAL_BLUE`)
-            }
-          }
-
-          console.log(`✅ FSM切换完成: ${fsm}`)
+      Row() {
+        Row() {
+          Image($r('app.media.logo'))
+            .height('60%')
+            .objectFit(ImageFit.Contain)
+            .margin({ right: 16 })
         }
-      })
+        .width(160)
+        .height('100%')
+        .alignItems(VerticalAlign.Center)
+
+        LeftNavigationTabBar({
+          currentPage: this.currentPage,
+          showPrintSubButtons: this.showPrintSubButtons,
+          layoutDirection: TabBarDirection.HORIZONTAL,
+          useChrome: false,
+          customTabs: this.getActionTabs(),
+          onPageChange: (pageKey: string) => {
+            this.handlePageChange(pageKey)
+            if (pageKey !== 'fruit' && pageKey !== 'realtime' && pageKey !== 'end' && pageKey !== 'print') {
+              this.omniUIUtils.showInfo(`已切换到${this.getPageTitle(pageKey)}页面`)
+            }
+          },
+          onPrintSubButtonClick: (subButtonName: string) => {
+            this.handlePrintSubButtonClick(subButtonName)
+          }
+        })
+        .layoutWeight(1)
+        .height('100%')
+
+        Column() {
+          WindowControlButtons()
+        }
+        .height('100%')
+        .justifyContent(FlexAlign.Start)
+        .alignItems(HorizontalAlign.End)
+      }
+      .width('100%')
+      .height('8%')
+      .padding({ left: 16, right: 16 })
 
       // 主体内容区域（可伸缩，占据中间空间）
       Column() {
