@@ -32,6 +32,7 @@ import { ElectricalFaultDialog } from '../components/dialogs/ElectricalFaultDial
 import { SystemFaultDialog } from '../components/dialogs/SystemFaultDialog'
 import { LabelingSettingsDialog } from '../components/dialogs/LabelingSettingsDialog'
 import { ExitScreenSettingsDialog } from '../components/dialogs/ExitScreenSettingsDialog'
+import { ModifyCustomerInfoDialog, CustomerInfo } from '../components/dialogs/ModifyCustomerInfoDialog'
 import { getCurrentTheme as resolveTheme } from '../utils/theme/ThemeUtils'
 import { NavigationUtils } from '../utils/helpers/NavigationUtils'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../utils/theme/OmniThemeManager'
@@ -125,6 +126,7 @@ struct Page {
   @State showLoadProgramDialog: boolean = false  // 控制载入程序对话框显示
   @State showSaveProgramDialog: boolean = false  // 控制保存程序对话框显示
   @State showSortingStatusDialog: boolean = false  // 控制分选状态对话框显示
+  @State showCustomerDialog: boolean = false
   @StorageLink(OMNI_THEME_KEY) @Watch('onThemeChange') consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
   @StorageLink(OMNI_THEME_TYPE_KEY) @Watch('onThemeChange') consumedThemeType: OmniThemeType = OmniThemeManager.getInstance().getCurrentThemeType()
   @StorageLink(OMNI_THEME_VERSION_KEY) @Watch('onThemeChange') themeVersion: number = 0
@@ -155,6 +157,9 @@ struct Page {
   @StorageLink('EDIT_USER_LABEL_VISIBLE') private editUserLabelVisible: boolean = false
   @State private tempUserLabel: string = '姓名'
   @State private selectedAvatarUrl: string = ''
+  @StorageLink('TOP_USER_LABEL') private userLabel: string = '姓名'
+  @StorageLink('FARM_NAME') private farmName: string = ''
+  @StorageLink('FRUIT_TYPE') private fruitType: string = ''
   
   // 可选头像列表
   private avatarOptions: string[] = [
@@ -218,6 +223,9 @@ struct Page {
   @State currentLanguage: string = '中文'
   @State availableLanguages: string[] = []
   @State selectedLanguageTemp: string = '中文'  // 临时选中的语言（用于确认）
+  @State currentTime: string = ''
+  @State currentDate: string = ''
+  private timeTimer?: number
   
   // 翻译编辑器状态
   @State showTranslationEditor: boolean = false
@@ -231,11 +239,31 @@ struct Page {
   
   
   // 页面初始化时初始化 Omni-UI 和 IBest-UI
+  private updateCurrentTime(): void {
+    const now = new Date()
+    const yyyy = now.getFullYear().toString()
+    const mmDate = (now.getMonth() + 1).toString().padStart(2, '0')
+    const dd = now.getDate().toString().padStart(2, '0')
+    const hh = now.getHours().toString().padStart(2, '0')
+    const mm = now.getMinutes().toString().padStart(2, '0')
+    const ss = now.getSeconds().toString().padStart(2, '0')
+    this.currentDate = `${yyyy}-${mmDate}-${dd}`
+    this.currentTime = `${hh}:${mm}:${ss}`
+  }
+
   async aboutToAppear() {
     this.omniUIInit.init()
     this.omniThemeManager.init()
     // 初始化 Ctrl 多选状态
     AppStorage.setOrCreate('HOME_CTRL_PRESSED', false)
+
+    this.updateCurrentTime()
+    if (this.timeTimer) {
+      clearInterval(this.timeTimer)
+    }
+    this.timeTimer = setInterval(() => {
+      this.updateCurrentTime()
+    }, 1000)
     
     // 初始化用户信息持久化存储并加载保存的用户名和头像
     try {
@@ -268,6 +296,13 @@ struct Page {
         this.currentLanguage = savedLang
         console.log(`[Home] aboutToAppear: synced language to ${savedLang}`)
       }
+    }
+  }
+
+  aboutToDisappear() {
+    if (this.timeTimer) {
+      clearInterval(this.timeTimer)
+      this.timeTimer = undefined
     }
   }
   
@@ -340,10 +375,10 @@ struct Page {
 
   private getActionTabs(): TabConfig[] {
     return [
-      { key: 'home', label: t('主页', '主页') },
-      { key: 'quality', label: t('品质', '品质') },
-      { key: 'level', label: t('等级', '等级') },
-      { key: 'history', label: t('历史加工', '历史加工') },
+      { key: 'home', label: t('主页', '主页'), isPageSwitch: true },
+      { key: 'quality', label: t('品质', '品质'), isPageSwitch: true },
+      { key: 'level', label: t('等级', '等级'), isPageSwitch: true },
+      { key: 'history', label: t('历史加工', '历史加工'), isPageSwitch: true },
       { 
         key: 'print', 
         label: t('打印', '打印'),
@@ -2185,6 +2220,9 @@ struct Page {
             currentPage: this.currentPage,
             selectedFSM: this.selectedFSM,
             layoutMode: 'side',
+            onEditCustomer: () => {
+              this.showCustomerDialog = true
+            },
             onFSMChange: (fsm: 'FSM1' | 'FSM2') => {
               console.log(`🔄 FSM切换开始: ${this.selectedFSM} -> ${fsm}`)
 
@@ -2261,6 +2299,7 @@ struct Page {
             this.pageTabIndex = index
             this.currentPage = this.getPageKeyByTabIndex(index)
           })
+          .scrollable(false)
           .barHeight(0)
           .width('100%')
           .height('100%')
@@ -2317,6 +2356,26 @@ struct Page {
       //     }
       //   })
       // }
+
+      if (this.showCustomerDialog) {
+        ModifyCustomerInfoDialog({
+          isVisible: this.showCustomerDialog,
+          initialData: {
+            customerName: this.userLabel,
+            farmName: this.farmName,
+            fruitName: this.fruitType
+          } as CustomerInfo,
+          onConfirm: (data: CustomerInfo) => {
+            AppStorage.setOrCreate('TOP_USER_LABEL', data.customerName)
+            AppStorage.setOrCreate('FARM_NAME', data.farmName)
+            AppStorage.setOrCreate('FRUIT_TYPE', data.fruitName)
+            this.showCustomerDialog = false
+          },
+          onCancel: () => {
+            this.showCustomerDialog = false
+          }
+        })
+      }
 
       // 水果信息对话框
       if (this.showFruitInfoDialog) {
@@ -2649,15 +2708,32 @@ struct Page {
         .layoutWeight(1)
         .height('100%')
 
-        Column() {
+        Row({ space: 36 }) {
+          Column() {
+            Text(this.currentDate)
+              .fontSize(24)
+              .fontColor(this.getCurrentTheme().textColor)
+              .fontWeight(FontWeight.Bold)
+              .textAlign(TextAlign.Center)
+              .margin({ bottom: 4 })
+
+            Text(this.currentTime)
+              .fontSize(20)
+              .fontColor(this.getCurrentTheme().textColor)
+              .fontWeight(FontWeight.Normal)
+              .textAlign(TextAlign.Center)
+          }
+          .alignItems(HorizontalAlign.Center)
+
           WindowControlButtons()
         }
         .height('100%')
-        .justifyContent(FlexAlign.Start)
-        .alignItems(HorizontalAlign.End)
+        .alignItems(VerticalAlign.Center)
+        .justifyContent(FlexAlign.End)
       }
       .width('100%')
       .height('8%')
+      .alignItems(VerticalAlign.Center)
       .padding({ left: 16, right: 16 })
 
       // 主体内容区域（可伸缩，占据中间空间）

@@ -424,6 +424,7 @@ export struct DataTablesTabBar {
           .layoutWeight(1)
         }
         .width('100%')
+        .padding({ right: 16 })
         .layoutWeight(1)
         .justifyContent(FlexAlign.Start)
         .alignItems(VerticalAlign.Top)

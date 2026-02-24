@@ -261,15 +261,15 @@ export struct ProfileInfoBar {
       // 右侧部分：日期/时间
       Column() {
         Text(this.currentDate)
-          .fontSize(this.getCurrentTheme().fontLevel4 ?? 18) // 18px
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.getCurrentTheme().subTextColor)
-          .margin({ bottom: 4 })
+          .fontSize(24) // 24px
+          .fontWeight(FontWeight.Bolder) // Bolder - Date
+          .fontColor(this.getCurrentTheme().textColor) // Darker text for better bold effect
+          .margin({ bottom: 2 })
         
         Text(this.currentTime)
           .fontSize(this.getCurrentTheme().fontLevel3 ?? 24) // 24px - Time (Big)
-          .fontWeight(this.getCurrentTheme().fontWeightBold ?? FontWeight.Bold)
-          .fontColor(this.getCurrentTheme().textColor)
+          .fontWeight(FontWeight.Normal) // Normal - Time
+          .fontColor(this.getCurrentTheme().subTextColor) // Lighter text for contrast
       }
       .alignItems(HorizontalAlign.End)
       .justifyContent(FlexAlign.Center)

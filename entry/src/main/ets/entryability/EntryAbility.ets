@@ -112,11 +112,11 @@ export default class EntryAbility extends UIAbility {
         console.error('❌ [SocketServer] 启动失败');
       }
 
-      // 2. 启动 TcpServer (业务数据) - 端口 9090
+
       console.info('🚀 [TcpServer] 尝试启动 (业务)...');
-      // dstId 示例值 1001
+
       const tcpSuccess = NativeModule.tcpServerStart("", 9090, 1001, (head: CommandHead) => {
-        // console.info(`📡 [TcpServer] 收到业务包 | cmdId: ${head.cmdId} | srcId: ${head.srcId} | len: ${head.length}`);
+
         
         // 将数据交给 StatisticsHandler 处理
         if (head && head.data) {

@@ -113,6 +113,7 @@ export struct LeftNavigationTabBar {
     }
     .width('100%')
     .height('100%')
+    .justifyContent(this.layoutDirection === TabBarDirection.HORIZONTAL ? FlexAlign.Center : FlexAlign.Start)
     .padding(0) // 移除内边距，确保内容填满
     .backgroundColor(this.layoutDirection === TabBarDirection.HORIZONTAL ? 'transparent' : (this.resolveTheme().navBg ?? this.resolveTheme().backgroundColor))
   }

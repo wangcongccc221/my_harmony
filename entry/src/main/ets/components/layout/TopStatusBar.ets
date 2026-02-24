@@ -3,16 +3,12 @@ import { OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { TOP_PRODUCTION_TON_H, TOP_SUM_WEIGHT_TON, TOP_SUM_COUNTS, TOP_AVG_G, TOP_STATUS_TEXT, TOP_ALERT_HIDE, TCP_CONNECTION_STATUS } from '../../constants/TopBarKeys'
 import { CompactFsmToggle } from './CompactFsmToggle'
 import { IBestAvatar, IBestButton } from '@ibestservices/ibest-ui'
-// 已移除自定义对话框
 import common from '@ohos.app.ability.common'
 import { MinimizeAppUtil } from '../../utils/window/MinimizeAppUtil'
 import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 import { ThreeDButton } from '../ui/buttons/ThreeDButton'
 import { ProfileInfoBar } from './ProfileInfoBar'
 
-/**
- * 顶部状态栏组件（精简版，无个人信息/头像/对话框）
- */
 @Component
 export struct TopStatusBar {
   @Prop currentPage: string = ''
@@ -34,12 +30,28 @@ export struct TopStatusBar {
   // FSM状态
   @Prop selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
   onFSMChange?: (fsm: 'FSM1' | 'FSM2') => void
+  onEditCustomer?: () => void
   @Prop layoutMode: 'top' | 'side' = 'top'
   
   // 实时时间状态（两行显示）
   @State private currentDate: string = ''
   @State private currentTime: string = ''
+  @State private showSubsystemDropdown: boolean = false
   private timeTimer: number | null = null
+
+  // 模拟数据
+  @State private mockFaults: string[] = [
+    '[user]: 通信异常 11111111111，换行测试。',
+    '[user1]: 运行正常',
+    '[user2]: 通信异常 11111111111，换行测试，换行会...'
+  ]
+
+  @State private mockLogs: string[] = [
+    '[ERR]: 通信异常 11111111111，换行测试。',
+    '[ERR1]: 运行正常',
+    '[ERR2]: 通信异常 11111111111，换行测试，换行会...',
+    '[ERR3]: 通信异常 11111111111，换行测试。'
+  ]
 
   private async minimizeApp() { //最小化
     try {
@@ -110,41 +122,198 @@ export struct TopStatusBar {
     this.currentTime = `${hh}:${mm}:${ss}`
   }
 
+  private getSubsystemLabel(): string {
+    return this.selectedFSM === 'FSM1' ? '子系统 1' : '子系统 2'
+  }
+
+  @Builder
+  private buildSubsystemMenuItem(label: string, fsm: 'FSM1' | 'FSM2') {
+    Row() {
+      Text(label)
+        .fontSize(16)
+        .fontColor('#333')
+    }
+    .width('100%')
+    .height(40)
+    .padding({ left: 12, right: 12 })
+    .alignItems(VerticalAlign.Center)
+    .backgroundColor(this.selectedFSM === fsm ? '#e6f0ff' : Color.White)
+    .onClick(() => {
+      this.showSubsystemDropdown = false
+      if (this.onFSMChange) {
+        this.onFSMChange(fsm)
+      }
+    })
+  }
+
+  @Builder
+  private buildSubsystemMenu() {
+    Column() {
+      this.buildSubsystemMenuItem('子系统 1', 'FSM1')
+      this.buildSubsystemMenuItem('子系统 2', 'FSM2')
+    }
+    .width(140)
+    .backgroundColor(Color.White)
+    .border({ width: 1, color: '#ddd' })
+    .borderRadius(6)
+    .padding({ top: 4, bottom: 4 })
+  }
+
   build() {
     if (this.layoutMode === 'side') {
       Stack() {
-        Column({ space: 16 }) {
-          Column({ space: 8 }) {
-            MetricItem({ label: 'Production', value: this.productionTonPerHour, unit: 'Ton/h' })
-            MetricItem({ label: 'SumWeight', value: this.sumWeightTon, unit: 'Ton' })
-            MetricItem({ label: 'SumCounts', value: this.sumCounts, unit: 'PCS' })
-            MetricItem({ label: 'Avg', value: this.avgGram, unit: 'g' })
+        Column() {
+          Row() {
+            Row() {
+              Text(this.getSubsystemLabel())
+                .fontSize(16)
+                .fontColor('#333')
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+              Text('▼')
+                .fontSize(11)
+                .fontColor('#666')
+                .margin({ left: 6 })
+            }
+            .width(140)
+            .height(44)
+            .justifyContent(FlexAlign.SpaceBetween)
+            .alignItems(VerticalAlign.Center)
+              .backgroundColor(Color.White)
+              .border({ width: 1, color: '#ddd' })
+              .borderRadius(6)
+              .padding({ left: 14, right: 14 })
+              .onClick(() => {
+                this.showSubsystemDropdown = !this.showSubsystemDropdown
+              })
+              .bindPopup(this.showSubsystemDropdown, {
+                builder: this.buildSubsystemMenu(),
+                placement: Placement.Bottom,
+                mask: false,
+                popupColor: Color.Transparent,
+                enableArrow: false,
+                onStateChange: (e) => {
+                  if (!e.isVisible) {
+                    this.showSubsystemDropdown = false
+                  }
+                }
+              })
           }
-          this.buildStatusAlert()
-          this.buildCustomerInfo()
-          CompactFsmToggle({
-            selectedFSM: this.selectedFSM,
-            onFSMChange: (fsm: 'FSM1' | 'FSM2') => {
-              if (this.onFSMChange) {
-                this.onFSMChange(fsm)
-              }
+          .width('100%')
+          .justifyContent(FlexAlign.Center)
+          .margin({ top: 10, bottom: 24 })
+          .padding({ left: 10, right: 10 })
+          Scroll() {
+          Column() {
+            Row({ space: 12 }) {
+            Text('👨‍🌾')
+              .fontSize(28)
+              .fontColor(Color.White)
+              .width(44)
+              .height(44)
+              .textAlign(TextAlign.Center)
+              .backgroundColor('#4a90e2')
+              .borderRadius(22)
+
+            Column() {
+              Text(this.userLabel)
+                .fontSize(18)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#333')
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+              Text(this.farmName)
+                .fontSize(15)
+                .fontColor('#999')
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+            }
+            .alignItems(HorizontalAlign.Start)
+          }
+          .width('100%')
+          .alignItems(VerticalAlign.Center)
+          .justifyContent(FlexAlign.Start)
+          .margin({ bottom: 36 })
+          .onClick(() => {
+            if (this.onEditCustomer) {
+              this.onEditCustomer()
             }
           })
-          ProfileInfoBar({
-            userName: this.userLabel,
-            userRole: '管理员',
-            currentDate: this.currentDate,
-            currentTime: this.currentTime,
-            avatarUrl: this.selectedAvatarUrl,
-            isLoading: false
+
+          Row({ space: 12 }) {
+            Text('🍊')
+              .fontSize(28)
+              .fontColor(Color.White)
+              .width(44)
+              .height(44)
+              .textAlign(TextAlign.Center)
+              .backgroundColor('#ff8c00')
+              .borderRadius(22)
+
+            Text(this.fruitType)
+              .fontSize(18)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#333')
+              .maxLines(1)
+              .textAlign(TextAlign.Start)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+          }
+          .width('100%')
+          .alignItems(VerticalAlign.Center)
+          .justifyContent(FlexAlign.Start)
+          .margin({ bottom: 24 })
+          .onClick(() => {
+            if (this.onEditCustomer) {
+              this.onEditCustomer()
+            }
           })
+
+
+          Column() {
+            Text('状态监控')
+              .fontSize(18)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#333')
+              .padding({ left: 0, right: 0, top: 6, bottom: 0 })
+              .textAlign(TextAlign.Start) // 
+              .width('100%') // 占满容器宽度
+          }
+          .width('100%')
+          .alignItems(HorizontalAlign.Start) // 容器内元素左对齐
+          .margin({ bottom: 6 })
+
+          Column() {
+            this.buildStatusRow('效率(吨/小时)', this.productionTonPerHour)
+            this.buildStatusRow('总量(吨)', this.sumWeightTon)
+            this.buildStatusRow('总个数', this.sumCounts)
+            this.buildStatusRow('平均重量(克)', this.avgGram)
+          }
+          .width('100%')
+          .height(160)
+          .justifyContent(FlexAlign.SpaceEvenly)
+          .backgroundColor(Color.White)
+          .border({ width: 1, color: '#ddd' })
+          .borderRadius(4)
+          .padding(8)
+
+          this.buildLogSection('系统故障', this.mockFaults, 230)
+          this.buildLogSection('操作日志', this.mockLogs, 230)
+          }
+          .width('100%')
+          .alignItems(HorizontalAlign.Start)
+          }
+          .layoutWeight(1)
+          .scrollBar(BarState.Off)
+          .align(Alignment.TopStart)
         }
-        .alignItems(HorizontalAlign.Start)
+        .height('100%')
       }
-      .width('100%')
+      .align(Alignment.TopStart)
+      .width(150)
       .height('100%')
-      .backgroundColor(this.getCurrentTheme().headerColor ?? this.getCurrentTheme().backgroundColor)
-      .padding({ left: 16, right: 16, top: 16, bottom: 16 })
+      .backgroundColor('#f8f8f8')
+      .border({ width: { right: 1 }, color: '#ddd' })
     } else {
       Row() {
       // ===============================================
@@ -177,9 +346,6 @@ export struct TopStatusBar {
       .height('100%')
       .alignItems(VerticalAlign.Center)
 
-      // ===============================================
-      // 中间区域：状态告警 + 客户信息 (弹性空间)
-      // ===============================================
       Row() {
         Blank() // 填充左边空间，让中间内容居中或偏右
 
@@ -323,6 +489,92 @@ export struct TopStatusBar {
       .alignItems(HorizontalAlign.Start)
     }
     .padding({ left: 12, right: 12, top: 4, bottom: 4 })
+  }
+
+  @Builder
+  private buildStatusRow(label: string, value: string) {
+    Column() {
+      Text(label)
+        .fontSize(13)
+        .fontColor('#666')
+        .textAlign(TextAlign.Start)
+        .width('100%')
+
+      Text(value)
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#333')
+        .textAlign(TextAlign.Start)
+        .width('100%')
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+    .padding({ left: 2, right: 2 })
+  }
+
+  private getPrefixColor(prefix: string): string {
+    if (prefix.includes('user') && !prefix.includes('1') && !prefix.includes('2')) return '#FF0000' // Red
+    if (prefix.includes('ERR') && !prefix.includes('1') && !prefix.includes('2')) return '#FF0000' // Red
+    if (prefix.includes('1')) return '#008000' // Green
+    if (prefix.includes('2')) return '#FFA500' // Orange
+    return '#333'
+  }
+
+  @Builder
+  private buildLogItem(text: string) {
+    if (text.startsWith('[') && text.indexOf(']') > -1) {
+      Text() {
+        Span(text.substring(0, text.indexOf(']') + 1))
+          .fontColor(this.getPrefixColor(text.substring(0, text.indexOf(']') + 1)))
+          .fontSize(13)
+          .fontWeight(FontWeight.Bold)
+        Span(text.substring(text.indexOf(']') + 1))
+          .fontColor('#333')
+          .fontSize(13)
+      }
+      .width('100%')
+      .textAlign(TextAlign.Start)
+    } else {
+      Text(text)
+        .fontSize(13)
+        .fontColor('#333')
+        .width('100%')
+        .textAlign(TextAlign.Start)
+    }
+  }
+
+  @Builder
+  private buildLogSection(title: string, data: string[], height: number) {
+    Column() {
+      Text(title)
+        .fontSize(18)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#333')
+        .padding({ left: 0, right: 0, top: 6, bottom: 0 })
+        .textAlign(TextAlign.Start)
+        .width('100%')
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+    .margin({ bottom: 6 })
+
+    List() {
+      ForEach(data, (item: string) => {
+        ListItem() {
+          this.buildLogItem(item)
+        }
+        .width('100%')
+        .margin({ bottom: 4 })
+      })
+    }
+    .width('100%')
+    .height(height)
+    .backgroundColor(Color.White)
+    .border({ width: 1, color: '#ddd' })
+    .borderRadius(4)
+    .padding(8)
+    .alignListItem(ListItemAlign.Start)
+    .scrollBar(BarState.Auto)
   }
 }
 

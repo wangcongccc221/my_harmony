@@ -122,7 +122,8 @@ export struct ModifyCustomerInfoDialog {
           .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
 
           // 内容区域
-          Column({ space: 12 }) {
+          Scroll() {
+            Column({ space: 12 }) {
             // 客户名称
             Row() {
               Text('客户名称:')
@@ -173,7 +174,6 @@ export struct ModifyCustomerInfoDialog {
             .width('100%')
             .alignItems(VerticalAlign.Center)
 
-            // 水果名称（带下拉选择）
             Column() {
               Row() {
                 Text('水果名称:')
@@ -185,7 +185,6 @@ export struct ModifyCustomerInfoDialog {
 
                 Stack() {
                   TextInput({ text: this.fruitName })
-                    .layoutWeight(1)
                     .height(36)
                     .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
                     .border({ width: 1, color: this.getCurrentTheme().borderColor })
@@ -197,7 +196,6 @@ export struct ModifyCustomerInfoDialog {
                       this.fruitName = value
                     })
 
-                  // 下拉箭头按钮
                   Button() {
                     Text('▼')
                       .fontSize(11)
@@ -217,40 +215,49 @@ export struct ModifyCustomerInfoDialog {
               .width('100%')
               .alignItems(VerticalAlign.Center)
 
-              // 水果选择下拉菜单
               if (this.showFruitPicker) {
-                Scroll() {
-                  Column() {
-                    ForEach(this.fruitOptions, (fruit: string) => {
-                      Text(fruit)
-                        .fontSize(15)
-                        .fontColor(this.getCurrentTheme().textColor)
-                        .width('100%')
-                        .height(36)
-                        .padding({ left: 10, right: 10 })
-                        .backgroundColor(this.fruitName === fruit ? 
-                          (this.getCurrentTheme().primary + '20') : 
-                          (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor))
-                        .onClick(() => {
-                          this.fruitName = this.normalizeFruitName(fruit)
-                          this.showFruitPicker = false
-                        })
-                    }, (fruit: string) => fruit)
+                Row() {
+                  Blank()
+                    .width(100)
+                  Scroll() {
+                    Column() {
+                      ForEach(this.fruitOptions, (fruit: string) => {
+                        Text(fruit)
+                          .fontSize(14)
+                          .fontColor(this.getCurrentTheme().textColor)
+                          .width('100%')
+                          .height(28)
+                          .padding({ left: 10, right: 10 })
+                          .backgroundColor(this.fruitName === fruit ? 
+                            (this.getCurrentTheme().primary + '20') : 
+                            (this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor))
+                          .onClick(() => {
+                            this.fruitName = this.normalizeFruitName(fruit)
+                            this.showFruitPicker = false
+                          })
+                      }, (fruit: string) => fruit)
+                    }
                   }
+                  .layoutWeight(1)
+                  .height(140)
+                  .backgroundColor(this.getCurrentTheme().surfaceColor ?? this.getCurrentTheme().backgroundColor)
+                  .border({ width: 1, color: this.getCurrentTheme().borderColor })
+                  .borderRadius(6)
+                  .shadow(AppleDesignStyle.getShadowSmall())
+                  .margin({ top: 4 })
                 }
                 .width('100%')
-                .height(150)
-                .backgroundColor(this.getCurrentTheme().surfaceColor ?? this.getCurrentTheme().backgroundColor)
-                .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                .borderRadius(6)
-                .margin({ top: 4 })
-                .shadow(AppleDesignStyle.getShadowSmall())
               }
             }
             .width('100%')
+            }
+            .width('100%')
+            .height('100%')
+            .justifyContent(FlexAlign.Start)
             .alignItems(HorizontalAlign.Start)
           }
           .width('100%')
+          .height(300)
           .padding({ left: 20, right: 20, top: 16, bottom: 16 })
 
           // 按钮区域
@@ -283,8 +290,9 @@ export struct ModifyCustomerInfoDialog {
           .width('100%')
           .padding({ left: 20, right: 20, top: 12, bottom: 16 })
         }
-        .width('80%')
-        .constraintSize({ maxWidth: 500 })
+        .width('92%')
+        .height(440)
+        .constraintSize({ maxWidth: 680 })
         .backgroundColor(this.getCurrentTheme().surfaceColor ?? this.getCurrentTheme().backgroundColor)
         .borderRadius(AppleDesignStyle.BORDER_RADIUS_MEDIUM)
         .shadow(AppleDesignStyle.getShadowMedium())

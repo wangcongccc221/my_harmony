@@ -35,6 +35,7 @@ export interface TabConfig {
   disabled?: boolean  // 是否禁用
   badge?: string  // 徽章文本（如通知数量）
   subItems?: SubItemConfig[] // 可选的子菜单项
+  isPageSwitch?: boolean // 是否为页面切换按钮
 }
 
 // TabBar布局方向
@@ -292,24 +293,24 @@ export struct OmniTabBar {
         .alignItems(VerticalAlign.Center)
       }
       .width('auto')
-      .height(36)
+      .height(44)
       .backgroundColor(tab.disabled ? this.resolveTheme().surfaceColor + '40' :
                       (this.selectedTab === tab.key ? this.resolveTheme().primary + '15' : Color.Transparent))
       .borderRadius(8)
       .border({ 
-        width: 1, 
+        width: tab.isPageSwitch ? 0 : 1, 
         color: tab.disabled ? this.resolveTheme().borderColor + '40' :
                (this.selectedTab === tab.key ? this.resolveTheme().primary : this.resolveTheme().borderColor)
       })
       .padding({ 
-        left: 10, 
-        right: 10, 
-        top: 6, 
-        bottom: 6 
+        left: 14, 
+        right: 14, 
+        top: 8, 
+        bottom: 8 
       })
       .margin({ 
-        left: 6, 
-        right: 6
+        left: 8, 
+        right: 8
       })
       .enabled(!tab.disabled)
       .onClick(() => {
