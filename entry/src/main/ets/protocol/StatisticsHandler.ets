@@ -77,8 +77,9 @@ export class StatisticsHandler {
    */
   handleSplitMessage(cmdId: number, srcId: number, data: Uint8Array): boolean {
     try {
+      console.log(`[Split] 收到数据: cmd=0x${cmdId.toString(16)} src=0x${srcId.toString(16)} dataLen=${data.byteLength}`)
       if (cmdId === HC_FSM_COMMAND_TYPE.HC_CMD_GRADE_INFO) {
-        hilog.info(0x0001, TAG, `[Split] 收到等级配置: cmd=0x${cmdId.toString(16)} src=0x${srcId.toString(16)} dataLen=${data.byteLength}`)
+        console.log(`[Split] 收到等级配置: cmd=0x${cmdId.toString(16)} src=0x${srcId.toString(16)} dataLen=${data.byteLength}`)
       }
 
       // 构造一个临时的 ParsedMessage
@@ -166,6 +167,8 @@ export class StatisticsHandler {
       hilog.warn(0x0001, TAG, '统计数据解析失败')
       return false
     }
+
+    console.log(`[统计解析] subsys=${stats.nSubsysId} channel=${stats.nChannelIndex} yield=${stats.nYield} totalWeight=${stats.nTotalWeight} qualified=${stats.nQualifiedCount} unqualified=${stats.nUnqualifiedCount}`)
 
     // 更新全局数据接口
     this.dataInterface.updateStatistics(stats)

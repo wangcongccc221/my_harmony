@@ -101,6 +101,7 @@ export class UIDataSync {
 
     // 注册数据变化监听器
     this.dataChangeListener = (data: GlobalRealtimeData) => {
+      console.log(`[UI监听] totalYield=${data.totalYield} totalWeight=${data.totalWeight} efficiency=${data.efficiency}`)
       this.syncGlobalDataToStorage(data)
     }
     this.dataInterface.addDataChangeListener(this.dataChangeListener)
@@ -202,37 +203,43 @@ export class UIDataSync {
       avgG = (data.totalWeight / data.totalYield).toFixed(1)
     }
 
+    console.log(`同步UI: yield=${sumCounts}, weightTon=${sumWeightTon}, avgG=${avgG}, tonPerHour=${productionTonH}`)
+
     // 更新顶部状态栏
-    // 使用 AppStorage.set 确保 UI 监听到变化
-    AppStorage.setOrCreate(keys.TOP_PRODUCTION_TON_H, productionTonH)
-    AppStorage.setOrCreate(keys.TOP_SUM_WEIGHT_TON, sumWeightTon)
-    AppStorage.setOrCreate(keys.TOP_SUM_COUNTS, sumCounts)
-    AppStorage.setOrCreate(keys.TOP_AVG_G, avgG)
+    AppStorage.set(keys.TOP_PRODUCTION_TON_H, productionTonH)
+    AppStorage.set(keys.TOP_SUM_WEIGHT_TON, sumWeightTon)
+    AppStorage.set(keys.TOP_SUM_COUNTS, sumCounts)
+    AppStorage.set(keys.TOP_AVG_G, avgG)
+    const p = AppStorage.get(keys.TOP_PRODUCTION_TON_H) as string | number | undefined
+    const w = AppStorage.get(keys.TOP_SUM_WEIGHT_TON) as string | number | undefined
+    const c = AppStorage.get(keys.TOP_SUM_COUNTS) as string | number | undefined
+    const a = AppStorage.get(keys.TOP_AVG_G) as string | number | undefined
+    console.log(`[AppStorage写入] p=${p} w=${w} c=${c} a=${a}`)
 
     hilog.debug(0x0001, TAG, 
       `UI数据同步详情: 效率=${data.efficiency}, 运行时间=${data.runningTime}s, 产量=${sumCounts}, 总重=${sumWeightTon}吨, 时产=${productionTonH}吨/时`)
     // console.log(`UI数据同步详情: 效率=${data.efficiency}, 运行时间=${data.runningTime}s, 产量=${sumCounts}, 总重=${sumWeightTon}吨, 时产=${productionTonH}吨/时`)
     // 更新分选信息卡片
-    AppStorage.setOrCreate(keys.SORT_SPEED, `${data.efficiency.toFixed(0)} 件/分钟`)
-    AppStorage.setOrCreate(keys.BATCH_WEIGHT, `${(data.totalWeight / 1000).toFixed(2)} kg`)
-    AppStorage.setOrCreate(keys.BATCH_COUNT, `${data.totalYield} 件`)
-    AppStorage.setOrCreate(keys.AVG_WEIGHT, `${avgG} g`)
-    AppStorage.setOrCreate(keys.REALTIME_OUTPUT, `${data.efficiency.toFixed(1)} 件/分钟`)
+    AppStorage.set(keys.SORT_SPEED, `${data.efficiency.toFixed(0)} 件/分钟`)
+    AppStorage.set(keys.BATCH_WEIGHT, `${(data.totalWeight / 1000).toFixed(2)} kg`)
+    AppStorage.set(keys.BATCH_COUNT, `${data.totalYield} 件`)
+    AppStorage.set(keys.AVG_WEIGHT, `${avgG} g`)
+    AppStorage.set(keys.REALTIME_OUTPUT, `${data.efficiency.toFixed(1)} 件/分钟`)
 
     // 更新效率
     const total = data.totalQualified + data.totalUnqualified
     const efficiencyPercent = total > 0 ? ((data.totalQualified / total) * 100).toFixed(1) : '0.0'
-    AppStorage.setOrCreate(keys.EFFICIENCY, `${efficiencyPercent}%`)
+    AppStorage.set(keys.EFFICIENCY, `${efficiencyPercent}%`)
 
     // 更新运行时间
-    AppStorage.setOrCreate(keys.RUNNING_TIME, this.formatTime(data.runningTime))
-    AppStorage.setOrCreate(keys.IS_PROCESSING, data.runningTime > 0 || data.totalYield > 0)
+    AppStorage.set(keys.RUNNING_TIME, this.formatTime(data.runningTime))
+    AppStorage.set(keys.IS_PROCESSING, data.runningTime > 0 || data.totalYield > 0)
 
     // 更新开始时间（如果正在加工）
     if (data.startTime > 0) {
       const startDate = new Date(data.startTime)
       const timeStr = `${startDate.getHours().toString().padStart(2, '0')}:${startDate.getMinutes().toString().padStart(2, '0')}:${startDate.getSeconds().toString().padStart(2, '0')}`
-      AppStorage.setOrCreate(keys.START_TIME, timeStr)
+      AppStorage.set(keys.START_TIME, timeStr)
     }
 
     // 更新出口数据

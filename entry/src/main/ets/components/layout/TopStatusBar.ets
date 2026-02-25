@@ -8,6 +8,8 @@ import { MinimizeAppUtil } from '../../utils/window/MinimizeAppUtil'
 import { AppleDesignStyle } from '../../utils/theme/AppleDesignStyle'
 import { ThreeDButton } from '../ui/buttons/ThreeDButton'
 import { ProfileInfoBar } from './ProfileInfoBar'
+import { GlobalDataInterface, getGlobalDataInterface, DataChangeListener } from '../../protocol/GlobalDataInterface'
+import { GlobalRealtimeData } from '../../protocol/Structures'
 
 @Component
 export struct TopStatusBar {
@@ -37,7 +39,18 @@ export struct TopStatusBar {
   @State private currentDate: string = ''
   @State private currentTime: string = ''
   @State private showSubsystemDropdown: boolean = false
+  @State private productionTonPerHourText: string = '--'
+  @State private sumWeightTonText: string = '--'
+  @State private sumCountsText: string = '--'
+  @State private avgGramText: string = '--'
   private timeTimer: number | null = null
+  private dataInterface: GlobalDataInterface = getGlobalDataInterface()
+  private dataChangeListener: DataChangeListener | null = null
+  private pendingProduction: string = '--'
+  private pendingSumWeight: string = '--'
+  private pendingSumCounts: string = '--'
+  private pendingAvgGram: string = '--'
+  private pendingUpdate: boolean = false
 
   // 模拟数据
   @State private mockFaults: string[] = [
@@ -98,6 +111,13 @@ export struct TopStatusBar {
     this.timeTimer = setInterval(() => {
       this.updateCurrentTime()
     }, 1000)
+    const data = this.dataInterface.getGlobalData()
+    this.updateStatsFromRealtimeData(data)
+    this.dataChangeListener = (realtime: GlobalRealtimeData) => {
+      console.log(`[左侧监听] yield=${realtime.totalYield} weight=${realtime.totalWeight} eff=${realtime.efficiency} run=${realtime.runningTime}`)
+      this.updateStatsFromRealtimeData(realtime)
+    }
+    this.dataInterface.addDataChangeListener(this.dataChangeListener)
   }
 
   aboutToDisappear() {
@@ -105,6 +125,10 @@ export struct TopStatusBar {
     if (this.timeTimer) {
       clearInterval(this.timeTimer)
       this.timeTimer = null
+    }
+    if (this.dataChangeListener) {
+      this.dataInterface.removeDataChangeListener(this.dataChangeListener)
+      this.dataChangeListener = null
     }
   }
 
@@ -120,6 +144,45 @@ export struct TopStatusBar {
     this.currentDate = `${y}-${m}-${d}`
     // 第二行：时间
     this.currentTime = `${hh}:${mm}:${ss}`
+  }
+
+  private updateStatsFromRealtimeData(data: GlobalRealtimeData): void {
+    const totalWeight: number = data.totalWeight
+    const totalYield: number = data.totalYield
+    const runningTime: number = data.runningTime
+    const efficiency: number = data.efficiency
+    let productionTonH = '0.00'
+    const avgWeightG = totalYield > 0 ? (totalWeight / totalYield) : 0
+    if (efficiency > 0) {
+      const tonPerHour = (efficiency * 60 * avgWeightG) / 1000000
+      productionTonH = tonPerHour.toFixed(2)
+    } else if (runningTime > 0) {
+      const hoursElapsed = runningTime / 3600
+      const tonPerHour = (totalWeight / 1000000) / hoursElapsed
+      productionTonH = tonPerHour.toFixed(2)
+    }
+    const sumWeightTon = (totalWeight / 1000000).toFixed(3)
+    const sumCounts = totalYield.toString()
+    let avgG = '0.0'
+    if (totalYield > 0) {
+      avgG = (totalWeight / totalYield).toFixed(1)
+    }
+    console.log(`[左侧计算] p=${productionTonH} w=${sumWeightTon} c=${sumCounts} a=${avgG}`)
+    this.pendingProduction = productionTonH
+    this.pendingSumWeight = sumWeightTon
+    this.pendingSumCounts = sumCounts
+    this.pendingAvgGram = avgG
+    if (!this.pendingUpdate) {
+      this.pendingUpdate = true
+      setTimeout(() => {
+        this.productionTonPerHourText = this.pendingProduction
+        this.sumWeightTonText = this.pendingSumWeight
+        this.sumCountsText = this.pendingSumCounts
+        this.avgGramText = this.pendingAvgGram
+        this.pendingUpdate = false
+        console.log(`[左侧刷新] p=${this.productionTonPerHourText} w=${this.sumWeightTonText} c=${this.sumCountsText} a=${this.avgGramText}`)
+      }, 0)
+    }
   }
 
   private getSubsystemLabel(): string {
@@ -284,10 +347,73 @@ export struct TopStatusBar {
           .margin({ bottom: 6 })
 
           Column() {
-            this.buildStatusRow('效率(吨/小时)', this.productionTonPerHour)
-            this.buildStatusRow('总量(吨)', this.sumWeightTon)
-            this.buildStatusRow('总个数', this.sumCounts)
-            this.buildStatusRow('平均重量(克)', this.avgGram)
+            Column() {
+              Text('效率(吨/小时)')
+                .fontSize(13)
+                .fontColor('#666')
+                .textAlign(TextAlign.Start)
+                .width('100%')
+              Text(this.productionTonPerHourText)
+                .fontSize(16)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#333')
+                .textAlign(TextAlign.Start)
+                .width('100%')
+            }
+            .width('100%')
+            .alignItems(HorizontalAlign.Start)
+            .padding({ left: 2, right: 2 })
+
+            Column() {
+              Text('总量(吨)')
+                .fontSize(13)
+                .fontColor('#666')
+                .textAlign(TextAlign.Start)
+                .width('100%')
+              Text(this.sumWeightTonText)
+                .fontSize(16)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#333')
+                .textAlign(TextAlign.Start)
+                .width('100%')
+            }
+            .width('100%')
+            .alignItems(HorizontalAlign.Start)
+            .padding({ left: 2, right: 2 })
+
+            Column() {
+              Text('总个数')
+                .fontSize(13)
+                .fontColor('#666')
+                .textAlign(TextAlign.Start)
+                .width('100%')
+              Text(this.sumCountsText)
+                .fontSize(16)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#333')
+                .textAlign(TextAlign.Start)
+                .width('100%')
+            }
+            .width('100%')
+            .alignItems(HorizontalAlign.Start)
+            .padding({ left: 2, right: 2 })
+
+            Column() {
+              Text('平均重量(克)')
+                .fontSize(13)
+                .fontColor('#666')
+                .textAlign(TextAlign.Start)
+                .width('100%')
+              Text(this.avgGramText)
+                .fontSize(16)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#333')
+                .textAlign(TextAlign.Start)
+                .width('100%')
+            }
+            .width('100%')
+            .alignItems(HorizontalAlign.Start)
+            .padding({ left: 2, right: 2 })
           }
           .width('100%')
           .height(160)
@@ -494,6 +620,7 @@ export struct TopStatusBar {
   @Builder
   private buildStatusRow(label: string, value: string) {
     Column() {
+      
       Text(label)
         .fontSize(13)
         .fontColor('#666')

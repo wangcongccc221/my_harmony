@@ -104,6 +104,7 @@ export class GlobalDataInterface {
    * @param stats 新的统计数据
    */
   updateStatistics(stats: StStatistics): void {
+    console.log(`[全局更新] 收到统计: subsys=${stats.nSubsysId} channel=${stats.nChannelIndex} yield=${stats.nYield} totalWeight=${stats.nTotalWeight}`)
     // 计算通道键
     const channelKey: number = this.getChannelKey(stats.nSubsysId, stats.nChannelIndex)
 
@@ -566,6 +567,7 @@ export class GlobalDataInterface {
   // ==================== 通知监听器 ====================
   private notifyDataChangeListeners(): void {
     const data = this.getGlobalData()
+    console.log(`[全局通知] totalYield=${data.totalYield} totalWeight=${data.totalWeight} efficiency=${data.efficiency} runningTime=${data.runningTime}`)
     this.dataChangeListeners.forEach(listener => {
       try {
         listener(data)
