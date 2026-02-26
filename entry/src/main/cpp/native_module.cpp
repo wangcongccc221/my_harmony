@@ -327,7 +327,7 @@ static napi_value TcpServer_Start(napi_env env, napi_callback_info info) {
         switch (head.nCmdId) {
             // FSM Commands
             case FSM_HC_COMMAND_TYPE::FSM_CMD_CONFIG:
-                head.nLength = sizeof(StSysConfig);
+                head.nLength = sizeof(StGlobal);
                 break;
             case FSM_HC_COMMAND_TYPE::FSM_CMD_STATISTICS:
                 head.nLength = sizeof(StStatistics);
@@ -350,6 +350,25 @@ static napi_value TcpServer_Start(napi_env env, napi_callback_info info) {
                 break;
             case FSM_HC_COMMAND_TYPE::FSM_CMD_GETVERSION:
                 head.nLength = ConstPreDefine::BYTE_NUM_FSM_VERSION;
+                break;
+            case WAM_HC_COMMAND_TYPE::WAM_CMD_REP_WAM_INFO:
+                head.nLength = ConstPreDefine::BYTE_NUM_FSM_VERSION;
+                break;
+            case WAM_HC_COMMAND_TYPE::WAM_CMD_WEIGHTINFO:
+                head.nLength = sizeof(StWeightResult);
+                break;
+            case WAM_HC_COMMAND_TYPE::WAM_CMD_WAVEINFO:
+                head.nLength = sizeof(StWaveInfo);
+                break;
+            case WAM_HC_COMMAND_TYPE::WAM__CMD_WEIGHT_INFO:
+                head.nLength = sizeof(StWeightGlobal);
+                break;
+            case SIM_HMI_COMMAND_TYPE::SIM_HMI_DISPLAY_ON:
+            case SIM_HMI_COMMAND_TYPE::SIM_HMI_INSPECTION_OFF:
+                head.nLength = 0;
+                break;
+            case SIM_HMI_COMMAND_TYPE::SIM_HMI_INSPECTION_ON:
+                head.nLength = sizeof(StGradeInfo);
                 break;
 
             // IPM Commands (Variable Length Images)

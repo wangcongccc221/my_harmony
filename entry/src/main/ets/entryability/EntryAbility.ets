@@ -115,7 +115,7 @@ export default class EntryAbility extends UIAbility {
 
       console.info('🚀 [TcpServer] 尝试启动 (业务)...');
 
-      const tcpSuccess = NativeModule.tcpServerStart("", 9090, 1001, (head: CommandHead) => {
+      const tcpSuccess = NativeModule.tcpServerStart("", ConstPreDefine.HC_PORT2_NUM, ConstPreDefine.HC_ID, (head: CommandHead) => {
 
         
         // 将数据交给 StatisticsHandler 处理
@@ -125,7 +125,7 @@ export default class EntryAbility extends UIAbility {
       });
 
       if (tcpSuccess) {
-        console.info('✅ [TcpServer] 启动成功 (Port: 9090)');
+        console.info(`✅ [TcpServer] 启动成功 (Port: ${ConstPreDefine.HC_PORT2_NUM})`);
       } else {
         console.error('❌ [TcpServer] 启动失败');
       }

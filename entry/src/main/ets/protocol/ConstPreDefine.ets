@@ -140,7 +140,7 @@ export class ConstPreDefine {
   static readonly MAX_SHAPE_GRADE_NUM: number = 6
 
   /** 出口数量 */
-  static readonly MAX_EXIT_NUM: number = 48
+  static readonly MAX_EXIT_NUM: number = 64
 
   /** 文本最大长度 */
   static readonly MAX_TEXT_LENGTH: number = 12

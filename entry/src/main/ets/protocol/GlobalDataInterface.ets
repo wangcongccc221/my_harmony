@@ -13,6 +13,7 @@ import {
   StFruitGradeRealtime,
   StFsmStatus,
   StSysConfig,
+  StGlobal,
   GlobalRealtimeData,
   createDefaultStatistics,
   createDefaultGlobalRealtimeData,
@@ -70,6 +71,7 @@ export class GlobalDataInterface {
 
   // ==================== 系统配置 ====================
   private latestSysConfig: StSysConfig | null = null
+  private latestGlobal: StGlobal | null = null
 
   // ==================== 监听器 ====================
   private dataChangeListeners: Set<DataChangeListener> = new Set()
@@ -254,6 +256,11 @@ export class GlobalDataInterface {
   updateSysConfig(config: StSysConfig): void {
     this.latestSysConfig = config
     this.notifySysConfigListeners(config)
+  }
+
+  updateGlobalConfig(config: StGlobal): void {
+    this.latestGlobal = config
+    this.updateSysConfig(config.sys)
   }
 
   // ==================== 全局数据汇总 ====================

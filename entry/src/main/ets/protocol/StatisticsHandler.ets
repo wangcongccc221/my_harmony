@@ -6,8 +6,8 @@
 
 import { ProtocolParser, ParsedMessage, getProtocolParser } from './ProtocolParser'
 import { GlobalDataInterface, getGlobalDataInterface } from './GlobalDataInterface'
-import { FSM_HC_COMMAND_TYPE, HC_FSM_COMMAND_TYPE, getCommandName } from './CommandTypes'
-import { MESSAGE_HEADER_SIZE, StStatistics, StWeightInfo, StGradeInfo, StFruitGradeInfo, StFsmStatus, StSysConfig, createDefaultStatistics, createDefaultWeightInfo } from './Structures'
+import { FSM_HC_COMMAND_TYPE, HC_FSM_COMMAND_TYPE, WAM_HC_COMMAND_TYPE, SIM_HMI_COMMAND_TYPE, getCommandName } from './CommandTypes'
+import { MESSAGE_HEADER_SIZE, StStatistics, StWeightInfo, StWeightResult, StWaveInfo, StWeightGlobal, StGradeInfo, StFruitGradeInfo, StFsmStatus, StSysConfig, StGlobal, createDefaultStatistics, createDefaultWeightInfo } from './Structures'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 import { ConstPreDefine } from './ConstPreDefine'
 
@@ -148,8 +148,36 @@ export class StatisticsHandler {
       case FSM_HC_COMMAND_TYPE.FSM_CMD_GETVERSION:
         return this.handleVersion(parsed)
 
+      case WAM_HC_COMMAND_TYPE.WAM_CMD_REP_WAM_INFO:
+        return this.handleVersion(parsed)
+
+      case FSM_HC_COMMAND_TYPE.FSM_CMD_WAVEINFO:
+      case WAM_HC_COMMAND_TYPE.WAM_CMD_WAVEINFO:
+        return this.handleWaveInfo(parsed)
+
+      case FSM_HC_COMMAND_TYPE.FSM_CMD_VERSIONERROR:
+        return this.handleVersionError(parsed)
+
+      case FSM_HC_COMMAND_TYPE.FSM_CMD_BURN_FLASH_PROGRESS:
+        return this.handleBurnProgress(parsed)
+
+      case FSM_HC_COMMAND_TYPE.FSM_CMD_BOOT_FLASH_PROGRESS:
+        return this.handleBootProgress(parsed)
+
+      case WAM_HC_COMMAND_TYPE.WAM_CMD_WEIGHTINFO:
+        return this.handleWeightInfo(parsed)
+
+      case WAM_HC_COMMAND_TYPE.WAM__CMD_WEIGHT_INFO:
+        return this.handleWeightGlobal(parsed)
+
       case HC_FSM_COMMAND_TYPE.HC_CMD_GRADE_INFO:
         return this.handleGradeConfig(parsed)
+      case SIM_HMI_COMMAND_TYPE.SIM_HMI_INSPECTION_ON:
+        return this.handleGradeConfig(parsed)
+      case SIM_HMI_COMMAND_TYPE.SIM_HMI_DISPLAY_ON:
+      case SIM_HMI_COMMAND_TYPE.SIM_HMI_INSPECTION_OFF:
+        hilog.info(0x0001, TAG, `[SIM] cmd=${parsed.cmdName} 收到无载荷状态命令`)
+        return true
 
       default:
         hilog.info(0x0001, TAG, `收到未处理的命令: ${parsed.cmdName}`)
@@ -189,10 +217,23 @@ export class StatisticsHandler {
    * 处理重量信息 (FSM_CMD_WEIGHTINFO)
    */
   private handleWeightInfo(parsed: ParsedMessage): boolean {
-    const info = parsed.data as StWeightInfo
-    if (!info) {
+    const data = parsed.data as StWeightInfo | StWeightResult | null
+    if (!data) {
       hilog.warn(0x0001, TAG, '重量信息解析失败')
       return false
+    }
+
+    let info: StWeightInfo
+    if (data instanceof StWeightResult) {
+      // Qt 协议：将 StWeightResult 映射到 StWeightInfo（用于现有 UI）
+      const mapped = createDefaultWeightInfo()
+      mapped.weight = data.data.fFruitWeight
+      mapped.fruitId = data.data.nVehicleId
+      mapped.channelIndex = data.nChannelId
+      mapped.timestamp = Date.now()
+      info = mapped
+    } else {
+      info = data
     }
 
     // 更新全局数据接口
@@ -236,6 +277,10 @@ export class StatisticsHandler {
   private handleConfig(parsed: ParsedMessage): boolean {
     hilog.info(0x0001, TAG, `收到配置回复: 来自 0x${parsed.header.srcId.toString(16)}`)
     const sys = parsed.data
+    if (sys instanceof StGlobal) {
+      this.dataInterface.updateGlobalConfig(sys)
+      return true
+    }
     if (sys instanceof StSysConfig) {
       this.dataInterface.updateSysConfig(sys)
     }
@@ -269,6 +314,48 @@ export class StatisticsHandler {
         this.dataInterface.updateDeviceStatus(deviceId, existingStatus)
       }
     }
+    return true
+  }
+
+  private handleWaveInfo(parsed: ParsedMessage): boolean {
+    const wave = parsed.data as StWaveInfo | null
+    if (!wave) {
+      return false
+    }
+    hilog.debug(0x0001, TAG, `[波形] channel=${wave.nChannelId} fruitWeight=${wave.fruitweight}`)
+    return true
+  }
+
+  private handleVersionError(parsed: ParsedMessage): boolean {
+    const versionNum = parsed.data as number | null
+    if (typeof versionNum === 'number') {
+      hilog.warn(0x0001, TAG, `[版本不一致] FSM版本号=${versionNum}`)
+    }
+    return true
+  }
+
+  private handleBurnProgress(parsed: ParsedMessage): boolean {
+    const progress = parsed.data as number | null
+    if (typeof progress === 'number') {
+      hilog.info(0x0001, TAG, `[烧写进度] ${progress}%`)
+    }
+    return true
+  }
+
+  private handleBootProgress(parsed: ParsedMessage): boolean {
+    const progressText = parsed.data as string | null
+    if (progressText) {
+      hilog.info(0x0001, TAG, `[Boot进度] ${progressText}`)
+    }
+    return true
+  }
+
+  private handleWeightGlobal(parsed: ParsedMessage): boolean {
+    const data = parsed.data as StWeightGlobal | null
+    if (!data) {
+      return false
+    }
+    hilog.info(0x0001, TAG, `[WAM全局] wamId=${data.nWAMId} version=${data.nVersion} accuracy=${data.nAccuracy}`)
     return true
   }
 

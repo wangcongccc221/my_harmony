@@ -134,6 +134,147 @@ export class StWeightInfo {
   timestamp: number = 0;
 }
 
+export class StTrackingData {
+  nVehicleId: number = 0
+  fFruitWeight: number = 0
+  fVehicleWeight: number = 0
+  nADFruit: number = 0
+  nADVehicle: number = 0
+
+  static getSize(): number {
+    return 16
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    this.nVehicleId = view.getInt32(offset, true); offset += 4
+    this.fFruitWeight = view.getFloat32(offset, true); offset += 4
+    this.fVehicleWeight = view.getFloat32(offset, true); offset += 4
+    this.nADFruit = view.getUint16(offset, true); offset += 2
+    this.nADVehicle = view.getUint16(offset, true); offset += 2
+    return offset
+  }
+}
+
+export class StWeightStat {
+  fCupAverageWeight: number = 0
+  nAD0: number = 0
+  nAD1: number = 0
+  nStandardAD0: number = 0
+  nStandardAD1: number = 0
+
+  static getSize(): number {
+    return 12
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    this.fCupAverageWeight = view.getFloat32(offset, true); offset += 4
+    this.nAD0 = view.getUint16(offset, true); offset += 2
+    this.nAD1 = view.getUint16(offset, true); offset += 2
+    this.nStandardAD0 = view.getUint16(offset, true); offset += 2
+    this.nStandardAD1 = view.getUint16(offset, true); offset += 2
+    return offset
+  }
+}
+
+export class StWeightResult {
+  data: StTrackingData = new StTrackingData()
+  paras: StWeightStat = new StWeightStat()
+  nChannelId: number = 0
+  fVehicleWeight0: number = 0
+  fVehicleWeight1: number = 0
+  state: number = 0
+
+  static getSize(): number {
+    return 44
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    offset = this.data.readFromDataView(view, offset)
+    offset = this.paras.readFromDataView(view, offset)
+    this.nChannelId = view.getInt32(offset, true); offset += 4
+    this.fVehicleWeight0 = view.getFloat32(offset, true); offset += 4
+    this.fVehicleWeight1 = view.getFloat32(offset, true); offset += 4
+    this.state = view.getUint8(offset); offset += 1
+    if (offset % 4 !== 0) {
+      offset += (4 - (offset % 4))
+    }
+    return offset
+  }
+}
+
+export class StWaveInfo {
+  nChannelId: number = 0
+  waveform0: Uint16Array = new Uint16Array(256)
+  waveform1: Uint16Array = new Uint16Array(256)
+  fruitweight: number = 0
+
+  static getSize(): number {
+    return 4 + 256 * 2 + 256 * 2 + 4
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    this.nChannelId = view.getInt32(offset, true); offset += 4
+    for (let i = 0; i < this.waveform0.length; i++) {
+      this.waveform0[i] = view.getUint16(offset, true); offset += 2
+    }
+    for (let i = 0; i < this.waveform1.length; i++) {
+      this.waveform1[i] = view.getUint16(offset, true); offset += 2
+    }
+    this.fruitweight = view.getFloat32(offset, true); offset += 4
+    return offset
+  }
+}
+
+export class StWeightGlobal {
+  nAccuracy: number = 0
+  nVersion: number = 0
+  nWAMId: number = 0
+  cFSMInfo: Uint8Array = new Uint8Array(30)
+  gweight: StGlobalWeightBaseInfo = new StGlobalWeightBaseInfo()
+  weights: StWeightBaseInfo[] = []
+
+  constructor() {
+    for (let i = 0; i < ConstPreDefine.MAX_CHANNEL_NUM; i++) {
+      this.weights.push(new StWeightBaseInfo())
+    }
+  }
+
+  static getSize(): number {
+    let size = 0
+    size += 1 // nAccuracy
+    size += 3 // align to int32
+    size += 4 // nVersion
+    size += 4 // nWAMId
+    size += 30 // cFSMInfo
+    if (size % 4 !== 0) {
+      size += (4 - (size % 4))
+    }
+    size += StGlobalWeightBaseInfo.getSize()
+    size += ConstPreDefine.MAX_CHANNEL_NUM * StWeightBaseInfo.getSize()
+    return size
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    this.nAccuracy = view.getUint8(offset); offset += 1
+    if (offset % 4 !== 0) {
+      offset += (4 - (offset % 4))
+    }
+    this.nVersion = view.getInt32(offset, true); offset += 4
+    this.nWAMId = view.getInt32(offset, true); offset += 4
+    for (let i = 0; i < this.cFSMInfo.length; i++) {
+      this.cFSMInfo[i] = view.getUint8(offset); offset += 1
+    }
+    if (offset % 4 !== 0) {
+      offset += (4 - (offset % 4))
+    }
+    offset = this.gweight.readFromDataView(view, offset)
+    for (let i = 0; i < this.weights.length; i++) {
+      offset = this.weights[i].readFromDataView(view, offset)
+    }
+    return offset
+  }
+}
+
 export class StFruitVisionParam {
   unColorRate0: number = 0
   unColorRate1: number = 0
@@ -239,8 +380,8 @@ export class StFruitParam {
     this.fWeight = view.getFloat32(offset, true); offset += 4
     this.fDensity = view.getFloat32(offset, true); offset += 4
     this.unGrade = view.getUint32(offset, true); offset += 4
-    this.unWhichExit = view.getUint8(offset); offset += 1
-    offset += 3
+    this.unWhichExit = view.getInt16(offset, true); offset += 2
+    offset += 2
     return offset
   }
 }
@@ -502,8 +643,7 @@ export class StRange {
  * #pragma pack(4) in C++
  */
 export class StGradeItemInfo {
-  exitLow: number = 0 // ulong low32
-  exitHigh: number = 0 // ulong high32
+  exit: number = 0 // ulong (32-bit)
   nMinSize: number = 0; // float
   nMaxSize: number = 0; // float
   nFruitNum: number = 0; // int
@@ -524,12 +664,11 @@ export class StGradeItemInfo {
   sbLabelbyGrade: number = 0; // qint8
 
   static getSize(): number {
-    return 36;
+    return 32;
   }
 
   readFromDataView(view: DataView, offset: number): number {
-    this.exitLow = view.getUint32(offset, true); offset += 4;
-    this.exitHigh = view.getUint32(offset, true); offset += 4;
+    this.exit = view.getUint32(offset, true); offset += 4;
     this.nMinSize = view.getFloat32(offset, true); offset += 4;
     this.nMaxSize = view.getFloat32(offset, true); offset += 4;
     this.nFruitNum = view.getInt32(offset, true); offset += 4;
@@ -553,8 +692,7 @@ export class StGradeItemInfo {
   }
 
   writeToDataView(view: DataView, offset: number): number {
-    view.setUint32(offset, this.exitLow, true); offset += 4;
-    view.setUint32(offset, this.exitHigh, true); offset += 4;
+    view.setUint32(offset, this.exit, true); offset += 4;
     view.setFloat32(offset, this.nMinSize, true); offset += 4;
     view.setFloat32(offset, this.nMaxSize, true); offset += 4;
     view.setInt32(offset, this.nFruitNum, true); offset += 4;
@@ -859,27 +997,27 @@ export class StGradeInfo {
  */
 export class StStatistics {
   nGradeCount: Uint32Array = new Uint32Array(ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM); // ulong
-  nWeightGradeCount: Uint32Array = new Uint32Array(ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM); // ulong
+  nWeightGradeCount: Float64Array = new Float64Array(ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM); // double
   nExitCount: Uint32Array = new Uint32Array(ConstPreDefine.MAX_EXIT_NUM); // ulong
-  nExitWeightCount: Uint32Array = new Uint32Array(ConstPreDefine.MAX_EXIT_NUM); // ulong
+  nExitWeightCount: Float64Array = new Float64Array(ConstPreDefine.MAX_EXIT_NUM); // double
   nChannelTotalCount: Uint32Array = new Uint32Array(ConstPreDefine.MAX_CHANNEL_NUM); // ulong
-  nChannelWeightCount: Uint32Array = new Uint32Array(ConstPreDefine.MAX_CHANNEL_NUM); // ulong
+  nChannelWeightCount: Float64Array = new Float64Array(ConstPreDefine.MAX_CHANNEL_NUM); // double
   nSubsysId: number = 0; // int
   nBoxGradeCount: Int32Array = new Int32Array(ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM); // int
-  nBoxGradeWeight: Int32Array = new Int32Array(ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM); // int
+  nBoxGradeWeight: Float64Array = new Float64Array(ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM); // double
   nTotalCupNum: number = 0; // int
   nInterval: number = 0; // int
   nIntervalSumperminute: number = 0; // int
   nCupState: number = 0; // ushort
   nPulseInterval: number = 0; // ushort
   nUnpushFruitCount: number = 0; // ushort
-  nNetState: number = 0; // quint8 (if not MAX64/LS8)
-  nWeightSetting: number = 0; // quint8
-  nSCMState: number = 0; // quint8
-  nIQSNetState: number = 0; // quint8
+  nNetState: number = 0; // ushort (MAX64)
+  nWeightSetting: number = 0; // ushort (MAX64)
+  nSCMState: number = 0; // int (MAX64)
+  nIQSNetState: number = 0; // ushort (MAX64)
   nLockState: number = 0; // quint8
   ExitBoxNum: Uint16Array = new Uint16Array(ConstPreDefine.MAX_EXIT_NUM); // quint16
-  ExitWeight: Uint32Array = new Uint32Array(ConstPreDefine.MAX_EXIT_NUM); // quint32
+  ExitWeight: Float64Array = new Float64Array(ConstPreDefine.MAX_EXIT_NUM); // double
   // fSelectBasisRange: StRange[] if WEIGHTANDSIZE
   Notice: Uint8Array = new Uint8Array(ConstPreDefine.MAX_NOTICE_LENGTH); // quint8
 
@@ -897,27 +1035,29 @@ export class StStatistics {
   static getSize(): number {
     let size = 0;
     size += ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM * 4;
-    size += ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM * 4;
+    size += ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM * 8;
     size += ConstPreDefine.MAX_EXIT_NUM * 4;
-    size += ConstPreDefine.MAX_EXIT_NUM * 4;
+    size += ConstPreDefine.MAX_EXIT_NUM * 8;
     size += ConstPreDefine.MAX_CHANNEL_NUM * 4;
-    size += ConstPreDefine.MAX_CHANNEL_NUM * 4;
+    size += ConstPreDefine.MAX_CHANNEL_NUM * 8;
     size += 4; // nSubsysId
     size += ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM * 4;
-    size += ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM * 4;
+    size += ConstPreDefine.MAX_QUALITY_GRADE_NUM * ConstPreDefine.MAX_SIZE_GRADE_NUM * 8;
     size += 4; // nTotalCupNum
     size += 4; // nInterval
     size += 4; // nIntervalSumperminute
     size += 2; // nCupState
     size += 2; // nPulseInterval
     size += 2; // nUnpushFruitCount
-    size += 1; // nNetState
-    size += 1; // nWeightSetting
-    size += 1; // nSCMState
-    size += 1; // nIQSNetState
+    size += 2; // nNetState
+    size += 2; // nWeightSetting
+    size += 2; // padding before nSCMState (pack4 alignment)
+    size += 4; // nSCMState
+    size += 2; // nIQSNetState
     size += 1; // nLockState
+    size += 1; // padding before ExitBoxNum (2-byte alignment)
     size += ConstPreDefine.MAX_EXIT_NUM * 2; // ExitBoxNum
-    size += ConstPreDefine.MAX_EXIT_NUM * 4; // ExitWeight
+    size += ConstPreDefine.MAX_EXIT_NUM * 8; // ExitWeight
     size += ConstPreDefine.MAX_NOTICE_LENGTH; // Notice
     
     if (size % 4 !== 0) {
@@ -928,16 +1068,16 @@ export class StStatistics {
 
   readFromDataView(view: DataView, offset: number): number {
     for (let i = 0; i < this.nGradeCount.length; i++) { this.nGradeCount[i] = view.getUint32(offset, true); offset += 4; }
-    for (let i = 0; i < this.nWeightGradeCount.length; i++) { this.nWeightGradeCount[i] = view.getUint32(offset, true); offset += 4; }
+    for (let i = 0; i < this.nWeightGradeCount.length; i++) { this.nWeightGradeCount[i] = view.getFloat64(offset, true); offset += 8; }
     for (let i = 0; i < this.nExitCount.length; i++) { this.nExitCount[i] = view.getUint32(offset, true); offset += 4; }
-    for (let i = 0; i < this.nExitWeightCount.length; i++) { this.nExitWeightCount[i] = view.getUint32(offset, true); offset += 4; }
+    for (let i = 0; i < this.nExitWeightCount.length; i++) { this.nExitWeightCount[i] = view.getFloat64(offset, true); offset += 8; }
     for (let i = 0; i < this.nChannelTotalCount.length; i++) { this.nChannelTotalCount[i] = view.getUint32(offset, true); offset += 4; }
-    for (let i = 0; i < this.nChannelWeightCount.length; i++) { this.nChannelWeightCount[i] = view.getUint32(offset, true); offset += 4; }
+    for (let i = 0; i < this.nChannelWeightCount.length; i++) { this.nChannelWeightCount[i] = view.getFloat64(offset, true); offset += 8; }
     
     this.nSubsysId = view.getInt32(offset, true); offset += 4;
     
     for (let i = 0; i < this.nBoxGradeCount.length; i++) { this.nBoxGradeCount[i] = view.getInt32(offset, true); offset += 4; }
-    for (let i = 0; i < this.nBoxGradeWeight.length; i++) { this.nBoxGradeWeight[i] = view.getInt32(offset, true); offset += 4; }
+    for (let i = 0; i < this.nBoxGradeWeight.length; i++) { this.nBoxGradeWeight[i] = view.getFloat64(offset, true); offset += 8; }
     
     this.nTotalCupNum = view.getInt32(offset, true); offset += 4;
     this.nInterval = view.getInt32(offset, true); offset += 4;
@@ -945,19 +1085,19 @@ export class StStatistics {
     this.nCupState = view.getUint16(offset, true); offset += 2;
     this.nPulseInterval = view.getUint16(offset, true); offset += 2;
     this.nUnpushFruitCount = view.getUint16(offset, true); offset += 2;
-    this.nNetState = view.getUint8(offset); offset += 1;
-    this.nWeightSetting = view.getUint8(offset); offset += 1;
-    this.nSCMState = view.getUint8(offset); offset += 1;
-    this.nIQSNetState = view.getUint8(offset); offset += 1;
-    this.nLockState = view.getUint8(offset); offset += 1;
-    
-    // C++ 内存对齐修正: 前面是奇数个字节，quint16数组需要偶数地址对齐
-    if (offset % 2 !== 0) {
-      offset += 1;
+    this.nNetState = view.getUint16(offset, true); offset += 2;
+    this.nWeightSetting = view.getUint16(offset, true); offset += 2;
+    // MAX64 pack4: nSCMState 为 int，前面补 2 字节对齐
+    if (offset % 4 !== 0) {
+      offset += 2;
     }
+    this.nSCMState = view.getInt32(offset, true); offset += 4;
+    this.nIQSNetState = view.getUint16(offset, true); offset += 2;
+    this.nLockState = view.getUint8(offset); offset += 1;
+    if (offset % 2 !== 0) { offset += 1; }
 
     for (let i = 0; i < this.ExitBoxNum.length; i++) { this.ExitBoxNum[i] = view.getUint16(offset, true); offset += 2; }
-    for (let i = 0; i < this.ExitWeight.length; i++) { this.ExitWeight[i] = view.getUint32(offset, true); offset += 4; }
+    for (let i = 0; i < this.ExitWeight.length; i++) { this.ExitWeight[i] = view.getFloat64(offset, true); offset += 8; }
     for (let i = 0; i < this.Notice.length; i++) { this.Notice[i] = view.getUint8(offset); offset++; }
 
     // 自动计算虚拟字段
@@ -1094,5 +1234,450 @@ export class StSysConfig {
     this.nIQSEnable = view.getUint8(offset); offset += 1;
     
     return offset;
+  }
+}
+
+export class StWhiteBalanceMean {
+  MeanR: number = 0
+  MeanG: number = 0
+  MeanB: number = 0
+
+  static getSize(): number {
+    return 12
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    this.MeanR = view.getInt32(offset, true); offset += 4
+    this.MeanG = view.getInt32(offset, true); offset += 4
+    this.MeanB = view.getInt32(offset, true); offset += 4
+    return offset
+  }
+}
+
+export class StExitItemInfo {
+  nDis: number = 0
+  nOffset: number = 0
+  nDriverPin: number = 0
+
+  static getSize(): number {
+    return 6
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    this.nDis = view.getInt16(offset, true); offset += 2
+    this.nOffset = view.getInt16(offset, true); offset += 2
+    this.nDriverPin = view.getInt16(offset, true); offset += 2
+    return offset
+  }
+}
+
+export class StLabelItemInfo {
+  nDis: number = 0
+  nDriverPin: number = 0
+
+  static getSize(): number {
+    return 4
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    this.nDis = view.getInt16(offset, true); offset += 2
+    this.nDriverPin = view.getInt16(offset, true); offset += 2
+    return offset
+  }
+}
+
+export class StExitInfo {
+  labelexit: StLabelItemInfo[] = []
+  exits: StExitItemInfo[] = []
+
+  constructor() {
+    for (let i = 0; i < ConstPreDefine.MAX_LABEL_NUM; i++) {
+      this.labelexit.push(new StLabelItemInfo())
+    }
+    for (let i = 0; i < ConstPreDefine.MAX_EXIT_NUM; i++) {
+      this.exits.push(new StExitItemInfo())
+    }
+  }
+
+  static getSize(): number {
+    return ConstPreDefine.MAX_LABEL_NUM * StLabelItemInfo.getSize() +
+      ConstPreDefine.MAX_EXIT_NUM * StExitItemInfo.getSize()
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    for (let i = 0; i < this.labelexit.length; i++) {
+      offset = this.labelexit[i].readFromDataView(view, offset)
+    }
+    for (let i = 0; i < this.exits.length; i++) {
+      offset = this.exits[i].readFromDataView(view, offset)
+    }
+    return offset
+  }
+}
+
+export class StGlobalExitInfo {
+  nPulse: number = 0
+  versionFlag: number = 0
+  nLabelPulse: number = 0
+  nDriverPin: Int16Array = new Int16Array(ConstPreDefine.MAX_EXIT_NUM)
+  Delay_time: Float32Array = new Float32Array(ConstPreDefine.MAX_EXIT_NUM)
+  Hold_time: Float32Array = new Float32Array(ConstPreDefine.MAX_EXIT_NUM)
+
+  static getSize(): number {
+    let size = 0
+    size += 1
+    size += 1
+    size += 2
+    size += ConstPreDefine.MAX_EXIT_NUM * 2
+    size += ConstPreDefine.MAX_EXIT_NUM * 4
+    size += ConstPreDefine.MAX_EXIT_NUM * 4
+    return size
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    this.nPulse = view.getUint8(offset); offset += 1
+    this.versionFlag = view.getUint8(offset); offset += 1
+    this.nLabelPulse = view.getInt16(offset, true); offset += 2
+    for (let i = 0; i < this.nDriverPin.length; i++) { this.nDriverPin[i] = view.getInt16(offset, true); offset += 2 }
+    for (let i = 0; i < this.Delay_time.length; i++) { this.Delay_time[i] = view.getFloat32(offset, true); offset += 4 }
+    for (let i = 0; i < this.Hold_time.length; i++) { this.Hold_time[i] = view.getFloat32(offset, true); offset += 4 }
+    return offset
+  }
+}
+
+export class StWeightBaseInfo {
+  fGADParam: Float32Array = new Float32Array(2)
+  fTemperatureParams: number = 0
+  waveinterval: Uint16Array = new Uint16Array(2)
+
+  static getSize(): number {
+    return 16
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    for (let i = 0; i < this.fGADParam.length; i++) { this.fGADParam[i] = view.getFloat32(offset, true); offset += 4 }
+    this.fTemperatureParams = view.getFloat32(offset, true); offset += 4
+    for (let i = 0; i < this.waveinterval.length; i++) { this.waveinterval[i] = view.getUint16(offset, true); offset += 2 }
+    return offset
+  }
+}
+
+export class StGlobalWeightBaseInfo {
+  fFilterParam: number = 0
+  AD_Filter_ALG: number = 0
+  nEffectCupThreshold: number = 0
+  nMinGradeThreshold: number = 0
+  nCupDeviationThreshold: number = 0
+  nCupBreakageThreshold: number = 0
+  nBaseCupNum: number = 0
+  nTotalCupNums: Int16Array = new Int16Array(ConstPreDefine.MAX_SUBSYS_NUM)
+  RefWeight: number = 0
+  WeightTh: number = 0
+  nCupLostageThreshold: number = 0
+  nCupLostNumageThreshold: number = 0
+
+  static getSize(): number {
+    let size = 0
+    size += 4
+    size += 1
+    size += 1
+    size += 2
+    size += 2
+    size += 2
+    size += 2
+    size += 2
+    size += ConstPreDefine.MAX_SUBSYS_NUM * 2
+    size += 2
+    size += 1
+    size += 1
+    size += 2
+    size += 2
+    if (size % 4 !== 0) {
+      size += (4 - (size % 4))
+    }
+    return size
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    this.fFilterParam = view.getFloat32(offset, true); offset += 4
+    this.AD_Filter_ALG = view.getUint8(offset); offset += 1
+    if (offset % 2 !== 0) {
+      offset += 1
+    }
+    this.nEffectCupThreshold = view.getInt16(offset, true); offset += 2
+    this.nMinGradeThreshold = view.getInt16(offset, true); offset += 2
+    this.nCupDeviationThreshold = view.getInt16(offset, true); offset += 2
+    this.nCupBreakageThreshold = view.getInt16(offset, true); offset += 2
+    this.nBaseCupNum = view.getInt16(offset, true); offset += 2
+    for (let i = 0; i < this.nTotalCupNums.length; i++) { this.nTotalCupNums[i] = view.getInt16(offset, true); offset += 2 }
+    this.RefWeight = view.getInt16(offset, true); offset += 2
+    this.WeightTh = view.getUint8(offset); offset += 1
+    if (offset % 2 !== 0) {
+      offset += 1
+    }
+    this.nCupLostageThreshold = view.getInt16(offset, true); offset += 2
+    this.nCupLostNumageThreshold = view.getInt16(offset, true); offset += 2
+    if (offset % 4 !== 0) {
+      offset += (4 - (offset % 4))
+    }
+    return offset
+  }
+}
+
+export class StFruitCup {
+  nLeft: Int32Array = new Int32Array(2)
+  nTop: number = 0
+  nBottom: number = 0
+  nOffsetX: number = 0
+  nOffsetY: number = 0
+
+  static getSize(): number {
+    return 24
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    for (let i = 0; i < this.nLeft.length; i++) { this.nLeft[i] = view.getInt32(offset, true); offset += 4 }
+    this.nTop = view.getInt32(offset, true); offset += 4
+    this.nBottom = view.getInt32(offset, true); offset += 4
+    this.nOffsetX = view.getInt32(offset, true); offset += 4
+    this.nOffsetY = view.getInt32(offset, true); offset += 4
+    return offset
+  }
+}
+
+export class StCameraParas {
+  MeanValue: StWhiteBalanceMean = new StWhiteBalanceMean()
+  cup: StFruitCup[] = []
+  nROIOffsetY: Int32Array = new Int32Array(ConstPreDefine.CHANNEL_NUM)
+  nTriggerDelay: number = 0
+  nShutter: number = 0
+  nDetectionThreshold: Int32Array = new Int32Array(ConstPreDefine.CHANNEL_NUM)
+  nDetectWhiteTh: Int32Array = new Int32Array(ConstPreDefine.CHANNEL_NUM)
+  fGammaCorrection: number = 0
+  fPixelRatio: Float32Array = new Float32Array(ConstPreDefine.CHANNEL_NUM)
+  fFruitCupRangeTh: Float32Array = new Float32Array(ConstPreDefine.CHANNEL_NUM)
+  nXYEdgeBreakTh: Uint8Array = new Uint8Array(ConstPreDefine.CHANNEL_NUM)
+  cCameraNum: number = 0
+
+  constructor() {
+    for (let i = 0; i < ConstPreDefine.CHANNEL_NUM; i++) {
+      this.cup.push(new StFruitCup())
+    }
+  }
+
+  static getSize(): number {
+    let size = 0
+    size += StWhiteBalanceMean.getSize()
+    size += ConstPreDefine.CHANNEL_NUM * StFruitCup.getSize()
+    size += ConstPreDefine.CHANNEL_NUM * 4
+    size += 4
+    size += 4
+    size += ConstPreDefine.CHANNEL_NUM * 4
+    size += ConstPreDefine.CHANNEL_NUM * 4
+    size += 4
+    size += ConstPreDefine.CHANNEL_NUM * 4
+    size += ConstPreDefine.CHANNEL_NUM * 4
+    size += ConstPreDefine.CHANNEL_NUM
+    size += 1
+    if (size % 4 !== 0) {
+      size += (4 - (size % 4))
+    }
+    return size
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    offset = this.MeanValue.readFromDataView(view, offset)
+    for (let i = 0; i < this.cup.length; i++) {
+      offset = this.cup[i].readFromDataView(view, offset)
+    }
+    for (let i = 0; i < this.nROIOffsetY.length; i++) { this.nROIOffsetY[i] = view.getInt32(offset, true); offset += 4 }
+    this.nTriggerDelay = view.getInt32(offset, true); offset += 4
+    this.nShutter = view.getInt32(offset, true); offset += 4
+    for (let i = 0; i < this.nDetectionThreshold.length; i++) { this.nDetectionThreshold[i] = view.getInt32(offset, true); offset += 4 }
+    for (let i = 0; i < this.nDetectWhiteTh.length; i++) { this.nDetectWhiteTh[i] = view.getInt32(offset, true); offset += 4 }
+    this.fGammaCorrection = view.getFloat32(offset, true); offset += 4
+    for (let i = 0; i < this.fPixelRatio.length; i++) { this.fPixelRatio[i] = view.getFloat32(offset, true); offset += 4 }
+    for (let i = 0; i < this.fFruitCupRangeTh.length; i++) { this.fFruitCupRangeTh[i] = view.getFloat32(offset, true); offset += 4 }
+    for (let i = 0; i < this.nXYEdgeBreakTh.length; i++) { this.nXYEdgeBreakTh[i] = view.getUint8(offset); offset += 1 }
+    this.cCameraNum = view.getUint8(offset); offset += 1
+    if (offset % 4 !== 0) {
+      offset += (4 - (offset % 4))
+    }
+    return offset
+  }
+}
+
+export class StIRCameraParas {
+  cup: StFruitCup[] = []
+  nROIOffsetY: Int32Array = new Int32Array(ConstPreDefine.CHANNEL_NUM)
+  nTriggerDelay: number = 0
+  nShutter: number = 0
+  nIRDetectionThreshold: Int32Array = new Int32Array(ConstPreDefine.CHANNEL_NUM)
+  fGammaCorrection: number = 0
+  fPixelRatio: Float32Array = new Float32Array(ConstPreDefine.CHANNEL_NUM)
+  fFruitCupRangeTh: Float32Array = new Float32Array(ConstPreDefine.CHANNEL_NUM)
+  nXYEdgeBreakTh: Uint8Array = new Uint8Array(ConstPreDefine.CHANNEL_NUM)
+  cCameraNum: number = 0
+
+  constructor() {
+    for (let i = 0; i < ConstPreDefine.CHANNEL_NUM; i++) {
+      this.cup.push(new StFruitCup())
+    }
+  }
+
+  static getSize(): number {
+    let size = 0
+    size += ConstPreDefine.CHANNEL_NUM * StFruitCup.getSize()
+    size += ConstPreDefine.CHANNEL_NUM * 4
+    size += 4
+    size += 4
+    size += ConstPreDefine.CHANNEL_NUM * 4
+    size += 4
+    size += ConstPreDefine.CHANNEL_NUM * 4
+    size += ConstPreDefine.CHANNEL_NUM * 4
+    size += ConstPreDefine.CHANNEL_NUM
+    size += 1
+    if (size % 4 !== 0) {
+      size += (4 - (size % 4))
+    }
+    return size
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    for (let i = 0; i < this.cup.length; i++) {
+      offset = this.cup[i].readFromDataView(view, offset)
+    }
+    for (let i = 0; i < this.nROIOffsetY.length; i++) { this.nROIOffsetY[i] = view.getInt32(offset, true); offset += 4 }
+    this.nTriggerDelay = view.getInt32(offset, true); offset += 4
+    this.nShutter = view.getInt32(offset, true); offset += 4
+    for (let i = 0; i < this.nIRDetectionThreshold.length; i++) { this.nIRDetectionThreshold[i] = view.getInt32(offset, true); offset += 4 }
+    this.fGammaCorrection = view.getFloat32(offset, true); offset += 4
+    for (let i = 0; i < this.fPixelRatio.length; i++) { this.fPixelRatio[i] = view.getFloat32(offset, true); offset += 4 }
+    for (let i = 0; i < this.fFruitCupRangeTh.length; i++) { this.fFruitCupRangeTh[i] = view.getFloat32(offset, true); offset += 4 }
+    for (let i = 0; i < this.nXYEdgeBreakTh.length; i++) { this.nXYEdgeBreakTh[i] = view.getUint8(offset); offset += 1 }
+    this.cCameraNum = view.getUint8(offset); offset += 1
+    if (offset % 4 !== 0) {
+      offset += (4 - (offset % 4))
+    }
+    return offset
+  }
+}
+
+export class StParas {
+  cameraParas: StCameraParas[] = []
+  irCameraParas: StIRCameraParas[] = []
+  nCupNum: number = 0
+
+  constructor() {
+    for (let i = 0; i < ConstPreDefine.MAX_COLOR_CAMERA_NUM; i++) {
+      this.cameraParas.push(new StCameraParas())
+    }
+    for (let i = 0; i < ConstPreDefine.MAX_NIR_CAMERA_NUM; i++) {
+      this.irCameraParas.push(new StIRCameraParas())
+    }
+  }
+
+  static getSize(): number {
+    let size = 0
+    size += ConstPreDefine.MAX_COLOR_CAMERA_NUM * StCameraParas.getSize()
+    size += ConstPreDefine.MAX_NIR_CAMERA_NUM * StIRCameraParas.getSize()
+    size += 4
+    return size
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    for (let i = 0; i < this.cameraParas.length; i++) {
+      offset = this.cameraParas[i].readFromDataView(view, offset)
+    }
+    for (let i = 0; i < this.irCameraParas.length; i++) {
+      offset = this.irCameraParas[i].readFromDataView(view, offset)
+    }
+    this.nCupNum = view.getInt32(offset, true); offset += 4
+    return offset
+  }
+}
+
+export class StAnalogDensity {
+  uAnalogDensity: Float32Array = new Float32Array(ConstPreDefine.MAX_FRUIT_TYPE_MAJOR_CLASS_NUM)
+
+  static getSize(): number {
+    return ConstPreDefine.MAX_FRUIT_TYPE_MAJOR_CLASS_NUM * 4
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    for (let i = 0; i < this.uAnalogDensity.length; i++) { this.uAnalogDensity[i] = view.getFloat32(offset, true); offset += 4 }
+    return offset
+  }
+}
+
+export class StGlobal {
+  sys: StSysConfig = new StSysConfig()
+  grade: StGradeInfo = new StGradeInfo()
+  gexit: StGlobalExitInfo = new StGlobalExitInfo()
+  analogdensity: StAnalogDensity = new StAnalogDensity()
+  exit: StExitInfo[] = []
+  paras: StParas[] = []
+  motor: StMotorInfo[] = []
+  cFSMInfo: Uint8Array = new Uint8Array(ConstPreDefine.MAX_TEXT_LENGTH)
+  cIPMInfo: Uint8Array = new Uint8Array(ConstPreDefine.MAX_TEXT_LENGTH)
+  nSubsysId: number = 0
+  nVersion: number = 0
+  nNetState: number = 0
+  nFsmRestart: number = 0
+  nFsmModule: number = 0
+
+  constructor() {
+    for (let i = 0; i < ConstPreDefine.MAX_CHANNEL_NUM; i++) {
+      this.exit.push(new StExitInfo())
+    }
+    for (let i = 0; i < ConstPreDefine.MAX_IPM_NUM; i++) {
+      this.paras.push(new StParas())
+    }
+    for (let i = 0; i < ConstPreDefine.MAX_EXIT_NUM; i++) {
+      this.motor.push(new StMotorInfo())
+    }
+  }
+
+  static getSize(): number {
+    let size = 0
+    size += StSysConfig.getSize()
+    size += StGradeInfo.getSize()
+    size += StGlobalExitInfo.getSize()
+    size += StAnalogDensity.getSize()
+    size += ConstPreDefine.MAX_CHANNEL_NUM * StExitInfo.getSize()
+    size += ConstPreDefine.MAX_IPM_NUM * StParas.getSize()
+    size += ConstPreDefine.MAX_EXIT_NUM * StMotorInfo.getSize()
+    size += ConstPreDefine.MAX_TEXT_LENGTH
+    size += ConstPreDefine.MAX_TEXT_LENGTH
+    size += 4
+    size += 4
+    size += 2
+    size += 1
+    size += 1
+    return size
+  }
+
+  readFromDataView(view: DataView, offset: number): number {
+    offset = this.sys.readFromDataView(view, offset)
+    offset = this.grade.readFromDataView(view, offset)
+    offset = this.gexit.readFromDataView(view, offset)
+    offset = this.analogdensity.readFromDataView(view, offset)
+    for (let i = 0; i < this.exit.length; i++) {
+      offset = this.exit[i].readFromDataView(view, offset)
+    }
+    for (let i = 0; i < this.paras.length; i++) {
+      offset = this.paras[i].readFromDataView(view, offset)
+    }
+    for (let i = 0; i < this.motor.length; i++) {
+      offset = this.motor[i].readFromDataView(view, offset)
+    }
+    for (let i = 0; i < this.cFSMInfo.length; i++) { this.cFSMInfo[i] = view.getUint8(offset); offset += 1 }
+    for (let i = 0; i < this.cIPMInfo.length; i++) { this.cIPMInfo[i] = view.getUint8(offset); offset += 1 }
+    this.nSubsysId = view.getInt32(offset, true); offset += 4
+    this.nVersion = view.getInt32(offset, true); offset += 4
+    this.nNetState = view.getUint16(offset, true); offset += 2
+    this.nFsmRestart = view.getUint8(offset); offset += 1
+    this.nFsmModule = view.getUint8(offset); offset += 1
+    return offset
   }
 }

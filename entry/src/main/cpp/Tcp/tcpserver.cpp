@@ -176,7 +176,11 @@ bool TcpServer::RecvCommand(int clientSocket, CommandHead* commandHead)
     
     if (RecvN(clientSocket, (char*)buffer, sizeof(buffer))) {
         commandHead->nSrcId = buffer[0];
-        // DestId (buffer[1]) 本地可以用来校验是否发给我的，这里暂且忽略或打印
+        const int32_t dstId = buffer[1];
+        if (dstId != m_DstId) {
+            std::cout << "[TCP] Drop packet: dstId=" << dstId << " != local m_DstId=" << m_DstId << std::endl;
+            return false;
+        }
         commandHead->nCmdId = buffer[2];
         
         // nLength 初始为0，后续通过回调 m_setDataLength 计算

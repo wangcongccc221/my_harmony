@@ -119,6 +119,58 @@ def parse_header_info(header: bytes) -> Tuple[Optional[int], Optional[int], Opti
     except Exception:
         return None, None, None, None
 
+def log_header_preview(header: bytes, body: bytes, name: str) -> None:
+    sync, src_id, dst_id, cmd_id = parse_header_info(header)
+    header_hex = format_hex(header, 32)
+    header12_hex = format_hex(header[4:16], 32)
+    body_hex = format_hex(body, LOG_BODY_PREVIEW_LEN)
+    packet_hex = (header + body).hex()
+    if cmd_id is not None:
+        log_info(
+            f"Sent {name} cmd=0x{cmd_id:04X} src=0x{(src_id or 0):04X} dst=0x{(dst_id or 0):04X} "
+            f"bodyLen={len(body)} headerHex={header_hex} bodyHex={body_hex}"
+        )
+        log_info(f"Header12 src/dst/cmd hex={header12_hex}")
+        log_info(f"Packet hex={packet_hex}")
+    else:
+        log_info(f"Sent {name} bodyLen={len(body)} headerHex={header_hex} bodyHex={body_hex}")
+
+def build_dump_packet(args: argparse.Namespace):
+    if args.dump_packet == "stats":
+        src_id = make_src_id(subsys_index=args.subsys, channel_index=args.stats_channel)
+        header = create_header_with_ids(FSM_CMD_STATISTICS, src_id, HC_ID)
+        body = create_statistics(
+            n_total_cup_num=1,
+            n_total_weight=150,
+            n_qualified_count=1,
+            n_unqualified_count=0,
+            n_interval_sum_per_minute=300,
+            n_qual=args.qual_num,
+            n_size=args.size_num,
+            subsys_index=args.subsys
+        )
+        return "Statistics", header, body
+    if args.dump_packet == "grade":
+        src_id = make_src_id(subsys_index=args.subsys, ipm_index=args.grade_ipm if args.grade_ipm >= 0 else 0)
+        header = create_header_with_ids(FSM_CMD_GRADEINFO, src_id, HC_ID)
+        body = create_grade_info(channel0_exit=1, channel1_exit=2, route_id=0)
+        return "GradeInfo", header, body
+    if args.dump_packet == "weight":
+        src_id = make_src_id(subsys_index=args.subsys, channel_index=args.weight_channel)
+        header = create_header_with_ids(FSM_CMD_WEIGHTINFO, src_id, HC_ID)
+        body = create_weight_info(current_weight=150, current_exit=1)
+        return "WeightInfo", header, body
+    if args.dump_packet == "st-grade":
+        header = create_header_with_ids(HC_CMD_GRADE_INFO, FSM_ID, HC_ID)
+        body = create_st_grade_info(
+            n_qual=args.qual_num,
+            n_size=args.size_num,
+            classify_type=args.classify_type,
+            label_type=args.label_type
+        )
+        return "StGradeInfo", header, body
+    return None, b"", b""
+
 def create_header(cmd_id, data_len=0):
     """
     创建消息头 (16 bytes)
@@ -633,16 +685,7 @@ def send_once(header, body, name="Data"):
         client.send(header)
         client.send(body)
         if SHOW_SEND_LOGS:
-            sync, src_id, dst_id, cmd_id = parse_header_info(header)
-            header_hex = format_hex(header, 32)
-            body_hex = format_hex(body, LOG_BODY_PREVIEW_LEN)
-            if cmd_id is not None:
-                log_info(
-                    f"Sent {name} cmd=0x{cmd_id:04X} src=0x{(src_id or 0):04X} dst=0x{(dst_id or 0):04X} "
-                    f"bodyLen={len(body)} headerHex={header_hex} bodyHex={body_hex}"
-                )
-            else:
-                log_info(f"Sent {name} bodyLen={len(body)} headerHex={header_hex} bodyHex={body_hex}")
+            log_header_preview(header, body, name)
         
         client.close()
         # print("Connection closed.")
@@ -930,6 +973,7 @@ def run_simulation(args: argparse.Namespace):
             else:
                 if SHOW_SEND_LOGS:
                     log_info(f"[DryRun] Statistics bytes: {len(stats_body)}")
+                    log_header_preview(stats_header, stats_body, "Statistics")
             
             time.sleep(args.stats_interval_s)
 
@@ -952,6 +996,7 @@ def run_simulation(args: argparse.Namespace):
                     else:
                         if SHOW_SEND_LOGS:
                             log_info(f"[DryRun] GradeInfo bytes: {len(grade_body)}")
+                            log_header_preview(grade_header, grade_body, "GradeInfo")
                     time.sleep(0.2)
             
             # --- 3. 发送重量数据 (模拟单个果实) ---
@@ -971,6 +1016,7 @@ def run_simulation(args: argparse.Namespace):
                     else:
                         if SHOW_SEND_LOGS:
                             log_info(f"[DryRun] WeightInfo bytes: {len(weight_body)}")
+                            log_header_preview(weight_header, weight_body, "WeightInfo")
                     time.sleep(0.3)
             
             # --- 4. 发送等级设置信息 (UI表头) ---
@@ -988,6 +1034,7 @@ def run_simulation(args: argparse.Namespace):
                 else:
                     if SHOW_SEND_LOGS:
                         log_info(f"[DryRun] StGradeInfo bytes: {len(st_grade_body)}")
+                        log_header_preview(st_grade_header, st_grade_body, "StGradeInfo")
                 time.sleep(0.2)
 
             # 等待下一轮
@@ -1051,6 +1098,7 @@ if __name__ == "__main__":
     parser.add_argument("--print-percent", action="store_true", help="打印出口占比TopN（与鸿蒙 EXIT_PERCENT 逻辑一致）")
     parser.add_argument("--topn", type=int, default=6)
     parser.add_argument("--force-total-weight-from-exits", action="store_true", help="让 totalWeight 始终等于各出口重量之和")
+    parser.add_argument("--dump-packet", choices=["stats", "grade", "weight", "st-grade"], help="输出单包完整字节流并退出")
 
     args = parser.parse_args()
 
@@ -1062,6 +1110,12 @@ if __name__ == "__main__":
     LOGGER = setup_logging(LOG_FILE, args.log_level, LOG_TO_CONSOLE)
     if args.seed is not None:
         random.seed(args.seed)
+
+    if args.dump_packet:
+        name, header, body = build_dump_packet(args)
+        packet = header + body
+        print(f"{name} len={len(packet)} hex={packet.hex()}")
+        raise SystemExit(0)
 
     if args.cmd_server_only:
         run_cmd_server(args)

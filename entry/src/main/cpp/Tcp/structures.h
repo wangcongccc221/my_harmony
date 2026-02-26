@@ -28,7 +28,7 @@ namespace ConstPreDefine
 
     static const int MAX_QUALITY_GRADE_NUM = 16;
     static const int MAX_SIZE_GRADE_NUM = 16;
-    static const int MAX_EXIT_NUM = 48; // Using 48 as default based on file path "48"
+    static const int MAX_EXIT_NUM = 64; // Align with Qt MAX64 build
     static const int MAX_TEXT_LENGTH = 12;
     static const int MAX_FRUIT_NAME_LENGTH = 50;
     static const int MAX_CLIENTINFO_LENGTH = 20;
@@ -93,6 +93,24 @@ enum IPM_HC_COMMAND_TYPE : int
 enum ACS_HMI_COMMAND_TYPE : int
 {
     ACS_HMI_EXIT_STOP = 0x8000
+};
+
+enum WAM_HC_COMMAND_TYPE : int
+{
+    WAM__CMD_WEIGHT_INFO = 0x0120,
+    WAM_CMD_WEIGHTINFO = 0x0121,
+    WAM_CMD_WAVEINFO = 0x0122,
+    WAM_CMD_REP_WAM_INFO = 0x0123
+};
+
+enum SIM_HMI_COMMAND_TYPE : int
+{
+    SIM_HMI_DISPLAY_ON = 0x7000,
+    SIM_HMI_INSPECTION_ON = 0x7001,
+    SIM_HMI_INSPECTION__BADNUMBER = 0x7002,
+    SIM_HMI_INSPECTION_OFF = 0x7003,
+    SIM_HMI_P_START = 0x7004,
+    SIM_HMI_P_CLOSE = 0x7005
 };
 
 // ================== Pack 1 Section (Matches Legacy) ==================
@@ -250,27 +268,27 @@ struct StGradeInfo
 struct StStatistics
 {
     ulong nGradeCount[ConstPreDefine::MAX_QUALITY_GRADE_NUM * ConstPreDefine::MAX_SIZE_GRADE_NUM];
-    ulong nWeightGradeCount[ConstPreDefine::MAX_QUALITY_GRADE_NUM * ConstPreDefine::MAX_SIZE_GRADE_NUM];
+    double nWeightGradeCount[ConstPreDefine::MAX_QUALITY_GRADE_NUM * ConstPreDefine::MAX_SIZE_GRADE_NUM];
     ulong nExitCount[ConstPreDefine::MAX_EXIT_NUM];
-    ulong nExitWeightCount[ConstPreDefine::MAX_EXIT_NUM];
+    double nExitWeightCount[ConstPreDefine::MAX_EXIT_NUM];
     ulong nChannelTotalCount[ConstPreDefine::MAX_CHANNEL_NUM];
-    ulong nChannelWeightCount[ConstPreDefine::MAX_CHANNEL_NUM];
+    double nChannelWeightCount[ConstPreDefine::MAX_CHANNEL_NUM];
     int nSubsysId;
     int nBoxGradeCount[ConstPreDefine::MAX_QUALITY_GRADE_NUM * ConstPreDefine::MAX_SIZE_GRADE_NUM];
-    int nBoxGradeWeight[ConstPreDefine::MAX_QUALITY_GRADE_NUM * ConstPreDefine::MAX_SIZE_GRADE_NUM];
+    double nBoxGradeWeight[ConstPreDefine::MAX_QUALITY_GRADE_NUM * ConstPreDefine::MAX_SIZE_GRADE_NUM];
     int nTotalCupNum;
     int nInterval;
     int nIntervalSumperminute;
     ushort nCupState;
     ushort nPulseInterval;
     ushort nUnpushFruitCount;
-    quint8 nNetState;
-    quint8 nWeightSetting;
-    quint8 nSCMState;
-    quint8 nIQSNetState;
+    ushort nNetState;
+    ushort nWeightSetting;
+    int nSCMState;
+    ushort nIQSNetState;
     quint8 nLockState;
     quint16 ExitBoxNum[ConstPreDefine::MAX_EXIT_NUM];
-    quint32 ExitWeight[ConstPreDefine::MAX_EXIT_NUM];
+    double ExitWeight[ConstPreDefine::MAX_EXIT_NUM];
     quint8 Notice[ConstPreDefine::MAX_NOTICE_LENGTH];
 
     StStatistics() { memset(this, 0, sizeof(StStatistics)); }
@@ -319,6 +337,7 @@ struct StWeightStat
     
     StWeightStat() { memset(this, 0, sizeof(StWeightStat)); }
 };
+
 
 struct StWeightResult
 {
@@ -384,7 +403,7 @@ struct StFruitParam
     float fWeight;
     float fDensity;
     uint unGrade;
-    quint8 unWhichExit;
+    short unWhichExit;
     
     StFruitParam() { memset(this, 0, sizeof(StFruitParam)); }
 };
@@ -412,6 +431,150 @@ struct StWhiteBalanceCoefficient
     StWhiteBalanceCoefficient() { memset(this, 0, sizeof(StWhiteBalanceCoefficient)); }
 };
 
+struct StMotorInfo
+{
+    quint8 bExitId;
+    quint8 bMotorSwitch;
+    int nMotorEnableSwitchNum;
+    int nMotorEnableSwitchWeight;
+    float fDelay_time;
+    float fHold_time;
+    StMotorInfo() { memset(this, 0, sizeof(StMotorInfo)); }
+};
+
+struct StExitItemInfo
+{
+    short nDis;
+    short nOffset;
+    short nDriverPin;
+    StExitItemInfo() { memset(this, 0, sizeof(StExitItemInfo)); }
+};
+
+struct StLabelItemInfo
+{
+    short nDis;
+    short nDriverPin;
+    StLabelItemInfo() { memset(this, 0, sizeof(StLabelItemInfo)); }
+};
+
+struct StExitInfo
+{
+    StLabelItemInfo labelexit[ConstPreDefine::MAX_LABEL_NUM];
+    StExitItemInfo exits[ConstPreDefine::MAX_EXIT_NUM];
+    StExitInfo() { memset(this, 0, sizeof(StExitInfo)); }
+};
+
+struct StGlobalExitInfo
+{
+    quint8 nPulse;
+    quint8 versionFlag;
+    short nLabelPulse;
+    short nDriverPin[ConstPreDefine::MAX_EXIT_NUM];
+    float Delay_time[ConstPreDefine::MAX_EXIT_NUM];
+    float Hold_time[ConstPreDefine::MAX_EXIT_NUM];
+    StGlobalExitInfo() { memset(this, 0, sizeof(StGlobalExitInfo)); }
+};
+
+struct StWeightBaseInfo
+{
+    float fGADParam[2];
+    float fTemperatureParams;
+    ushort waveinterval[2];
+    StWeightBaseInfo() { memset(this, 0, sizeof(StWeightBaseInfo)); }
+};
+
+struct StGlobalWeightBaseInfo
+{
+    float fFilterParam;
+    quint8 AD_Filter_ALG;
+    short nEffectCupThreshold;
+    short nMinGradeThreshold;
+    short nCupDeviationThreshold;
+    short nCupBreakageThreshold;
+    short nBaseCupNum;
+    short nTotalCupNums[ConstPreDefine::MAX_SUBSYS_NUM];
+    short RefWeight;
+    quint8 WeightTh;
+    short nCupLostageThreshold;
+    short nCupLostNumageThreshold;
+    StGlobalWeightBaseInfo() { memset(this, 0, sizeof(StGlobalWeightBaseInfo)); }
+};
+
+struct StFruitCup
+{
+    int nLeft[2];
+    int nTop;
+    int nBottom;
+    int nOffsetX;
+    int nOffsetY;
+    StFruitCup() { memset(this, 0, sizeof(StFruitCup)); }
+};
+
+struct StCameraParas
+{
+    StWhiteBalanceMean MeanValue;
+    StFruitCup cup[ConstPreDefine::CHANNEL_NUM];
+    int nROIOffsetY[ConstPreDefine::CHANNEL_NUM];
+    int nTriggerDelay;
+    int nShutter;
+    int nDetectionThreshold[ConstPreDefine::CHANNEL_NUM];
+    int nDetectWhiteTh[ConstPreDefine::CHANNEL_NUM];
+    float fGammaCorrection;
+    float fPixelRatio[ConstPreDefine::CHANNEL_NUM];
+    float fFruitCupRangeTh[ConstPreDefine::CHANNEL_NUM];
+    quint8 nXYEdgeBreakTh[ConstPreDefine::CHANNEL_NUM];
+    quint8 cCameraNum;
+    StCameraParas() { memset(this, 0, sizeof(StCameraParas)); }
+};
+
+struct StIRCameraParas
+{
+    StFruitCup cup[ConstPreDefine::CHANNEL_NUM];
+    int nROIOffsetY[ConstPreDefine::CHANNEL_NUM];
+    int nTriggerDelay;
+    int nShutter;
+    int nIRDetectionThreshold[ConstPreDefine::CHANNEL_NUM];
+    float fGammaCorrection;
+    float fPixelRatio[ConstPreDefine::CHANNEL_NUM];
+    float fFruitCupRangeTh[ConstPreDefine::CHANNEL_NUM];
+    quint8 nXYEdgeBreakTh[ConstPreDefine::CHANNEL_NUM];
+    quint8 cCameraNum;
+    StIRCameraParas() { memset(this, 0, sizeof(StIRCameraParas)); }
+};
+
+struct StParas
+{
+    StCameraParas cameraParas[ConstPreDefine::MAX_COLOR_CAMERA_NUM];
+    StIRCameraParas irCameraParas[ConstPreDefine::MAX_NIR_CAMERA_NUM];
+    int nCupNum;
+    StParas() { memset(this, 0, sizeof(StParas)); }
+};
+
+struct StAnalogDensity
+{
+    float uAnalogDensity[ConstPreDefine::MAX_FRUIT_TYPE_MAJOR_CLASS_NUM];
+    StAnalogDensity() { memset(this, 0, sizeof(StAnalogDensity)); }
+};
+
+struct StGlobal
+{
+    StSysConfig sys;
+    StGradeInfo grade;
+    StGlobalExitInfo gexit;
+    StAnalogDensity analogdensity;
+    StExitInfo exit[ConstPreDefine::MAX_CHANNEL_NUM];
+    StParas paras[ConstPreDefine::MAX_IPM_NUM];
+    StMotorInfo motor[ConstPreDefine::MAX_EXIT_NUM];
+    quint8 cFSMInfo[ConstPreDefine::MAX_TEXT_LENGTH];
+    quint8 cIPMInfo[ConstPreDefine::MAX_TEXT_LENGTH];
+    int nSubsysId;
+    int nVersion;
+    ushort nNetState;
+    quint8 nFsmRestart;
+    quint8 nFsmModule;
+    StGlobal() { memset(this, 0, sizeof(StGlobal)); }
+};
+
 struct StShutterAdjust
 {
     quint16 colorY[ConstPreDefine::MAX_COLOR_CAMERA_NUM];
@@ -428,6 +591,17 @@ struct StWaveInfo
     ushort waveform1[256];
     float fruitweight;
     StWaveInfo() { memset(this, 0, sizeof(StWaveInfo)); }
+};
+
+struct StWeightGlobal
+{
+    quint8 nAccuracy;
+    int nVersion;
+    int nWAMId;
+    quint8 cFSMInfo[30];
+    StGlobalWeightBaseInfo gweight;
+    StWeightBaseInfo weights[ConstPreDefine::MAX_CHANNEL_NUM];
+    StWeightGlobal() { memset(this, 0, sizeof(StWeightGlobal)); }
 };
 
 #pragma pack(pop)

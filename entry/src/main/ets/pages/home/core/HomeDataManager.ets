@@ -546,15 +546,11 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
   private buildExitLabels(info: StGradeInfo, index: number): string {
     const grade = info.grades[index]
     if (!grade) return ''
-    const exitLow = grade.exitLow >>> 0
-    const exitHigh = grade.exitHigh >>> 0
+    const exit = grade.exit >>> 0
     const labels: string[] = []
     for (let i = 0; i < ConstPreDefine.MAX_EXIT_NUM; i++) {
       if (i < 32) {
-        if (((exitLow >>> i) & 1) === 1) labels.push(`出口${i + 1}`)
-      } else {
-        const shift = i - 32
-        if (((exitHigh >>> shift) & 1) === 1) labels.push(`出口${i + 1}`)
+        if (((exit >>> i) & 1) === 1) labels.push(`出口${i + 1}`)
       }
     }
     return labels.join('、')

@@ -136,9 +136,7 @@ export class GradeInfoConfigManager {
     qualityNames.forEach((name: string, idx: number) => qualityIndexMap.set(name, idx))
 
     const exit0 = Math.max(0, Math.min(ConstPreDefine.MAX_EXIT_NUM - 1, exitIndex - 1))
-    const isHigh = exit0 >= 32
-    const bitIndex = isHigh ? (exit0 - 32) : exit0
-    const bit = (1 << bitIndex) >>> 0
+    const bit = exit0 < 32 ? ((1 << exit0) >>> 0) : 0
 
     const list: string[] = Array.isArray(gradeNames) ? gradeNames : []
     for (let i = 0; i < list.length; i++) {
@@ -154,10 +152,8 @@ export class GradeInfoConfigManager {
 
       const gradeIdx = qualityIdx * ConstPreDefine.MAX_SIZE_GRADE_NUM + sizeIdx
       if (gradeIdx < 0 || gradeIdx >= info.grades.length) { continue }
-      if (isHigh) {
-        info.grades[gradeIdx].exitHigh = (info.grades[gradeIdx].exitHigh | bit) >>> 0
-      } else {
-        info.grades[gradeIdx].exitLow = (info.grades[gradeIdx].exitLow | bit) >>> 0
+      if (bit !== 0) {
+        info.grades[gradeIdx].exit = (info.grades[gradeIdx].exit | bit) >>> 0
       }
     }
 
