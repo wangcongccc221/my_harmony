@@ -98,6 +98,7 @@ export struct OmniTabBar {
         .stateEffect(true) // 开启点击效果
         .padding({ left: 16, right: 16 })
         .onClick(() => {
+          console.log(`[OMNI_TAB_SUB_CLICK] key=${item.key} label=${item.label}`)
           // 点击子项后关闭菜单
           this.activePopupTabKey = null
           if (item.onClick) {
@@ -314,8 +315,28 @@ export struct OmniTabBar {
       })
       .enabled(!tab.disabled)
       .onClick(() => {
-        if (!tab.disabled && this.onTabClick) {
+        if (tab.disabled) {
+          return
+        }
+        if (tab.subItems && tab.subItems.length > 0) {
+          this.activePopupTabKey = this.activePopupTabKey === tab.key ? null : tab.key
+          return
+        }
+        this.activePopupTabKey = null
+        if (this.onTabClick) {
           this.onTabClick(tab.key)
+        }
+      })
+      .bindPopup(this.activePopupTabKey === tab.key, {
+        builder: this.buildSubMenu(tab.subItems || []),
+        placement: Placement.Bottom,
+        mask: false,
+        popupColor: Color.Transparent,
+        enableArrow: false,
+        onStateChange: (e) => {
+          if (!e.isVisible) {
+            this.activePopupTabKey = null
+          }
         }
       })
       .animation({

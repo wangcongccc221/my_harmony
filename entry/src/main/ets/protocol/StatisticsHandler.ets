@@ -12,6 +12,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit'
 import { ConstPreDefine } from './ConstPreDefine'
 
 const TAG = 'StatisticsHandler'
+const PROTO_LOG_MARK = '[PROTO_RX_TRACE]'
 
 /**
  * 统计数据处理器类
@@ -37,6 +38,15 @@ export class StatisticsHandler {
     this.parser = getProtocolParser()
     this.dataInterface = getGlobalDataInterface()
     hilog.info(0x0001, TAG, '统计数据处理器初始化')
+  }
+
+  private bytesToHex(data: Uint8Array, maxBytes: number): string {
+    const n = Math.min(maxBytes, data.byteLength)
+    const out: string[] = []
+    for (let i = 0; i < n; i++) {
+      out.push(data[i].toString(16).padStart(2, '0'))
+    }
+    return out.join(' ')
   }
 
   /**
@@ -77,7 +87,11 @@ export class StatisticsHandler {
    */
   handleSplitMessage(cmdId: number, srcId: number, data: Uint8Array): boolean {
     try {
-      console.log(`[Split] 收到数据: cmd=0x${cmdId.toString(16)} src=0x${srcId.toString(16)} dataLen=${data.byteLength}`)
+      const hexHead = this.bytesToHex(data, 64)
+      const tailStart = data.byteLength > 32 ? data.byteLength - 32 : 0
+      const hexTail = this.bytesToHex(data.slice(tailStart), 32)
+      console.log(`${PROTO_LOG_MARK} [RAW] cmd=0x${cmdId.toString(16)} src=0x${srcId.toString(16)} len=${data.byteLength} hex64=${hexHead}`)
+      console.log(`${PROTO_LOG_MARK} [RAW_TAIL] cmd=0x${cmdId.toString(16)} src=0x${srcId.toString(16)} tail32=${hexTail}`)
       if (cmdId === HC_FSM_COMMAND_TYPE.HC_CMD_GRADE_INFO) {
         console.log(`[Split] 收到等级配置: cmd=0x${cmdId.toString(16)} src=0x${srcId.toString(16)} dataLen=${data.byteLength}`)
       }
@@ -196,7 +210,7 @@ export class StatisticsHandler {
       return false
     }
 
-    console.log(`[统计解析] subsys=${stats.nSubsysId} channel=${stats.nChannelIndex} yield=${stats.nYield} totalWeight=${stats.nTotalWeight} qualified=${stats.nQualifiedCount} unqualified=${stats.nUnqualifiedCount}`)
+    console.log(`${PROTO_LOG_MARK} [PARSED_STAT] subsys=${stats.nSubsysId} channel=${stats.nChannelIndex} yield=${stats.nYield} totalWeight=${stats.nTotalWeight} grade0=${stats.nGradeCount[0]} weightGrade0=${stats.nWeightGradeCount[0]} exitWeight0=${stats.ExitWeight[0]}`)
 
     // 更新全局数据接口
     this.dataInterface.updateStatistics(stats)
@@ -278,6 +292,7 @@ export class StatisticsHandler {
     hilog.info(0x0001, TAG, `收到配置回复: 来自 0x${parsed.header.srcId.toString(16)}`)
     const sys = parsed.data
     if (sys instanceof StGlobal) {
+      console.log(`${PROTO_LOG_MARK} [PARSED_GLOBAL] src=0x${parsed.header.srcId.toString(16)} subsys=${sys.nSubsysId} version=${sys.nVersion} net=${sys.nNetState} fsmRestart=${sys.nFsmRestart} fsmModule=${sys.nFsmModule}`)
       this.dataInterface.updateGlobalConfig(sys)
       return true
     }

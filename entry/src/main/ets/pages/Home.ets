@@ -110,6 +110,24 @@ interface TranslationItem {
   value: string  // 用户编辑的翻译文本
 }
 
+interface PrintTopFieldConfig {
+  key: string
+  label: string
+  checked: boolean
+}
+
+interface PrintContentFieldConfig {
+  key: string
+  label: string
+  checked: boolean
+  width: number
+}
+
+interface PrintSettingsPayload {
+  topFields: PrintTopFieldConfig[]
+  contentFields: PrintContentFieldConfig[]
+}
+
 // 翻译记录类型
 type TranslationRecord = Record<string, string>
 
@@ -152,6 +170,10 @@ struct Page {
   @State private outletDialogConfig: OutletConfig | null = null
   // 打印按钮悬停状态
   @State showPrintSubButtons: boolean = false
+  @State showPrintSettingsDialog: boolean = false
+  @State pendingPrintAction: string = ''
+  @State printTopFields: PrintTopFieldConfig[] = []
+  @State printContentFields: PrintContentFieldConfig[] = []
   @State showEndProcessingConfirmDialog: boolean = false
   // 顶部个人信息 - 全屏居中编辑弹窗全局状态
   @StorageLink('EDIT_USER_LABEL_VISIBLE') private editUserLabelVisible: boolean = false
@@ -387,14 +409,14 @@ struct Page {
             key: 'print_report',
             label: t('打印报告', '打印报告'),
             onClick: () => {
-              this.handlePrintSubButtonClick('打印报告')
+              this.handlePrintSubButtonClick('print_report')
             }
           },
           {
             key: 'print_label',
             label: t('打印标签', '打印标签'),
             onClick: () => {
-              this.handlePrintSubButtonClick('打印标签')
+              this.handlePrintSubButtonClick('print_label')
             }
           }
         ]
@@ -534,10 +556,171 @@ struct Page {
     console.log(`[Home] handlePrintClick new state: ${this.showPrintSubButtons}`);
   }
 
+  private openPrintSettingsDialog(actionKey: string): void {
+    this.ensurePrintSettingsData()
+    this.pendingPrintAction = actionKey
+    this.showPrintSettingsDialog = true
+    console.log(`[PRINT_SETTINGS] open action=${actionKey}`)
+  }
+
+  private closePrintSettingsDialog(): void {
+    this.showPrintSettingsDialog = false
+    this.pendingPrintAction = ''
+  }
+
+  private async confirmPrintSettings(): Promise<void> {
+    const action = this.pendingPrintAction
+    if (!action) {
+      this.closePrintSettingsDialog()
+      return
+    }
+    console.log(`[PRINT_SETTINGS] confirm action=${action}`)
+    this.showPrintSettingsDialog = false
+    this.pendingPrintAction = ''
+    await this.executePrintAction(action)
+  }
+
+  private ensurePrintSettingsData(): void {
+    if (this.printTopFields.length === 0) {
+      this.printTopFields = [
+        { key: 'CustomerName', label: '客户名称', checked: true },
+        { key: 'FarmName', label: '农场名称', checked: true },
+        { key: 'FruitName', label: '水果名称', checked: true },
+        { key: 'BatchNumber', label: '批次数量', checked: true },
+        { key: 'BatchWeight', label: '批次重量', checked: true },
+        { key: 'AverWeight', label: '平均重量', checked: true },
+        { key: 'ProgramName', label: '程序名称', checked: true },
+        { key: 'BoxNumber', label: '箱数', checked: true },
+        { key: 'CustomerID', label: '客户编号', checked: true },
+        { key: 'StartTime', label: '开始时间', checked: true },
+        { key: 'EndTime', label: '结束时间', checked: true }
+      ]
+    }
+    if (this.printContentFields.length === 0) {
+      this.printContentFields = [
+        { key: 'WeightOrSizeName', label: '等级名称', checked: true, width: 120 },
+        { key: 'WeightOrSizeLimit', label: '重量/尺寸限制', checked: true, width: 120 },
+        { key: 'GradeCount', label: '等级总个数', checked: true, width: 120 },
+        { key: 'GradeCountPercent', label: '个数占比', checked: true, width: 120 },
+        { key: 'WeightGradeCount', label: '等级总重量', checked: true, width: 120 },
+        { key: 'WeightGradeCountPercent', label: '重量占比', checked: true, width: 120 },
+        { key: 'BoxGradeCount', label: '箱数', checked: true, width: 120 },
+        { key: 'BoxGradeCountPercent', label: '箱数占比', checked: true, width: 120 },
+        { key: 'FPrice', label: '单价', checked: false, width: 120 },
+        { key: 'Amount', label: '金额', checked: false, width: 120 },
+        { key: 'Notes', label: '备注', checked: false, width: 120 }
+      ]
+    }
+  }
+
+  private togglePrintTopField(key: string): void {
+    this.printTopFields = this.printTopFields.map((item: PrintTopFieldConfig) => {
+      if (item.key === key) {
+        const updated: PrintTopFieldConfig = {
+          key: item.key,
+          label: item.label,
+          checked: !item.checked
+        }
+        return updated
+      }
+      return item
+    })
+  }
+
+  private togglePrintContentField(key: string): void {
+    this.printContentFields = this.printContentFields.map((item: PrintContentFieldConfig) => {
+      if (item.key === key) {
+        const updated: PrintContentFieldConfig = {
+          key: item.key,
+          label: item.label,
+          checked: !item.checked,
+          width: item.width
+        }
+        return updated
+      }
+      return item
+    })
+  }
+
+  private updatePrintContentWidth(key: string, value: string): void {
+    const width = Number(value)
+    const safeWidth = Number.isFinite(width) && width > 20 ? Math.floor(width) : 120
+    this.printContentFields = this.printContentFields.map((item: PrintContentFieldConfig) => {
+      if (item.key === key) {
+        const updated: PrintContentFieldConfig = {
+          key: item.key,
+          label: item.label,
+          checked: item.checked,
+          width: safeWidth
+        }
+        return updated
+      }
+      return item
+    })
+  }
+
+  private async exportPrintSettings(): Promise<void> {
+    try {
+      const context = getContext(this) as common.UIAbilityContext
+      const filePath = `${context.filesDir}/print_settings.json`
+      const payload: PrintSettingsPayload = {
+        topFields: this.printTopFields,
+        contentFields: this.printContentFields
+      }
+      const text = JSON.stringify(payload, null, 2)
+      const buf = buffer.from(text, 'utf-8')
+      const file = fs.openSync(filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE | fs.OpenMode.TRUNC)
+      fs.writeSync(file.fd, buf.buffer)
+      fs.closeSync(file.fd)
+      console.log(`[PRINT_SETTINGS] export ${filePath}`)
+      this.omniUIUtils.showSuccess('打印设置已导出')
+    } catch (e) {
+      console.error('[PRINT_SETTINGS] export failed:', JSON.stringify(e))
+      this.omniUIUtils.showError('导出打印设置失败')
+    }
+  }
+
+  private async importPrintSettings(): Promise<void> {
+    try {
+      const context = getContext(this) as common.UIAbilityContext
+      const filePath = `${context.filesDir}/print_settings.json`
+      const stat = fs.statSync(filePath)
+      if (!stat || stat.size <= 0) {
+        this.omniUIUtils.showInfo('未找到可导入的打印设置')
+        return
+      }
+      const file = fs.openSync(filePath, fs.OpenMode.READ_ONLY)
+      const data = new ArrayBuffer(stat.size)
+      fs.readSync(file.fd, data)
+      fs.closeSync(file.fd)
+      const text = buffer.from(new Uint8Array(data).buffer).toString('utf-8')
+      const parsed = JSON.parse(text) as Record<string, Object>
+      const topFields = parsed['topFields'] as PrintTopFieldConfig[]
+      const contentFields = parsed['contentFields'] as PrintContentFieldConfig[]
+      if (Array.isArray(topFields) && Array.isArray(contentFields)) {
+        this.printTopFields = topFields
+        this.printContentFields = contentFields
+        console.log(`[PRINT_SETTINGS] import ${filePath}`)
+        this.omniUIUtils.showSuccess('打印设置已导入')
+      } else {
+        this.omniUIUtils.showError('打印设置文件格式无效')
+      }
+    } catch (e) {
+      console.error('[PRINT_SETTINGS] import failed:', JSON.stringify(e))
+      this.omniUIUtils.showError('导入打印设置失败')
+    }
+  }
+
   // 处理打印子按钮点击
   private async handlePrintSubButtonClick(subButtonName: string): Promise<void> {
-    console.log(`[Home] handlePrintSubButtonClick called with: ${subButtonName}`);
-    this.omniUIUtils.showInfo(`正在准备${subButtonName}...`)
+    this.openPrintSettingsDialog(subButtonName)
+  }
+
+  private async executePrintAction(subButtonName: string): Promise<void> {
+    const isReport = subButtonName === 'print_report' || subButtonName.includes('报告')
+    const actionName = isReport ? t('打印报告', '打印报告') : t('打印标签', '打印标签')
+    console.log(`[Home] executePrintAction called with: ${subButtonName} -> ${actionName}`);
+    this.omniUIUtils.showInfo(`[打印] 正在准备${actionName}...`)
     
     try {
       const context = getContext(this) as common.UIAbilityContext
@@ -547,9 +730,9 @@ struct Page {
       const printManager = PrintManager.getInstance()
       
       // 创建一个简单的测试文件
-      const fileName = subButtonName.includes('报告') ? 'report_test.txt' : 'label_test.txt'
+      const fileName = isReport ? 'report_test.txt' : 'label_test.txt'
       const filePath = `${filesDir}/${fileName}`
-      const fileContent = subButtonName.includes('报告') 
+      const fileContent = isReport 
         ? '这是一份测试报告\n\n项目: 水果分选系统\n时间: 2025-12-15\n状态: 正常' 
         : '测试标签\n\n等级: 特级\n重量: 250g'
       
@@ -573,6 +756,168 @@ struct Page {
       console.error('[Home] Print failed:', e)
       this.omniUIUtils.showError(`打印失败: ${JSON.stringify(e)}`)
     }
+  }
+
+  @Builder
+  private buildPrintSettingsDialog(): void {
+    Stack() {
+      Column()
+        .width('100%')
+        .height('100%')
+        .backgroundColor('rgba(0, 0, 0, 0.45)')
+        .onClick(() => this.closePrintSettingsDialog())
+
+      Column() {
+        Text(t('打印设置', '打印设置'))
+          .fontSize(24)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.getCurrentTheme().textColor)
+          .margin({ bottom: 6 })
+
+        Text(this.pendingPrintAction === 'print_label' ? '当前任务：打印标签' : '当前任务：打印报告')
+          .fontSize(15)
+          .fontColor(this.getCurrentTheme().subTextColor)
+          .margin({ bottom: 12 })
+
+        Text('汇总字段')
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCurrentTheme().textColor)
+          .margin({ bottom: 8 })
+
+        Scroll() {
+          Row({ space: 8 }) {
+            ForEach(this.printTopFields, (item: PrintTopFieldConfig) => {
+              Row() {
+                Checkbox({ name: item.key, group: 'print_top_fields' })
+                  .select(item.checked)
+                  .onChange(() => this.togglePrintTopField(item.key))
+                  .margin({ right: 6 })
+                Text(item.label)
+                  .fontSize(13)
+                  .fontColor(this.getCurrentTheme().textColor)
+              }
+              .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+              .borderRadius(8)
+              .backgroundColor(this.getCurrentTheme().backgroundColor)
+              .border({ width: 1, color: this.getCurrentTheme().borderColor })
+            }, (item: PrintTopFieldConfig) => item.key)
+          }
+          .alignItems(VerticalAlign.Center)
+        }
+        .width('100%')
+        .height(110)
+        .backgroundColor(this.getCurrentTheme().surfaceColor)
+        .borderRadius(8)
+        .border({ width: 1, color: this.getCurrentTheme().borderColor })
+        .padding({ left: 8, right: 8, top: 8, bottom: 8 })
+        .margin({ bottom: 10 })
+
+        Row() {
+          Text('内容字段')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.getCurrentTheme().textColor)
+            .layoutWeight(1)
+          Text('宽度')
+            .fontSize(14)
+            .fontColor(this.getCurrentTheme().subTextColor)
+        }
+        .width('100%')
+        .padding({ left: 6, right: 6, bottom: 6 })
+
+        Scroll() {
+          Column() {
+            ForEach(this.printContentFields, (item: PrintContentFieldConfig) => {
+              Row() {
+                Checkbox({ name: item.key, group: 'print_content_fields' })
+                  .select(item.checked)
+                  .onChange(() => this.togglePrintContentField(item.key))
+                  .margin({ right: 8 })
+                Text(item.label)
+                  .layoutWeight(1)
+                  .fontSize(14)
+                  .fontColor(this.getCurrentTheme().textColor)
+                TextInput({ text: `${item.width}`, placeholder: '120' })
+                  .width(92)
+                  .height(34)
+                  .fontSize(13)
+                  .textAlign(TextAlign.Center)
+                  .type(InputType.Number)
+                  .backgroundColor(this.getCurrentTheme().backgroundColor)
+                  .borderRadius(6)
+                  .onChange((v: string) => this.updatePrintContentWidth(item.key, v))
+              }
+              .width('100%')
+              .height(42)
+              .padding({ left: 8, right: 8 })
+              .border({ width: { bottom: 1 }, color: this.getCurrentTheme().borderColor })
+            }, (item: PrintContentFieldConfig) => item.key)
+          }
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .backgroundColor(this.getCurrentTheme().surfaceColor)
+        .borderRadius(8)
+        .border({ width: 1, color: this.getCurrentTheme().borderColor })
+        .margin({ bottom: 12 })
+
+        Row() {
+          Button('导入')
+            .height(40)
+            .padding({ left: 18, right: 18 })
+            .borderRadius(8)
+            .backgroundColor(this.getCurrentTheme().backgroundColor)
+            .fontColor(this.getCurrentTheme().textColor)
+            .border({ width: 1, color: this.getCurrentTheme().borderColor })
+            .onClick(() => { this.importPrintSettings() })
+
+          Button('导出')
+            .height(40)
+            .padding({ left: 18, right: 18 })
+            .margin({ left: 10 })
+            .borderRadius(8)
+            .backgroundColor(this.getCurrentTheme().backgroundColor)
+            .fontColor(this.getCurrentTheme().textColor)
+            .border({ width: 1, color: this.getCurrentTheme().borderColor })
+            .onClick(() => { this.exportPrintSettings() })
+
+          Blank()
+
+          Button('预览打印')
+            .height(40)
+            .padding({ left: 20, right: 20 })
+            .margin({ left: 10 })
+            .borderRadius(8)
+            .backgroundColor(this.getCurrentTheme().primary)
+            .fontColor(Color.White)
+            .onClick(() => { this.confirmPrintSettings() })
+
+          Button('关闭')
+            .height(40)
+            .padding({ left: 20, right: 20 })
+            .margin({ left: 10 })
+            .borderRadius(8)
+            .backgroundColor('#D64C4C')
+            .fontColor(Color.White)
+            .onClick(() => this.closePrintSettingsDialog())
+        }
+        .width('100%')
+      }
+      .width('84%')
+      .constraintSize({ maxWidth: 980, minWidth: 700 })
+      .height('82%')
+      .padding({ left: 20, right: 20, top: 18, bottom: 14 })
+      .backgroundColor(this.getCurrentTheme().surfaceColor)
+      .borderRadius(12)
+      .shadow({ radius: 20, color: 'rgba(0, 0, 0, 0.18)', offsetX: 0, offsetY: 6 })
+      .alignSelf(ItemAlign.Center)
+    }
+    .width('100%')
+    .height('100%')
+    .alignContent(Alignment.Center)
+    .position({ x: 0, y: 0 })
+    .zIndex(4200)
   }
 
   // 处理悬浮窗显示
@@ -3094,6 +3439,11 @@ struct Page {
       // 语言名称输入对话框
       if (this.showLanguageNameDialog) {
         this.buildLanguageNameDialog()
+      }
+
+      // 打印设置弹窗（先设置，再调用系统打印）
+      if (this.showPrintSettingsDialog) {
+        this.buildPrintSettingsDialog()
       }
     }
     .width('100%')
