@@ -7,7 +7,7 @@
  */
 
 import { getGlobalDataInterface, GlobalDataInterface, StatisticsListener } from './GlobalDataInterface'
-import { StStatistics } from './Structures'
+import { StStatistics, StGradeInfo, StGradeItemInfo } from './Structures'
 import { ConstPreDefine } from './ConstPreDefine'
 
 export interface RealtimeCurvePoint {
@@ -71,6 +71,12 @@ interface CurveSeries {
 interface AggregateCollection {
   all: AggregateTotals
   subsys: Map<number, AggregateTotals>
+}
+
+export interface FeatureDistribution {
+  categories: string[]
+  count: number[]
+  weight: number[]
 }
 
 export type RealtimeStatsListener = () => void
@@ -172,6 +178,39 @@ export class RealtimeStatsService {
       output: output
     }
     return series
+  }
+
+  getAppearanceDistribution(selectedSubsystem: string, selectedType: string): FeatureDistribution {
+    const scope = this.normalizeScope(selectedSubsystem)
+    if (selectedType === '颜色') {
+      return this.buildFeatureDistribution(scope, 'color')
+    }
+    if (selectedType === '形状') {
+      return this.buildFeatureDistribution(scope, 'shape')
+    }
+    if (selectedType === '缺陷等级') {
+      return this.buildFeatureDistribution(scope, 'flaw')
+    }
+    // “全部”按 48 更接近的做法：默认展示颜色分布
+    return this.buildFeatureDistribution(scope, 'color')
+  }
+
+  getInternalDistribution(selectedSubsystem: string, selectedType: string): FeatureDistribution {
+    const scope = this.normalizeScope(selectedSubsystem)
+    if (selectedType === '糖度') {
+      return this.buildFeatureDistribution(scope, 'sugar')
+    }
+    if (selectedType === '酸度') {
+      return this.buildFeatureDistribution(scope, 'acidity')
+    }
+    if (selectedType === '硬度') {
+      return this.buildFeatureDistribution(scope, 'rigidity')
+    }
+    if (selectedType === '可溶性固形物') {
+      return this.buildFeatureDistribution(scope, 'density')
+    }
+    // “全部”按 48 更接近的做法：默认展示糖度分布
+    return this.buildFeatureDistribution(scope, 'sugar')
   }
 
   private ensureTimerStarted(): void {
@@ -300,6 +339,126 @@ export class RealtimeStatsService {
       subsys: subsysMap
     }
     return collection
+  }
+
+  private buildFeatureDistribution(scope: string, feature: string): FeatureDistribution {
+    const allAgg: AggregateCollection = this.collectAggregates()
+    const agg: AggregateTotals = this.pickAggregate(scope, allAgg)
+    const gradeInfo: StGradeInfo | null = this.dataInterface.getLatestGradeInfo()
+    if (!gradeInfo) {
+      return this.buildFallbackDistribution(agg, feature)
+    }
+
+    const names = this.resolveFeatureNames(gradeInfo, feature)
+    const count: number[] = new Array<number>(names.length).fill(0)
+    const weight: number[] = new Array<number>(names.length).fill(0)
+
+    const maxGrade = Math.min(gradeInfo.grades.length, agg.gradeCount.length, agg.gradeWeight.length)
+    for (let idx = 0; idx < maxGrade; idx++) {
+      const item: StGradeItemInfo = gradeInfo.grades[idx]
+      const featureLevel = this.getFeatureLevel(item, feature)
+      if (featureLevel < 0 || featureLevel >= names.length) {
+        continue
+      }
+      count[featureLevel] += Number(agg.gradeCount[idx] ?? 0)
+      weight[featureLevel] += Number(agg.gradeWeight[idx] ?? 0)
+    }
+
+    const distribution: FeatureDistribution = {
+      categories: names,
+      count: count,
+      weight: weight
+    }
+    return distribution
+  }
+
+  private buildFallbackDistribution(agg: AggregateTotals, feature: string): FeatureDistribution {
+    const fallbackSize = this.getFeatureFallbackSize(feature)
+    const categories: string[] = []
+    const count: number[] = new Array(fallbackSize).fill(0)
+    const weight: number[] = new Array(fallbackSize).fill(0)
+    for (let i = 0; i < fallbackSize; i++) {
+      categories.push(`等级${i + 1}`)
+      count[i] = Number(agg.gradeCount[i] ?? 0)
+      weight[i] = Number(agg.gradeWeight[i] ?? 0)
+    }
+    const distribution: FeatureDistribution = {
+      categories: categories,
+      count: count,
+      weight: weight
+    }
+    return distribution
+  }
+
+  private getFeatureFallbackSize(feature: string): number {
+    if (feature === 'color') return ConstPreDefine.MAX_COLOR_GRADE_NUM
+    if (feature === 'shape') return ConstPreDefine.MAX_SHAPE_GRADE_NUM
+    if (feature === 'flaw') return ConstPreDefine.MAX_FlAWAREA_GRADE_NUM
+    if (feature === 'sugar') return ConstPreDefine.MAX_SUGAR_GRADE_NUM
+    if (feature === 'acidity') return ConstPreDefine.MAX_ACIDITY_GRADE_NUM
+    if (feature === 'rigidity') return ConstPreDefine.MAX_RIGIDITY_GRADE_NUM
+    if (feature === 'density') return ConstPreDefine.MAX_DENSITY_GRADE_NUM
+    return 6
+  }
+
+  private getFeatureLevel(item: StGradeItemInfo, feature: string): number {
+    let v = -1
+    if (feature === 'color') v = item.nColorGrade
+    else if (feature === 'shape') v = item.sbShapeSize
+    else if (feature === 'flaw') v = item.sbFlawArea
+    else if (feature === 'sugar') v = item.sbSugar
+    else if (feature === 'acidity') v = item.sbAcidity
+    else if (feature === 'rigidity') v = item.sbRigidity
+    else if (feature === 'density') v = item.sbDensity
+
+    // 48 中 0x7f 表示无效
+    if (v === 0x7f || v < 0) {
+      return -1
+    }
+    return v
+  }
+
+  private resolveFeatureNames(gradeInfo: StGradeInfo, feature: string): string[] {
+    if (feature === 'color') return this.decodeNames(gradeInfo.strColorGradeName, ConstPreDefine.MAX_COLOR_GRADE_NUM, '颜色')
+    if (feature === 'shape') return this.decodeNames(gradeInfo.strShapeGradeName, ConstPreDefine.MAX_SHAPE_GRADE_NUM, '形状')
+    if (feature === 'flaw') return this.decodeNames(gradeInfo.stFlawareaGradeName, ConstPreDefine.MAX_FlAWAREA_GRADE_NUM, '瑕疵')
+    if (feature === 'sugar') return this.decodeNames(gradeInfo.stSugarGradeName, ConstPreDefine.MAX_SUGAR_GRADE_NUM, '糖度')
+    if (feature === 'acidity') return this.decodeNames(gradeInfo.stAcidityGradeName, ConstPreDefine.MAX_ACIDITY_GRADE_NUM, '酸度')
+    if (feature === 'rigidity') return this.decodeNames(gradeInfo.stRigidityGradeName, ConstPreDefine.MAX_RIGIDITY_GRADE_NUM, '硬度')
+    if (feature === 'density') return this.decodeNames(gradeInfo.stDensityGradeName, ConstPreDefine.MAX_DENSITY_GRADE_NUM, '固形物')
+    return this.decodeNames(gradeInfo.strQualityGradeName, ConstPreDefine.MAX_QUALITY_GRADE_NUM, '等级')
+  }
+
+  private decodeNames(bytes: Uint8Array, itemCount: number, prefix: string): string[] {
+    const names: string[] = []
+    const itemLen = ConstPreDefine.MAX_TEXT_LENGTH
+    for (let i = 0; i < itemCount; i++) {
+      const start = i * itemLen
+      if (start >= bytes.length) {
+        break
+      }
+      let end = start
+      while (end < start + itemLen && end < bytes.length && bytes[end] !== 0) {
+        end++
+      }
+      let text = ''
+      for (let j = start; j < end; j++) {
+        const code = bytes[j]
+        if (code >= 32 && code <= 126) {
+          text += String.fromCharCode(code)
+        }
+      }
+      if (!text) {
+        text = `${prefix}${i + 1}`
+      }
+      names.push(text)
+    }
+    if (names.length === 0) {
+      for (let i = 0; i < itemCount; i++) {
+        names.push(`${prefix}${i + 1}`)
+      }
+    }
+    return names
   }
 
   private pickAggregate(scope: string, data: AggregateCollection): AggregateTotals {

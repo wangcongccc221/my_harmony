@@ -109,50 +109,10 @@ export struct InternalQualityStatisticsBarChart {
    */
   private updateData(): void {
     try {
-      // 根据子系统选择确定X轴标签数量
-      let maxOutlets: number
-      const subsystem = this.selectedSubsystem
-      if (subsystem === 'ALL') {
-        maxOutlets = Math.max(this.outletCountFSM1, this.outletCountFSM2)
-        maxOutlets = Math.min(20, maxOutlets)
-      } else if (subsystem === '1') {
-        maxOutlets = Math.min(20, this.outletCountFSM1)
-      } else {
-        maxOutlets = Math.min(20, this.outletCountFSM2)
-      }
-      
-      // 根据内部品质类型生成X轴标签
-      this.categories = []
-      let gradeNames: string[] = []
-      
-      if (this.selectedQualityType === '全部') {
-        // 全部：显示所有类型
-        gradeNames = ['优秀', '良好', '一般', '较差', '差', '极差', '零价值']
-      } else if (this.selectedQualityType === '糖度') {
-        // 糖度：显示糖度等级
-        gradeNames = ['高糖度', '中糖度', '低糖度', '极低糖度', '无糖度', '负糖度']
-      } else if (this.selectedQualityType === '酸度') {
-        // 酸度：显示酸度等级
-        gradeNames = ['高酸度', '中酸度', '低酸度', '极低酸度', '无酸度']
-      } else if (this.selectedQualityType === '硬度') {
-        // 硬度：显示硬度等级
-        gradeNames = ['很硬', '硬', '中等', '软', '很软', '极软']
-      } else if (this.selectedQualityType === '可溶性固形物') {
-        // 可溶性固形物：显示等级
-        gradeNames = ['高', '中高', '中等', '中低', '低', '极低']
-      }
-      
-      for (let i = 0; i < Math.min(maxOutlets, gradeNames.length); i++) {
-        this.categories.push(gradeNames[i])
-      }
-      
-      const snapshot = this.statsService.getSnapshot(this.selectedSubsystem)
-      this.countData = new Array(this.categories.length).fill(0)
-      this.weightData = new Array(this.categories.length).fill(0)
-      for (let i = 0; i < this.categories.length; i++) {
-        this.countData[i] = Number(snapshot.gradeCount[i] ?? 0)
-        this.weightData[i] = Number(snapshot.gradeWeight[i] ?? 0)
-      }
+      const dist = this.statsService.getInternalDistribution(this.selectedSubsystem, this.selectedQualityType)
+      this.categories = dist.categories.slice()
+      this.countData = dist.count.slice()
+      this.weightData = dist.weight.slice()
       
       // 计算画布宽度
       this.canvasWidth = this.categories.length * this.fixedBarWidth + this.chartPadding.left + this.chartPadding.right

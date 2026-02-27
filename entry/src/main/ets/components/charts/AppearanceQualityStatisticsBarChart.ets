@@ -112,47 +112,10 @@ export struct AppearanceQualityStatisticsBarChart {
    */
   private updateData(): void {
     try {
-      // 根据子系统选择确定X轴标签数量
-      let maxOutlets: number
-      const subsystem = this.selectedSubsystem
-      if (subsystem === 'ALL') {
-        maxOutlets = Math.max(this.outletCountFSM1, this.outletCountFSM2)
-        maxOutlets = Math.min(20, maxOutlets)
-      } else if (subsystem === '1') {
-        maxOutlets = Math.min(20, this.outletCountFSM1)
-      } else {
-        maxOutlets = Math.min(20, this.outletCountFSM2)
-      }
-      
-      // 根据外观品质类型生成X轴标签
-      this.categories = []
-      let gradeNames: string[] = []
-      
-      if (this.selectedQualityType === '全部') {
-        // 全部：显示所有类型
-        gradeNames = ['优秀', '良好', '一般', '较差', '差', '极差', '零价值']
-      } else if (this.selectedQualityType === '颜色') {
-        // 颜色：显示颜色等级
-        gradeNames = ['红色', '橙色', '黄色', '绿色', '青色', '蓝色', '紫色']
-      } else if (this.selectedQualityType === '形状') {
-        // 形状：显示形状等级
-        gradeNames = ['圆形', '椭圆形', '长圆形', '不规则', '变形', '破损']
-      } else if (this.selectedQualityType === '缺陷等级') {
-        // 缺陷等级：显示缺陷等级
-        gradeNames = ['无缺陷', '轻微', '中等', '严重', '极严重', '报废']
-      }
-      
-      for (let i = 0; i < Math.min(maxOutlets, gradeNames.length); i++) {
-        this.categories.push(gradeNames[i])
-      }
-      
-      const snapshot = this.statsService.getSnapshot(this.selectedSubsystem)
-      this.countData = new Array(this.categories.length).fill(0)
-      this.weightData = new Array(this.categories.length).fill(0)
-      for (let i = 0; i < this.categories.length; i++) {
-        this.countData[i] = Number(snapshot.gradeCount[i] ?? 0)
-        this.weightData[i] = Number(snapshot.gradeWeight[i] ?? 0)
-      }
+      const dist = this.statsService.getAppearanceDistribution(this.selectedSubsystem, this.selectedQualityType)
+      this.categories = dist.categories.slice()
+      this.countData = dist.count.slice()
+      this.weightData = dist.weight.slice()
       
       // 计算画布宽度
       this.canvasWidth = this.categories.length * this.fixedBarWidth + this.chartPadding.left + this.chartPadding.right
