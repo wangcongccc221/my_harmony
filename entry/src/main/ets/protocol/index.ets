@@ -115,3 +115,12 @@ export {
   UIDataSync,
   getUIDataSync
 } from './UIDataSync'
+
+// 实时统计服务
+export {
+  RealtimeStatsService,
+  RealtimeCurvePoint,
+  RealtimeStatsSnapshot,
+  RealtimeStatsListener,
+  getRealtimeStatsService
+} from './RealtimeStatsService'

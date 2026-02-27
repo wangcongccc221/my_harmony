@@ -8,6 +8,7 @@
 
 import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
+import { getRealtimeStatsService, RealtimeStatsService, RealtimeStatsListener } from '../../protocol/RealtimeStatsService'
 
 interface ChartPadding {
   top: number;
@@ -66,10 +67,23 @@ export struct WeightSizeStatisticsBarChart {
   @State countData: number[] = [];
   @State weightData: number[] = [];
   @State boxCountData: number[] = [];
+  private readonly statsService: RealtimeStatsService = getRealtimeStatsService()
+  private statsListener: RealtimeStatsListener | null = null
   
   aboutToAppear() {
     this.currentSubsystem = this.selectedSubsystem
+    this.statsListener = () => {
+      this.updateData()
+    }
+    this.statsService.subscribe(this.statsListener)
     this.updateData()
+  }
+
+  aboutToDisappear() {
+    if (this.statsListener) {
+      this.statsService.unsubscribe(this.statsListener)
+      this.statsListener = null
+    }
   }
   
   aboutToUpdate() {
@@ -95,9 +109,15 @@ export struct WeightSizeStatisticsBarChart {
       
       this.categories = ['23', '27', '32', '40']
       
+      const snapshot = this.statsService.getSnapshot(this.selectedSubsystem)
       this.countData = new Array(this.categories.length).fill(0)
       this.weightData = new Array(this.categories.length).fill(0)
       this.boxCountData = new Array(this.categories.length).fill(0)
+      for (let i = 0; i < this.categories.length; i++) {
+        this.countData[i] = Number(snapshot.gradeCount[i] ?? 0)
+        this.weightData[i] = Number(snapshot.gradeWeight[i] ?? 0)
+        this.boxCountData[i] = Number(snapshot.boxGradeCount[i] ?? 0)
+      }
       
       this.canvasWidth1 = this.categories.length * this.fixedBarWidth + this.chartPadding.left + this.chartPadding.right
       this.canvasWidth2 = this.categories.length * this.fixedBarWidth + this.chartPadding.left + this.chartPadding.right

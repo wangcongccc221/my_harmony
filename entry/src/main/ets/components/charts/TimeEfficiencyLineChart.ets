@@ -5,12 +5,7 @@
 
 import { McLineChart, Options } from '@mcui/mccharts'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
-
-// 数据系列接口
-interface SeriesData {
-  efficiency: number[]
-  output: number[]
-}
+import { getRealtimeStatsService, RealtimeStatsService, RealtimeStatsListener } from '../../protocol/RealtimeStatsService'
 
 @Component
 export struct TimeEfficiencyLineChart {
@@ -18,8 +13,14 @@ export struct TimeEfficiencyLineChart {
   @Prop selectedSubsystem: string = 'ALL'
 
   @State private options: Options = new Options({})
+  private readonly statsService: RealtimeStatsService = getRealtimeStatsService()
+  private statsListener: RealtimeStatsListener | null = null
 
   aboutToAppear() {
+    this.statsListener = () => {
+      this.updateOptions()
+    }
+    this.statsService.subscribe(this.statsListener)
     this.updateOptions()
   }
 
@@ -27,42 +28,36 @@ export struct TimeEfficiencyLineChart {
     this.updateOptions()
   }
 
-  /**
-   * 生成最近30分钟的时间刻度（每5分钟一个点）
-   */
-  private getTimeLabels(): string[] {
-    const labels: string[] = []
-    const now = new Date()
-    // 6个间隔 + 当前，共7个点
-    for (let i = 6; i >= 0; i--) {
-      const ts = new Date(now.getTime() - i * 5 * 60 * 1000)
-      const hh = String(ts.getHours()).padStart(2, '0')
-      const mm = String(ts.getMinutes()).padStart(2, '0')
-      labels.push(`${hh}:${mm}`)
-    }
-    return labels
-  }
-
-  private getSeries(len: number): SeriesData {
-    return {
-      efficiency: new Array(len).fill(0),
-      output: new Array(len).fill(0)
+  aboutToDisappear() {
+    if (this.statsListener) {
+      this.statsService.unsubscribe(this.statsListener)
+      this.statsListener = null
     }
   }
 
   private updateOptions(): void {
     const theme = getCurrentTheme()
-    const labels = this.getTimeLabels()
-    const seriesData = this.getSeries(labels.length)
+    const seriesData = this.statsService.getCurveSeries(this.selectedSubsystem, 30)
+    const labels = seriesData.labels
 
     this.options = new Options({
+      grid: {
+        top: 90,
+        left: 70,
+        right: 40,
+        bottom: 60,
+        containLabel: true
+      },
       legend: {
         show: true,
-        top: 10,
-        right: 10,
+        top: 24,
+        right: 20,
+        itemWidth: 22,
+        itemHeight: 18,
+        itemGap: 18,
         textStyle: {
           color: theme.textColor,
-          fontSize: 14
+          fontSize: 20
         }
       },
       xAxis: {
@@ -117,7 +112,7 @@ export struct TimeEfficiencyLineChart {
           smooth: true,
           data: seriesData.efficiency,
           symbol: 'circle',
-          symbolSize: 6,
+          symbolSize: 10,
           lineStyle: {
             width: 3,
             color: '#FE8A02'
@@ -130,9 +125,9 @@ export struct TimeEfficiencyLineChart {
           name: '实时产量',
           type: 'line',
           smooth: true,
-          data: seriesData.output,
+          data: seriesData.output, // 与 48 对齐：实时产量百分比曲线
           symbol: 'circle',
-          symbolSize: 6,
+          symbolSize: 10,
           lineStyle: {
             width: 3,
             color: '#97CC31'

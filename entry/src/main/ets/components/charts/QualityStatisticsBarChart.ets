@@ -10,6 +10,7 @@
 
 import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
+import { getRealtimeStatsService, RealtimeStatsService, RealtimeStatsListener } from '../../protocol/RealtimeStatsService'
 
 interface ChartPadding {
   top: number;
@@ -64,12 +65,25 @@ export struct QualityStatisticsBarChart {
   @State categories: string[] = []; // X轴标签（品质等级）
   @State countData: number[] = []; // 个数数据
   @State weightData: number[] = []; // 重量数据（kg）
+  private readonly statsService: RealtimeStatsService = getRealtimeStatsService()
+  private statsListener: RealtimeStatsListener | null = null
   
   aboutToAppear() {
     this.currentSubsystem = this.selectedSubsystem
     this.showCanvas = true
     this.dataUpdateKey = 0
+    this.statsListener = () => {
+      this.updateData()
+    }
+    this.statsService.subscribe(this.statsListener)
     this.updateData()
+  }
+
+  aboutToDisappear() {
+    if (this.statsListener) {
+      this.statsService.unsubscribe(this.statsListener)
+      this.statsListener = null
+    }
   }
   
   aboutToUpdate() {
@@ -112,8 +126,13 @@ export struct QualityStatisticsBarChart {
         this.categories.push(gradeNames[i])
       }
       
+      const snapshot = this.statsService.getSnapshot(this.selectedSubsystem)
       this.countData = new Array(this.categories.length).fill(0)
       this.weightData = new Array(this.categories.length).fill(0)
+      for (let i = 0; i < this.categories.length; i++) {
+        this.countData[i] = Number(snapshot.gradeCount[i] ?? 0)
+        this.weightData[i] = Number(snapshot.gradeWeight[i] ?? 0)
+      }
       
       // 计算画布宽度
       this.canvasWidth = this.categories.length * this.fixedBarWidth + this.chartPadding.left + this.chartPadding.right
@@ -232,24 +251,26 @@ export struct QualityStatisticsBarChart {
       ctx.fillText(this.categories[i], centerX, this.canvasHeight - this.chartPadding.bottom + 5)
     }
     
-    // 绘制图例
-    const legendX = this.chartPadding.left + 10
-    const legendY = this.chartPadding.top + 10
+    // 绘制图例（放大：提升可读性）
+    const legendX = this.chartPadding.left + 12
+    const legendY = this.chartPadding.top + 12
+    const legendBox = 24
+    const legendGap = 36
     
     // 个数图例
     ctx.fillStyle = '#4A90E2'
-    ctx.fillRect(legendX, legendY, 12, 12)
+    ctx.fillRect(legendX, legendY, legendBox, legendBox)
     ctx.fillStyle = theme.textColor
-    ctx.font = '12px sans-serif'
+    ctx.font = '24px sans-serif'
     ctx.textAlign = 'left'
     ctx.textBaseline = 'middle'
-    ctx.fillText('个数', legendX + 18, legendY + 6)
+    ctx.fillText('个数', legendX + legendBox + 10, legendY + legendBox / 2)
     
     // 重量图例
     ctx.fillStyle = '#FE8A02'
-    ctx.fillRect(legendX, legendY + 20, 12, 12)
+    ctx.fillRect(legendX, legendY + legendGap, legendBox, legendBox)
     ctx.fillStyle = theme.textColor
-    ctx.fillText('重量', legendX + 18, legendY + 26)
+    ctx.fillText('重量', legendX + legendBox + 10, legendY + legendGap + legendBox / 2)
   }
   
   build() {

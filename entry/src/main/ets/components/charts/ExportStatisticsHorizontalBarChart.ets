@@ -9,6 +9,7 @@
 
 import { ExtendedOmniThemeStyle } from '../../utils/theme/OmniThemeManager'
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
+import { getRealtimeStatsService, RealtimeStatsService, RealtimeStatsListener } from '../../protocol/RealtimeStatsService'
 
 interface ChartPadding {
   top: number;
@@ -66,12 +67,25 @@ export struct ExportStatisticsHorizontalBarChart {
   @State categories: string[] = []; // X轴标签（出口编号）
   @State fsm1Data: number[] = []; // FSM1的数据（个数）
   @State fsm2Data: number[] = []; // FSM2的数据（个数）
+  private readonly statsService: RealtimeStatsService = getRealtimeStatsService()
+  private statsListener: RealtimeStatsListener | null = null
   
   aboutToAppear() {
     this.currentSubsystem = this.selectedSubsystem
     this.showCanvas = true  // 确保Canvas显示
     this.dataUpdateKey = 0  // 重置更新key
+    this.statsListener = () => {
+      this.updateData()
+    }
+    this.statsService.subscribe(this.statsListener)
     this.updateData()
+  }
+
+  aboutToDisappear() {
+    if (this.statsListener) {
+      this.statsService.unsubscribe(this.statsListener)
+      this.statsListener = null
+    }
   }
   
   aboutToUpdate() {
@@ -125,8 +139,14 @@ export struct ExportStatisticsHorizontalBarChart {
         this.categories.push(i.toString())
       }
       
+      const snap1 = this.statsService.getSnapshot('1')
+      const snap2 = this.statsService.getSnapshot('2')
       this.fsm1Data = new Array(maxOutlets).fill(0)
       this.fsm2Data = new Array(maxOutlets).fill(0)
+      for (let i = 0; i < maxOutlets; i++) {
+        this.fsm1Data[i] = Number(snap1.exitCount[i] ?? 0)
+        this.fsm2Data[i] = Number(snap2.exitCount[i] ?? 0)
+      }
       
       // 对于垂直柱状图，高度使用传入的 chartHeight
       // 宽度需要根据出口数量计算，支持滚动（进一步放大条形）

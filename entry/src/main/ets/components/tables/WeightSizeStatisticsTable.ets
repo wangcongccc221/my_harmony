@@ -5,6 +5,7 @@
 
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { TableRowComponent } from '../ui/tables/TableRow'
+import { getRealtimeStatsService, RealtimeStatsService, RealtimeStatsListener } from '../../protocol/RealtimeStatsService'
 
 // 表格数据项接口
 interface WeightSizeTableItem {
@@ -23,9 +24,22 @@ export struct WeightSizeStatisticsTable {
   @Prop selectedSubsystem: string = 'ALL'
   
   @State private tableData: WeightSizeTableItem[] = []
+  private readonly statsService: RealtimeStatsService = getRealtimeStatsService()
+  private statsListener: RealtimeStatsListener | null = null
   
   aboutToAppear() {
+    this.statsListener = () => {
+      this.updateData()
+    }
+    this.statsService.subscribe(this.statsListener)
     this.updateData()
+  }
+
+  aboutToDisappear() {
+    if (this.statsListener) {
+      this.statsService.unsubscribe(this.statsListener)
+      this.statsListener = null
+    }
   }
   
   aboutToUpdate() {
@@ -35,26 +49,20 @@ export struct WeightSizeStatisticsTable {
   
   private updateData(): void {
     const tempData: WeightSizeTableItem[] = []
-    
-    const grades = ['23', '27', '32', '40']
-    const subsystems = this.selectedSubsystem === 'ALL' ? ['1', '2'] : [this.selectedSubsystem]
-    
-    // 先收集所有数据
-    for (const subsystem of subsystems) {
-      for (const grade of grades) {
-        const gradeName = `Sys-${subsystem}-${grade}`
 
-        tempData.push({
-          gradeName,
-          weight: 0,
-          gradeCount: 0,
-          countPercent: 0,  // 稍后计算
-          gradeWeight: 0,
-          weightPercent: 0,  // 稍后计算
-          boxCount: 0,
-          boxCountPercent: 0  // 稍后计算
-        })
-      }
+    const grades = ['23', '27', '32', '40']
+    const snapshot = this.statsService.getSnapshot(this.selectedSubsystem)
+    for (let i = 0; i < grades.length; i++) {
+      tempData.push({
+        gradeName: grades[i],
+        weight: Number(snapshot.gradeWeight[i] ?? 0),
+        gradeCount: Number(snapshot.gradeCount[i] ?? 0),
+        countPercent: 0,
+        gradeWeight: Number(snapshot.gradeWeight[i] ?? 0),
+        weightPercent: 0,
+        boxCount: Number(snapshot.boxGradeCount[i] ?? 0),
+        boxCountPercent: 0
+      })
     }
     
     // 计算总和

@@ -789,11 +789,6 @@ export struct RealtimeStatsDialog {
             } else if (this.currentInnerPage === '时间效率图') {
               // 时间效率图内容
               Column() {
-                Text('时间效率图（分选效率 / 实时产量）')
-                  .fontSize(16)
-                  .fontWeight(FontWeight.Medium)
-                  .fontColor(getCurrentTheme().textColor)
-                  .margin({ bottom: 8 })
                 TimeEfficiencyLineChart({
                   chartHeight: 500,
                   selectedSubsystem: this.selectedSubsystem
