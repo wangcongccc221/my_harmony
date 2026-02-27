@@ -22,6 +22,7 @@ import { WeightSizeStatisticsTable } from '../tables/WeightSizeStatisticsTable'
 import { GradeStatisticsTable } from '../tables/GradeStatisticsTable'
 import { TimeEfficiencyLineChart } from '../charts/TimeEfficiencyLineChart'
 import { PrintManager } from '../../utils/print/PrintManager'
+import { getRealtimeStatsService, RealtimeStatsService } from '../../protocol/RealtimeStatsService'
 /*
 // import GlobalStore from '../../database/orm/model/GlobalStore'
 */
@@ -58,6 +59,7 @@ export struct RealtimeStatsDialog {
 
   // 协议层数据接口
   private dataInterface: GlobalDataInterface = getGlobalDataInterface()
+  private statsService: RealtimeStatsService = getRealtimeStatsService()
   private dataChangeListener: DataChangeListener | null = null
 
   // 真实的统计数据（从协议层获取）
@@ -394,8 +396,7 @@ export struct RealtimeStatsDialog {
    */
   private handleBatchRatioRefresh(): void {
     console.log('[RealtimeStatsDialog] 批次比例刷新')
-    // TODO: 从数据库获取批次数据并更新图表
-    // 这里可以触发图表数据刷新
+    this.statsService.setRatioModeBatch()
     this.contentRefreshKey++  // 触发内容刷新
   }
 
@@ -404,8 +405,7 @@ export struct RealtimeStatsDialog {
    */
   private handleRealtimeRatioRefresh(): void {
     console.log('[RealtimeStatsDialog] 实时比例刷新')
-    // TODO: 从数据库获取实时数据并更新图表
-    // 这里可以触发图表数据刷新
+    this.statsService.setRatioModeRealtime(this.selectedSubsystem)
     this.contentRefreshKey++  // 触发内容刷新
   }
 

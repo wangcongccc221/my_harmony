@@ -13,7 +13,7 @@ import argparse
 import socket
 import struct
 import time
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 SYNC = b"SYNC"
 CMD_FSM_STATISTICS = 0x1001
@@ -36,7 +36,7 @@ class SubsysState:
         self.tick = 0
 
 
-def build_statistics_payload(state: SubsysState, speed: int) -> bytes:
+def build_statistics_payload(state: SubsysState, speed: int, profile: str) -> Tuple[bytes, Dict[str, int]]:
     state.tick += 1
 
     # 每次新增一批数据，保证曲线会动
@@ -50,14 +50,28 @@ def build_statistics_payload(state: SubsysState, speed: int) -> bytes:
     n_box_grade_count: List[int] = [0] * GRADE_N
     n_box_grade_weight: List[float] = [0.0] * GRADE_N
 
-    # 前几个等级填充动态数据，其他置 0
-    for i in range(8):
-        c = int(delta_yield * (1 + (i % 3)))
-        w = float(c * (180 + i * 5))
-        n_grade_count[i] = c
-        n_weight_grade_count[i] = w
-        n_box_grade_count[i] = max(0, c // 12)
-        n_box_grade_weight[i] = w
+    # 生成等级分布（可切换 profile）
+    if profile == "feature":
+        # 更偏向“特征分组”的分布：每 16 个 grade 为一个分组
+        for q in range(16):
+            group_base = 6 + ((q + state.subsys_id + state.tick) % 5)
+            for s in range(16):
+                idx = q * 16 + s
+                c = group_base * (1 + (s % 3))
+                w = float(c * (170 + q * 2 + s))
+                n_grade_count[idx] = c
+                n_weight_grade_count[idx] = w
+                n_box_grade_count[idx] = max(0, c // 12)
+                n_box_grade_weight[idx] = w
+    else:
+        # compact：仅前几个等级有值
+        for i in range(8):
+            c = int(delta_yield * (1 + (i % 3)))
+            w = float(c * (180 + i * 5))
+            n_grade_count[i] = c
+            n_weight_grade_count[i] = w
+            n_box_grade_count[i] = max(0, c // 12)
+            n_box_grade_weight[i] = w
 
     n_exit_count: List[int] = [0] * MAX_EXIT_NUM
     n_exit_weight_count: List[float] = [0.0] * MAX_EXIT_NUM
@@ -123,7 +137,15 @@ def build_statistics_payload(state: SubsysState, speed: int) -> bytes:
 
     if len(buf) != EXPECTED_PAYLOAD_SIZE:
         raise RuntimeError(f"payload size mismatch: {len(buf)} != {EXPECTED_PAYLOAD_SIZE}")
-    return bytes(buf)
+    summary = {
+        "grade0": int(n_grade_count[0]),
+        "grade1": int(n_grade_count[1]),
+        "grade16": int(n_grade_count[16]),
+        "grade32": int(n_grade_count[32]),
+        "exit0": int(n_exit_count[0]),
+        "exit1": int(n_exit_count[1]),
+    }
+    return bytes(buf), summary
 
 
 def build_packet(src: int, dst: int, cmd: int, payload: bytes) -> bytes:
@@ -164,6 +186,9 @@ def main() -> None:
     parser.add_argument("--interval", type=float, default=1.0, help="发送间隔秒")
     parser.add_argument("--duration", type=int, default=120, help="总时长秒")
     parser.add_argument("--speed", type=int, default=1200, help="nIntervalSumperminute 基准值")
+    parser.add_argument("--profile", choices=["feature", "compact"], default="feature",
+                        help="等级数据分布模式: feature(推荐,更接近接口联调) / compact(前8级)")
+    parser.add_argument("--dry-run", action="store_true", help="只生成并打印，不发网络包")
     parser.add_argument("--timeout", type=float, default=3.0)
     args = parser.parse_args()
 
@@ -171,20 +196,22 @@ def main() -> None:
     states: Dict[int, SubsysState] = {sid: SubsysState(sid) for sid in subsystems}
 
     rounds = max(1, int(args.duration / args.interval))
-    print(f"[START] host={args.host} port={args.port} subsystems={subsystems} rounds={rounds} interval={args.interval}s")
+    print(f"[START] host={args.host} port={args.port} subsystems={subsystems} rounds={rounds} interval={args.interval}s profile={args.profile}")
 
     for r in range(rounds):
         for sid in subsystems:
             src = (sid << 8)  # 0x0100 / 0x0200 ...
             state = states[sid]
             dynamic_speed = args.speed + (r % 15) * 20 + sid * 5
-            payload = build_statistics_payload(state, dynamic_speed)
+            payload, summary = build_statistics_payload(state, dynamic_speed, args.profile)
             packet = build_packet(src, args.dst, args.cmd, payload)
-            send_packet(args.host, args.port, packet, args.timeout)
+            if not args.dry_run:
+                send_packet(args.host, args.port, packet, args.timeout)
             print(
                 f"[SEND] round={r+1}/{rounds} sid={sid} src=0x{src:04X} "
                 f"yield_total={state.total_cup} weight_total_g={int(state.total_weight_g)} "
-                f"speed={dynamic_speed} payload={len(payload)} total={len(packet)}"
+                f"speed={dynamic_speed} payload={len(payload)} total={len(packet)} "
+                f"g0={summary['grade0']} g1={summary['grade1']} g16={summary['grade16']} g32={summary['grade32']}"
             )
         time.sleep(args.interval)
 
@@ -193,4 +220,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

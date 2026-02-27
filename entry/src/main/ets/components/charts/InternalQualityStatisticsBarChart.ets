@@ -152,10 +152,14 @@ export struct InternalQualityStatisticsBarChart {
     // 找到最大值（用于计算比例）
     let maxCount = 0
     let maxWeight = 0
+    let sumCount = 0
+    let sumWeight = 0
     
     for (let i = 0; i < this.categories.length; i++) {
       maxCount = Math.max(maxCount, this.countData[i] || 0)
       maxWeight = Math.max(maxWeight, this.weightData[i] || 0)
+      sumCount += this.countData[i] || 0
+      sumWeight += this.weightData[i] || 0
     }
     
     // 归一化：将个数和重量统一到同一个比例尺
@@ -192,7 +196,10 @@ export struct InternalQualityStatisticsBarChart {
       
       if (countValue > 0) {
         ctx.fillStyle = theme.textColor
-        ctx.fillText(countValue.toString(), x + (actualBarWidth / 2 - barGap / 2) / 2, baseY - countBarHeight - 5)
+        const countText = this.statsService.getRatioMode() === 'realtime' && sumCount > 0
+          ? `${((countValue / sumCount) * 100).toFixed(1)}%`
+          : countValue.toString()
+        ctx.fillText(countText, x + (actualBarWidth / 2 - barGap / 2) / 2, baseY - countBarHeight - 5)
       }
       
       // 重量条形（橙色，右侧）
@@ -208,7 +215,10 @@ export struct InternalQualityStatisticsBarChart {
       
       if (weightValue > 0) {
         ctx.fillStyle = theme.textColor
-        ctx.fillText(weightValue.toString(), x + actualBarWidth / 2 + barGap / 2 + (actualBarWidth / 2 - barGap / 2) / 2, baseY - weightBarHeight - 5)
+        const weightText = this.statsService.getRatioMode() === 'realtime' && sumWeight > 0
+          ? `${((weightValue / sumWeight) * 100).toFixed(1)}%`
+          : weightValue.toString()
+        ctx.fillText(weightText, x + actualBarWidth / 2 + barGap / 2 + (actualBarWidth / 2 - barGap / 2) / 2, baseY - weightBarHeight - 5)
       }
     }
     

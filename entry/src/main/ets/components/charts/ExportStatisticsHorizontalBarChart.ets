@@ -189,20 +189,26 @@ export struct ExportStatisticsHorizontalBarChart {
     // 找到最大值（用于计算比例）- 直接使用selectedSubsystem确保使用最新值
     const subsystem = this.selectedSubsystem
     let maxValue = 0
+    let sum1 = 0
+    let sum2 = 0
     if (subsystem === 'ALL') {
       // ALL模式：找FSM1和FSM2的最大值
       for (let i = 0; i < this.categories.length; i++) {
         maxValue = Math.max(maxValue, this.fsm1Data[i] || 0, this.fsm2Data[i] || 0)
+        sum1 += this.fsm1Data[i] || 0
+        sum2 += this.fsm2Data[i] || 0
       }
     } else if (subsystem === '1') {
       // FSM1模式
       for (let i = 0; i < this.categories.length; i++) {
         maxValue = Math.max(maxValue, this.fsm1Data[i] || 0)
+        sum1 += this.fsm1Data[i] || 0
       }
     } else {
       // FSM2模式
       for (let i = 0; i < this.categories.length; i++) {
         maxValue = Math.max(maxValue, this.fsm2Data[i] || 0)
+        sum2 += this.fsm2Data[i] || 0
       }
     }
     
@@ -245,7 +251,10 @@ export struct ExportStatisticsHorizontalBarChart {
         // 绘制FSM1数值标签（在条形顶部）
         if (value1 > 0) {
           ctx.fillStyle = theme.textColor
-          ctx.fillText(value1.toString(), x + (actualBarWidth / 2 - barGap / 2) / 2, baseY - barHeight1 - 5)
+          const text1 = this.statsService.getRatioMode() === 'realtime' && sum1 > 0
+            ? `${((value1 / sum1) * 100).toFixed(1)}%`
+            : value1.toString()
+          ctx.fillText(text1, x + (actualBarWidth / 2 - barGap / 2) / 2, baseY - barHeight1 - 5)
         }
         
         // FSM2条形（黄色，右侧）
@@ -262,7 +271,10 @@ export struct ExportStatisticsHorizontalBarChart {
         // 绘制FSM2数值标签（在条形顶部）
         if (value2 > 0) {
           ctx.fillStyle = theme.textColor
-          ctx.fillText(value2.toString(), x + actualBarWidth / 2 + barGap / 2 + (actualBarWidth / 2 - barGap / 2) / 2, baseY - barHeight2 - 5)
+          const text2 = this.statsService.getRatioMode() === 'realtime' && sum2 > 0
+            ? `${((value2 / sum2) * 100).toFixed(1)}%`
+            : value2.toString()
+          ctx.fillText(text2, x + actualBarWidth / 2 + barGap / 2 + (actualBarWidth / 2 - barGap / 2) / 2, baseY - barHeight2 - 5)
         }
       } else if (subsystem === '1') {
         // FSM1模式：只绘制FSM1的条形
@@ -279,7 +291,10 @@ export struct ExportStatisticsHorizontalBarChart {
         // 绘制数值标签（在条形顶部）
         if (value > 0) {
           ctx.fillStyle = theme.textColor
-          ctx.fillText(value.toString(), centerX, baseY - barHeight - 5)
+          const text = this.statsService.getRatioMode() === 'realtime' && sum1 > 0
+            ? `${((value / sum1) * 100).toFixed(1)}%`
+            : value.toString()
+          ctx.fillText(text, centerX, baseY - barHeight - 5)
         }
       } else {
         // FSM2模式：只绘制FSM2的条形
@@ -296,7 +311,10 @@ export struct ExportStatisticsHorizontalBarChart {
         // 绘制数值标签（在条形顶部）
         if (value > 0) {
           ctx.fillStyle = theme.textColor
-          ctx.fillText(value.toString(), centerX, baseY - barHeight - 5)
+          const text = this.statsService.getRatioMode() === 'realtime' && sum2 > 0
+            ? `${((value / sum2) * 100).toFixed(1)}%`
+            : value.toString()
+          ctx.fillText(text, centerX, baseY - barHeight - 5)
         }
       }
     }

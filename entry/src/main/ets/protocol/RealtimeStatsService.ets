@@ -79,6 +79,8 @@ export interface FeatureDistribution {
   weight: number[]
 }
 
+export type RatioMode = 'batch' | 'realtime'
+
 export type RealtimeStatsListener = () => void
 
 const DEFAULT_SCOPE = 'ALL'
@@ -99,6 +101,8 @@ export class RealtimeStatsService {
   private latestMetricsByScope: Map<string, CalcMetrics> = new Map()
   private maxOutputTonHByScope: Map<string, number> = new Map()
   private curveByScope: Map<string, RealtimeCurvePoint[]> = new Map()
+  private ratioMode: RatioMode = 'batch'
+  private ratioBaselineByScope: Map<string, AggregateTotals> = new Map()
 
   static getInstance(): RealtimeStatsService {
     if (!RealtimeStatsService.instance) {
@@ -124,10 +128,29 @@ export class RealtimeStatsService {
     this.listeners.delete(listener)
   }
 
+  setRatioModeBatch(): void {
+    this.ratioMode = 'batch'
+    this.notifyListeners()
+  }
+
+  setRatioModeRealtime(selectedSubsystem: string): void {
+    const scope = this.normalizeScope(selectedSubsystem)
+    this.ratioMode = 'realtime'
+    const allAgg: AggregateCollection = this.collectAggregates()
+    const agg = this.pickAggregate(scope, allAgg)
+    this.ratioBaselineByScope.set(scope, this.cloneAggregate(agg))
+    this.notifyListeners()
+  }
+
+  getRatioMode(): RatioMode {
+    return this.ratioMode
+  }
+
   getSnapshot(selectedSubsystem: string): RealtimeStatsSnapshot {
     const scope = this.normalizeScope(selectedSubsystem)
     const allAgg = this.collectAggregates()
-    const agg = this.pickAggregate(scope, allAgg)
+    const aggRaw = this.pickAggregate(scope, allAgg)
+    const agg = this.applyRatioMode(scope, aggRaw)
     const metrics = this.latestMetricsByScope.get(scope) ?? this.createDefaultMetrics(agg)
 
     return {
@@ -343,7 +366,8 @@ export class RealtimeStatsService {
 
   private buildFeatureDistribution(scope: string, feature: string): FeatureDistribution {
     const allAgg: AggregateCollection = this.collectAggregates()
-    const agg: AggregateTotals = this.pickAggregate(scope, allAgg)
+    const aggRaw: AggregateTotals = this.pickAggregate(scope, allAgg)
+    const agg: AggregateTotals = this.applyRatioMode(scope, aggRaw)
     const gradeInfo: StGradeInfo | null = this.dataInterface.getLatestGradeInfo()
     if (!gradeInfo) {
       return this.buildFallbackDistribution(agg, feature)
@@ -469,6 +493,40 @@ export class RealtimeStatsService {
     return data.subsys.get(subsys) ?? this.createEmptyAggregate()
   }
 
+  private applyRatioMode(scope: string, current: AggregateTotals): AggregateTotals {
+    if (this.ratioMode !== 'realtime') {
+      return current
+    }
+    const baseline = this.ratioBaselineByScope.get(scope)
+    if (!baseline) {
+      return current
+    }
+    return this.diffAggregate(current, baseline)
+  }
+
+  private diffAggregate(current: AggregateTotals, baseline: AggregateTotals): AggregateTotals {
+    const out = this.createEmptyAggregate()
+    out.totalYield = Math.max(0, current.totalYield - baseline.totalYield)
+    out.totalWeight = Math.max(0, current.totalWeight - baseline.totalWeight)
+    out.totalCupNum = Math.max(0, current.totalCupNum - baseline.totalCupNum)
+    out.speedSum = current.speedSum
+    out.speedValidCount = current.speedValidCount
+    this.diffArray(out.gradeCount, current.gradeCount, baseline.gradeCount)
+    this.diffArray(out.gradeWeight, current.gradeWeight, baseline.gradeWeight)
+    this.diffArray(out.boxGradeCount, current.boxGradeCount, baseline.boxGradeCount)
+    this.diffArray(out.exitCount, current.exitCount, baseline.exitCount)
+    this.diffArray(out.exitWeight, current.exitWeight, baseline.exitWeight)
+    return out
+  }
+
+  private diffArray(out: number[], current: number[], baseline: number[]): void {
+    const len = Math.min(out.length, current.length, baseline.length)
+    for (let i = 0; i < len; i++) {
+      const v = current[i] - baseline[i]
+      out[i] = v > 0 ? v : 0
+    }
+  }
+
   private accumulateStats(target: AggregateTotals, stats: StStatistics): void {
     target.totalYield += Number(stats.nYield)
     target.totalWeight += Number(stats.nTotalWeight)
@@ -536,6 +594,28 @@ export class RealtimeStatsService {
       totalCupNum: totalCupNum
     }
     return totals
+  }
+
+  private cloneAggregate(src: AggregateTotals): AggregateTotals {
+    const out = this.createEmptyAggregate()
+    out.totalYield = src.totalYield
+    out.totalWeight = src.totalWeight
+    out.totalCupNum = src.totalCupNum
+    out.speedSum = src.speedSum
+    out.speedValidCount = src.speedValidCount
+    this.copyArray(out.gradeCount, src.gradeCount)
+    this.copyArray(out.gradeWeight, src.gradeWeight)
+    this.copyArray(out.boxGradeCount, src.boxGradeCount)
+    this.copyArray(out.exitCount, src.exitCount)
+    this.copyArray(out.exitWeight, src.exitWeight)
+    return out
+  }
+
+  private copyArray(dst: number[], src: number[]): void {
+    const len = Math.min(dst.length, src.length)
+    for (let i = 0; i < len; i++) {
+      dst[i] = src[i]
+    }
   }
 
   private createDefaultMetrics(agg: AggregateTotals): CalcMetrics {
