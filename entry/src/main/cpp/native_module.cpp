@@ -9,6 +9,7 @@
 #include <vector>
 #include <cstring>
 #include <iostream>
+#include <unordered_map>
 
 #include <hilog/log.h>
 
@@ -255,8 +256,8 @@ static napi_value TcpClient_Destroy(napi_env env, napi_callback_info info) {
 
 // ===================== TcpServer (业务) NAPI Binding =====================
 
-// 全局实例
-static std::unique_ptr<TcpServer> g_tcpServer;
+// 多实例：按监听端口管理 TcpServer（用于统计/图像双服务）
+static std::unordered_map<int, std::unique_ptr<TcpServer>> g_tcpServers;
 
 static void CallJsTcpServerBuffer(napi_env env, napi_value js_cb, void* context, void* data) {
     // data 是一个结构，包含 CommandHead 和 数据
@@ -317,9 +318,12 @@ static napi_value TcpServer_Start(napi_env env, napi_callback_info info) {
     napi_threadsafe_function tsfn;
     napi_create_threadsafe_function(env, args[3], nullptr, resourceName, 0, 1, nullptr, nullptr, nullptr, CallJsTcpServerBuffer, &tsfn);
 
-    if (!g_tcpServer) {
-        g_tcpServer = std::make_unique<TcpServer>();
+    auto it = g_tcpServers.find(port);
+    if (it != g_tcpServers.end()) {
+        it->second->DestroyMasterSocket();
+        g_tcpServers.erase(it);
     }
+    auto server = std::make_unique<TcpServer>();
 
     // 设置回调
     auto setDataLength = [](CommandHead head) -> CommandHead {
@@ -415,7 +419,10 @@ static napi_value TcpServer_Start(napi_env env, napi_callback_info info) {
         // 可选实现
     };
 
-    bool success = g_tcpServer->Start(std::string(ip), port, dstId, false, setDataLength, setBuffer, setReceiveCommandHead);
+    bool success = server->Start(std::string(ip), port, dstId, false, setDataLength, setBuffer, setReceiveCommandHead);
+    if (success) {
+        g_tcpServers.emplace(port, std::move(server));
+    }
     
     napi_value result;
     napi_get_boolean(env, success, &result);
@@ -423,10 +430,12 @@ static napi_value TcpServer_Start(napi_env env, napi_callback_info info) {
 }
 
 static napi_value TcpServer_Destroy(napi_env env, napi_callback_info info) {
-    if (g_tcpServer) {
-        g_tcpServer->DestroyMasterSocket();
-        g_tcpServer.reset();
+    for (auto& item : g_tcpServers) {
+        if (item.second) {
+            item.second->DestroyMasterSocket();
+        }
     }
+    g_tcpServers.clear();
     return nullptr;
 }
 
@@ -434,6 +443,7 @@ static napi_value TcpServer_Destroy(napi_env env, napi_callback_info info) {
 EXTERN_C_START
 static napi_value Init(napi_env env, napi_value exports) {
     napi_property_descriptor desc[] = {
+        // test 
         { "getHelloString", nullptr, NapiGetHelloString, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "addNumbers", nullptr, NapiAddNumbers, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getVersion", nullptr, NapiGetVersion, nullptr, nullptr, nullptr, napi_default, nullptr },

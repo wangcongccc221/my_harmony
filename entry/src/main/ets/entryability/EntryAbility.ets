@@ -21,6 +21,7 @@ import { getGlobalDataInterface } from '../protocol/GlobalDataInterface'
 import { ConstPreDefine } from '../protocol/ConstPreDefine';
 import { getConfigSender, ITcpSender } from '../protocol/ConfigSender';
 import { tcpSendOnce } from '../protocol/ArkTcpClient'
+import { FSM_HC_COMMAND_TYPE, IPM_HC_COMMAND_TYPE, WAM_HC_COMMAND_TYPE } from '../protocol/CommandTypes'
 
 const DOMAIN = 0x0000;
 const HTTP_SERVER_PORT: number = 8080;
@@ -116,11 +117,18 @@ export default class EntryAbility extends UIAbility {
       console.info('🚀 [TcpServer] 尝试启动 (业务)...');
 
       const tcpSuccess = NativeModule.tcpServerStart("", ConstPreDefine.HC_PORT2_NUM, ConstPreDefine.HC_ID, (head: CommandHead) => {
-
-        
-        // 将数据交给 StatisticsHandler 处理
-        if (head && head.data) {
+        if (!head || !head.data) {
+          return
+        }
+        // 统计服务：只处理 FSM/WAM 统计相关命令
+        const isFsmCmd = head.cmdId >= FSM_HC_COMMAND_TYPE.FSM_CMD_CONFIG &&
+          head.cmdId <= FSM_HC_COMMAND_TYPE.FSM_CMD_BOOT_FLASH_PROGRESS
+        const isWamCmd = head.cmdId >= WAM_HC_COMMAND_TYPE.WAM__CMD_WEIGHT_INFO &&
+          head.cmdId <= WAM_HC_COMMAND_TYPE.WAM_CMD_REP_WAM_INFO
+        if (isFsmCmd || isWamCmd) {
           getStatisticsHandler().handleSplitMessage(head.cmdId, head.srcId, head.data);
+        } else {
+          console.warn(`[TcpServer-Stat] 忽略非统计命令 cmd=0x${head.cmdId.toString(16)} src=0x${head.srcId.toString(16)}`)
         }
       });
 
@@ -128,6 +136,26 @@ export default class EntryAbility extends UIAbility {
         console.info(`✅ [TcpServer] 启动成功 (Port: ${ConstPreDefine.HC_PORT2_NUM})`);
       } else {
         console.error('❌ [TcpServer] 启动失败');
+      }
+
+      console.info('🚀 [TcpServer-Image] 尝试启动 (图像)...');
+      const tcpImageSuccess = NativeModule.tcpServerStart("", ConstPreDefine.HC_PORT1_NUM, ConstPreDefine.HC_ID, (head: CommandHead) => {
+        if (!head || !head.data) {
+          return
+        }
+        const isIpmImageCmd = head.cmdId >= IPM_HC_COMMAND_TYPE.IPM_CMD_IMAGE &&
+          head.cmdId <= IPM_HC_COMMAND_TYPE.IPM_CMD_SHUTTER_ADJUST
+        if (isIpmImageCmd) {
+          console.info(`[TcpServer-Image] 收到图像链路命令 cmd=0x${head.cmdId.toString(16)} src=0x${head.srcId.toString(16)} len=${head.length}`)
+          // 预留：后续在这里接入图像解析/显示流程
+        } else {
+          console.warn(`[TcpServer-Image] 忽略非图像命令 cmd=0x${head.cmdId.toString(16)} src=0x${head.srcId.toString(16)}`)
+        }
+      });
+      if (tcpImageSuccess) {
+        console.info(`✅ [TcpServer-Image] 启动成功 (Port: ${ConstPreDefine.HC_PORT1_NUM})`);
+      } else {
+        console.error('❌ [TcpServer-Image] 启动失败');
       }
 
       const tcpSender = new TcpSenderImpl()

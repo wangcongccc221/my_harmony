@@ -6,23 +6,21 @@
 
 import { ConstPreDefine } from './ConstPreDefine'
 import {
-  StStatistics,
-  StWeightInfo,
-  StGradeInfo,
+  copyGlobalRealtimeData,
+  copyStFsmStatus,
+  copyStGradeInfo,
+  copyStStatistics,
+  copyStWeightInfo,
+  createDefaultGlobalRealtimeData,
+  GlobalRealtimeData,
   StFruitGradeInfo,
   StFruitGradeRealtime,
   StFsmStatus,
-  StSysConfig,
   StGlobal,
-  GlobalRealtimeData,
-  createDefaultStatistics,
-  createDefaultGlobalRealtimeData,
-  copyGlobalRealtimeData,
-  copyStStatistics,
-  copyStWeightInfo,
-  copyStGradeInfo,
-  copyStFsmStatus,
-  GradeItem
+  StGradeInfo,
+  StStatistics,
+  StSysConfig,
+  StWeightInfo
 } from './Structures'
 import { hilog } from '@kit.PerformanceAnalysisKit'
 
