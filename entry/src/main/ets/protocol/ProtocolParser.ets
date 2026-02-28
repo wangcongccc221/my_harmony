@@ -46,6 +46,52 @@ export class ProtocolParser {
 
   private constructor() {}
 
+  private getExpectedPayloadSize(cmdId: number): number {
+    switch (cmdId) {
+      case FSM_HC_COMMAND_TYPE.FSM_CMD_STATISTICS:
+        return StStatistics.getSize()
+      case FSM_HC_COMMAND_TYPE.FSM_CMD_WEIGHTINFO:
+      case WAM_HC_COMMAND_TYPE.WAM_CMD_WEIGHTINFO:
+        return StWeightResult.getSize()
+      case FSM_HC_COMMAND_TYPE.FSM_CMD_WAVEINFO:
+      case WAM_HC_COMMAND_TYPE.WAM_CMD_WAVEINFO:
+        return StWaveInfo.getSize()
+      case WAM_HC_COMMAND_TYPE.WAM__CMD_WEIGHT_INFO:
+        return StWeightGlobal.getSize()
+      case FSM_HC_COMMAND_TYPE.FSM_CMD_CONFIG:
+        return StGlobal.getSize()
+      case FSM_HC_COMMAND_TYPE.FSM_CMD_GETVERSION:
+      case WAM_HC_COMMAND_TYPE.WAM_CMD_REP_WAM_INFO:
+        return ConstPreDefine.BYTE_NUM_FSM_VERSION
+      case FSM_HC_COMMAND_TYPE.FSM_CMD_VERSIONERROR:
+      case FSM_HC_COMMAND_TYPE.FSM_CMD_BURN_FLASH_PROGRESS:
+      case FSM_HC_COMMAND_TYPE.FSM_CMD_BOOT_FLASH_PROGRESS:
+        return 4
+      case SIM_HMI_COMMAND_TYPE.SIM_HMI_DISPLAY_ON:
+      case SIM_HMI_COMMAND_TYPE.SIM_HMI_INSPECTION_OFF:
+        return 0
+      case HC_FSM_COMMAND_TYPE.HC_CMD_GRADE_INFO:
+      case SIM_HMI_COMMAND_TYPE.SIM_HMI_INSPECTION_ON:
+        return StGradeInfo.getSize()
+      default:
+        return -1
+    }
+  }
+
+  private validatePayloadSize(header: MessageHeader, buffer: ArrayBuffer): boolean {
+    const payloadLen = header.length - MESSAGE_HEADER_SIZE
+    const expected = this.getExpectedPayloadSize(header.cmdId)
+    if (expected < 0) {
+      return true
+    }
+    if (payloadLen < expected) {
+      hilog.warn(0x0001, TAG,
+        `载荷长度不足: cmd=0x${header.cmdId.toString(16)} payload=${payloadLen}, expected>=${expected}`)
+      return false
+    }
+    return true
+  }
+
   // ==================== 消息头解析 ====================
   /**
    * 解析消息头
@@ -115,6 +161,9 @@ export class ProtocolParser {
       hilog.warn(0x0001, TAG, `命令ID不匹配: ${header.cmdId} != ${FSM_HC_COMMAND_TYPE.FSM_CMD_STATISTICS}`)
       return null
     }
+    if (!this.validatePayloadSize(header, buffer)) {
+      return null
+    }
 
     const view = new DataView(buffer)
     const offset: number = MESSAGE_HEADER_SIZE
@@ -167,6 +216,9 @@ export class ProtocolParser {
       hilog.warn(0x0001, TAG, `命令ID不匹配: ${header.cmdId}`)
       return null
     }
+    if (!this.validatePayloadSize(header, buffer)) {
+      return null
+    }
 
     const view = new DataView(buffer)
     let offset: number = MESSAGE_HEADER_SIZE
@@ -193,6 +245,9 @@ export class ProtocolParser {
       header.cmdId !== WAM_HC_COMMAND_TYPE.WAM_CMD_WAVEINFO) {
       return null
     }
+    if (!this.validatePayloadSize(header, buffer)) {
+      return null
+    }
     try {
       const wave = new StWaveInfo()
       const view = new DataView(buffer)
@@ -208,6 +263,9 @@ export class ProtocolParser {
     const header: MessageHeader | null = this.parseHeader(buffer)
     if (!header) return null
     if (header.cmdId !== WAM_HC_COMMAND_TYPE.WAM__CMD_WEIGHT_INFO) {
+      return null
+    }
+    if (!this.validatePayloadSize(header, buffer)) {
       return null
     }
     try {
@@ -240,6 +298,10 @@ export class ProtocolParser {
     if (header.cmdId !== FSM_HC_COMMAND_TYPE.FSM_CMD_GRADEINFO &&
       header.cmdId !== HC_FSM_COMMAND_TYPE.HC_CMD_GRADE_INFO &&
       header.cmdId !== SIM_HMI_COMMAND_TYPE.SIM_HMI_INSPECTION_ON) {
+      return null
+    }
+    if (!this.validatePayloadSize(header, buffer) &&
+      header.cmdId !== FSM_HC_COMMAND_TYPE.FSM_CMD_GRADEINFO) {
       return null
     }
 
@@ -308,6 +370,9 @@ export class ProtocolParser {
   parseMessage(buffer: ArrayBuffer): ParsedMessage | null {
     const header: MessageHeader | null = this.parseHeader(buffer)
     if (!header) return null
+    if (!this.validatePayloadSize(header, buffer)) {
+      return null
+    }
 
     const cmdName: string = getCommandName(header.cmdId)
     if (this.isDebugEnabled()) {
@@ -389,6 +454,9 @@ export class ProtocolParser {
     const header: MessageHeader | null = this.parseHeader(buffer)
     if (!header) return null
     if (header.cmdId !== FSM_HC_COMMAND_TYPE.FSM_CMD_CONFIG) return null
+    if (!this.validatePayloadSize(header, buffer)) {
+      return null
+    }
 
     try {
       const view = new DataView(buffer)

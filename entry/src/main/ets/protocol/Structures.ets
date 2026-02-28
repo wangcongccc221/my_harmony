@@ -813,8 +813,10 @@ export class StGradeInfo {
     size += 2 * 4; // ColorIntervals
     size += ConstPreDefine.MAX_EXIT_NUM * 4; // nExitSwitchNum
     size += ConstPreDefine.PARAS_TAGINFO_NUM; // nTagInfo
+    size += 2; // padding before nFruitType (pack4)
     size += 4; // nFruitType
     size += ConstPreDefine.MAX_FRUIT_NAME_LENGTH; // strFruitName
+    size += 2; // padding before unFlawAreaFactor (pack4)
     size += ConstPreDefine.MAX_FlAWAREA_GRADE_NUM * 2 * 4; // unFlawAreaFactor
     size += ConstPreDefine.MAX_BRUISE_GRADE_NUM * 2 * 4; // unBruiseFactor
     size += ConstPreDefine.MAX_ROT_GRADE_NUM * 2 * 4; // unRotFactor
@@ -853,6 +855,7 @@ export class StGradeInfo {
     size += 1; // nSizeGradeNum
     size += 1; // nQualityGradeNum
     size += 1; // nClassifyType
+    size += 1; // padding before nCheckNum (short alignment)
     size += 2; // nCheckNum (short)
     size += 2; // ForceChannel (short)
     
@@ -877,10 +880,12 @@ export class StGradeInfo {
     for (let i = 0; i < this.ColorIntervals.length; i++) { this.ColorIntervals[i] = view.getInt32(offset, true); offset += 4; }
     for (let i = 0; i < this.nExitSwitchNum.length; i++) { this.nExitSwitchNum[i] = view.getInt32(offset, true); offset += 4; }
     for (let i = 0; i < this.nTagInfo.length; i++) { this.nTagInfo[i] = view.getUint8(offset); offset++; }
+    if (offset % 4 !== 0) { offset += (4 - (offset % 4)); }
     
     this.nFruitType = view.getInt32(offset, true); offset += 4;
     
     for (let i = 0; i < this.strFruitName.length; i++) { this.strFruitName[i] = view.getUint8(offset); offset++; }
+    if (offset % 4 !== 0) { offset += (4 - (offset % 4)); }
     for (let i = 0; i < this.unFlawAreaFactor.length; i++) { this.unFlawAreaFactor[i] = view.getUint32(offset, true); offset += 4; }
     for (let i = 0; i < this.unBruiseFactor.length; i++) { this.unBruiseFactor[i] = view.getUint32(offset, true); offset += 4; }
     for (let i = 0; i < this.unRotFactor.length; i++) { this.unRotFactor[i] = view.getUint32(offset, true); offset += 4; }
@@ -921,6 +926,7 @@ export class StGradeInfo {
     this.nSizeGradeNum = view.getUint8(offset); offset++;
     this.nQualityGradeNum = view.getUint8(offset); offset++;
     this.nClassifyType = view.getUint8(offset); offset++;
+    if (offset % 2 !== 0) { offset += 1; }
     this.nCheckNum = view.getInt16(offset, true); offset += 2;
     this.ForceChannel = view.getInt16(offset, true); offset += 2;
 
@@ -942,10 +948,20 @@ export class StGradeInfo {
     for (let i = 0; i < this.ColorIntervals.length; i++) { view.setInt32(offset, this.ColorIntervals[i], true); offset += 4; }
     for (let i = 0; i < this.nExitSwitchNum.length; i++) { view.setInt32(offset, this.nExitSwitchNum[i], true); offset += 4; }
     for (let i = 0; i < this.nTagInfo.length; i++) { view.setUint8(offset, this.nTagInfo[i]); offset++; }
+    if (offset % 4 !== 0) {
+      while (offset % 4 !== 0) {
+        view.setUint8(offset, 0); offset++;
+      }
+    }
     
     view.setInt32(offset, this.nFruitType, true); offset += 4;
     
     for (let i = 0; i < this.strFruitName.length; i++) { view.setUint8(offset, this.strFruitName[i]); offset++; }
+    if (offset % 4 !== 0) {
+      while (offset % 4 !== 0) {
+        view.setUint8(offset, 0); offset++;
+      }
+    }
     for (let i = 0; i < this.unFlawAreaFactor.length; i++) { view.setUint32(offset, this.unFlawAreaFactor[i], true); offset += 4; }
     for (let i = 0; i < this.unBruiseFactor.length; i++) { view.setUint32(offset, this.unBruiseFactor[i], true); offset += 4; }
     for (let i = 0; i < this.unRotFactor.length; i++) { view.setUint32(offset, this.unRotFactor[i], true); offset += 4; }
@@ -985,6 +1001,9 @@ export class StGradeInfo {
     view.setUint8(offset, this.nSizeGradeNum); offset++;
     view.setUint8(offset, this.nQualityGradeNum); offset++;
     view.setUint8(offset, this.nClassifyType); offset++;
+    if (offset % 2 !== 0) {
+      view.setUint8(offset, 0); offset++;
+    }
     view.setInt16(offset, this.nCheckNum, true); offset += 2;
     view.setInt16(offset, this.ForceChannel, true); offset += 2;
 

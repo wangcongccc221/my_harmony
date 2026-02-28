@@ -116,11 +116,24 @@ export class StatisticsHandler {
    */
   handleSplitMessage(cmdId: number, srcId: number, data: Uint8Array): boolean {
     try {
+      if (!data || data.byteLength <= 0) {
+        hilog.warn(0x0001, TAG, `收到空数据: cmd=0x${cmdId.toString(16)} src=0x${srcId.toString(16)}`)
+        return false
+      }
+      if (srcId <= 0) {
+        hilog.warn(0x0001, TAG, `收到非法源ID: cmd=0x${cmdId.toString(16)} src=0x${srcId.toString(16)}`)
+        return false
+      }
       const hexHead = this.bytesToHex(data, 64)
       const tailStart = data.byteLength > 32 ? data.byteLength - 32 : 0
       const hexTail = this.bytesToHex(data.slice(tailStart), 32)
       console.log(`${PROTO_LOG_MARK} [RAW] cmd=0x${cmdId.toString(16)} src=0x${srcId.toString(16)} len=${data.byteLength} hex64=${hexHead}`)
       console.log(`${PROTO_LOG_MARK} [RAW_TAIL] cmd=0x${cmdId.toString(16)} src=0x${srcId.toString(16)} tail32=${hexTail}`)
+      const cmdName = getCommandName(cmdId)
+      if (cmdName === 'UNKNOWN_COMMAND') {
+        hilog.warn(0x0001, TAG, `收到未知命令: cmd=0x${cmdId.toString(16)} src=0x${srcId.toString(16)} len=${data.byteLength}`)
+        return false
+      }
       if (cmdId === HC_FSM_COMMAND_TYPE.HC_CMD_GRADE_INFO) {
         console.log(`[Split] 收到等级配置: cmd=0x${cmdId.toString(16)} src=0x${srcId.toString(16)} dataLen=${data.byteLength}`)
       }
@@ -133,7 +146,7 @@ export class StatisticsHandler {
           destId: ConstPreDefine.HC_ID, // 假定发给我
           cmdId: cmdId
         },
-        cmdName: getCommandName(cmdId),
+        cmdName: cmdName,
         data: null
       }
 
