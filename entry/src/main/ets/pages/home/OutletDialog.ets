@@ -218,11 +218,10 @@ export struct OutletDialog {
 
   @Builder
   LabelCheckboxInput(labelIndex: number, isChecked: boolean) {
-    const enabled = this.isExitLabelModeEnabled()
     Row() {
       Checkbox({ name: `label_${labelIndex}`, group: `exit_label_${this.currentOutletIndex}` })
         .select(isChecked)
-        .enabled(enabled)
+        .enabled(this.isExitLabelModeEnabled())
         .onChange((val: boolean) => this.selectLabelOption(labelIndex, val))
         .width(20)
         .height(20)
@@ -232,12 +231,12 @@ export struct OutletDialog {
       Text(this.getLabelOptionName(labelIndex))
         .fontSize(15)
         .fontWeight(FontWeight.Regular)
-        .fontColor(enabled ? this.getCurrentTheme().textColor : this.getCurrentTheme().subTextColor)
+        .fontColor(this.isExitLabelModeEnabled() ? this.getCurrentTheme().textColor : this.getCurrentTheme().subTextColor)
         .width('100%')
     }
     .width('100%')
     .padding({ top: 4, bottom: 4 })
-    .opacity(enabled ? 1 : 0.5)
+    .opacity(this.isExitLabelModeEnabled() ? 1 : 0.5)
   }
 
   @Builder
