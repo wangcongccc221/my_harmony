@@ -9,6 +9,7 @@ import { GlobalDataInterface, getGlobalDataInterface } from './GlobalDataInterfa
 import { FSM_HC_COMMAND_TYPE, HC_FSM_COMMAND_TYPE, WAM_HC_COMMAND_TYPE, SIM_HMI_COMMAND_TYPE, getCommandName } from './CommandTypes'
 import { MESSAGE_HEADER_SIZE, StStatistics, StWeightInfo, StWeightResult, StWaveInfo, StWeightGlobal, StGradeInfo, StFruitGradeInfo, StFsmStatus, StSysConfig, StGlobal, createDefaultStatistics, createDefaultWeightInfo } from './Structures'
 import { hilog } from '@kit.PerformanceAnalysisKit'
+import { util } from '@kit.ArkTS'
 import { ConstPreDefine } from './ConstPreDefine'
 
 const TAG = 'StatisticsHandler'
@@ -38,6 +39,34 @@ export class StatisticsHandler {
     this.parser = getProtocolParser()
     this.dataInterface = getGlobalDataInterface()
     hilog.info(0x0001, TAG, '统计数据处理器初始化')
+  }
+
+  private bytesToAscii(bytes: Uint8Array): string {
+    let end = bytes.length
+    for (let i = 0; i < bytes.length; i++) {
+      if (bytes[i] === 0) {
+        end = i
+        break
+      }
+    }
+    const sliced = bytes.slice(0, end)
+    const decoder = new util.TextDecoder('utf-8')
+    return decoder.decodeWithStream(sliced)
+  }
+
+  private logLargeText(mark: string, text: string): void {
+    const chunkSize = 1800
+    if (text.length <= chunkSize) {
+      console.log(`${PROTO_LOG_MARK} [${mark}] ${text}`)
+      return
+    }
+    const parts = Math.ceil(text.length / chunkSize)
+    for (let i = 0; i < parts; i++) {
+      const start = i * chunkSize
+      const end = Math.min(start + chunkSize, text.length)
+      const partText = text.substring(start, end)
+      console.log(`${PROTO_LOG_MARK} [${mark}] part=${i + 1}/${parts} ${partText}`)
+    }
   }
 
   private bytesToHex(data: Uint8Array, maxBytes: number): string {
@@ -293,6 +322,11 @@ export class StatisticsHandler {
     const sys = parsed.data
     if (sys instanceof StGlobal) {
       console.log(`${PROTO_LOG_MARK} [PARSED_GLOBAL] src=0x${parsed.header.srcId.toString(16)} subsys=${sys.nSubsysId} version=${sys.nVersion} net=${sys.nNetState} fsmRestart=${sys.nFsmRestart} fsmModule=${sys.nFsmModule}`)
+      const fsmInfo = this.bytesToAscii(sys.cFSMInfo)
+      const ipmInfo = this.bytesToAscii(sys.cIPMInfo)
+      console.log(`${PROTO_LOG_MARK} [PARSED_GLOBAL_TEXT] cFSMInfo="${fsmInfo}" cIPMInfo="${ipmInfo}"`)
+      const fullJson = JSON.stringify(sys)
+      this.logLargeText('PARSED_GLOBAL_FULL', fullJson)
       this.dataInterface.updateGlobalConfig(sys)
       return true
     }

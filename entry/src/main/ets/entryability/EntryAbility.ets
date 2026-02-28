@@ -25,6 +25,7 @@ import { FSM_HC_COMMAND_TYPE, IPM_HC_COMMAND_TYPE, WAM_HC_COMMAND_TYPE } from '.
 
 const DOMAIN = 0x0000;
 const HTTP_SERVER_PORT: number = 8080;
+const TCP_RX_MARK = '[TCP_RX_TRACE]'
 
 class TcpSenderImpl implements ITcpSender {
   async sendToDevice(deviceId: number, data: ArrayBuffer): Promise<boolean> {
@@ -120,6 +121,8 @@ export default class EntryAbility extends UIAbility {
         if (!head || !head.data) {
           return
         }
+        const preview = this.toHexPreview(head.data, 24)
+        console.log(`${TCP_RX_MARK} [STAT_PORT] cmd=0x${head.cmdId.toString(16)} src=0x${head.srcId.toString(16)} len=${head.length} hex24=${preview}`)
         // 统计服务：只处理 FSM/WAM 统计相关命令
         const isFsmCmd = head.cmdId >= FSM_HC_COMMAND_TYPE.FSM_CMD_CONFIG &&
           head.cmdId <= FSM_HC_COMMAND_TYPE.FSM_CMD_BOOT_FLASH_PROGRESS
@@ -143,6 +146,8 @@ export default class EntryAbility extends UIAbility {
         if (!head || !head.data) {
           return
         }
+        const preview = this.toHexPreview(head.data, 24)
+        console.log(`${TCP_RX_MARK} [IMG_PORT] cmd=0x${head.cmdId.toString(16)} src=0x${head.srcId.toString(16)} len=${head.length} hex24=${preview}`)
         const isIpmImageCmd = head.cmdId >= IPM_HC_COMMAND_TYPE.IPM_CMD_IMAGE &&
           head.cmdId <= IPM_HC_COMMAND_TYPE.IPM_CMD_SHUTTER_ADJUST
         if (isIpmImageCmd) {
@@ -173,6 +178,16 @@ export default class EntryAbility extends UIAbility {
     } catch (error) {
       console.error('❌ Native 服务初始化失败:', error);
     }
+  }
+
+  private toHexPreview(data: Uint8Array, maxLen: number): string {
+    const n = data.length < maxLen ? data.length : maxLen
+    let out = ''
+    for (let i = 0; i < n; i++) {
+      const s = data[i].toString(16).padStart(2, '0')
+      out += (i === 0 ? s : ` ${s}`)
+    }
+    return out
   }
   
   /**

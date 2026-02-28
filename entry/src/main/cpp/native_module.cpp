@@ -382,7 +382,7 @@ static napi_value TcpServer_Start(napi_env env, napi_callback_info info) {
                 head.nLength = sizeof(int); // Read 4 bytes length first
                 head.nReadDataPack = true;  // Flag to re-read body based on this length
                 break;
-            
+             
             case IPM_HC_COMMAND_TYPE::IPM_CMD_AUTOBALANCE_COEFFICIENT:
                 head.nLength = sizeof(StWhiteBalanceCoefficient);
                 break;

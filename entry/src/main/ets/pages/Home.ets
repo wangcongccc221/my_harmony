@@ -200,6 +200,8 @@ struct Page {
   @State floatingWindowTitle: string = ''
   @State floatingWindowContent: string = ''
   @State selectedFloatingTab: string = 'export'
+  @State floatingWindowPosX: number = 120
+  @State floatingWindowPosY: number = 400
   
   // 主题选择器状态
   @State selectedTheme: OmniThemeType = OmniThemeType.BLUE
@@ -922,6 +924,14 @@ struct Page {
 
   // 处理悬浮窗显示
   private displayFloatingWindow(title: string, content: string): void {
+    // “更多”悬浮窗放在顶部按钮下方；其他悬浮窗沿用旧位置
+    if (title.includes('更多')) {
+      this.floatingWindowPosX = 980
+      this.floatingWindowPosY = 92
+    } else {
+      this.floatingWindowPosX = 120
+      this.floatingWindowPosY = 400
+    }
     this.floatingWindowTitle = title
     this.floatingWindowContent = content
     this.showFloatingWindow = true
@@ -3121,7 +3131,7 @@ struct Page {
           title: this.floatingWindowTitle,
           windowWidth: '27.78%',
           windowHeight: '48.61%',
-          windowPosition: { x: 120, y: 400 },
+          windowPosition: { x: this.floatingWindowPosX, y: this.floatingWindowPosY },
           onClose: () => {
             this.handleFloatingWindowClose()
           }

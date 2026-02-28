@@ -165,7 +165,7 @@ export class NativeModule {
     try {
       console.info(`[NativeModule] TcpServer Start ${ip}:${port} dstId:${dstId}`);
       const result = nativeModule.tcpServerStart(ip, port, dstId, (head: CommandHead) => {
-        // console.info(`[NativeModule] TcpServer received cmdId:${head.cmdId} srcId:${head.srcId} len:${head.length}`);
+        console.log(`[TCP_RX_TRACE][NATIVE_CB] port=${port} cmd=0x${head.cmdId.toString(16)} src=0x${head.srcId.toString(16)} len=${head.length}`)
         if (callback) {
           callback(head);
         }
