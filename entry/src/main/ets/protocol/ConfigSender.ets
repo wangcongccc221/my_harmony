@@ -371,6 +371,43 @@ export class ConfigSender {
   }
 
   /**
+   * 发送果杯状态复位命令 (HC_CMD_CUPSTATERESET)
+   * 48 项目里用于“复位果杯”相关动作。
+   */
+  async sendCupStateReset(fsmId?: number): Promise<boolean> {
+    if (fsmId !== undefined) {
+      const data = this.parser.buildSimpleCommand(HC_FSM_COMMAND_TYPE.HC_CMD_CUPSTATERESET, fsmId)
+      return this.sendCommand(fsmId, data, 'CUPSTATERESET')
+    } else {
+      return this.broadcastCommand(HC_FSM_COMMAND_TYPE.HC_CMD_CUPSTATERESET, 'CUPSTATERESET')
+    }
+  }
+
+  /**
+   * 发送测试果杯开启命令 (HC_CMD_TEST_CUP_ON)
+   */
+  async sendTestCupOn(fsmId?: number): Promise<boolean> {
+    if (fsmId !== undefined) {
+      const data = this.parser.buildSimpleCommand(HC_FSM_COMMAND_TYPE.HC_CMD_TEST_CUP_ON, fsmId)
+      return this.sendCommand(fsmId, data, 'TEST_CUP_ON')
+    } else {
+      return this.broadcastCommand(HC_FSM_COMMAND_TYPE.HC_CMD_TEST_CUP_ON, 'TEST_CUP_ON')
+    }
+  }
+
+  /**
+   * 发送测试果杯关闭命令 (HC_CMD_TEST_CUP_OFF)
+   */
+  async sendTestCupOff(fsmId?: number): Promise<boolean> {
+    if (fsmId !== undefined) {
+      const data = this.parser.buildSimpleCommand(HC_FSM_COMMAND_TYPE.HC_CMD_TEST_CUP_OFF, fsmId)
+      return this.sendCommand(fsmId, data, 'TEST_CUP_OFF')
+    } else {
+      return this.broadcastCommand(HC_FSM_COMMAND_TYPE.HC_CMD_TEST_CUP_OFF, 'TEST_CUP_OFF')
+    }
+  }
+
+  /**
    * 发送网络关机命令 (HC_CMD_SHUT_DOWN)
    * @param fsmId FSM设备ID
    */

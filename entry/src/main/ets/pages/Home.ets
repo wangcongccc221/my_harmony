@@ -220,6 +220,7 @@ struct Page {
   
   // 测试果杯对话框状态
   @State showTestCupDialog: boolean = false
+  @State isTestCupRunning: boolean = false
   
   // 设备信息对话框状态
   @State showDeviceInfoDialog: boolean = false
@@ -1409,6 +1410,61 @@ struct Page {
     }
   }
 
+  // 复位果杯（对齐 48：执行复位并下发复位命令）
+  private async handleResetCupConfirm(): Promise<void> {
+    try {
+      const sender = getConfigSender()
+      const weightOk = await sender.sendWeightReset()
+      const cupOk = await sender.sendCupStateReset()
+      if (weightOk || cupOk) {
+        this.omniUIUtils.showSuccess(t('果杯复位命令已发送', '果杯复位命令已发送'))
+      } else {
+        this.omniUIUtils.showError(t('果杯复位命令发送失败', '果杯复位命令发送失败'))
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      this.omniUIUtils.showError(t('果杯复位失败', '果杯复位失败') + ': ' + msg)
+    } finally {
+      this.showResetCupConfirmDialog = false
+    }
+  }
+
+  // 开始测试果杯（对齐 48 的 TEST_CUP_ON）
+  private async handleTestCupStart(): Promise<void> {
+    try {
+      const sender = getConfigSender()
+      const ok = await sender.sendTestCupOn()
+      if (ok) {
+        this.isTestCupRunning = true
+        this.omniUIUtils.showSuccess(t('已开始测试果杯', '已开始测试果杯'))
+      } else {
+        this.omniUIUtils.showError(t('开始测试果杯失败', '开始测试果杯失败'))
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      this.omniUIUtils.showError(t('开始测试果杯失败', '开始测试果杯失败') + ': ' + msg)
+    } finally {
+      this.showTestCupDialog = false
+    }
+  }
+
+  // 停止测试果杯（对齐 48 的 TEST_CUP_OFF）
+  private async handleTestCupStop(): Promise<void> {
+    try {
+      const sender = getConfigSender()
+      const ok = await sender.sendTestCupOff()
+      if (ok) {
+        this.isTestCupRunning = false
+        this.omniUIUtils.showSuccess(t('已停止测试果杯', '已停止测试果杯'))
+      } else {
+        this.omniUIUtils.showError(t('停止测试果杯失败', '停止测试果杯失败'))
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      this.omniUIUtils.showError(t('停止测试果杯失败', '停止测试果杯失败') + ': ' + msg)
+    }
+  }
+
   private async handleEndProcessing(clearDeviceData: boolean): Promise<void> {
     const dbSync = getDatabaseSync()
     const gdi = getGlobalDataInterface()
@@ -2193,7 +2249,11 @@ struct Page {
       } else if (originalKey === '复位果杯') {
         this.showResetCupConfirmDialog = true
       } else if (originalKey === '测试果杯') {
-        this.showTestCupDialog = true
+        if (this.isTestCupRunning) {
+          this.handleTestCupStop()
+        } else {
+          this.showTestCupDialog = true
+        }
       } else if (originalKey === '设备信息') {
         this.showDeviceInfoDialog = true
       } else if (originalKey === '配置设置') {
@@ -3251,10 +3311,9 @@ struct Page {
           ResetCupConfirmDialog({
             isVisible: this.showResetCupConfirmDialog,
             message: '果杯将复位,请确定分选机上无水果!',
-            onConfirm: () => {
+            onConfirm: async () => {
               console.log('确认复位果杯')
-              // TODO: 实现复位果杯逻辑
-              this.showResetCupConfirmDialog = false
+              await this.handleResetCupConfirm()
             },
             onCancel: () => {
               this.showResetCupConfirmDialog = false
@@ -3273,10 +3332,9 @@ struct Page {
           TestCupDialog({
             isVisible: this.showTestCupDialog,
             message: '请确认分选机上无任何水果!',
-            onConfirm: () => {
+            onConfirm: async () => {
               console.log('开始测试果杯')
-              // TODO: 实现测试果杯逻辑
-              this.showTestCupDialog = false
+              await this.handleTestCupStart()
             },
             onCancel: () => {
               this.showTestCupDialog = false

@@ -14,3 +14,16 @@
 
 - [ ] 文档化：输出“鸿蒙 vs 48 协议与打印对照表（最终版）”并标注已验证项/未验证项
 
+## 功能/UI 待完善（非协议）
+
+- [ ] 主页“更多设置”按钮逻辑补齐（复位果杯、测试果杯、保存设备信息、导入/保存配置、贴标设置保存、出口屏设置保存） `entry/src/main/ets/pages/Home.ets`
+- [ ] “更多”页面导入/保存功能实现 `entry/src/main/ets/pages/more/MoreContent.ets`
+- [ ] 品质页面“保存参数”逻辑实现与联调 `entry/src/main/ets/pages/quality/QualityContent.ets`
+- [ ] 实时统计弹窗：更新单价逻辑与占位块替换 `entry/src/main/ets/components/feedback/RealtimeStatsDialog.ets`
+- [ ] 出口统计页面：数据库数据源/实时数据刷新/导出/打印功能实现 `entry/src/main/ets/components/feedback/ExportStatisticsContent.ets`
+- [ ] 设备信息弹窗：日期选择器与下拉选择逻辑补齐 `entry/src/main/ets/components/dialogs/DeviceInfoDialog.ets`
+- [ ] 电器故障/系统故障弹窗：导入与保存逻辑实现 `entry/src/main/ets/components/dialogs/ElectricalFaultDialog.ets`, `entry/src/main/ets/components/dialogs/SystemFaultDialog.ets`
+- [ ] 电机使能弹窗：出果清框/全部出框动作实现 `entry/src/main/ets/components/dialogs/MotorEnableDialog.ets`
+- [ ] 通道范围页面：获取系数/自动计算/立即生效逻辑实现 `entry/src/main/ets/components/dialogs/pages/ChannelRangePage.ets`
+- [ ] 水果信息页面：立即生效逻辑实现 `entry/src/main/ets/components/dialogs/pages/FruitInfoPage.ets`
+
