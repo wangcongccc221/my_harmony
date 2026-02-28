@@ -609,6 +609,11 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
 
   private getLabelText(labelIndex: number): string {
     if (!Number.isFinite(labelIndex) || labelIndex <= 0) return ''
+    const key = `LABELER_NAME_${Math.floor(labelIndex)}`
+    const saved = AppStorage.get(key) as string | undefined
+    if (saved && saved.trim().length > 0) {
+      return saved
+    }
     return `贴标机${labelIndex}`
   }
 

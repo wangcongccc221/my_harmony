@@ -2,6 +2,7 @@ import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/Omni
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
+import { FaultInfoQuery, FaultInfoRecord, SystemSettingsDataService } from '../../db/services/SystemSettingsDataService'
 
 // 报警信息接口
 interface AlarmItem {
@@ -22,13 +23,7 @@ export struct AlarmInfoDialog {
   @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0
 
   // 模拟数据（仅用于UI展示）
-  @State alarmList: AlarmItem[] = [
-    { category: '系统', code: '26', module: '', message: '子系统1通道2,杯重异常', status: '已修复', startTime: '2025/12/5 9:05:34', endTime: '2025/12/5 9:05:35' },
-    { category: '系统', code: '28', module: '', message: '子系统1通道4,杯重异常', status: '已修复', startTime: '2025/12/5 9:05:34', endTime: '2025/12/5 9:05:35' },
-    { category: '系统', code: '121', module: '', message: '子系统1通道1,IQM通信故障', status: '已修复', startTime: '2025/12/4 10:20:15', endTime: '2025/12/4 10:25:30' },
-    { category: '系统', code: '50', module: '', message: 'SCM 1与FSM连接失败,立即检查', status: '故障中', startTime: '2025/12/5 14:30:00', endTime: '' },
-    { category: '系统', code: '50', module: '', message: 'SCM 20与FSM连接失败,立即检查', status: '故障中', startTime: '2025/12/5 14:32:15', endTime: '' }
-  ]
+  @State alarmList: AlarmItem[] = []
 
   // 查询条件
   @State startDate: string = '2025-11-25'
@@ -38,6 +33,10 @@ export struct AlarmInfoDialog {
 
   // 对话框回调
   onCancel?: () => void
+
+  aboutToAppear(): void {
+    void this.queryAlarmInfo()
+  }
 
   // 获取当前主题配置
   getCurrentTheme(): ExtendedOmniThemeStyle {
@@ -51,12 +50,38 @@ export struct AlarmInfoDialog {
 
   // 查询按钮点击
   private handleQuery(): void {
+    void this.queryAlarmInfo()
+  }
+
+  private async queryAlarmInfo(): Promise<void> {
     console.log('查询报警信息', {
       startDate: this.startDate,
       endDate: this.endDate,
       message: this.messageQuery
     })
-    // TODO: 数据查询逻辑由外部实现
+    const query = new FaultInfoQuery()
+    query.startDate = this.startDate
+    query.endDate = this.endDate
+    query.keyword = this.messageQuery
+    const rows = await SystemSettingsDataService.getInstance().queryFaultInfos(query)
+    const nextList: AlarmItem[] = []
+    for (let i = 0; i < rows.length; i++) {
+      const item: AlarmItem = this.toAlarmItem(rows[i])
+      nextList.push(item)
+    }
+    this.alarmList = nextList
+  }
+
+  private toAlarmItem(row: FaultInfoRecord): AlarmItem {
+    return {
+      category: row.category,
+      code: row.code,
+      module: row.module,
+      message: row.message,
+      status: row.status,
+      startTime: row.startTime,
+      endTime: row.endTime
+    }
   }
 
   // 关闭按钮点击

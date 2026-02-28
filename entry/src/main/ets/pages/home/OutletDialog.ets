@@ -16,6 +16,7 @@ import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/Omni
 import { LevelTable, TableRow } from '../../components/layout/LevelTable'
 import { ThreeDButton } from '../../components/ui/buttons/ThreeDButton'
 import { ExitConfigManager, OutletConfig, FsmKey } from './core/ExitConfigManager'
+import { GradeInfoConfigManager } from './core/GradeInfoConfigManager'
 
 interface SelectOption {
   value: string;
@@ -196,6 +197,47 @@ export struct OutletDialog {
       isGeneral: this.isGeneral,
       isMissingBox: this.isMissingBox
     }
+  }
+
+  private isExitLabelModeEnabled(): boolean {
+    const gradeInfo = GradeInfoConfigManager.getInstance().getOrCreateGradeInfo(this.currentFSM)
+    return gradeInfo.nLabelType === 2
+  }
+
+  private getLabelOptionName(labelIndex: number): string {
+    return GradeInfoConfigManager.getInstance().getLabelerName(labelIndex)
+  }
+
+  private selectLabelOption(labelIndex: number, checked: boolean): void {
+    const nextChecked = checked
+    this.label1Checked = labelIndex === 1 ? nextChecked : false
+    this.label2Checked = labelIndex === 2 ? nextChecked : false
+    this.label3Checked = labelIndex === 3 ? nextChecked : false
+    this.label4Checked = labelIndex === 4 ? nextChecked : false
+  }
+
+  @Builder
+  LabelCheckboxInput(labelIndex: number, isChecked: boolean) {
+    const enabled = this.isExitLabelModeEnabled()
+    Row() {
+      Checkbox({ name: `label_${labelIndex}`, group: `exit_label_${this.currentOutletIndex}` })
+        .select(isChecked)
+        .enabled(enabled)
+        .onChange((val: boolean) => this.selectLabelOption(labelIndex, val))
+        .width(20)
+        .height(20)
+        .margin({ right: 8 })
+        .selectedColor(this.getCurrentTheme().primary)
+
+      Text(this.getLabelOptionName(labelIndex))
+        .fontSize(15)
+        .fontWeight(FontWeight.Regular)
+        .fontColor(enabled ? this.getCurrentTheme().textColor : this.getCurrentTheme().subTextColor)
+        .width('100%')
+    }
+    .width('100%')
+    .padding({ top: 4, bottom: 4 })
+    .opacity(enabled ? 1 : 0.5)
   }
 
   @Builder
@@ -522,11 +564,15 @@ export struct OutletDialog {
                       // 贴标
                       Column() {
                         GroupContainer({ title: '贴标' }) {
-                          Column() {
-                            this.CheckboxInput('贴标1', this.label1Checked, (v) => this.label1Checked = v)
-                            this.CheckboxInput('贴标2', this.label2Checked, (v) => this.label2Checked = v)
-                            this.CheckboxInput('贴标3', this.label3Checked, (v) => this.label3Checked = v)
-                            this.CheckboxInput('贴标4', this.label4Checked, (v) => this.label4Checked = v)
+                          Column({ space: 6 }) {
+                            Text(this.isExitLabelModeEnabled() ? '当前为按出口贴标：每个出口只能选择一个贴标机' : '请先在贴标设置中选择“按出口方式”')
+                              .fontSize(12)
+                              .fontColor(this.getCurrentTheme().subTextColor)
+                              .margin({ bottom: 4 })
+                            this.LabelCheckboxInput(1, this.label1Checked)
+                            this.LabelCheckboxInput(2, this.label2Checked)
+                            this.LabelCheckboxInput(3, this.label3Checked)
+                            this.LabelCheckboxInput(4, this.label4Checked)
                           }
                         }
                       }

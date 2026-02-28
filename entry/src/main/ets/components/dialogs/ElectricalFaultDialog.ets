@@ -8,7 +8,7 @@ import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/Omni
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
-import { getMoreSystemSettingsStorage, MoreFaultItem } from '../../utils/storage/MoreSystemSettingsStorage'
+import { BaseFaultRecord, SystemSettingsDataService } from '../../db/services/SystemSettingsDataService'
 
 // 电气故障信息接口
 interface ElectricalFaultItem {
@@ -34,7 +34,11 @@ export struct ElectricalFaultDialog {
   onSave?: () => void
 
   aboutToAppear(): void {
-    const items = getMoreSystemSettingsStorage().getElectricalFaults()
+    void this.loadFromDatabase()
+  }
+
+  private async loadFromDatabase(): Promise<void> {
+    const items = await SystemSettingsDataService.getInstance().getBaseFaults(1)
     const nextList: ElectricalFaultItem[] = []
     for (let i = 0; i < items.length; i++) {
       const item: ElectricalFaultItem = { code: items[i].code, module: items[i].module, message: items[i].message }
@@ -66,23 +70,26 @@ export struct ElectricalFaultDialog {
     if (this.onLoad) {
       this.onLoad()
     }
-    const items = getMoreSystemSettingsStorage().getElectricalFaults()
-    const nextList: ElectricalFaultItem[] = []
-    for (let i = 0; i < items.length; i++) {
-      const item: ElectricalFaultItem = { code: items[i].code, module: items[i].module, message: items[i].message }
-      nextList.push(item)
-    }
-    this.faultList = nextList
+    void this.loadFromDatabase()
   }
 
   // 保存按钮点击
   private handleSave(): void {
+    void this.saveToDatabase()
+  }
+
+  private async saveToDatabase(): Promise<void> {
     console.log('保存电气故障配置', this.faultList)
-    const items: MoreFaultItem[] = []
+    const items: BaseFaultRecord[] = []
     for (let i = 0; i < this.faultList.length; i++) {
-      items.push(new MoreFaultItem(this.faultList[i].code, this.faultList[i].module, this.faultList[i].message))
+      const item = new BaseFaultRecord()
+      item.type = 1
+      item.code = this.faultList[i].code
+      item.module = this.faultList[i].module
+      item.message = this.faultList[i].message
+      items.push(item)
     }
-    getMoreSystemSettingsStorage().setElectricalFaults(items)
+    await SystemSettingsDataService.getInstance().saveBaseFaults(1, items)
     if (this.onSave) {
       this.onSave()
     }

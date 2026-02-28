@@ -8,7 +8,7 @@ import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/Omni
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
-import { getMoreSystemSettingsStorage, MoreFaultItem } from '../../utils/storage/MoreSystemSettingsStorage'
+import { BaseFaultRecord, SystemSettingsDataService } from '../../db/services/SystemSettingsDataService'
 
 // 系统故障信息接口
 interface SystemFaultItem {
@@ -34,7 +34,11 @@ export struct SystemFaultDialog {
   onSave?: () => void
 
   aboutToAppear(): void {
-    const items = getMoreSystemSettingsStorage().getSystemFaults()
+    void this.loadFromDatabase()
+  }
+
+  private async loadFromDatabase(): Promise<void> {
+    const items = await SystemSettingsDataService.getInstance().getBaseFaults(0)
     const nextList: SystemFaultItem[] = []
     for (let i = 0; i < items.length; i++) {
       const item: SystemFaultItem = { code: items[i].code, module: items[i].module, message: items[i].message }
@@ -66,23 +70,26 @@ export struct SystemFaultDialog {
     if (this.onLoad) {
       this.onLoad()
     }
-    const items = getMoreSystemSettingsStorage().getSystemFaults()
-    const nextList: SystemFaultItem[] = []
-    for (let i = 0; i < items.length; i++) {
-      const item: SystemFaultItem = { code: items[i].code, module: items[i].module, message: items[i].message }
-      nextList.push(item)
-    }
-    this.faultList = nextList
+    void this.loadFromDatabase()
   }
 
   // 保存按钮点击
   private handleSave(): void {
+    void this.saveToDatabase()
+  }
+
+  private async saveToDatabase(): Promise<void> {
     console.log('保存系统故障配置', this.faultList)
-    const items: MoreFaultItem[] = []
+    const items: BaseFaultRecord[] = []
     for (let i = 0; i < this.faultList.length; i++) {
-      items.push(new MoreFaultItem(this.faultList[i].code, this.faultList[i].module, this.faultList[i].message))
+      const item = new BaseFaultRecord()
+      item.type = 0
+      item.code = this.faultList[i].code
+      item.module = this.faultList[i].module
+      item.message = this.faultList[i].message
+      items.push(item)
     }
-    getMoreSystemSettingsStorage().setSystemFaults(items)
+    await SystemSettingsDataService.getInstance().saveBaseFaults(0, items)
     if (this.onSave) {
       this.onSave()
     }

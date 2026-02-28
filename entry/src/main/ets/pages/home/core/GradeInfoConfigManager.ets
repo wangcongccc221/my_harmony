@@ -20,6 +20,10 @@ export class GradeInfoConfigManager {
     return `FULL_GRADE_INFO_CONFIG_${fsm}`
   }
 
+  private getLabelerNameKey(index: number): string {
+    return `LABELER_NAME_${index}`
+  }
+
   private writeNameBytes(dst: Uint8Array, index: number, name: string): void {
     const base = index * ConstPreDefine.MAX_TEXT_LENGTH
     for (let i = 0; i < ConstPreDefine.MAX_TEXT_LENGTH; i++) {
@@ -65,6 +69,32 @@ export class GradeInfoConfigManager {
     const built = this.buildBaseGradeInfo(fsm)
     AppStorage.setOrCreate(key, built)
     return built
+  }
+
+  setLabelerNames(names: string[]): void {
+    for (let i = 0; i < 4; i++) {
+      const name = (names[i] ?? '').toString()
+      AppStorage.setOrCreate(this.getLabelerNameKey(i + 1), name)
+    }
+  }
+
+  getLabelerName(labelIndex: number): string {
+    if (!Number.isFinite(labelIndex) || labelIndex <= 0) {
+      return ''
+    }
+    const key = this.getLabelerNameKey(Math.floor(labelIndex))
+    const name = AppStorage.get(key) as string | undefined
+    if (name && name.trim().length > 0) {
+      return name
+    }
+    return `贴标机${Math.floor(labelIndex)}`
+  }
+
+  applyLabelSettings(fsm: FsmKey, labelType: number): StGradeInfo {
+    const info = this.rebuildBaseFromHomeGradeTable(fsm)
+    info.nLabelType = Math.max(0, Math.min(2, Math.floor(labelType)))
+    AppStorage.setOrCreate(this.getStorageKey(fsm), info)
+    return info
   }
 
   applyOutletLeftFields(fsm: FsmKey, exitIndex: number, config: OutletConfig): StGradeInfo {

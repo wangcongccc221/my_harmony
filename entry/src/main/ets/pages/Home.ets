@@ -37,6 +37,7 @@ import { ExitDisplayDialog } from '../components/dialogs/ExitDisplayDialog'
 import { UserSettingsDialog } from '../components/dialogs/UserSettingsDialog'
 import { DownloadConfigDialog } from '../components/dialogs/DownloadConfigDialog'
 import { ModifyCustomerInfoDialog, CustomerInfo } from '../components/dialogs/ModifyCustomerInfoDialog'
+import { SystemSettingsDataService } from '../db/services/SystemSettingsDataService'
 import { getExitScreenStorage } from '../utils/storage/ExitScreenStorage'
 import { getPackingSpecStorage } from '../utils/storage/PackingSpecStorage'
 import { getMoreSystemSettingsStorage } from '../utils/storage/MoreSystemSettingsStorage'
@@ -305,6 +306,29 @@ struct Page {
     }
     getPackingSpecStorage().ensureDefaults()
     getMoreSystemSettingsStorage().ensureDefaults()
+    await SystemSettingsDataService.getInstance().ensureDefaults()
+    const labelingSettings = await SystemSettingsDataService.getInstance().getLabelingSettings()
+    const currentFsm = ((AppStorage.get('HOME_SELECTED_FSM') as 'FSM1' | 'FSM2' | undefined) ?? this.selectedFSM)
+    GradeInfoConfigManager.getInstance().setLabelerNames([
+      labelingSettings.machine1Name,
+      labelingSettings.machine2Name,
+      labelingSettings.machine3Name,
+      labelingSettings.machine4Name
+    ])
+    let labelType = 0
+    if (labelingSettings.byGrade) {
+      labelType = 1
+    } else if (labelingSettings.byExport) {
+      labelType = 2
+    }
+    GradeInfoConfigManager.getInstance().applyLabelSettings(currentFsm, labelType)
+    const customers = await SystemSettingsDataService.getInstance().getCustomers()
+    for (let i = 0; i < customers.length; i++) {
+      if (customers[i].isUse && customers[i].name.length > 0) {
+        AppStorage.setOrCreate('TOP_USER_LABEL', customers[i].name)
+        break
+      }
+    }
     AppStorage.setOrCreate('PACKING_SPEC_REFRESH_VERSION', (AppStorage.get('PACKING_SPEC_REFRESH_VERSION') as number | undefined) ?? 0)
     // 初始化 Ctrl 多选状态
     AppStorage.setOrCreate('HOME_CTRL_PRESSED', false)
@@ -1548,6 +1572,10 @@ struct Page {
   }
 
   private loadElectricalFaultSettings(): void {
+    void this.importElectricalFaultSettings()
+  }
+
+  private async importElectricalFaultSettings(): Promise<void> {
     try {
       const filePath = `${(getContext(this) as common.UIAbilityContext).filesDir}/electrical_faults.json`
       const stat = fs.statSync(filePath)
@@ -1560,7 +1588,7 @@ struct Page {
       fs.readSync(file.fd, raw)
       fs.closeSync(file.fd)
       const text = buffer.from(new Uint8Array(raw).buffer).toString('utf-8')
-      const ok = getMoreSystemSettingsStorage().restoreFromSnapshotJson(`{\"electricalFaults\":${text}}`)
+      const ok = await SystemSettingsDataService.getInstance().replaceBaseFaultsByJson(1, text)
       if (ok) {
         this.omniUIUtils.showSuccess(t('电器故障配置已导入', '电器故障配置已导入'))
       } else {
@@ -1573,9 +1601,13 @@ struct Page {
   }
 
   private saveElectricalFaultSettings(): void {
+    void this.exportElectricalFaultSettings()
+  }
+
+  private async exportElectricalFaultSettings(): Promise<void> {
     try {
       const filePath = `${(getContext(this) as common.UIAbilityContext).filesDir}/electrical_faults.json`
-      const items = getMoreSystemSettingsStorage().getElectricalFaults()
+      const items = await SystemSettingsDataService.getInstance().getBaseFaults(1)
       const buf = buffer.from(JSON.stringify(items, null, 2), 'utf-8')
       const file = fs.openSync(filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE | fs.OpenMode.TRUNC)
       fs.writeSync(file.fd, buf.buffer)
@@ -1589,6 +1621,10 @@ struct Page {
   }
 
   private loadSystemFaultSettings(): void {
+    void this.importSystemFaultSettings()
+  }
+
+  private async importSystemFaultSettings(): Promise<void> {
     try {
       const filePath = `${(getContext(this) as common.UIAbilityContext).filesDir}/system_faults.json`
       const stat = fs.statSync(filePath)
@@ -1601,7 +1637,7 @@ struct Page {
       fs.readSync(file.fd, raw)
       fs.closeSync(file.fd)
       const text = buffer.from(new Uint8Array(raw).buffer).toString('utf-8')
-      const ok = getMoreSystemSettingsStorage().restoreFromSnapshotJson(`{\"systemFaults\":${text}}`)
+      const ok = await SystemSettingsDataService.getInstance().replaceBaseFaultsByJson(0, text)
       if (ok) {
         this.omniUIUtils.showSuccess(t('系统故障配置已导入', '系统故障配置已导入'))
       } else {
@@ -1614,9 +1650,13 @@ struct Page {
   }
 
   private saveSystemFaultSettings(): void {
+    void this.exportSystemFaultSettings()
+  }
+
+  private async exportSystemFaultSettings(): Promise<void> {
     try {
       const filePath = `${(getContext(this) as common.UIAbilityContext).filesDir}/system_faults.json`
-      const items = getMoreSystemSettingsStorage().getSystemFaults()
+      const items = await SystemSettingsDataService.getInstance().getBaseFaults(0)
       const buf = buffer.from(JSON.stringify(items, null, 2), 'utf-8')
       const file = fs.openSync(filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE | fs.OpenMode.TRUNC)
       fs.writeSync(file.fd, buf.buffer)

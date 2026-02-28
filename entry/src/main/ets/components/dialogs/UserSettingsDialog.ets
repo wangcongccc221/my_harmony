@@ -2,7 +2,7 @@ import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/Omni
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
-import { getMoreSystemSettingsStorage, MoreUserAccountRecord } from '../../utils/storage/MoreSystemSettingsStorage'
+import { CustomerRecord, SystemSettingsDataService } from '../../db/services/SystemSettingsDataService'
 
 @Component
 export struct UserSettingsDialog {
@@ -11,18 +11,21 @@ export struct UserSettingsDialog {
   @StorageLink(OMNI_THEME_VERSION_KEY) @Watch('onThemeChange') themeVersion: number = 0
   @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0
 
-  @State users: MoreUserAccountRecord[] = []
+  @State users: CustomerRecord[] = []
   @State selectedIndex: number = 0
 
   onConfirm?: () => void
   onCancel?: () => void
 
   aboutToAppear(): void {
-    this.users = getMoreSystemSettingsStorage().getUserAccounts()
-    const currentName = (AppStorage.get('TOP_USER_LABEL') as string | undefined) ?? ''
+    void this.loadUsers()
+  }
+
+  private async loadUsers(): Promise<void> {
+    this.users = await SystemSettingsDataService.getInstance().getCustomers()
     let matched = 0
     for (let i = 0; i < this.users.length; i++) {
-      if (this.users[i].name === currentName) {
+      if (this.users[i].isUse) {
         matched = i
         break
       }
@@ -39,8 +42,12 @@ export struct UserSettingsDialog {
   }
 
   private handleConfirm(): void {
-    getMoreSystemSettingsStorage().setUserAccounts(this.users)
+    void this.switchCurrentUser()
+  }
+
+  private async switchCurrentUser(): Promise<void> {
     if (this.selectedIndex >= 0 && this.selectedIndex < this.users.length) {
+      await SystemSettingsDataService.getInstance().setCurrentCustomer(this.users[this.selectedIndex].id)
       AppStorage.setOrCreate('TOP_USER_LABEL', this.users[this.selectedIndex].name)
       console.log(`[USER_SETTINGS_SAVE] current=${this.users[this.selectedIndex].name}`)
     }
@@ -94,7 +101,7 @@ export struct UserSettingsDialog {
             .width('100%')
 
           List({ space: 8 }) {
-            ForEach(this.users, (item: MoreUserAccountRecord, index: number) => {
+            ForEach(this.users, (item: CustomerRecord, index: number) => {
               ListItem() {
                 Row() {
                   Checkbox()
@@ -107,10 +114,10 @@ export struct UserSettingsDialog {
                     .shape(CheckBoxShape.ROUNDED_SQUARE)
                     .margin({ right: 12 })
                   Column() {
-                    Text(`${item.name} (${item.role})`)
+                    Text(item.code && item.code.length > 0 ? `${item.name} (${item.code})` : item.name)
                       .fontSize(15)
                       .fontColor(this.getCurrentTheme().textColor)
-                    Text(item.isAdmin ? t('管理员权限', '管理员权限') : t('普通权限', '普通权限'))
+                    Text(item.isUse ? t('当前用户', '当前用户') : t('可切换用户', '可切换用户'))
                       .fontSize(12)
                       .fontColor(this.getCurrentTheme().subTextColor)
                   }
@@ -121,7 +128,7 @@ export struct UserSettingsDialog {
                 .backgroundColor(this.selectedIndex === index ? this.getCurrentTheme().primary + '18' : this.getCurrentTheme().surfaceColor)
                 .borderRadius(8)
               }
-            }, (item: MoreUserAccountRecord) => `${item.id}`)
+            }, (item: CustomerRecord) => `${item.id}`)
           }
           .width('100%')
           .height(260)

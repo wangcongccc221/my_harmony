@@ -7,7 +7,7 @@ import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/Omni
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
-import { getMoreSystemSettingsStorage, MoreConfigEntry } from '../../utils/storage/MoreSystemSettingsStorage'
+import { SystemSettingsDataService, SystemConfigEntry } from '../../db/services/SystemSettingsDataService'
 
 // 配置项接口
 interface ConfigItem {
@@ -23,39 +23,7 @@ export struct ConfigInfoDialog {
   @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0
 
   // 配置数据
-  @State configList: ConfigItem[] = [
-    { name: '拆分器距离', value: '450' },
-    { name: '出口垂直滚动条', value: '0' },
-    { name: '大屏开关', value: '开' },
-    { name: '大屏标题', value: '大屏实时加工数据' },
-    { name: '大屏端口', value: '8080' },
-    { name: 'ACS-SIM', value: '关' },
-    { name: 'SIM-PLCIP', value: '192.168.0.0' },
-    { name: 'SIM', value: '开' },
-    { name: '自定义单价', value: '开' },
-    { name: 'MaxRealWeightCount', value: '66' },
-    { name: 'MaxSpeed', value: '680' },
-    { name: 'CheckExport', value: '关' },
-    { name: 'BatchWeightUnit', value: 'Ton' },
-    { name: 'FruitSizeUnit', value: 'mm' },
-    { name: 'FruitWeightUnit', value: 'g' },
-    { name: 'GradeSizeUnit', value: 'g' },
-    { name: 'GradeWeightUnit', value: 'g' },
-    { name: 'ExcelWeightUnit', value: 'Kg' },
-    { name: 'GradeAccuracy', value: '2' },
-    { name: 'ExcelWeightAccuracy', value: '2' },
-    { name: 'BatchWeightAccuracy', value: '3' },
-    { name: 'ProcessInfoWeightAccuracy', value: '0' },
-    { name: 'SumWeightUnit', value: 'Ton' },
-    { name: 'SumWeightAccuracy', value: '2' },
-    { name: 'WeightAccuracy', value: '1' },
-    { name: 'SizeAccuracy', value: '1' },
-    { name: 'DensityAccuracy', value: '1' },
-    { name: 'OpcUaServerUrl', value: 'opc.tcp://192.168.2.214:4840' },
-    { name: 'OpcuaRunning', value: '0' },
-    { name: 'BaseTag', value: 'Xinjie-Cortex-Linux-SM-CNC' },
-    { name: 'I1wCurrentOutletTag', value: 'To_HMI.ToEIM_IwCurrentOutlet' }
-  ]
+  @State configList: ConfigItem[] = []
 
   // 查询输入
   @State queryName: string = ''
@@ -69,17 +37,23 @@ export struct ConfigInfoDialog {
   onCancel?: () => void
 
   aboutToAppear() {
-    const storageEntries = getMoreSystemSettingsStorage().getConfigEntries()
+    void this.loadConfigEntries()
+  }
+
+  private async loadConfigEntries(): Promise<void> {
+    const dbEntries = await SystemSettingsDataService.getInstance().getConfigEntries()
     const nextList: ConfigItem[] = []
-    for (let i = 0; i < storageEntries.length; i++) {
-      const item: ConfigItem = { name: storageEntries[i].name, value: storageEntries[i].value }
+    for (let i = 0; i < dbEntries.length; i++) {
+      const item: ConfigItem = { name: dbEntries[i].name, value: dbEntries[i].value }
       nextList.push(item)
     }
     this.configList = nextList
     this.filteredConfigList = [...this.configList]
+    const nextEditingValues: Record<string, string> = {}
     this.configList.forEach((item: ConfigItem) => {
-      this.editingValues[item.name] = item.value
+      nextEditingValues[item.name] = item.value
     })
+    this.editingValues = nextEditingValues
   }
 
   // 获取当前主题配置
@@ -114,14 +88,18 @@ export struct ConfigInfoDialog {
 
   // 确认按钮点击
   private handleConfirm(): void {
-    const savedEntries: MoreConfigEntry[] = []
+    void this.saveConfigEntries()
+  }
+
+  private async saveConfigEntries(): Promise<void> {
+    const savedEntries: SystemConfigEntry[] = []
     for (let i = 0; i < this.configList.length; i++) {
       const item = this.configList[i]
       const edited = this.editingValues[item.name]
       const value = edited !== undefined ? edited : item.value
-      savedEntries.push(new MoreConfigEntry(item.name, value))
+      savedEntries.push(new SystemConfigEntry(item.name, value))
     }
-    getMoreSystemSettingsStorage().setConfigEntries(savedEntries)
+    await SystemSettingsDataService.getInstance().saveConfigEntries(savedEntries)
     console.log(`[CONFIG_SETTINGS_SAVE] count=${savedEntries.length}`)
     if (this.onConfirm) {
       this.onConfirm()

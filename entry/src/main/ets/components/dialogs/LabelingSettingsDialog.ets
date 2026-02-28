@@ -7,7 +7,9 @@ import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/Omni
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
-import { getMoreSystemSettingsStorage, MoreLabelingSettingsRecord } from '../../utils/storage/MoreSystemSettingsStorage'
+import { LabelingSettingsRecord, SystemSettingsDataService } from '../../db/services/SystemSettingsDataService'
+import { GradeInfoConfigManager } from '../../pages/home/core/GradeInfoConfigManager'
+import { FsmKey } from '../../pages/home/core/ExitConfigManager'
 
 
 @Component
@@ -49,13 +51,47 @@ export struct LabelingSettingsDialog {
     return options
   }
 
+  private setExclusiveMode(mode: 'none' | 'export' | 'grade' | 'container'): void {
+    this.noLabeling = mode === 'none'
+    this.byExport = mode === 'export'
+    this.byGrade = mode === 'grade'
+    this.byContainer = mode === 'container'
+  }
+
+  private getSelectedMode(): 'none' | 'export' | 'grade' | 'container' {
+    if (this.byGrade) {
+      return 'grade'
+    }
+    if (this.byExport) {
+      return 'export'
+    }
+    if (this.byContainer) {
+      return 'container'
+    }
+    return 'none'
+  }
+
+  private mapToGradeLabelType(mode: 'none' | 'export' | 'grade' | 'container'): number {
+    if (mode === 'grade') {
+      return 1
+    }
+    if (mode === 'export') {
+      return 2
+    }
+    return 0
+  }
+
 
   // 对话框回调
   onConfirm?: () => void
   onCancel?: () => void
 
   aboutToAppear(): void {
-    const record = getMoreSystemSettingsStorage().getLabelingSettings()
+    void this.loadLabelingSettings()
+  }
+
+  private async loadLabelingSettings(): Promise<void> {
+    const record = await SystemSettingsDataService.getInstance().getLabelingSettings()
     this.noLabeling = record.noLabeling
     this.byExport = record.byExport
     this.byGrade = record.byGrade
@@ -86,7 +122,13 @@ export struct LabelingSettingsDialog {
 
   // 确认按钮点击
   private handleConfirm(): void {
-    const record = new MoreLabelingSettingsRecord()
+    void this.saveLabelingSettings()
+  }
+
+  private async saveLabelingSettings(): Promise<void> {
+    const mode = this.getSelectedMode()
+    this.setExclusiveMode(mode)
+    const record = new LabelingSettingsRecord()
     record.noLabeling = this.noLabeling
     record.byExport = this.byExport
     record.byGrade = this.byGrade
@@ -103,7 +145,19 @@ export struct LabelingSettingsDialog {
     record.machine4Name = this.machine4Name
     record.machine4LabelCount = this.machine4LabelCount
     record.machine4TotalCount = this.machine4TotalCount
-    getMoreSystemSettingsStorage().setLabelingSettings(record)
+    await SystemSettingsDataService.getInstance().saveLabelingSettings(record)
+    const fsm = ((AppStorage.get('HOME_SELECTED_FSM') as FsmKey | undefined) ?? 'FSM1')
+    const manager = GradeInfoConfigManager.getInstance()
+    manager.setLabelerNames([
+      record.machine1Name,
+      record.machine2Name,
+      record.machine3Name,
+      record.machine4Name
+    ])
+    manager.applyLabelSettings(fsm, this.mapToGradeLabelType(mode))
+    if (mode === 'container') {
+      console.log('[LABELING_SETTINGS_SYNC] 容器方式未在48协议中定义，已仅保存配置，不写入额外协议模式')
+    }
     console.log(`[LABELING_SETTINGS_SAVE] mode=no:${record.noLabeling} export:${record.byExport} grade:${record.byGrade} container:${record.byContainer}`)
     if (this.onConfirm) {
       this.onConfirm()
@@ -178,10 +232,10 @@ export struct LabelingSettingsDialog {
                     Column({ space: 12 }) {
                       // 不贴标
                       Row() {
-                        Checkbox()
+                          Checkbox()
                           .select(this.noLabeling)
                           .onChange((value: boolean) => {
-                            this.noLabeling = value
+                            this.setExclusiveMode('none')
                           })
                           .width(14)
                           .height(14)
@@ -197,10 +251,10 @@ export struct LabelingSettingsDialog {
 
                       // 按出口方式
                       Row() {
-                        Checkbox()
+                          Checkbox()
                           .select(this.byExport)
                           .onChange((value: boolean) => {
-                            this.byExport = value
+                            this.setExclusiveMode(value ? 'export' : 'none')
                           })
                           .width(14)
                           .height(14)
@@ -220,10 +274,10 @@ export struct LabelingSettingsDialog {
                     Column({ space: 12 }) {
                       // 按等级方式
                       Row() {
-                        Checkbox()
+                          Checkbox()
                           .select(this.byGrade)
                           .onChange((value: boolean) => {
-                            this.byGrade = value
+                            this.setExclusiveMode(value ? 'grade' : 'none')
                           })
                           .width(14)
                           .height(14)
@@ -239,10 +293,10 @@ export struct LabelingSettingsDialog {
 
                       // 按容器方式
                       Row() {
-                        Checkbox()
+                          Checkbox()
                           .select(this.byContainer)
                           .onChange((value: boolean) => {
-                            this.byContainer = value
+                            this.setExclusiveMode(value ? 'container' : 'none')
                           })
                           .width(14)
                           .height(14)
