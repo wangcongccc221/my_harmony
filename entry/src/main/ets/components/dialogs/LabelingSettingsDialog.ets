@@ -11,6 +11,11 @@ import { LabelingSettingsRecord, SystemSettingsDataService } from '../../db/serv
 import { GradeInfoConfigManager } from '../../pages/home/core/GradeInfoConfigManager'
 import { FsmKey } from '../../pages/home/core/ExitConfigManager'
 
+class GradeLabelRow {
+  gradeIndex: number = 0
+  gradeName: string = ''
+  labelIndex: number = 0
+}
 
 @Component
 export struct LabelingSettingsDialog {
@@ -41,6 +46,7 @@ export struct LabelingSettingsDialog {
   @State machine4Name: string = ''
   @State machine4LabelCount: string = ''
   @State machine4TotalCount: number = 1
+  @State gradeLabelRows: GradeLabelRow[] = []
 
   // 生成总数下拉框选项（1-10）
   private getTotalCountOptions(): SelectOption[] {
@@ -81,6 +87,29 @@ export struct LabelingSettingsDialog {
     return 0
   }
 
+  private getCurrentFsm(): FsmKey {
+    return ((AppStorage.get('HOME_SELECTED_FSM') as FsmKey | undefined) ?? 'FSM1')
+  }
+
+  private loadGradeLabelRows(): void {
+    this.gradeLabelRows = GradeInfoConfigManager.getInstance().getGradeLabelRows(this.getCurrentFsm())
+  }
+
+  private updateGradeLabelSelection(rowIndex: number, labelIndex: number): void {
+    const nextRows: GradeLabelRow[] = []
+    for (let i = 0; i < this.gradeLabelRows.length; i++) {
+      const next = new GradeLabelRow()
+      next.gradeIndex = this.gradeLabelRows[i].gradeIndex
+      next.gradeName = this.gradeLabelRows[i].gradeName
+      next.labelIndex = this.gradeLabelRows[i].labelIndex
+      if (i === rowIndex) {
+        next.labelIndex = labelIndex
+      }
+      nextRows.push(next)
+    }
+    this.gradeLabelRows = nextRows
+  }
+
 
   // 对话框回调
   onConfirm?: () => void
@@ -108,6 +137,7 @@ export struct LabelingSettingsDialog {
     this.machine4Name = record.machine4Name
     this.machine4LabelCount = record.machine4LabelCount
     this.machine4TotalCount = record.machine4TotalCount
+    this.loadGradeLabelRows()
   }
 
   // 获取当前主题配置
@@ -146,7 +176,7 @@ export struct LabelingSettingsDialog {
     record.machine4LabelCount = this.machine4LabelCount
     record.machine4TotalCount = this.machine4TotalCount
     await SystemSettingsDataService.getInstance().saveLabelingSettings(record)
-    const fsm = ((AppStorage.get('HOME_SELECTED_FSM') as FsmKey | undefined) ?? 'FSM1')
+    const fsm = this.getCurrentFsm()
     const manager = GradeInfoConfigManager.getInstance()
     manager.setLabelerNames([
       record.machine1Name,
@@ -155,6 +185,9 @@ export struct LabelingSettingsDialog {
       record.machine4Name
     ])
     manager.applyLabelSettings(fsm, this.mapToGradeLabelType(mode))
+    if (mode === 'grade') {
+      manager.applyGradeLabelRows(fsm, this.gradeLabelRows)
+    }
     if (mode === 'container') {
       console.log('[LABELING_SETTINGS_SYNC] 容器方式未在48协议中定义，已仅保存配置，不写入额外协议模式')
     }
@@ -169,6 +202,98 @@ export struct LabelingSettingsDialog {
     if (this.onCancel) {
       this.onCancel()
     }
+  }
+
+  @Builder
+  private GradeLabelEditorCard() {
+    Stack({ alignContent: Alignment.TopStart }) {
+      Column({ space: 10 }) {
+        Text('48 按等级方式对应 grades[].sbLabelbyGrade；每个等级可选一个贴标机。')
+          .fontSize(12)
+          .fontColor(this.getCurrentTheme().subTextColor)
+          .width('100%')
+          .margin({ bottom: 4 })
+
+        if (this.gradeLabelRows.length === 0) {
+          Text('当前没有可编辑的等级数据')
+            .fontSize(13)
+            .fontColor(this.getCurrentTheme().subTextColor)
+        } else {
+          ForEach(this.gradeLabelRows, (row: GradeLabelRow, index: number) => {
+            Row() {
+              Text(row.gradeName)
+                .fontSize(14)
+                .fontColor(this.getCurrentTheme().textColor)
+                .width(180)
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+              Row({ space: 8 }) {
+                Button('无')
+                  .fontSize(12)
+                  .height(28)
+                  .backgroundColor(row.labelIndex === 0 ? this.getCurrentTheme().primary : this.getCurrentTheme().backgroundColor)
+                  .fontColor(row.labelIndex === 0 ? Color.White : this.getCurrentTheme().textColor)
+                  .onClick(() => this.updateGradeLabelSelection(index, 0))
+                Button(GradeInfoConfigManager.getInstance().getLabelerName(1))
+                  .fontSize(12)
+                  .height(28)
+                  .backgroundColor(row.labelIndex === 1 ? this.getCurrentTheme().primary : this.getCurrentTheme().backgroundColor)
+                  .fontColor(row.labelIndex === 1 ? Color.White : this.getCurrentTheme().textColor)
+                  .onClick(() => this.updateGradeLabelSelection(index, 1))
+                Button(GradeInfoConfigManager.getInstance().getLabelerName(2))
+                  .fontSize(12)
+                  .height(28)
+                  .backgroundColor(row.labelIndex === 2 ? this.getCurrentTheme().primary : this.getCurrentTheme().backgroundColor)
+                  .fontColor(row.labelIndex === 2 ? Color.White : this.getCurrentTheme().textColor)
+                  .onClick(() => this.updateGradeLabelSelection(index, 2))
+                Button(GradeInfoConfigManager.getInstance().getLabelerName(3))
+                  .fontSize(12)
+                  .height(28)
+                  .backgroundColor(row.labelIndex === 3 ? this.getCurrentTheme().primary : this.getCurrentTheme().backgroundColor)
+                  .fontColor(row.labelIndex === 3 ? Color.White : this.getCurrentTheme().textColor)
+                  .onClick(() => this.updateGradeLabelSelection(index, 3))
+                Button(GradeInfoConfigManager.getInstance().getLabelerName(4))
+                  .fontSize(12)
+                  .height(28)
+                  .backgroundColor(row.labelIndex === 4 ? this.getCurrentTheme().primary : this.getCurrentTheme().backgroundColor)
+                  .fontColor(row.labelIndex === 4 ? Color.White : this.getCurrentTheme().textColor)
+                  .onClick(() => this.updateGradeLabelSelection(index, 4))
+              }
+              .layoutWeight(1)
+            }
+            .width('100%')
+            .padding({ top: 6, bottom: 6 })
+          }, (row: GradeLabelRow) => `${row.gradeIndex}`)
+        }
+      }
+      .width('100%')
+      .padding(12)
+      .padding({ top: 20 })
+      .backgroundColor(this.getCurrentTheme().surfaceColor)
+      .borderRadius(6)
+      .border({ width: 2, color: this.getCurrentTheme().borderColor })
+
+      Row() {
+        Column()
+          .width(8)
+          .height(2)
+          .backgroundColor(this.getCurrentTheme().borderColor)
+        Text('按等级贴标')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCurrentTheme().textColor)
+          .padding({ left: 6, right: 6 })
+          .backgroundColor(this.getCurrentTheme().surfaceColor)
+        Column()
+          .layoutWeight(1)
+          .height(2)
+          .backgroundColor(this.getCurrentTheme().borderColor)
+      }
+      .margin({ top: -8, left: 12, right: 12 })
+    }
+    .width('100%')
+    .margin({ bottom: 16 })
   }
 
 
@@ -347,6 +472,10 @@ export struct LabelingSettingsDialog {
               }
               .width('100%')
               .margin({ bottom: 16 })
+
+              if (this.byGrade) {
+                this.GradeLabelEditorCard()
+              }
 
               // 贴标1
               Stack({ alignContent: Alignment.TopStart }) {

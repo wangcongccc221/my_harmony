@@ -18,6 +18,7 @@ import { getStatisticsHandler } from '../protocol/StatisticsHandler';
 import { getDatabaseSync } from '../protocol/DatabaseSync'
 import { OrmDatabaseSaver } from '../protocol/OrmDatabaseSaver'
 import { getGlobalDataInterface } from '../protocol/GlobalDataInterface'
+import { getImageStreamService } from '../protocol/ImageStreamService'
 import { ConstPreDefine } from '../protocol/ConstPreDefine';
 import { getConfigSender, ITcpSender } from '../protocol/ConfigSender';
 import { tcpSendOnce } from '../protocol/ArkTcpClient'
@@ -152,7 +153,7 @@ export default class EntryAbility extends UIAbility {
           head.cmdId <= IPM_HC_COMMAND_TYPE.IPM_CMD_SHUTTER_ADJUST
         if (isIpmImageCmd) {
           console.info(`[TcpServer-Image] 收到图像链路命令 cmd=0x${head.cmdId.toString(16)} src=0x${head.srcId.toString(16)} len=${head.length}`)
-          // 预留：后续在这里接入图像解析/显示流程
+          getImageStreamService().handleIncomingFrame('IMG_PORT', head.cmdId, head.srcId, head.data)
         } else {
           console.warn(`[TcpServer-Image] 忽略非图像命令 cmd=0x${head.cmdId.toString(16)} src=0x${head.srcId.toString(16)}`)
         }

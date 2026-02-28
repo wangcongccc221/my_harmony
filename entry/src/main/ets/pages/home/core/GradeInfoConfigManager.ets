@@ -4,6 +4,12 @@ import { HomeDataManager } from './HomeDataManager'
 import { ExitConfigManager, FsmKey, OutletConfig } from './ExitConfigManager'
 import { util } from '@kit.ArkTS'
 
+export class GradeLabelRow {
+  gradeIndex: number = 0
+  gradeName: string = ''
+  labelIndex: number = 0
+}
+
 export class GradeInfoConfigManager {
   private static instance: GradeInfoConfigManager | null = null
 
@@ -71,6 +77,28 @@ export class GradeInfoConfigManager {
     return built
   }
 
+  private decodeNameBytes(buffer: Uint8Array, index: number): string {
+    const base = index * ConstPreDefine.MAX_TEXT_LENGTH
+    const end = base + ConstPreDefine.MAX_TEXT_LENGTH
+    let len = 0
+    for (let i = base; i < end; i++) {
+      if (buffer[i] === 0) {
+        break
+      }
+      len++
+    }
+    if (len <= 0) {
+      return ''
+    }
+    const slice = buffer.slice(base, base + len)
+    const decoder = new util.TextDecoder('utf-8', { ignoreBOM: true })
+    try {
+      return decoder.decodeWithStream(slice)
+    } catch (_) {
+      return ''
+    }
+  }
+
   setLabelerNames(names: string[]): void {
     for (let i = 0; i < 4; i++) {
       const name = (names[i] ?? '').toString()
@@ -93,6 +121,46 @@ export class GradeInfoConfigManager {
   applyLabelSettings(fsm: FsmKey, labelType: number): StGradeInfo {
     const info = this.rebuildBaseFromHomeGradeTable(fsm)
     info.nLabelType = Math.max(0, Math.min(2, Math.floor(labelType)))
+    AppStorage.setOrCreate(this.getStorageKey(fsm), info)
+    return info
+  }
+
+  getGradeLabelRows(fsm: FsmKey): GradeLabelRow[] {
+    const info = this.rebuildBaseFromHomeGradeTable(fsm)
+    const qualityNum = info.nQualityGradeNum > 0 ? info.nQualityGradeNum : 1
+    const sizeNum = info.nSizeGradeNum > 0 ? info.nSizeGradeNum : 1
+    const rows: GradeLabelRow[] = []
+    for (let q = 0; q < qualityNum; q++) {
+      for (let s = 0; s < sizeNum; s++) {
+        const gradeIdx = q * ConstPreDefine.MAX_SIZE_GRADE_NUM + s
+        if (gradeIdx < 0 || gradeIdx >= info.grades.length) {
+          continue
+        }
+        const sizeName = this.decodeNameBytes(info.strSizeGradeName, s)
+        const qualityName = this.decodeNameBytes(info.strQualityGradeName, q)
+        const row = new GradeLabelRow()
+        row.gradeIndex = gradeIdx
+        row.gradeName = (sizeName && qualityName) ? `${sizeName}.${qualityName}` : (sizeName || qualityName || `等级${gradeIdx + 1}`)
+        row.labelIndex = info.grades[gradeIdx].sbLabelbyGrade > 0 ? info.grades[gradeIdx].sbLabelbyGrade : 0
+        rows.push(row)
+      }
+    }
+    return rows
+  }
+
+  applyGradeLabelRows(fsm: FsmKey, rows: GradeLabelRow[]): StGradeInfo {
+    const info = this.rebuildBaseFromHomeGradeTable(fsm)
+    for (let i = 0; i < info.grades.length; i++) {
+      info.grades[i].sbLabelbyGrade = 0
+    }
+    for (let i = 0; i < rows.length; i++) {
+      const gradeIdx = rows[i].gradeIndex
+      if (gradeIdx < 0 || gradeIdx >= info.grades.length) {
+        continue
+      }
+      const labelIndex = Math.max(0, Math.min(4, Math.floor(rows[i].labelIndex)))
+      info.grades[gradeIdx].sbLabelbyGrade = labelIndex
+    }
     AppStorage.setOrCreate(this.getStorageKey(fsm), info)
     return info
   }

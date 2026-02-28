@@ -4,6 +4,7 @@ import { GradeInfoConfigManager } from '../../pages/home/core/GradeInfoConfigMan
 import { getConfigSender } from '../../protocol/ConfigSender'
 import { util } from '@kit.ArkTS'
 import { HOME_SELECTED_FSM } from '../../constants/TopBarKeys'
+import { ImageStreamDebugPanel } from '../debug/ImageStreamDebugPanel'
 
 @Component
 export struct QualitySettingsDialog {
@@ -442,12 +443,12 @@ struct ImageGradeTab {
       // Right: Image & Controls
       Column() {
         // Image Area
-        Stack() {
-           Text('Image Preview Area')
-        }
+        ImageStreamDebugPanel({
+          title: `${this.title}图像预览`,
+          compact: false
+        })
         .width('100%')
         .height('60%')
-        .backgroundColor('#black')
         
         // Buttons
         Row() {
@@ -551,12 +552,12 @@ struct ColorGradeTab {
 
       // Right: Image
       Column() {
-         Stack() {
-           Text('Color Image Preview')
-        }
+        ImageStreamDebugPanel({
+          title: '颜色图像预览',
+          compact: false
+        })
         .width('100%')
         .height('70%')
-        .backgroundColor('#333')
 
         Row() {
           Button('Get image').margin(5)

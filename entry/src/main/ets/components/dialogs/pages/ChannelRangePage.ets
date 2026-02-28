@@ -3,6 +3,7 @@ import { getCurrentTheme } from '../../../utils/theme/ThemeUtils'
 import { t, I18N_VERSION_KEY } from '../../../utils/i18n/I18nManager'
 import { NumericInput } from '../../ui/inputs/NumericInput'
 import { DirectionalNumericInput } from '../../ui/inputs/DirectionalNumericInput'
+import { ImageStreamDebugPanel } from '../../debug/ImageStreamDebugPanel'
 
 @Component
 export struct ChannelRangePage {
@@ -218,7 +219,11 @@ export struct ChannelRangePage {
         Row() {
 
           Column() {
-
+            ImageStreamDebugPanel({
+              title: '图像链路预览',
+              compact: true
+            })
+              .width('100%')
           }
           .width('40%')
           .height(420)
