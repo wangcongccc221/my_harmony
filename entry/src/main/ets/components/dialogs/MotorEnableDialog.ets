@@ -11,6 +11,7 @@ import { NumericInput } from '../ui/inputs/NumericInput'
 import { ToastDialog } from './ToastDialog'
 import { getConfigSender } from '../../protocol/ConfigSender'
 import { ConstPreDefine } from '../../protocol/ConstPreDefine'
+import { StMotorInfo } from '../../protocol/Structures'
 
 // 出口数据接口
 interface OutletMotorData {
@@ -84,30 +85,64 @@ export struct MotorEnableDialog {
   }
 
   // 出果清框
-  private handleClearFrame(): void {
-    console.log('出果清框')
-    // TODO: 实现出果清框逻辑
+  private async handleClearFrame(): Promise<void> {
+    try {
+      const ok = await getConfigSender().sendExitClear()
+      if (ok) {
+        this.showToast('success', t('出果清框命令已发送', '出果清框命令已发送'))
+      } else {
+        this.showToast('error', t('出果清框命令发送失败，请检查设备连接', '出果清框命令发送失败，请检查设备连接'))
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      this.showToast('error', t('出果清框失败', '出果清框失败') + ': ' + msg)
+    }
   }
 
   // 全部出框
-  private handleAllFrames(): void {
-    console.log('全部出框')
-    // TODO: 实现全部出框逻辑
-  }
-
-  // 立即生效
-  private async handleApply(): Promise<void> {
+  private async handleAllFrames(): Promise<void> {
     const fsmId = this.getSelectedFsmId()
     try {
       const ok = await getConfigSender().sendMotorEnable(fsmId)
       if (ok) {
-        this.showToast('success', t('电机使能命令已发送', '电机使能命令已发送'))
+        this.showToast('success', t('全部出框命令已发送', '全部出框命令已发送'))
       } else {
-        this.showToast('error', t('电机使能命令发送失败，请检查设备连接', '电机使能命令发送失败，请检查设备连接'))
+        this.showToast('error', t('全部出框命令发送失败，请检查设备连接', '全部出框命令发送失败，请检查设备连接'))
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      this.showToast('error', t('电机使能失败', '电机使能失败') + ': ' + msg)
+      this.showToast('error', t('全部出框失败', '全部出框失败') + ': ' + msg)
+    }
+  }
+
+  // 立即生效（按行下发 MOTOR_INFO，写入每个出口的延时/持续）
+  private async handleApply(): Promise<void> {
+    const fsmId = this.getSelectedFsmId()
+    try {
+      let successCount = 0
+      for (let i = 0; i < this.outletMotorDataList.length; i++) {
+        const row = this.outletMotorDataList[i]
+        const info = new StMotorInfo()
+        info.bExitId = i
+        info.bMotorSwitch = 2
+        info.nMotorEnableSwitchNum = 0
+        info.nMotorEnableSwitchWeight = 0
+        info.fDelay_time = row.delayTime
+        info.fHold_time = row.durationTime
+        const ok = await getConfigSender().sendMotorInfo(fsmId, info)
+        if (ok) {
+          successCount++
+        }
+      }
+
+      if (successCount > 0) {
+        this.showToast('success', t('电机参数已下发', '电机参数已下发') + ` (${successCount}/${this.outletMotorDataList.length})`)
+      } else {
+        this.showToast('error', t('电机参数发送失败，请检查设备连接', '电机参数发送失败，请检查设备连接'))
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      this.showToast('error', t('电机参数下发失败', '电机参数下发失败') + ': ' + msg)
     }
   }
 
@@ -279,7 +314,7 @@ export struct MotorEnableDialog {
             .width(100)
             .height(36)
             .onClick(() => {
-              this.handleClearFrame()
+              void this.handleClearFrame()
             })
 
           Button('全部出框')
@@ -291,7 +326,7 @@ export struct MotorEnableDialog {
             .width(100)
             .height(36)
             .onClick(() => {
-              this.handleAllFrames()
+              void this.handleAllFrames()
             })
 
           Blank()
@@ -305,7 +340,7 @@ export struct MotorEnableDialog {
             .width(100)
             .height(36)
             .onClick(() => {
-              this.handleApply()
+              void this.handleApply()
             })
 
           Button('取消')

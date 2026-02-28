@@ -32,7 +32,14 @@ import { ElectricalFaultDialog } from '../components/dialogs/ElectricalFaultDial
 import { SystemFaultDialog } from '../components/dialogs/SystemFaultDialog'
 import { LabelingSettingsDialog } from '../components/dialogs/LabelingSettingsDialog'
 import { ExitScreenSettingsDialog } from '../components/dialogs/ExitScreenSettingsDialog'
+import { PackingSpecDialog } from '../components/dialogs/PackingSpecDialog'
+import { ExitDisplayDialog } from '../components/dialogs/ExitDisplayDialog'
+import { UserSettingsDialog } from '../components/dialogs/UserSettingsDialog'
+import { DownloadConfigDialog } from '../components/dialogs/DownloadConfigDialog'
 import { ModifyCustomerInfoDialog, CustomerInfo } from '../components/dialogs/ModifyCustomerInfoDialog'
+import { getExitScreenStorage } from '../utils/storage/ExitScreenStorage'
+import { getPackingSpecStorage } from '../utils/storage/PackingSpecStorage'
+import { getMoreSystemSettingsStorage } from '../utils/storage/MoreSystemSettingsStorage'
 import { getCurrentTheme as resolveTheme } from '../utils/theme/ThemeUtils'
 import { NavigationUtils } from '../utils/helpers/NavigationUtils'
 import { OmniThemeManager, OmniThemeType, ExtendedOmniThemeStyle } from '../utils/theme/OmniThemeManager'
@@ -239,9 +246,22 @@ struct Page {
   
   // 贴标设置对话框状态
   @State showLabelingSettingsDialog: boolean = false
+
+  // 用户设置对话框状态
+  @State showUserSettingsDialog: boolean = false
+
+  // 下载配置对话框状态
+  @State showDownloadConfigDialog: boolean = false
+  @State configSnapshotPath: string = ''
   
   // 出口屏设置对话框状态
   @State showExitScreenSettingsDialog: boolean = false
+
+  // 纸箱规格对话框状态
+  @State showPackingSpecDialog: boolean = false
+
+  // 出口屏显示对话框状态
+  @State showExitDisplayDialog: boolean = false
   
   // 语言选择器状态
   @State showLanguageSelector: boolean = false
@@ -279,6 +299,13 @@ struct Page {
   async aboutToAppear() {
     this.omniUIInit.init()
     this.omniThemeManager.init()
+    const exitScreenStorage = getExitScreenStorage()
+    if (exitScreenStorage.getConfigs().length === 0) {
+      exitScreenStorage.setConfigs(exitScreenStorage.createDefaultConfigs())
+    }
+    getPackingSpecStorage().ensureDefaults()
+    getMoreSystemSettingsStorage().ensureDefaults()
+    AppStorage.setOrCreate('PACKING_SPEC_REFRESH_VERSION', (AppStorage.get('PACKING_SPEC_REFRESH_VERSION') as number | undefined) ?? 0)
     // 初始化 Ctrl 多选状态
     AppStorage.setOrCreate('HOME_CTRL_PRESSED', false)
 
@@ -1347,24 +1374,34 @@ struct Page {
     }
   }
 
-  // 处理出口清空功能
-  private handleExportClear(): void {
-    console.log('开始清空液体卡片数据...')
-    
-    // 从AppStorage获取LiquidCardsArea引用
+  // 处理出口清空功能（对齐48：发送HC_CMD_EXIT_CLEAR + 本地界面清空）
+  private async handleExportClear(): Promise<void> {
+    console.log('[MORE_ACTION] 开始执行出口清空')
+    try {
+      const sender = getConfigSender()
+      const sentOk = await sender.sendExitClear()
+      console.log(`[MORE_ACTION] EXIT_CLEAR sent=${sentOk}`)
+      if (!sentOk) {
+        this.omniUIUtils.showError(t('出口清空命令发送失败，请检查设备连接', '出口清空命令发送失败，请检查设备连接'))
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error('[MORE_ACTION] EXIT_CLEAR 异常:', e)
+      this.omniUIUtils.showError(t('出口清空发送异常', '出口清空发送异常') + ': ' + msg)
+    }
+
+    // 从 AppStorage 获取 LiquidCardsArea 引用，做本地UI同步清空
     const liquidCardsAreaRef: LiquidCardsArea | null = AppStorage.get('LIQUID_CARDS_AREA_REF') as LiquidCardsArea | null
     if (liquidCardsAreaRef) {
       liquidCardsAreaRef.clearAllCardData()
-      this.omniUIUtils.showSuccess(t('清空成功！', '清空成功！'))//提示弹窗
-      // 显示系统对话框，确保用户可见
+      this.omniUIUtils.showSuccess(t('出口清空指令已执行', '出口清空指令已执行'))
       AlertDialog.show({
         title: t('提示', '提示'),
-        message: t('清空成功！', '清空成功！'),
+        message: t('出口清空指令已执行', '出口清空指令已执行'),
         confirm: { value: t('确定', '确定'), action: () => {} }
       })
     } else {
-      console.error('液体卡片区域引用为空，无法清空数据')
-      this.omniUIUtils.showError(t('清空失败：液体卡片区域未初始化', '清空失败：液体卡片区域未初始化'))
+      console.error('液体卡片区域引用为空，无法清空界面数据')
     }
   }
 
@@ -1410,6 +1447,37 @@ struct Page {
     }
   }
 
+  private handleExitDisplayConfirm(enabled: boolean): void {
+    const storage = getExitScreenStorage()
+    storage.setDisplayEnabled(enabled)
+    console.log(`[EXIT_DISPLAY_PERSIST] enabled=${enabled}`)
+    storage.logBroadcastSnapshot()
+    this.showExitDisplayDialog = false
+  }
+
+  private handleExitScreenSettingsConfirm(sleepEnabled: boolean, screenOnTime: string, screenOffTime: string, configsJson: string): void {
+    const storage = getExitScreenStorage()
+    storage.setSleepEnabled(sleepEnabled)
+    storage.setScreenOnTime(screenOnTime)
+    storage.setScreenOffTime(screenOffTime)
+    storage.setConfigs(storage.parseConfigs(configsJson))
+    console.log(`[EXIT_SCREEN_SETTINGS_PERSIST] sleep=${sleepEnabled} on=${screenOnTime} off=${screenOffTime}`)
+    storage.logBroadcastSnapshot()
+    this.showExitScreenSettingsDialog = false
+  }
+
+  private handlePackingSpecConfirm(configsJson: string, primarySpecId: number, secondarySpecId: number): void {
+    const storage = getPackingSpecStorage()
+    storage.setConfigs(storage.parseConfigs(configsJson))
+    storage.setPrimarySpecId(primarySpecId)
+    storage.setSecondarySpecId(secondarySpecId)
+    storage.syncToLevelPackingWeights()
+    const refreshVersion = (AppStorage.get('PACKING_SPEC_REFRESH_VERSION') as number | undefined) ?? 0
+    AppStorage.setOrCreate('PACKING_SPEC_REFRESH_VERSION', refreshVersion + 1)
+    console.log(`[PACKING_SPEC_PERSIST] primary=${primarySpecId} secondary=${secondarySpecId}`)
+    this.showPackingSpecDialog = false
+  }
+
   // 复位果杯（对齐 48：执行复位并下发复位命令）
   private async handleResetCupConfirm(): Promise<void> {
     try {
@@ -1426,6 +1494,138 @@ struct Page {
       this.omniUIUtils.showError(t('果杯复位失败', '果杯复位失败') + ': ' + msg)
     } finally {
       this.showResetCupConfirmDialog = false
+    }
+  }
+
+  private getConfigSnapshotPath(): string {
+    const context = getContext(this) as common.UIAbilityContext
+    return `${context.filesDir}/system_settings_snapshot.json`
+  }
+
+  private exportSystemSettingsSnapshot(): void {
+    try {
+      const storage = getMoreSystemSettingsStorage()
+      const filePath = this.getConfigSnapshotPath()
+      const text = storage.buildSnapshotJson()
+      const buf = buffer.from(text, 'utf-8')
+      const file = fs.openSync(filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE | fs.OpenMode.TRUNC)
+      fs.writeSync(file.fd, buf.buffer)
+      fs.closeSync(file.fd)
+      this.configSnapshotPath = filePath
+      console.log(`[DOWNLOAD_CONFIG] export ${filePath}`)
+      this.omniUIUtils.showSuccess(t('配置快照已导出', '配置快照已导出'))
+    } catch (e) {
+      console.error('[DOWNLOAD_CONFIG] export failed:', JSON.stringify(e))
+      this.omniUIUtils.showError(t('导出配置失败', '导出配置失败'))
+    }
+  }
+
+  private importSystemSettingsSnapshot(): void {
+    try {
+      const filePath = this.getConfigSnapshotPath()
+      const stat = fs.statSync(filePath)
+      if (!stat || stat.size <= 0) {
+        this.omniUIUtils.showInfo(t('未找到可导入的配置快照', '未找到可导入的配置快照'))
+        return
+      }
+      const file = fs.openSync(filePath, fs.OpenMode.READ_ONLY)
+      const raw = new ArrayBuffer(stat.size)
+      fs.readSync(file.fd, raw)
+      fs.closeSync(file.fd)
+      const text = buffer.from(new Uint8Array(raw).buffer).toString('utf-8')
+      const ok = getMoreSystemSettingsStorage().restoreFromSnapshotJson(text)
+      if (ok) {
+        this.configSnapshotPath = filePath
+        console.log(`[DOWNLOAD_CONFIG] import ${filePath}`)
+        this.omniUIUtils.showSuccess(t('配置快照已导入', '配置快照已导入'))
+      } else {
+        this.omniUIUtils.showError(t('配置快照格式无效', '配置快照格式无效'))
+      }
+    } catch (e) {
+      console.error('[DOWNLOAD_CONFIG] import failed:', JSON.stringify(e))
+      this.omniUIUtils.showError(t('导入配置失败', '导入配置失败'))
+    }
+  }
+
+  private loadElectricalFaultSettings(): void {
+    try {
+      const filePath = `${(getContext(this) as common.UIAbilityContext).filesDir}/electrical_faults.json`
+      const stat = fs.statSync(filePath)
+      if (!stat || stat.size <= 0) {
+        this.omniUIUtils.showInfo(t('未找到电器故障配置文件，已使用本地配置', '未找到电器故障配置文件，已使用本地配置'))
+        return
+      }
+      const file = fs.openSync(filePath, fs.OpenMode.READ_ONLY)
+      const raw = new ArrayBuffer(stat.size)
+      fs.readSync(file.fd, raw)
+      fs.closeSync(file.fd)
+      const text = buffer.from(new Uint8Array(raw).buffer).toString('utf-8')
+      const ok = getMoreSystemSettingsStorage().restoreFromSnapshotJson(`{\"electricalFaults\":${text}}`)
+      if (ok) {
+        this.omniUIUtils.showSuccess(t('电器故障配置已导入', '电器故障配置已导入'))
+      } else {
+        this.omniUIUtils.showError(t('电器故障配置格式错误', '电器故障配置格式错误'))
+      }
+    } catch (e) {
+      console.error('[ELECTRICAL_FAULT] load failed:', JSON.stringify(e))
+      this.omniUIUtils.showError(t('导入电器故障配置失败', '导入电器故障配置失败'))
+    }
+  }
+
+  private saveElectricalFaultSettings(): void {
+    try {
+      const filePath = `${(getContext(this) as common.UIAbilityContext).filesDir}/electrical_faults.json`
+      const items = getMoreSystemSettingsStorage().getElectricalFaults()
+      const buf = buffer.from(JSON.stringify(items, null, 2), 'utf-8')
+      const file = fs.openSync(filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE | fs.OpenMode.TRUNC)
+      fs.writeSync(file.fd, buf.buffer)
+      fs.closeSync(file.fd)
+      console.log(`[ELECTRICAL_FAULT] save ${filePath}`)
+      this.omniUIUtils.showSuccess(t('电器故障配置已保存', '电器故障配置已保存'))
+    } catch (e) {
+      console.error('[ELECTRICAL_FAULT] save failed:', JSON.stringify(e))
+      this.omniUIUtils.showError(t('保存电器故障配置失败', '保存电器故障配置失败'))
+    }
+  }
+
+  private loadSystemFaultSettings(): void {
+    try {
+      const filePath = `${(getContext(this) as common.UIAbilityContext).filesDir}/system_faults.json`
+      const stat = fs.statSync(filePath)
+      if (!stat || stat.size <= 0) {
+        this.omniUIUtils.showInfo(t('未找到系统故障配置文件，已使用本地配置', '未找到系统故障配置文件，已使用本地配置'))
+        return
+      }
+      const file = fs.openSync(filePath, fs.OpenMode.READ_ONLY)
+      const raw = new ArrayBuffer(stat.size)
+      fs.readSync(file.fd, raw)
+      fs.closeSync(file.fd)
+      const text = buffer.from(new Uint8Array(raw).buffer).toString('utf-8')
+      const ok = getMoreSystemSettingsStorage().restoreFromSnapshotJson(`{\"systemFaults\":${text}}`)
+      if (ok) {
+        this.omniUIUtils.showSuccess(t('系统故障配置已导入', '系统故障配置已导入'))
+      } else {
+        this.omniUIUtils.showError(t('系统故障配置格式错误', '系统故障配置格式错误'))
+      }
+    } catch (e) {
+      console.error('[SYSTEM_FAULT] load failed:', JSON.stringify(e))
+      this.omniUIUtils.showError(t('导入系统故障配置失败', '导入系统故障配置失败'))
+    }
+  }
+
+  private saveSystemFaultSettings(): void {
+    try {
+      const filePath = `${(getContext(this) as common.UIAbilityContext).filesDir}/system_faults.json`
+      const items = getMoreSystemSettingsStorage().getSystemFaults()
+      const buf = buffer.from(JSON.stringify(items, null, 2), 'utf-8')
+      const file = fs.openSync(filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE | fs.OpenMode.TRUNC)
+      fs.writeSync(file.fd, buf.buffer)
+      fs.closeSync(file.fd)
+      console.log(`[SYSTEM_FAULT] save ${filePath}`)
+      this.omniUIUtils.showSuccess(t('系统故障配置已保存', '系统故障配置已保存'))
+    } catch (e) {
+      console.error('[SYSTEM_FAULT] save failed:', JSON.stringify(e))
+      this.omniUIUtils.showError(t('保存系统故障配置失败', '保存系统故障配置失败'))
     }
   }
 
@@ -2254,10 +2454,19 @@ struct Page {
         } else {
           this.showTestCupDialog = true
         }
+      } else if (originalKey === '纸箱规格') {
+        this.showPackingSpecDialog = true
+      } else if (originalKey === '出口屏显示') {
+        this.showExitDisplayDialog = true
       } else if (originalKey === '设备信息') {
         this.showDeviceInfoDialog = true
       } else if (originalKey === '配置设置') {
         this.showConfigInfoDialog = true
+      } else if (originalKey === '用户设置') {
+        this.showUserSettingsDialog = true
+      } else if (originalKey === '下载配置') {
+        this.configSnapshotPath = this.getConfigSnapshotPath()
+        this.showDownloadConfigDialog = true
       } else if (originalKey === '故障信息') {
         this.showAlarmInfoDialog = true
       } else if (originalKey === '电器故障设置') {
@@ -2268,7 +2477,7 @@ struct Page {
         this.showLabelingSettingsDialog = true
       } else if (originalKey === '出口清空') {
         console.log('执行出口清空操作...')
-        this.handleExportClear()
+        void this.handleExportClear()
       } else if (originalKey === '数据清零') {
         console.log('执行数据清零操作...')
         this.handleClearData()
@@ -3353,8 +3562,7 @@ struct Page {
           DeviceInfoDialog({
             isVisible: this.showDeviceInfoDialog,
             onConfirm: () => {
-              console.log('确认设备信息')
-              // TODO: 实现保存设备信息逻辑
+              this.omniUIUtils.showSuccess(t('设备信息已保存', '设备信息已保存'))
               this.showDeviceInfoDialog = false
             },
             onCancel: () => {
@@ -3374,7 +3582,7 @@ struct Page {
           ConfigInfoDialog({
             isVisible: this.showConfigInfoDialog,
             onConfirm: () => {
-              console.log('确认配置信息')
+              this.omniUIUtils.showSuccess(t('配置设置已保存', '配置设置已保存'))
               this.showConfigInfoDialog = false
             },
             onCancel: () => {
@@ -3413,12 +3621,10 @@ struct Page {
               this.showElectricalFaultDialog = false
             },
             onLoad: () => {
-              this.omniUIUtils.showInfo(t('正在导入电器故障配置...', '正在导入电器故障配置...'))
-              // TODO: 实现导入逻辑
+              this.loadElectricalFaultSettings()
             },
             onSave: () => {
-              this.omniUIUtils.showSuccess(t('电器故障配置已保存', '电器故障配置已保存'))
-              // TODO: 实现保存逻辑
+              this.saveElectricalFaultSettings()
             }
           })
         }
@@ -3437,12 +3643,10 @@ struct Page {
               this.showSystemFaultDialog = false
             },
             onLoad: () => {
-              this.omniUIUtils.showInfo(t('正在导入系统故障配置...', '正在导入系统故障配置...'))
-              // TODO: 实现导入逻辑
+              this.loadSystemFaultSettings()
             },
             onSave: () => {
-              this.omniUIUtils.showSuccess(t('系统故障配置已保存', '系统故障配置已保存'))
-              // TODO: 实现保存逻辑
+              this.saveSystemFaultSettings()
             }
           })
         }
@@ -3458,8 +3662,7 @@ struct Page {
           LabelingSettingsDialog({
             isVisible: this.showLabelingSettingsDialog,
             onConfirm: () => {
-              console.log('确认贴标设置')
-              // TODO: 实现保存贴标设置逻辑
+              this.omniUIUtils.showSuccess(t('贴标设置已保存', '贴标设置已保存'))
               this.showLabelingSettingsDialog = false
             },
             onCancel: () => {
@@ -3472,16 +3675,101 @@ struct Page {
         .position({ x: 0, y: 0 })
         .zIndex(2990) // 贴标设置对话框层级
       }
+
+      if (this.showUserSettingsDialog) {
+        Stack() {
+          UserSettingsDialog({
+            isVisible: this.showUserSettingsDialog,
+            onConfirm: () => {
+              this.omniUIUtils.showSuccess(t('用户切换已保存', '用户切换已保存'))
+              this.showUserSettingsDialog = false
+            },
+            onCancel: () => {
+              this.showUserSettingsDialog = false
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(2989)
+      }
+
+      if (this.showDownloadConfigDialog) {
+        Stack() {
+          DownloadConfigDialog({
+            isVisible: this.showDownloadConfigDialog,
+            snapshotPath: this.configSnapshotPath,
+            onExport: () => {
+              this.exportSystemSettingsSnapshot()
+            },
+            onImport: () => {
+              this.importSystemSettingsSnapshot()
+            },
+            onCancel: () => {
+              this.showDownloadConfigDialog = false
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(2988)
+      }
+
+      // 纸箱规格对话框
+      if (this.showPackingSpecDialog) {
+        Stack() {
+          PackingSpecDialog({
+            isVisible: this.showPackingSpecDialog,
+            initialConfigsJson: JSON.stringify(getPackingSpecStorage().getConfigs()),
+            initialPrimarySpecId: getPackingSpecStorage().getPrimarySpecId(),
+            initialSecondarySpecId: getPackingSpecStorage().getSecondarySpecId(),
+            onConfirm: (configsJson: string, primarySpecId: number, secondarySpecId: number) => {
+              this.handlePackingSpecConfirm(configsJson, primarySpecId, secondarySpecId)
+            },
+            onCancel: () => {
+              this.showPackingSpecDialog = false
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(2989)
+      }
+
+      // 出口屏显示对话框
+      if (this.showExitDisplayDialog) {
+        Stack() {
+          ExitDisplayDialog({
+            isVisible: this.showExitDisplayDialog,
+            initialEnabled: getExitScreenStorage().getDisplayEnabled(),
+            onConfirm: (enabled: boolean) => {
+              this.handleExitDisplayConfirm(enabled)
+            },
+            onCancel: () => {
+              this.showExitDisplayDialog = false
+            }
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .zIndex(2988)
+      }
       
       // 出口屏设置对话框
       if (this.showExitScreenSettingsDialog) {
         Stack() {
           ExitScreenSettingsDialog({
             isVisible: this.showExitScreenSettingsDialog,
-            onConfirm: () => {
-              console.log('确认出口屏设置')
-              // TODO: 实现保存出口屏设置逻辑
-              this.showExitScreenSettingsDialog = false
+            initialSleepEnabled: getExitScreenStorage().getSleepEnabled(),
+            initialScreenOnTime: getExitScreenStorage().getScreenOnTime(),
+            initialScreenOffTime: getExitScreenStorage().getScreenOffTime(),
+            initialConfigsJson: JSON.stringify(getExitScreenStorage().getConfigs()),
+            onConfirm: (sleepEnabled: boolean, screenOnTime: string, screenOffTime: string, configsJson: string) => {
+              this.handleExitScreenSettingsConfirm(sleepEnabled, screenOnTime, screenOffTime, configsJson)
             },
             onCancel: () => {
               this.showExitScreenSettingsDialog = false
@@ -3491,7 +3779,7 @@ struct Page {
         .width('100%')
         .height('100%')
         .position({ x: 0, y: 0 })
-        .zIndex(2989) // 出口屏设置对话框层级
+        .zIndex(2987) // 出口屏设置对话框层级
       }
       
       // 语言选择弹窗

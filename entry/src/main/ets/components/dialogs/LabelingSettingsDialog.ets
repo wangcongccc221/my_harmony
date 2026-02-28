@@ -7,6 +7,7 @@ import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/Omni
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
+import { getMoreSystemSettingsStorage, MoreLabelingSettingsRecord } from '../../utils/storage/MoreSystemSettingsStorage'
 
 
 @Component
@@ -53,6 +54,26 @@ export struct LabelingSettingsDialog {
   onConfirm?: () => void
   onCancel?: () => void
 
+  aboutToAppear(): void {
+    const record = getMoreSystemSettingsStorage().getLabelingSettings()
+    this.noLabeling = record.noLabeling
+    this.byExport = record.byExport
+    this.byGrade = record.byGrade
+    this.byContainer = record.byContainer
+    this.machine1Name = record.machine1Name
+    this.machine1LabelCount = record.machine1LabelCount
+    this.machine1TotalCount = record.machine1TotalCount
+    this.machine2Name = record.machine2Name
+    this.machine2LabelCount = record.machine2LabelCount
+    this.machine2TotalCount = record.machine2TotalCount
+    this.machine3Name = record.machine3Name
+    this.machine3LabelCount = record.machine3LabelCount
+    this.machine3TotalCount = record.machine3TotalCount
+    this.machine4Name = record.machine4Name
+    this.machine4LabelCount = record.machine4LabelCount
+    this.machine4TotalCount = record.machine4TotalCount
+  }
+
   // 获取当前主题配置
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return getCurrentTheme(this.consumedTheme)
@@ -65,6 +86,25 @@ export struct LabelingSettingsDialog {
 
   // 确认按钮点击
   private handleConfirm(): void {
+    const record = new MoreLabelingSettingsRecord()
+    record.noLabeling = this.noLabeling
+    record.byExport = this.byExport
+    record.byGrade = this.byGrade
+    record.byContainer = this.byContainer
+    record.machine1Name = this.machine1Name
+    record.machine1LabelCount = this.machine1LabelCount
+    record.machine1TotalCount = this.machine1TotalCount
+    record.machine2Name = this.machine2Name
+    record.machine2LabelCount = this.machine2LabelCount
+    record.machine2TotalCount = this.machine2TotalCount
+    record.machine3Name = this.machine3Name
+    record.machine3LabelCount = this.machine3LabelCount
+    record.machine3TotalCount = this.machine3TotalCount
+    record.machine4Name = this.machine4Name
+    record.machine4LabelCount = this.machine4LabelCount
+    record.machine4TotalCount = this.machine4TotalCount
+    getMoreSystemSettingsStorage().setLabelingSettings(record)
+    console.log(`[LABELING_SETTINGS_SAVE] mode=no:${record.noLabeling} export:${record.byExport} grade:${record.byGrade} container:${record.byContainer}`)
     if (this.onConfirm) {
       this.onConfirm()
     }
@@ -727,4 +767,3 @@ export struct LabelingSettingsDialog {
     .alignContent(Alignment.Center)
   }
 }
-

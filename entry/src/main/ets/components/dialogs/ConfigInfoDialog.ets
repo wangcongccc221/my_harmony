@@ -7,6 +7,7 @@ import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/Omni
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
+import { getMoreSystemSettingsStorage, MoreConfigEntry } from '../../utils/storage/MoreSystemSettingsStorage'
 
 // 配置项接口
 interface ConfigItem {
@@ -68,10 +69,15 @@ export struct ConfigInfoDialog {
   onCancel?: () => void
 
   aboutToAppear() {
-    // 初始化时显示所有配置
+    const storageEntries = getMoreSystemSettingsStorage().getConfigEntries()
+    const nextList: ConfigItem[] = []
+    for (let i = 0; i < storageEntries.length; i++) {
+      const item: ConfigItem = { name: storageEntries[i].name, value: storageEntries[i].value }
+      nextList.push(item)
+    }
+    this.configList = nextList
     this.filteredConfigList = [...this.configList]
-    // 初始化编辑值
-    this.configList.forEach(item => {
+    this.configList.forEach((item: ConfigItem) => {
       this.editingValues[item.name] = item.value
     })
   }
@@ -108,6 +114,15 @@ export struct ConfigInfoDialog {
 
   // 确认按钮点击
   private handleConfirm(): void {
+    const savedEntries: MoreConfigEntry[] = []
+    for (let i = 0; i < this.configList.length; i++) {
+      const item = this.configList[i]
+      const edited = this.editingValues[item.name]
+      const value = edited !== undefined ? edited : item.value
+      savedEntries.push(new MoreConfigEntry(item.name, value))
+    }
+    getMoreSystemSettingsStorage().setConfigEntries(savedEntries)
+    console.log(`[CONFIG_SETTINGS_SAVE] count=${savedEntries.length}`)
     if (this.onConfirm) {
       this.onConfirm()
     }
@@ -348,4 +363,3 @@ export struct ConfigInfoDialog {
     .zIndex(1000)
   }
 }
-

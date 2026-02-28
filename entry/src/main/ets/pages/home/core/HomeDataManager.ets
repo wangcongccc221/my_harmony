@@ -42,6 +42,7 @@ import { GlobalDataInterface } from '../../../protocol/GlobalDataInterface'
 import { ConstPreDefine } from '../../../protocol/ConstPreDefine'
 import { StGradeInfo, StStatistics } from '../../../protocol/Structures'
 import { LevelData } from '../../level/core/LevelDataManager'
+import { CartonSpecRecord, getPackingSpecStorage } from '../../../utils/storage/PackingSpecStorage'
 import util from '@ohos.util'
 
 interface GradeTableConfig {
@@ -117,6 +118,51 @@ export class HomeDataManager {
       })
       return row
     })
+  }
+
+  private getPackingSpecById(id: number): CartonSpecRecord {
+    const specs = getPackingSpecStorage().getConfigs()
+    for (let i = 0; i < specs.length; i++) {
+      if (specs[i].id === id) {
+        return specs[i]
+      }
+    }
+    if (specs.length > 0) {
+      return specs[0]
+    }
+    return new CartonSpecRecord(1, '默认纸箱', '0', '0', '0', '0', '')
+  }
+
+  private buildPackingSpecText(spec: CartonSpecRecord): string {
+    return `${spec.length}x${spec.width}x${spec.height}`
+  }
+
+  private buildDynamicPackingRow(exitLabel: string, serial: string, grade: string, boxCount: string, specId: number, perMinute: string): TableRow {
+    const spec = this.getPackingSpecById(specId)
+    return [
+      exitLabel,
+      serial,
+      spec.name,
+      grade,
+      boxCount,
+      this.buildPackingSpecText(spec),
+      spec.netWeight,
+      perMinute
+    ]
+  }
+
+  private buildFinishedProductRow(productCode: string, exitLabel: string, serial: string, containerName: string, grade: string, packTime: string, specId: number): TableRow {
+    const spec = this.getPackingSpecById(specId)
+    return [
+      productCode,
+      exitLabel,
+      serial,
+      containerName,
+      grade,
+      packTime,
+      this.buildPackingSpecText(spec),
+      spec.netWeight
+    ]
   }
 
   public getLevelTableHeaderTitles(): string[] {
@@ -794,31 +840,34 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
    */
   initializeDynamicPackingTableData(): void {
     let dynamicPackingData: TableRow[]
+    const packingStorage = getPackingSpecStorage()
+    const primarySpecId = packingStorage.getPrimarySpecId()
+    const secondarySpecId = packingStorage.getSecondarySpecId()
     
     if (this.currentFSM === 'FSM1') {
       // FSM1的动态装箱表数据
       dynamicPackingData = [
-        ['出口1', 'LS001', '标准箱', 'A级', '15', '大号', '12.5', '3.2'],
-        ['出口2', 'LS002', '小箱', 'B级', '8', '中号', '8.3', '2.1'],
-        ['出口3', 'LS003', '标准箱', 'A级', '12', '大号', '11.8', '2.8'],
-        ['出口1', 'LS004', '大箱', 'C级', '6', '特大号', '15.2', '1.5']
+        this.buildDynamicPackingRow('出口1', 'LS001', 'A级', '15', primarySpecId, '3.2'),
+        this.buildDynamicPackingRow('出口2', 'LS002', 'B级', '8', secondarySpecId, '2.1'),
+        this.buildDynamicPackingRow('出口3', 'LS003', 'A级', '12', primarySpecId, '2.8'),
+        this.buildDynamicPackingRow('出口1', 'LS004', 'C级', '6', secondarySpecId, '1.5')
       ]
     } else if (this.currentFSM === 'FSM2') {
       // FSM2的动态装箱表数据（不同的装箱配置）
       dynamicPackingData = [
-        ['出口1', 'LS101', '智能箱', '特级', '18', '超大号', '15.8', '4.2'],
-        ['出口2', 'LS102', '精密箱', '优级', '12', '大号', '11.2', '3.1'],
-        ['出口3', 'LS103', '标准箱', '良级', '9', '中号', '8.9', '2.3'],
-        ['出口4', 'LS104', '小箱', '合格', '6', '小号', '6.7', '1.8'],
-        ['出口5', 'LS105', '回收箱', '次品', '3', '特小号', '4.5', '1.2']
+        this.buildDynamicPackingRow('出口1', 'LS101', '特级', '18', primarySpecId, '4.2'),
+        this.buildDynamicPackingRow('出口2', 'LS102', '优级', '12', secondarySpecId, '3.1'),
+        this.buildDynamicPackingRow('出口3', 'LS103', '良级', '9', primarySpecId, '2.3'),
+        this.buildDynamicPackingRow('出口4', 'LS104', '合格', '6', secondarySpecId, '1.8'),
+        this.buildDynamicPackingRow('出口5', 'LS105', '次品', '3', primarySpecId, '1.2')
       ]
     } else {
       // 默认情况，使用FSM1数据
       dynamicPackingData = [
-        ['出口1', 'LS001', '标准箱', 'A级', '15', '大号', '12.5', '3.2'],
-        ['出口2', 'LS002', '小箱', 'B级', '8', '中号', '8.3', '2.1'],
-        ['出口3', 'LS003', '标准箱', 'A级', '12', '大号', '11.8', '2.8'],
-        ['出口1', 'LS004', '大箱', 'C级', '6', '特大号', '15.2', '1.5']
+        this.buildDynamicPackingRow('出口1', 'LS001', 'A级', '15', primarySpecId, '3.2'),
+        this.buildDynamicPackingRow('出口2', 'LS002', 'B级', '8', secondarySpecId, '2.1'),
+        this.buildDynamicPackingRow('出口3', 'LS003', 'A级', '12', primarySpecId, '2.8'),
+        this.buildDynamicPackingRow('出口1', 'LS004', 'C级', '6', secondarySpecId, '1.5')
       ]
     }
     
@@ -826,6 +875,7 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
     const fsmKey = `动态装箱_${this.currentFSM}`
     this.allTableData[fsmKey] = dynamicPackingData
     console.log(`初始化${this.currentFSM}动态装箱表数据:`, dynamicPackingData)
+    console.log(`[PACKING_SPEC_TABLE] ${this.currentFSM} dynamic primary=${primarySpecId} secondary=${secondarySpecId}`)
   }
 
   /**
@@ -850,31 +900,34 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
    */
   initializeFinishedProductsTableData(): void {
     let finishedProductsData: TableRow[]
+    const packingStorage = getPackingSpecStorage()
+    const primarySpecId = packingStorage.getPrimarySpecId()
+    const secondarySpecId = packingStorage.getSecondarySpecId()
     
     if (this.currentFSM === 'FSM1') {
       // FSM1的成品表数据
       finishedProductsData = [
-        ['CP001', '出口1', 'LS001', '标准容器', 'A级', '2025-01-15 14:30', '大号', '12.5'],
-        ['CP002', '出口2', 'LS002', '小容器', 'B级', '2025-01-15 15:45', '中号', '8.3'],
-        ['CP003', '出口3', 'LS003', '标准容器', 'A级', '2025-01-15 16:20', '大号', '11.8'],
-        ['CP004', '出口1', 'LS004', '大容器', 'C级', '2025-01-15 17:10', '特大号', '15.2']
+        this.buildFinishedProductRow('CP001', '出口1', 'LS001', '标准容器', 'A级', '2025-01-15 14:30', primarySpecId),
+        this.buildFinishedProductRow('CP002', '出口2', 'LS002', '小容器', 'B级', '2025-01-15 15:45', secondarySpecId),
+        this.buildFinishedProductRow('CP003', '出口3', 'LS003', '标准容器', 'A级', '2025-01-15 16:20', primarySpecId),
+        this.buildFinishedProductRow('CP004', '出口1', 'LS004', '大容器', 'C级', '2025-01-15 17:10', secondarySpecId)
       ]
     } else if (this.currentFSM === 'FSM2') {
       // FSM2的成品表数据（不同的成品配置）
       finishedProductsData = [
-        ['CP201', '出口1', 'LS101', '智能容器', '特级', '2025-01-15 14:30', '超大号', '15.8'],
-        ['CP202', '出口2', 'LS102', '精密容器', '优级', '2025-01-15 15:45', '大号', '11.2'],
-        ['CP203', '出口3', 'LS103', '标准容器', '良级', '2025-01-15 16:20', '中号', '8.9'],
-        ['CP204', '出口4', 'LS104', '小容器', '合格', '2025-01-15 17:10', '小号', '6.7'],
-        ['CP205', '出口5', 'LS105', '回收容器', '次品', '2025-01-15 18:30', '特小号', '4.5']
+        this.buildFinishedProductRow('CP201', '出口1', 'LS101', '智能容器', '特级', '2025-01-15 14:30', primarySpecId),
+        this.buildFinishedProductRow('CP202', '出口2', 'LS102', '精密容器', '优级', '2025-01-15 15:45', secondarySpecId),
+        this.buildFinishedProductRow('CP203', '出口3', 'LS103', '标准容器', '良级', '2025-01-15 16:20', primarySpecId),
+        this.buildFinishedProductRow('CP204', '出口4', 'LS104', '小容器', '合格', '2025-01-15 17:10', secondarySpecId),
+        this.buildFinishedProductRow('CP205', '出口5', 'LS105', '回收容器', '次品', '2025-01-15 18:30', primarySpecId)
       ]
     } else {
       // 默认情况，使用FSM1数据
       finishedProductsData = [
-        ['CP001', '出口1', 'LS001', '标准容器', 'A级', '2025-01-15 14:30', '大号', '12.5'],
-        ['CP002', '出口2', 'LS002', '小容器', 'B级', '2025-01-15 15:45', '中号', '8.3'],
-        ['CP003', '出口3', 'LS003', '标准容器', 'A级', '2025-01-15 16:20', '大号', '11.8'],
-        ['CP004', '出口1', 'LS004', '大容器', 'C级', '2025-01-15 17:10', '特大号', '15.2']
+        this.buildFinishedProductRow('CP001', '出口1', 'LS001', '标准容器', 'A级', '2025-01-15 14:30', primarySpecId),
+        this.buildFinishedProductRow('CP002', '出口2', 'LS002', '小容器', 'B级', '2025-01-15 15:45', secondarySpecId),
+        this.buildFinishedProductRow('CP003', '出口3', 'LS003', '标准容器', 'A级', '2025-01-15 16:20', primarySpecId),
+        this.buildFinishedProductRow('CP004', '出口1', 'LS004', '大容器', 'C级', '2025-01-15 17:10', secondarySpecId)
       ]
     }
     
@@ -882,6 +935,7 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
     const fsmKey = `成品_${this.currentFSM}`
     this.allTableData[fsmKey] = finishedProductsData
     console.log(`初始化${this.currentFSM}成品表数据:`, finishedProductsData)
+    console.log(`[PACKING_SPEC_TABLE] ${this.currentFSM} finished primary=${primarySpecId} secondary=${secondarySpecId}`)
   }
 
   /**
@@ -1024,9 +1078,11 @@ getCurrentFSM(): 'FSM1' | 'FSM2' {
    * ```
    */
   addNewDynamicPackingTableData(): void {
+    const primarySpecId = getPackingSpecStorage().getPrimarySpecId()
+    const secondarySpecId = getPackingSpecStorage().getSecondarySpecId()
     const newDynamicPackingData: TableRow[] = [
-      ['出口7', 'LS007', '标准箱', 'I级', '5', '中号', '6.5', '1.0'],
-      ['出口8', 'LS008', '小箱', 'J级', '3', '小号', '4.2', '0.8']
+      this.buildDynamicPackingRow('出口7', 'LS007', 'I级', '5', primarySpecId, '1.0'),
+      this.buildDynamicPackingRow('出口8', 'LS008', 'J级', '3', secondarySpecId, '0.8')
     ]
     this.addTableData('动态装箱', newDynamicPackingData)
   }

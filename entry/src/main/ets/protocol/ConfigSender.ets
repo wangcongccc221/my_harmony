@@ -307,6 +307,18 @@ export class ConfigSender {
     return this.broadcastCommand(HC_FSM_COMMAND_TYPE.HC_CMD_MOTOR_ENABLE, 'MOTOR_ENABLE')
   }
 
+  /**
+   * 发送出果清框命令 (HC_CMD_EXIT_CLEAR)
+   * @param fsmId FSM设备ID，不传则广播到所有已连接设备
+   */
+  async sendExitClear(fsmId?: number): Promise<boolean> {
+    if (fsmId !== undefined) {
+      const data = this.parser.buildSimpleCommand(HC_FSM_COMMAND_TYPE.HC_CMD_EXIT_CLEAR, fsmId)
+      return this.sendCommand(fsmId, data, 'EXIT_CLEAR')
+    }
+    return this.broadcastCommand(HC_FSM_COMMAND_TYPE.HC_CMD_EXIT_CLEAR, 'EXIT_CLEAR')
+  }
+
   // ==================== 测试命令 ====================
   /**
    * 发送电磁阀测试命令 (HC_CMD_TEST_VOLVE)

@@ -7,6 +7,7 @@ import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/Omni
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
+import { getMoreSystemSettingsStorage, MoreDeviceInfoRecord } from '../../utils/storage/MoreSystemSettingsStorage'
 
 @Component
 export struct DeviceInfoDialog {
@@ -45,6 +46,34 @@ export struct DeviceInfoDialog {
   onConfirm?: () => void
   onCancel?: () => void
 
+  aboutToAppear(): void {
+    const record = getMoreSystemSettingsStorage().getDeviceInfo()
+    this.deviceNumber = record.deviceNumber
+    this.deviceName = record.deviceName
+    this.customerName = record.customerName
+    this.fruitVariety = record.fruitVariety
+    this.exFactoryDate = record.exFactoryDate
+    this.expirationDate = record.expirationDate
+    this.personInCharge = record.personInCharge
+    this.contactPhone = record.contactPhone
+    this.location1 = record.location1
+    this.location2 = record.location2
+    this.location3 = record.location3
+    this.location4 = record.location4
+    this.detailedAddress = record.detailedAddress
+    this.ipmVersion = record.ipmVersion
+    this.rssVersion = record.rssVersion
+    this.scmVersion = record.scmVersion
+    this.fsmVersion = record.fsmVersion
+    this.dwmVersion = record.dwmVersion
+    this.wamVersion = record.wamVersion
+    this.iqmVersion = record.iqmVersion
+    this.bdmVersion = record.bdmVersion
+    this.debugger = record.debugger
+    this.updater = record.updater
+    this.remarks = record.remarks
+  }
+
   // 获取当前主题配置
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return getCurrentTheme(this.consumedTheme)
@@ -57,6 +86,33 @@ export struct DeviceInfoDialog {
 
   // 确认按钮点击
   private handleConfirm(): void {
+    const record = new MoreDeviceInfoRecord()
+    record.deviceNumber = this.deviceNumber
+    record.deviceName = this.deviceName
+    record.customerName = this.customerName
+    record.fruitVariety = this.fruitVariety
+    record.exFactoryDate = this.exFactoryDate
+    record.expirationDate = this.expirationDate
+    record.personInCharge = this.personInCharge
+    record.contactPhone = this.contactPhone
+    record.location1 = this.location1
+    record.location2 = this.location2
+    record.location3 = this.location3
+    record.location4 = this.location4
+    record.detailedAddress = this.detailedAddress
+    record.ipmVersion = this.ipmVersion
+    record.rssVersion = this.rssVersion
+    record.scmVersion = this.scmVersion
+    record.fsmVersion = this.fsmVersion
+    record.dwmVersion = this.dwmVersion
+    record.wamVersion = this.wamVersion
+    record.iqmVersion = this.iqmVersion
+    record.bdmVersion = this.bdmVersion
+    record.debugger = this.debugger
+    record.updater = this.updater
+    record.remarks = this.remarks
+    getMoreSystemSettingsStorage().setDeviceInfo(record)
+    console.log(`[DEVICE_INFO_SAVE] device=${record.deviceNumber} customer=${record.customerName}`)
     if (this.onConfirm) {
       this.onConfirm()
     }

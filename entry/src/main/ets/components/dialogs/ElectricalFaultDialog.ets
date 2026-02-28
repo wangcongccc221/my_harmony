@@ -8,6 +8,7 @@ import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/Omni
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
+import { getMoreSystemSettingsStorage, MoreFaultItem } from '../../utils/storage/MoreSystemSettingsStorage'
 
 // 电气故障信息接口
 interface ElectricalFaultItem {
@@ -32,6 +33,16 @@ export struct ElectricalFaultDialog {
   onLoad?: () => void
   onSave?: () => void
 
+  aboutToAppear(): void {
+    const items = getMoreSystemSettingsStorage().getElectricalFaults()
+    const nextList: ElectricalFaultItem[] = []
+    for (let i = 0; i < items.length; i++) {
+      const item: ElectricalFaultItem = { code: items[i].code, module: items[i].module, message: items[i].message }
+      nextList.push(item)
+    }
+    this.faultList = nextList
+  }
+
   // 获取当前主题配置
   getCurrentTheme(): ExtendedOmniThemeStyle {
     return getCurrentTheme(this.consumedTheme)
@@ -55,16 +66,26 @@ export struct ElectricalFaultDialog {
     if (this.onLoad) {
       this.onLoad()
     }
-    // TODO: 实际导入逻辑（从文件读取并填充 faultList）
+    const items = getMoreSystemSettingsStorage().getElectricalFaults()
+    const nextList: ElectricalFaultItem[] = []
+    for (let i = 0; i < items.length; i++) {
+      const item: ElectricalFaultItem = { code: items[i].code, module: items[i].module, message: items[i].message }
+      nextList.push(item)
+    }
+    this.faultList = nextList
   }
 
   // 保存按钮点击
   private handleSave(): void {
     console.log('保存电气故障配置', this.faultList)
+    const items: MoreFaultItem[] = []
+    for (let i = 0; i < this.faultList.length; i++) {
+      items.push(new MoreFaultItem(this.faultList[i].code, this.faultList[i].module, this.faultList[i].message))
+    }
+    getMoreSystemSettingsStorage().setElectricalFaults(items)
     if (this.onSave) {
       this.onSave()
     }
-    // TODO: 实际保存逻辑（将 faultList 保存到文件）
   }
 
   build() {

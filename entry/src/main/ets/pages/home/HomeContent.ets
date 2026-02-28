@@ -58,6 +58,7 @@ export struct HomeContent {
   @StorageLink(OMNI_THEME_KEY) consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
   @StorageLink('HOME_CONTENT_REF') homeContentRef: HomeContent | null = null
   @StorageLink(HOME_SELECTED_FSM) @Watch('onFSMChange') selectedFSM: 'FSM1' | 'FSM2' = 'FSM1'
+  @StorageLink('PACKING_SPEC_REFRESH_VERSION') @Watch('onPackingSpecRefresh') packingSpecRefreshVersion: number = 0
   @StorageLink(StorageKeys.LEVEL_STAT_UPDATE) @Watch('onLevelStatUpdate') private levelStatUpdate: LevelStatPayload | null = null
   @StorageLink(StorageKeys.LEVEL_STAT_REMOVE) @Watch('onLevelStatRemove') private levelStatRemove: LevelStatPayload | null = null
   @StorageLink(StorageKeys.LEVEL_STAT_UPDATE_BATCH) @Watch('onLevelStatBatch') private levelStatBatch: LevelStatBatchPayload | null = null
@@ -110,6 +111,13 @@ export struct HomeContent {
   onFSMChange() {
     this.dataManager.setFSM(this.selectedFSM)
     this.refreshAllTables()
+  }
+
+  private onPackingSpecRefresh(): void {
+    this.dataManager.initializeDynamicPackingTableData()
+    this.dataManager.initializeFinishedProductsTableData()
+    this.refreshAllTables()
+    console.log(`[PACKING_SPEC_REFRESH] version=${this.packingSpecRefreshVersion}`)
   }
 
   public refreshStatisticsTable() {

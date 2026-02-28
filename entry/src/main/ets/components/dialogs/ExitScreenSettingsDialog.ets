@@ -2,27 +2,30 @@ import { OmniThemeManager, ExtendedOmniThemeStyle } from '../../utils/theme/Omni
 import { getCurrentTheme } from '../../utils/theme/ThemeUtils'
 import { OMNI_THEME_KEY, OMNI_THEME_VERSION_KEY } from '../../utils/theme/useOmniTheme'
 import { t, I18N_VERSION_KEY } from '../../utils/i18n/I18nManager'
+import { ExitScreenConfigRecord, getExitScreenStorage } from '../../utils/storage/ExitScreenStorage'
 
 @Component
 export struct ExitScreenSettingsDialog {
   @Prop isVisible: boolean = false
+  @Prop initialSleepEnabled: boolean = true
+  @Prop initialScreenOnTime: string = '08:00:00'
+  @Prop initialScreenOffTime: string = '20:00:00'
+  @Prop initialConfigsJson: string = '[]'
   @StorageLink(OMNI_THEME_KEY) @Watch('onThemeChange') consumedTheme: ExtendedOmniThemeStyle = OmniThemeManager.getInstance().getCurrentTheme()
   @StorageLink(OMNI_THEME_VERSION_KEY) @Watch('onThemeChange') themeVersion: number = 0
   @StorageLink(I18N_VERSION_KEY) i18nVersion: number = 0
 
   @State sleepEnabled: boolean = true
-
-
-  @State screenOnTime: string = '10:53:02'
+  @State screenOnTime: string = '08:00:00'
   @State selectedOnTime: Date = new Date()
   @State showOnTimePicker: boolean = false
-
-
-  @State screenOffTime: string = '00:00:00'
+  @State screenOffTime: string = '20:00:00'
   @State selectedOffTime: Date = new Date()
   @State showOffTimePicker: boolean = false
+  @State selectedExitNo: number = 1
+  @State exitConfigs: ExitScreenConfigRecord[] = []
 
-  onConfirm?: () => void
+  onConfirm?: (sleepEnabled: boolean, screenOnTime: string, screenOffTime: string, configsJson: string) => void
   onCancel?: () => void
 
   getCurrentTheme(): ExtendedOmniThemeStyle {
@@ -48,32 +51,114 @@ export struct ExitScreenSettingsDialog {
   }
 
   aboutToAppear(): void {
+    this.sleepEnabled = this.initialSleepEnabled
+    this.screenOnTime = this.initialScreenOnTime
+    this.screenOffTime = this.initialScreenOffTime
     this.selectedOnTime = this.parseTimeString(this.screenOnTime)
     this.selectedOffTime = this.parseTimeString(this.screenOffTime)
-  }
-
-  // 确认按钮点击
-  private handleConfirm(): void {
-    if (this.onConfirm) {
-      this.onConfirm()
+    this.exitConfigs = getExitScreenStorage().parseConfigs(this.initialConfigsJson)
+    if (this.exitConfigs.length > 0) {
+      this.selectedExitNo = this.exitConfigs[0].exitNo
     }
   }
 
-  // 取消/关闭按钮点击
+  private getSelectedConfig(): ExitScreenConfigRecord {
+    for (let i = 0; i < this.exitConfigs.length; i++) {
+      if (this.exitConfigs[i].exitNo === this.selectedExitNo) {
+        return this.exitConfigs[i]
+      }
+    }
+    return new ExitScreenConfigRecord(1, '', '', true)
+  }
+
+  private updateSelectedConfig(field: string, value: string | boolean): void {
+    const nextList: ExitScreenConfigRecord[] = []
+    for (let i = 0; i < this.exitConfigs.length; i++) {
+      const item = this.exitConfigs[i]
+      const next = new ExitScreenConfigRecord(item.exitNo, item.customName, item.additionalInfo, item.useAutoName)
+      if (item.exitNo === this.selectedExitNo) {
+        if (field === 'customName' && typeof value === 'string') {
+          next.customName = value
+        } else if (field === 'additionalInfo' && typeof value === 'string') {
+          next.additionalInfo = value
+        } else if (field === 'useAutoName' && typeof value === 'boolean') {
+          next.useAutoName = value
+        }
+      }
+      nextList.push(next)
+    }
+    this.exitConfigs = nextList
+  }
+
+  private buildConfigsJson(): string {
+    return JSON.stringify(this.exitConfigs)
+  }
+
+  private handleConfirm(): void {
+    console.log(`[EXIT_SCREEN_SETTINGS_UI] confirm selectedExit=${this.selectedExitNo} sleep=${this.sleepEnabled} on=${this.screenOnTime} off=${this.screenOffTime}`)
+    if (this.onConfirm) {
+      this.onConfirm(this.sleepEnabled, this.screenOnTime, this.screenOffTime, this.buildConfigsJson())
+    }
+  }
+
   private handleCancel(): void {
     if (this.onCancel) {
       this.onCancel()
     }
   }
 
+  @Builder
+  private buildTimeRow(label: string, timeText: string, pickerVisible: boolean, selectedTime: Date, onToggle: () => void, onTimeChange: (value: TimePickerResult) => void, onTextChange: (value: string) => void): void {
+    Column({ space: 8 }) {
+      Row() {
+        Text(label)
+          .fontSize(15)
+          .fontColor(this.getCurrentTheme().textColor)
+          .width(92)
+
+        TextInput({ text: timeText })
+          .layoutWeight(1)
+          .height(38)
+          .backgroundColor('#FFFFFF')
+          .borderRadius(8)
+          .onChange((value: string) => {
+            onTextChange(value)
+          })
+
+        Button('⏱')
+          .type(ButtonType.Normal)
+          .width(40)
+          .height(38)
+          .margin({ left: 8 })
+          .backgroundColor(this.getCurrentTheme().surfaceColor)
+          .border({ width: 1, color: this.getCurrentTheme().borderColor })
+          .borderRadius(8)
+          .onClick(() => {
+            onToggle()
+          })
+      }
+      .width('100%')
+
+      if (pickerVisible) {
+        TimePicker({
+          selected: selectedTime,
+          format: TimePickerFormat.HOUR_MINUTE_SECOND
+        })
+          .useMilitaryTime(true)
+          .width('100%')
+          .onChange((value: TimePickerResult) => {
+            onTimeChange(value)
+          })
+      }
+    }
+    .width('100%')
+  }
+
   build() {
-    // 对话框遮罩层
     Stack() {
       if (!this.isVisible) {
-        // 不可见时返回空内容
         Blank()
       } else {
-        // 背景遮罩
         Column()
           .width('100%')
           .height('100%')
@@ -82,16 +167,13 @@ export struct ExitScreenSettingsDialog {
             this.handleCancel()
           })
 
-        // 对话框内容
         Column() {
-          // 标题栏（绿色背景）
           Row() {
             Text(t('出口屏设置', '出口屏设置'))
               .fontSize(18)
               .fontWeight(FontWeight.Bold)
               .fontColor(Color.White)
               .layoutWeight(1)
-              .textAlign(TextAlign.Center)
 
             Button() {
               Image($r('sys.media.ohos_ic_public_close'))
@@ -109,164 +191,171 @@ export struct ExitScreenSettingsDialog {
           }
           .width('100%')
           .height(48)
-          .padding({ left: 20, right: 12, top: 8, bottom: 8 })
+          .padding({ left: 20, right: 12 })
           .backgroundColor('#4CAF50')
-          .justifyContent(FlexAlign.SpaceBetween)
-          .alignItems(VerticalAlign.Center)
 
-          // 内容区域
-          Column() {
-            // 休眠开关复选框
-            Row() {
-              Checkbox({ name: 'sleepEnabled' })
-                .select(this.sleepEnabled)
-                .onChange((value: boolean) => {
-                  this.sleepEnabled = value
-                })
-                .width(20)
-                .height(20)
-                .shape(CheckBoxShape.ROUNDED_SQUARE)
-
-              Text(t('休眠开关', '休眠开关'))
-                .fontSize(16)
-                .fontColor(this.getCurrentTheme().textColor)
-                .margin({ left: 8 })
-            }
-            .width('100%')
-            .alignItems(VerticalAlign.Center)
-            .padding({ top: 20, bottom: 20, left: 20, right: 20 })
-
-            // 开屏时间设置
-            Column() {
+          Row({ space: 16 }) {
+            Column({ space: 16 }) {
               Row() {
-                Text(t('开屏时间:', '开屏时间:'))
-                  .fontSize(16)
+                Text('休眠开关')
+                  .fontSize(15)
                   .fontColor(this.getCurrentTheme().textColor)
-                  .width(100)
-
-                TextInput({ text: this.screenOnTime })
-                  .width(400)
-                  .height(36)
-                  .fontSize(16)
-                  .fontColor(this.getCurrentTheme().textColor)
-                  .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                  .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                  .borderRadius(4)
-                  .padding({ left: 8, right: 8 })
-                  .onChange((value: string) => {
-                    this.screenOnTime = value
-                    this.selectedOnTime = this.parseTimeString(value)
+                  .layoutWeight(1)
+                Toggle({ type: ToggleType.Switch, isOn: this.sleepEnabled })
+                  .onChange((value: boolean) => {
+                    this.sleepEnabled = value
                   })
-
-                // 日历图标按钮
-                Button() {
-                  Text('📅')
-                    .fontSize(18)
-                    .fontColor(this.getCurrentTheme().textColor)
-                }
-                .type(ButtonType.Normal)
-                .backgroundColor(Color.Transparent)
-                .width(32)
-                .height(32)
-                .margin({ left: 8 })
-                .onClick(() => {
-                  this.showOnTimePicker = !this.showOnTimePicker
-                })
               }
               .width('100%')
-              .alignItems(VerticalAlign.Center)
+              .padding(16)
+              .backgroundColor(this.getCurrentTheme().surfaceColor)
+              .borderRadius(12)
+              .border({ width: 1, color: this.getCurrentTheme().borderColor })
 
-              // 时间选择器
-              if (this.showOnTimePicker) {
-                TimePicker({
-                  selected: this.selectedOnTime,
-                  format: TimePickerFormat.HOUR_MINUTE_SECOND
-                })
-                  .useMilitaryTime(true)
-                  .onChange((value: TimePickerResult) => {
+              Column({ space: 12 }) {
+                this.buildTimeRow('开屏时间', this.screenOnTime, this.showOnTimePicker, this.selectedOnTime,
+                  () => {
+                    this.showOnTimePicker = !this.showOnTimePicker
+                  },
+                  (value: TimePickerResult) => {
                     if (value.hour >= 0) {
                       this.selectedOnTime.setHours(value.hour, value.minute, value.second || 0)
                       this.screenOnTime = this.formatTime(this.selectedOnTime)
                     }
-                  })
-                  .margin({ top: 8 })
-                  .width('100%')
-              }
-            }
-            .width('100%')
-            .alignItems(HorizontalAlign.Start)
-            .padding({ left: 20, right: 20, bottom: 16 })
-
-            // 息屏时间设置
-            Column() {
-              Row() {
-                Text(t('息屏时间:', '息屏时间:'))
-                  .fontSize(16)
-                  .fontColor(this.getCurrentTheme().textColor)
-                  .width(100)
-
-                TextInput({ text: this.screenOffTime })
-                  .width(400)
-                  .height(36)
-                  .fontSize(16)
-                  .fontColor(this.getCurrentTheme().textColor)
-                  .backgroundColor(this.getCurrentTheme().controlBg ?? this.getCurrentTheme().surfaceColor)
-                  .border({ width: 1, color: this.getCurrentTheme().borderColor })
-                  .borderRadius(4)
-                  .padding({ left: 8, right: 8 })
-                  .onChange((value: string) => {
-                    this.screenOffTime = value
-                    this.selectedOffTime = this.parseTimeString(value)
+                  },
+                  (value: string) => {
+                    this.screenOnTime = value
+                    this.selectedOnTime = this.parseTimeString(value)
                   })
 
-                // 日历图标按钮
-                Button() {
-                  Text('📅')
-                    .fontSize(18)
-                    .fontColor(this.getCurrentTheme().textColor)
-                }
-                .type(ButtonType.Normal)
-                .backgroundColor(Color.Transparent)
-                .width(32)
-                .height(32)
-                .margin({ left: 8 })
-                .onClick(() => {
-                  this.showOffTimePicker = !this.showOffTimePicker
-                })
-              }
-              .width('100%')
-              .alignItems(VerticalAlign.Center)
-
-              // 时间选择器
-              if (this.showOffTimePicker) {
-                TimePicker({
-                  selected: this.selectedOffTime,
-                  format: TimePickerFormat.HOUR_MINUTE_SECOND
-                })
-                  .useMilitaryTime(true)
-                  .onChange((value: TimePickerResult) => {
+                this.buildTimeRow('息屏时间', this.screenOffTime, this.showOffTimePicker, this.selectedOffTime,
+                  () => {
+                    this.showOffTimePicker = !this.showOffTimePicker
+                  },
+                  (value: TimePickerResult) => {
                     if (value.hour >= 0) {
                       this.selectedOffTime.setHours(value.hour, value.minute, value.second || 0)
                       this.screenOffTime = this.formatTime(this.selectedOffTime)
                     }
+                  },
+                  (value: string) => {
+                    this.screenOffTime = value
+                    this.selectedOffTime = this.parseTimeString(value)
                   })
-                  .margin({ top: 8 })
-                  .width('100%')
               }
+              .width('100%')
+              .padding(16)
+              .backgroundColor(this.getCurrentTheme().surfaceColor)
+              .borderRadius(12)
+              .border({ width: 1, color: this.getCurrentTheme().borderColor })
             }
-            .width('100%')
-            .alignItems(HorizontalAlign.Start)
-            .padding({ left: 20, right: 20, bottom: 20 })
+            .width('34%')
+
+            Column({ space: 16 }) {
+              Row({ space: 8 }) {
+                Text('出口选择')
+                  .fontSize(15)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(this.getCurrentTheme().textColor)
+                ForEach(this.exitConfigs, (item: ExitScreenConfigRecord) => {
+                  Button(item.exitNo.toString())
+                    .width(34)
+                    .height(34)
+                    .fontSize(13)
+                    .borderRadius(8)
+                    .fontColor(this.selectedExitNo === item.exitNo ? Color.White : this.getCurrentTheme().textColor)
+                    .backgroundColor(this.selectedExitNo === item.exitNo ? this.getCurrentTheme().primary : this.getCurrentTheme().surfaceColor)
+                    .border({ width: 1, color: this.getCurrentTheme().borderColor })
+                    .onClick(() => {
+                      this.selectedExitNo = item.exitNo
+                    })
+                })
+              }
+              .width('100%')
+
+              Column({ space: 12 }) {
+                Row() {
+                  Checkbox({ name: 'useAutoName' })
+                    .select(this.getSelectedConfig().useAutoName)
+                    .onChange((value: boolean) => {
+                      this.updateSelectedConfig('useAutoName', value)
+                    })
+                    .width(18)
+                    .height(18)
+                    .margin({ right: 8 })
+                  Text('使用自动等级名称')
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().textColor)
+                }
+                .width('100%')
+                .alignItems(VerticalAlign.Center)
+
+                Column({ space: 6 }) {
+                  Text('显示名称')
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().subTextColor)
+                  TextInput({ text: this.getSelectedConfig().customName })
+                    .height(40)
+                    .backgroundColor('#FFFFFF')
+                    .borderRadius(8)
+                    .enabled(!this.getSelectedConfig().useAutoName)
+                    .onChange((value: string) => {
+                      this.updateSelectedConfig('customName', value)
+                    })
+                }
+                .width('100%')
+
+                Column({ space: 6 }) {
+                  Text('附加信息')
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().subTextColor)
+                  TextInput({ text: this.getSelectedConfig().additionalInfo })
+                    .height(72)
+                    .backgroundColor('#FFFFFF')
+                    .borderRadius(8)
+                    .onChange((value: string) => {
+                      this.updateSelectedConfig('additionalInfo', value)
+                    })
+                }
+                .width('100%')
+
+                Column({ space: 6 }) {
+                  Text('屏幕预览')
+                    .fontSize(14)
+                    .fontColor(this.getCurrentTheme().subTextColor)
+                  Column({ space: 6 }) {
+                    Text(`出口 ${this.getSelectedConfig().exitNo}`)
+                      .fontSize(13)
+                      .fontColor('#9EC5FF')
+                    Text(this.getSelectedConfig().useAutoName ? '自动等级名称' : (this.getSelectedConfig().customName || '未设置显示名称'))
+                      .fontSize(20)
+                      .fontWeight(FontWeight.Bold)
+                      .fontColor(Color.White)
+                    Text(this.getSelectedConfig().additionalInfo && this.getSelectedConfig().additionalInfo.length > 0 ? this.getSelectedConfig().additionalInfo : '无附加信息')
+                      .fontSize(13)
+                      .fontColor('#B8C7D9')
+                  }
+                  .width('100%')
+                  .padding(16)
+                  .backgroundColor('#0F2744')
+                  .borderRadius(14)
+                }
+                .width('100%')
+              }
+              .width('100%')
+              .padding(16)
+              .backgroundColor(this.getCurrentTheme().surfaceColor)
+              .borderRadius(12)
+              .border({ width: 1, color: this.getCurrentTheme().borderColor })
+            }
+            .layoutWeight(1)
           }
           .width('100%')
           .layoutWeight(1)
-          .backgroundColor(this.getCurrentTheme().surfaceColor)
+          .padding(20)
 
-          // 底部按钮区域
           Row() {
             Blank().layoutWeight(1)
-
-            // 确定按钮
             Button(t('确定', '确定'))
               .fontSize(16)
               .fontColor(Color.White)
@@ -279,19 +368,20 @@ export struct ExitScreenSettingsDialog {
               })
           }
           .width('100%')
-          .padding({ left: 20, right: 20, top: 16, bottom: 20 })
+          .padding({ left: 20, right: 20, top: 0, bottom: 20 })
           .backgroundColor(this.getCurrentTheme().surfaceColor)
         }
-        .width(600)
-        .height(500)
+        .width('80%')
+        .height('78%')
         .backgroundColor(this.getCurrentTheme().surfaceColor)
         .borderRadius(12)
         .shadow({
           radius: 20,
-          color: 'rgba(0, 0, 0, 0.1)',
+          color: 'rgba(0, 0, 0, 0.12)',
           offsetX: 0,
           offsetY: 4
         })
+        .constraintSize({ maxWidth: 980, maxHeight: 760 })
       }
     }
     .width('100%')
@@ -299,4 +389,3 @@ export struct ExitScreenSettingsDialog {
     .alignContent(Alignment.Center)
   }
 }
-
